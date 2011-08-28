@@ -34,6 +34,8 @@ class Mtf_renderer_annotate : public Mtf_renderer {
         
         cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
         
+        ts.width -= 4; // tweak box size slightly
+        
         cv::Point to( px - ts.width/2, py + ts.height/2 );
         
         cv::rectangle(img, 

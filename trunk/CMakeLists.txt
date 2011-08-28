@@ -49,10 +49,13 @@ find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
 
+# documenation in LaTeX
+include(cmake_helpers/UseLATEX.cmake)
+
 
 add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
 add_subdirectory(bin)
-#add_subdirectory(test)
+add_subdirectory(doc)
 
 
 
