@@ -48,10 +48,17 @@ find_package(OpenCV REQUIRED)
 find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
+include_directories("${PROJECT_BINARY_DIR}/bin")
 
 # documenation in LaTeX
 include(cmake_helpers/UseLATEX.cmake)
 
+# configure a header file to pass some of the CMake settings
+# to the source code
+configure_file (
+  "${PROJECT_SOURCE_DIR}/include/config.h.in"
+  "${PROJECT_BINARY_DIR}/bin/config.h"
+  )
 
 add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
 add_subdirectory(bin)
