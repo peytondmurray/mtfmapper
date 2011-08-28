@@ -296,7 +296,7 @@ void Component_labeller::_draw_snapshot(void) {
         img.data[i] = _labels[i] < 0 ? 255 : _labels[i];
     }
 
-    imwrite(string("labelled.png"), img);
+    imwrite(std::string("labelled.png"), img);
 }
 
 

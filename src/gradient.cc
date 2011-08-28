@@ -25,7 +25,7 @@ Gradient::Gradient(const cv::Mat& in_img, bool snapshot, bool thin)
     }
 
     if (snapshot) {
-        imwrite(string("gradient.png"), grad);
+        imwrite(std::string("gradient.png"), grad);
     }
 
     delete [] smoothed;

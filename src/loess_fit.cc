@@ -1,6 +1,7 @@
 #include "include/loess_fit.h"
 #include "include/gaussfilter.h"
 #include <stdio.h>
+#include <cmath>
 
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
     double mid,  Point& sol, int mode) {
