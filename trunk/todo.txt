@@ -1,0 +1,9 @@
+1. gridded mtf surface
+2. pull in gen_square
+3. pull in svg scripts
+4. add some basic quality evaluation for each mtf edge
+5. re-write gradient to use opencv
+6. add threading to gradient
+7. add threading to threshold
+8. make tbb optional
+

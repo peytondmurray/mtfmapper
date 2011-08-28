@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 2.4)
+
+# set the extension used for C++ files here
+# this is used to find all sources using a GLOB
+set(cpp_ext .cc)
+
+# Force cmake to default to a "Release" build, which implies full
+# optimisation
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE Release CACHE STRING
+      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+      FORCE)
+ENDIF(NOT CMAKE_BUILD_TYPE)
+
+project(mtfmapper CXX)
+set(mtfmapper_VERSION_MAJOR 0)
+set(mtfmapper_VERSION_MINOR 1)
+
+
+
+# Turn all compiler warnings on when building with GCC
+if(CMAKE_COMPILER_IS_GNUCXX)
+  message(STATUS "Using a g++ compiler variant --- additional compiler warnings turned on")
+  add_definitions(-Wall -W)
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
+# Turn all compiler warnings on when building with the Intel compiler
+if(CMAKE_CXX_COMPILER MATCHES "icpc")
+  message(STATUS "Using an Intel compiler variant --- additional compiler warnings turned on")
+  #-wd981 disables a warning about unspecified evaluation order of operands,
+  # which appears to be spurious most of the time ...
+  #-wd810 disables a warning about a loss of precision. This warning appears
+  # to be spurious.
+  add_definitions(-Wall -wd981 -wd810)
+endif(CMAKE_CXX_COMPILER MATCHES "icpc")
+
+# must check this on new MSVC
+# Add stdint.h if we are compiling on MSVC
+#if(CMAKE_GENERATOR MATCHES "Visual Studio")
+#  INCLUDE_DIRECTORIES(${scl_SOURCE_DIR}/include)
+#  add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+#endif(CMAKE_GENERATOR MATCHES "Visual Studio")
+
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
+
+# external libs
+find_package(OpenCV REQUIRED)
+find_package(FFTW REQUIRED)
+find_package(TBB REQUIRED)
+include_directories("${CMAKE_CURRENT_LIST_DIR}")
+
+
+add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
+add_subdirectory(bin)
+#add_subdirectory(test)
+
+
+
