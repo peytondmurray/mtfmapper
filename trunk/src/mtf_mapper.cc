@@ -3,7 +3,6 @@
 #include <math.h>
 #include <string>
 #include <string.h>
-#include <stdlib.h>
 
 using std::string;
 
@@ -14,6 +13,7 @@ using std::string;
 #include "include/mtf_core_tbb_adaptor.h"
 #include "include/mtf_renderer_annotate.h"
 #include "include/mtf_renderer_profile.h"
+#include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
 
@@ -42,9 +42,14 @@ void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
 }
 
 //-----------------------------------------------------------------------------
-int main(int argc, char** argv) {
+void print_version_info(void) {
+    printf("MTF mapper version %d.%d\n", mtfmapper_VERSION_MAJOR, mtfmapper_VERSION_MINOR);
+}
 
-    srand(time(0));
+//-----------------------------------------------------------------------------
+int main(int argc, char** argv) {
+    
+    print_version_info();
 
     if (argc < 2) {
         printf("usage %s <filename>\n", argv[0]);
