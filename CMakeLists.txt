@@ -15,7 +15,8 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 1)
-
+set(genrectangle_VERSION_MAJOR 0)
+set(genrectangle_VERSION_MINOR 1)
 
 
 # Turn all compiler warnings on when building with GCC
@@ -47,11 +48,18 @@ SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
 find_package(OpenCV REQUIRED)
 find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
+find_package(TCLAP REQUIRED)
+
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/bin")
 
+#optional
+find_package(LATEX)
 # documenation in LaTeX
-include(cmake_helpers/UseLATEX.cmake)
+if (LATEX_COMPILER)
+  include(cmake_helpers/UseLATEX.cmake)
+  add_subdirectory(doc)
+endif (LATEX_COMPILER)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -62,7 +70,7 @@ configure_file (
 
 add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
 add_subdirectory(bin)
-add_subdirectory(doc)
+
 
 
 
