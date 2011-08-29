@@ -4,7 +4,10 @@
 #include <string>
 #include <string.h>
 
+#include <tclap/CmdLine.h>
+
 using std::string;
+using std::stringstream;
 
 #include "include/common_types.h"
 #include "include/thresholding.h"
@@ -48,15 +51,19 @@ void print_version_info(void) {
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv) {
+
+    stringstream ss;
+    ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR;
     
-    print_version_info();
+    TCLAP::CmdLine cmd("Measure MTF50 values across edges of rectangular targets", ' ', ss.str());
+    TCLAP::ValueArg<std::string> tc_in_name("i", "input", "Input image file name (many extensions supported)", true, "input.png", "string");
+    cmd.add(tc_in_name);
+    TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
+    TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
+    
+    cmd.parse(argc, argv);
 
-    if (argc < 2) {
-        printf("usage %s <filename>\n", argv[0]);
-        return -1;
-    }
-
-    cv::Mat cvimg = cv::imread(string(argv[1]), 0);
+    cv::Mat cvimg = cv::imread(tc_in_name.getValue(), 0);
     
     if (cvimg.type() == CV_8UC1) {
         convert_8bit_input(cvimg);        
@@ -90,14 +97,15 @@ int main(int argc, char** argv) {
     
     
     // now render the computed MTF values
+    if (tc_annotate.getValue()){
+        Mtf_renderer_annotate annotate(cvimg, string("annotated.png"));
+        annotate.render(mtf_core.get_blocks());
+    }
     
-    Mtf_renderer_annotate annotate(cvimg, string("annotated.png"));
-    
-    annotate.render(mtf_core.get_blocks());
-    
-    Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"));
-    
-    profile.render(mtf_core.get_blocks());
+    if (tc_profile.getValue()) {
+        Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"));
+        profile.render(mtf_core.get_blocks());
+    }
 
     return 0;
 }
