@@ -99,6 +99,17 @@ class Mtf_renderer_profile : public Mtf_renderer {
         );
         fclose(pffile);
         
+        FILE* gpf = fopen("profile.gnuplot", "wt");
+        fprintf(gpf, "set xlab \"column (pixels)\"\n");
+        fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
+        fprintf(gpf, "set term png\n");
+        fprintf(gpf, "set output \"profile_image.png\"\n");
+        fprintf(gpf, "plot \"%s\" u 1:2 t \"MTF50 (c/p) raw\" w d, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lw 3\n", 
+            prname.c_str(), prname.c_str(), pfname.c_str());
+        fclose(gpf);
+        
+        printf("execute \"gnuplot profile.gnuplot\" to render the plots\n");
+        
     }
     
     std::string prname;

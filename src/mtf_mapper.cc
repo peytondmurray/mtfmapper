@@ -16,6 +16,7 @@ using std::stringstream;
 #include "include/mtf_core_tbb_adaptor.h"
 #include "include/mtf_renderer_annotate.h"
 #include "include/mtf_renderer_profile.h"
+#include "include/mtf_renderer_grid.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -60,6 +61,7 @@ int main(int argc, char** argv) {
     cmd.add(tc_in_name);
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
     TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
+    TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
     
     cmd.parse(argc, argv);
 
@@ -79,11 +81,11 @@ int main(int argc, char** argv) {
     bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
     
     printf("Computing gradients ...\n");
-    Gradient gradient(cvimg, true);
+    Gradient gradient(cvimg, false);
     
     printf("Component labelling\n");
     Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 100, true, 4000);
+    Component_labeller cl(masked_img, 100, false, 4000);
     
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
@@ -107,5 +109,10 @@ int main(int argc, char** argv) {
         profile.render(mtf_core.get_blocks());
     }
 
+    if (tc_surface.getValue()) {
+        Mtf_renderer_grid grid(string("grid.txt"),  cvimg);
+        grid.render(mtf_core.get_blocks());
+    }
+    
     return 0;
 }
