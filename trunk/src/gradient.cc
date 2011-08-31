@@ -2,6 +2,7 @@
 #include "include/common_types.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 Gradient::Gradient(const cv::Mat& in_img, bool snapshot, bool thin)
