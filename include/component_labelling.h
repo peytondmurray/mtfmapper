@@ -4,6 +4,7 @@
 #include "common_types.h"
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 // A class for extracting the boundaries of a binary image.
 //
