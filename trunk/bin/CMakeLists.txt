@@ -9,3 +9,8 @@ add_executable(generate_rectangle ${gen_sources})
 set_target_properties(generate_rectangle PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME generate_rectangle)
 target_link_libraries(generate_rectangle ${OpenCV_LIBS} ${TBB_LIBRARIES})
 
+file(GLOB chart_sources ../src/test_chart_generator/*${cpp_ext})
+add_executable(generate_test_chart ${chart_sources})
+set_target_properties(generate_test_chart PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME generate_test_chart)
+target_link_libraries(generate_test_chart ${OpenCV_LIBS} )
+
