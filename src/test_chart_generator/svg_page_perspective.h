@@ -1,0 +1,138 @@
+#ifndef SVG_PAGE_PERSPECTIVE_H
+#define SVG_PAGE_PERSPECTIVE_H
+
+#include "svg_page.h"
+
+class Svg_page_perspective : public Svg_page {
+  public:
+    Svg_page_perspective(const string& page_spec, const string& fname) 
+      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2), -1.0/sqrt(2)), fl(50) {
+        compute_perspective_extremes();
+    }
+    
+    void render(void) {
+        double ang=5.0/180.0*M_PI;
+        double bsize=0.0214; // block size ....
+        
+        strip(-6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang*1.5, 1);
+        strip( 6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang*1.5, 0);
+        perspective_rectangle(-0.2, 0.5, 0.4, 0.5, 1.0/180.0*3.14159, 0);
+    }
+    
+  protected:  
+  
+    dPoint project_core(double x, double y) {
+        Vec3d d(x, y, fl/4.0); // fudge factor --- this definitely still needs work
+        d = d * (1.0/norm(d));
+        double t = ((pl - cop).ddot(normal)) / (d.dot(normal));
+        Vec3d pi = cop + d * t;
+        
+        Vec3d cr = normal.cross(Vec3d(1,0,0));
+        dPoint p;
+        p.y = (pi - pl).dot(cr);
+        p.x = (pi - pl).dot(Vec3d(1,0,0));
+        
+        return p;
+    }
+  
+    virtual iPoint project(double x, double y) {
+    
+        dPoint p = project_core(x,y);
+        
+        p.x = floor(p.x/(2*extremes[0])*width + 0.5*width);
+        p.y = floor(p.y/(2*extremes[1])*height + 0.5*height);
+        
+        return iPoint(int(p.x), int(p.y));
+    }
+    
+    void set_viewing_parameters(double distance_to_target, double focal_length, double angle=45.0/180*M_PI) {
+        pl[2] = distance_to_target;
+        fl = focal_length;
+        normal[1] = cos(angle);
+        normal[2] = sin(angle);
+        compute_perspective_extremes();
+    }
+    
+    void perspective_rectangle(double tlx, double tly, double width, double height, double angle, bool right) {
+        if (right) {
+            iPoint p = project(tlx, tly);
+            fprintf(fout, "  <polygon points=\"%d,%d ", p.x, p.y);
+            p = project(tlx - cos(angle)*width, tly + sin(angle)*height);
+            fprintf(fout, "%d,%d ", p.x, p.y);
+            p = project(tlx - sin(angle)*width - cos(angle)*width, tly - cos(angle)*height + sin(angle)*height);
+            fprintf(fout, "%d,%d ", p.x, p.y);
+            p = project(tlx - sin(angle)*width, tly - cos(angle)*height);
+            fprintf(fout, "%d,%d\" style=\"%s\"/>", p.x, p.y, style.c_str());
+          
+        } else {
+            iPoint p = project(tlx, tly);
+            fprintf(fout, "  <polygon points=\"%d,%d ", p.x, p.y);
+            p = project(tlx + cos(angle)*width, tly + sin(angle)*height);
+            fprintf(fout, "%d,%d ", p.x, p.y);
+            p = project(tlx + sin(angle)*width + cos(angle)*width, tly - cos(angle)*height + sin(angle)*height);
+            fprintf(fout, "%d,%d ", p.x, p.y);
+            p = project(tlx + sin(angle)*width, tly - cos(angle)*height);
+            fprintf(fout, "%d,%d\" style=\"%s\"/>", p.x, p.y, style.c_str());
+          
+        }
+    }
+    
+    void strip(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols, double ang, bool left) {
+  
+        for (size_t ry=0; ry < nrows; ry++) {
+            for (size_t rx=0; rx < ncols; rx++) {
+      
+                if (left) {
+                    double ypos = ry * 2.0 * sheight + tly;
+                    double xpos = rx * 2.0 * swidth  + tlx;
+              
+              
+                    perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 0);
+                    fprintf(fout, "\n");
+                    if (ry < nrows-1) {
+                        xpos += swidth;
+                        ypos += sheight;
+                        perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 0);
+                        fprintf(fout, "\n");
+                    }
+                } else {
+                    double ypos = ry * 2.0 * sheight + tly;
+                    double xpos = tlx - rx * 2.0 * swidth;
+              
+                    perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 1);
+                    fprintf(fout, "\n");
+                    if (ry < nrows-1) {
+                        xpos -= swidth;
+                        ypos += sheight;
+                        perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 1);
+                        fprintf(fout, "\n");
+                    }
+                }
+      
+            } // columns
+        } // rows
+    }
+    
+    void compute_perspective_extremes(void) {    
+    
+        dPoint p1 = project_core(0, -1);
+        dPoint p2 = project_core(0, 1);
+        
+        extremes[1] = std::max(fabs(p1.y), fabs(p2.y)) * width / double(height);
+        
+        p1 = project_core(-1, 0);
+        p2 = project_core( 1, 0);
+        
+        extremes[0] = std::max(fabs(p1.x), fabs(p2.x));
+        
+        printf("extremes: %le, %le\n", extremes[0], extremes[1]);
+    }
+    
+    Vec3d cop;      // centre of projection
+    Vec3d pl;       // position of focal plane
+    Vec3d normal;     // normal vector of target
+    double fl;          // focal length of lens
+    Vec2d extremes;
+};
+
+#endif
