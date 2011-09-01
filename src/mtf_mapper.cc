@@ -105,13 +105,21 @@ int main(int argc, char** argv) {
     }
     
     if (tc_profile.getValue()) {
-        Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"));
-        profile.render(mtf_core.get_blocks());
+        if (mtf_core.get_blocks().size() < 10) {
+            printf("Warning: fewer than 10 edges found, so MTF50 profiles will not be generated. Are you using suitable input images?\n");
+        } else {
+            Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"));
+            profile.render(mtf_core.get_blocks());
+        }
     }
 
     if (tc_surface.getValue()) {
-        Mtf_renderer_grid grid(string("grid.txt"),  cvimg);
-        grid.render(mtf_core.get_blocks());
+        if (mtf_core.get_blocks().size() < 10) {
+            printf("Warning: fewer than 10 edges found, so MTF50 surfaces will not be generated. Are you using suitable input images?\n");
+        } else {
+            Mtf_renderer_grid grid(string("grid.txt"),  cvimg);
+            grid.render(mtf_core.get_blocks());
+        }
     }
     
     return 0;
