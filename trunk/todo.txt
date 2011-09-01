@@ -1,9 +1,9 @@
-1. gridded mtf surface
+1. gridded mtf surface (done)
 2. pull in gen_rectangle (done)
-3. pull in svg scripts
+3. pull in svg scripts (done)
 4. add some basic quality evaluation for each mtf edge
 5. re-write gradient to use opencv
-6. add threading to gradient
-7. add threading to threshold
-8. make tbb optional
+6. add threading to gradient 
+7. add threading to threshold (use opencv integral)
+8. make tbb optional (maybe use boost?)
 
