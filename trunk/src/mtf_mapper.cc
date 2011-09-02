@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
         if (mtf_core.get_blocks().size() < 10) {
             printf("Warning: fewer than 10 edges found, so MTF50 profiles will not be generated. Are you using suitable input images?\n");
         } else {
-            Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"));
+            Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"), cvimg);
             profile.render(mtf_core.get_blocks());
         }
     }
