@@ -83,7 +83,6 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
     size_t end_idx = 0;
     
     int fft_idx = 0;
-    vector<double> fitted(fft_size+10);
     for (double step_base = ordered[0].first; step_base < ordered.back().first; step_base += step) {
     
         double mid = step_base + 0.5*step;
@@ -152,7 +151,7 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
         }
         
         double w = 0.54 + 0.46*cos(2*M_PI*(fft_idx - fft_size/2)/double(fft_size-1));  // Hamming window function
-        fitted[fft_idx++] = sol.x + mid*sol.y;
+        fft_idx++;
         if (deriv) {
             fft_in_buffer[fft_idx-1] = sol.y * w ; // derivative
         } else {

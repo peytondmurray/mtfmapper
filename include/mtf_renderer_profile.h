@@ -3,12 +3,12 @@
 
 #include "mtf_renderer.h"
 #include "common_types.h"
-#include "gaussfilter.h"
+#include "loess_fit.h"
 
 class Mtf_renderer_profile : public Mtf_renderer {
   public:
-    Mtf_renderer_profile(const std::string& prof_fname, const std::string& peak_fname) 
-      :  prname(prof_fname), pfname(peak_fname) {
+    Mtf_renderer_profile(const std::string& prof_fname, const std::string& peak_fname, const cv::Mat& img) 
+      :  prname(prof_fname), pfname(peak_fname), img(img) {
       
     }
     
@@ -44,24 +44,52 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
         
-        const size_t w = 15;
+        // apply some median filtering to remove obvious outliers
+        // this unfortunately chops the peaks of the sharp double-exponential
+        // curves seen on synthetic images. ah well ...
+        const size_t w = 2;
         vector<double> med_filt_mtf(row_max.size(), 0);
         size_t i = 0;
+        vector<Ordered_point> ordered;
         for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
             vector<double> medwin;
             map<int, double>::const_iterator start = it;
             map<int, double>::const_iterator end = it;
             for (size_t j=0; j < w && start != row_max.begin(); j++, start--);
-            for (size_t j=0; j < w && end != row_max.end(); j++, end++);
+            for (size_t j=0; j <= w && end != row_max.end(); j++, end++);
             for (; start != end; start++) {
                 medwin.push_back(start->second);
             }
             sort(medwin.begin(), medwin.end());
-            med_filt_mtf[i++] = medwin[w];
+            med_filt_mtf[i++] = medwin[medwin.size()/2];
+            double ex = (it->first - img.cols/2)/double(img.cols)*max_dot;
+            ordered.push_back(Ordered_point(ex, medwin[medwin.size()/2]));
         }
         
         // apply additional smoothing
-        Gaussfilter::filter(med_filt_mtf);
+        // try various LOESS filter sizes until the sign changes in the slope
+        // drops below 5% (which seems to provide relatively oscillation-free curves)
+        for (size_t w2=3; w2 < max(ordered.size()/10, size_t(6)); w2+=3) {
+            for (size_t i=0; i < ordered.size() - 1; i++) {
+                Point sol;
+                
+                size_t start = max(0, int(i) - int(w2));
+                size_t end   = min(ordered.size() - 1, i + w2);
+                loess_core(ordered, start, end, ordered[i].first, sol, 1);
+                    
+                med_filt_mtf[i] = ordered[i].first * sol.y + sol.x;
+            }
+            double frac_sign_change = 0;
+            for (size_t i=3; i < ordered.size()-2; i++) {
+                if ( (med_filt_mtf[i] - med_filt_mtf[i-2]) * (med_filt_mtf[i+2] - med_filt_mtf[i]) < 0) {
+                    frac_sign_change += 1.0;
+                }
+            }
+            frac_sign_change /= ordered.size();
+            if (frac_sign_change < 0.05) {  // less than 5% of sequential slopes experience sign changes
+                break;
+            }
+        }
         
         FILE* prfile = fopen(prname.c_str(), "wt");
         i=0;
@@ -114,6 +142,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
     
     std::string prname;
     std::string pfname;
+    const cv::Mat& img;
 };
 
 #endif
