@@ -7,7 +7,14 @@
 #include <string>
 using std::string;
 
-#include <cv.h>
+#ifdef _MSC_VER
+	typedef unsigned short int uint16_t;
+
+	#define M_PI 3.14159265358979
+	#define lrint(x) ( (x < 0) ? int(floor(x-0.5)) : int(floor(x+0.5)) )
+#endif
+
+#include "opencv/cv.h"
 using namespace cv;
 
 typedef cv::Point_<double> dPoint;

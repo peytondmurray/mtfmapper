@@ -6,7 +6,7 @@
 class Svg_page_perspective : public Svg_page {
   public:
     Svg_page_perspective(const string& page_spec, const string& fname) 
-      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2), -1.0/sqrt(2)), fl(50), sensor(15.6, 23.6) {
+      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), sensor(15.6, 23.6) {
         set_viewing_parameters(pl[2], fl, 15.6);
         compute_perspective_extremes();
     }
