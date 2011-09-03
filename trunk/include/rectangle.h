@@ -1,5 +1,5 @@
-#ifndef RECTANGLE_H
-#define RECTANGLE_H
+#ifndef MRECTANGLE_H
+#define MRECTANGLE_H
 
 #include "common_types.h"
 #include "peak_detector.h"
@@ -7,13 +7,13 @@
 const double rect_il_thresh = 2.0;
 const double adjust = 0.15;
 
-class Rectangle {
+class Mrectangle {
   public:
   
-    Rectangle(void) { }
+    Mrectangle(void) { }
     
     // build a rectangular buffer of "width" around midpoint of side k
-    Rectangle(const Rectangle& b, size_t k, double width) 
+    Mrectangle(const Mrectangle& b, size_t k, double width) 
       : thetas(4, .0), centroids(4, Point(0.0,0.0)), valid(true), 
         corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 
         normals(4, Point(0.0,0.0)) {
@@ -87,7 +87,7 @@ class Rectangle {
         return Point( (a.x+b.x)/2.0, (a.y+b.y)/2.0 );
     }
   
-    Rectangle(const vector<double>& in_thetas, const vector<double>& data_thetas, 
+    Mrectangle(const vector<double>& in_thetas, const vector<double>& data_thetas, 
         const vector<Point>& points, double thresh=5.0/180.0*M_PI) 
       : thetas(in_thetas), centroids(4, Point(0.0,0.0)), valid(false), 
         corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 

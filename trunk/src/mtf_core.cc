@@ -11,7 +11,7 @@ tbb::mutex global_mutex;
 
 void Mtf_core::search_borders(const Point& cent, int label) {
     
-    Rectangle rrect;
+    Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
     
     Block block(rrect);
@@ -32,7 +32,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         Point mid_dir = average_dir(g, int(centroids[k].x), int(centroids[k].y));
         
         // now construct buffer around centroid, aligned with direction, of width max_dot
-        Rectangle nr(rrect, k, max_dot);
+        Mrectangle nr(rrect, k, max_dot);
         
         map<int, scanline> scanset;
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
@@ -67,7 +67,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     
 }
 
-bool Mtf_core::extract_rectangle(const Point& cent, int label, Rectangle& rect) {
+bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect) {
     
     int ix = lrint(cent.x);
     int iy = lrint(cent.y);
@@ -95,7 +95,7 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Rectangle& rect) 
     pd.select_best_n(main_thetas, 4);
     sort(main_thetas.begin(), main_thetas.end());
     
-    Rectangle rrect(main_thetas, thetas, points);
+    Mrectangle rrect(main_thetas, thetas, points);
     rect = rrect;
     
     return rrect.valid;

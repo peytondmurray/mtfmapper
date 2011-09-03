@@ -1,6 +1,8 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#include "include/common_types.h"
+
 #include <cv.h>
 const double transparent = -1.0;
 
