@@ -6,7 +6,8 @@
 class Svg_page_perspective : public Svg_page {
   public:
     Svg_page_perspective(const string& page_spec, const string& fname) 
-      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2), -1.0/sqrt(2)), fl(50) {
+      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2), -1.0/sqrt(2)), fl(50), sensor(15.6, 23.6) {
+        set_viewing_parameters(pl[2], fl, 15.6);
         compute_perspective_extremes();
     }
     
@@ -22,7 +23,10 @@ class Svg_page_perspective : public Svg_page {
   protected:  
   
     dPoint project_core(double x, double y) {
-        Vec3d d(x, y, fl/4.0); // fudge factor --- this definitely still needs work
+        //Vec3d d(x, y, fl/4.0); // fudge factor --- this definitely still needs work
+        
+        Vec3d d(x/(0.5*sensor[1]), y/(0.4*sensor[1]), focal_distance);
+        
         d = d * (1.0/norm(d));
         double t = ((pl - cop).ddot(normal)) / (d.dot(normal));
         Vec3d pi = cop + d * t;
@@ -45,11 +49,20 @@ class Svg_page_perspective : public Svg_page {
         return iPoint(int(p.x), int(p.y));
     }
     
-    void set_viewing_parameters(double distance_to_target, double focal_length, double angle=45.0/180*M_PI) {
+    void set_viewing_parameters(double distance_to_target, double focal_length, double sensor_height, double angle=-45.0/180*M_PI) {
         pl[2] = distance_to_target;
         fl = focal_length;
         normal[1] = cos(angle);
         normal[2] = sin(angle);
+        sensor[0] = sensor_height;
+        
+        // where should the focal plane be so that the image size matches the sensor size:
+        const double desired_angle = 0.5 * 17.735 / 180.0 * M_PI;
+        focal_distance = 0.5 * sensor_height / tan(desired_angle);
+        
+        printf("focal distance = %lf\n", focal_distance);
+        printf("size: (%lf, %lf)\n", tan(desired_angle)*focal_distance*2, tan(0.5*26.56/180.0*M_PI)*focal_distance*2);
+        
         compute_perspective_extremes();
     }
     
@@ -133,6 +146,8 @@ class Svg_page_perspective : public Svg_page {
     Vec3d normal;     // normal vector of target
     double fl;          // focal length of lens
     Vec2d extremes;
+    Vec2d sensor;
+    double focal_distance;
 };
 
 #endif
