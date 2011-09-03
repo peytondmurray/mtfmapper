@@ -3,8 +3,8 @@
 
 #include "include/component_labelling.h"
 #include "include/gradient.h"
-#include "include/rectangle.h"
 #include "include/block.h"
+#include "include/rectangle.h"
 
 #include "tbb/tbb.h"
 #include "tbb/mutex.h"
@@ -50,7 +50,7 @@ class Mtf_core {
     }
     
     void search_borders(const Point& cent, int label);
-    bool extract_rectangle(const Point& cent, int label, Rectangle& rect);
+    bool extract_rectangle(const Point& cent, int label, Mrectangle& rect);
     double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset);
     
     vector<Block>& get_blocks(void) {

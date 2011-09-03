@@ -11,6 +11,7 @@ using std::list;
 using std::map;
 
 #include <iostream>
+#include <string>
 
 using std::cout;
 using std::endl;
@@ -24,6 +25,13 @@ typedef vector<Point> Pointlist;
 typedef map<int, Pointlist> Boundarylist;
 
 using std::make_pair;
+
+#ifdef _MSC_VER
+	typedef unsigned short int uint16_t;
+
+	#define M_PI 3.14159265358979
+	#define lrint(x) ( (x < 0) ? int(floor(x-0.5)) : int(floor(x+0.5)) )
+#endif
 
 #include "include/scanline.h"
 

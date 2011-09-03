@@ -69,12 +69,12 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // apply additional smoothing
         // try various LOESS filter sizes until the sign changes in the slope
         // drops below 5% (which seems to provide relatively oscillation-free curves)
-        for (size_t w2=3; w2 < max(ordered.size()/10, size_t(6)); w2+=3) {
+        for (size_t w2=3; w2 < std::max(ordered.size()/10, size_t(6)); w2+=3) {
             for (size_t i=0; i < ordered.size() - 1; i++) {
                 Point sol;
                 
-                size_t start = max(0, int(i) - int(w2));
-                size_t end   = min(ordered.size() - 1, i + w2);
+                size_t start = std::max(0, int(i) - int(w2));
+                size_t end   = std::min(ordered.size() - 1, i + w2);
                 loess_core(ordered, start, end, ordered[i].first, sol, 1);
                     
                 med_filt_mtf[i] = ordered[i].first * sol.y + sol.x;

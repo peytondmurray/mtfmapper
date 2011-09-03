@@ -2,16 +2,16 @@
 #define BLOCK_H
 
 
-#include "rectangle.h"
+#include "include/rectangle.h"
 
 #include <map>
 using std::map;
 
 class Block {
   public:
-    typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;
+	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
     
-    Block(const Rectangle& in_rect) : rect(in_rect), mtf50(4,0.0), centroid(0,0) {
+    Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), centroid(0,0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -95,7 +95,7 @@ class Block {
     }
     
     
-    Rectangle rect;
+    Mrectangle rect;
     vector<double> mtf50;
     map<edge_position, size_t> edge_lut;
     Point centroid;
