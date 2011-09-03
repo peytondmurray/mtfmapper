@@ -50,6 +50,8 @@ find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
 find_package(TCLAP REQUIRED)
 
+include_directories("${TCLAP_INCLUDE_DIR}")
+include_directories("${TBB_INCLUDE_DIR}")
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/bin")
 
