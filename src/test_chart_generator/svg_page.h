@@ -55,25 +55,25 @@ class Svg_page {
     void emit_header(void) {
         fprintf(fout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         fprintf(fout, "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.0\" ");
-        fprintf(fout, "width=\"%Zdmm\" height=\"%Zdmm\" viewBox=\"0 0 %Zd %Zd\">\n", width_mm, height_mm, width, height);
+        fprintf(fout, "width=\"%dmm\" height=\"%dmm\" viewBox=\"0 0 %d %d\">\n", int(width_mm), int(height_mm), int(width), int(height));
         
         // draw a white rectangle to cover the background
-        fprintf(fout, "  <rect x=\"%Zd\" y=\"%Zd\" width=\"%Zd\" height=\"%Zd\" style=\"fill:white;stroke:none\"/>\n", 
-            size_t(0), size_t(0), width, height
+        fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"fill:white;stroke:none\"/>\n", 
+            int(0), int(0), int(width), int(height)
         );
 
         // draw a black border rectangle
-        fprintf(fout, "  <rect x=\"%Zd\" y=\"%Zd\" width=\"%Zd\" height=\"%Zd\" style=\"fill:none;stroke:black;stroke-width:1\"/>\n", 
-            size_t(4), size_t(4), width-4, height-4
+        fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"fill:none;stroke:black;stroke-width:1\"/>\n", 
+            int(4), int(4), int(width-4), int(height-4)
         );
     }
     
     void square(size_t tlx, size_t tly, size_t width) {
-        fprintf(fout, "  <rect x=\"%Zd\" y=\"%Zd\" width=\"%Zd\" height=\"%Zd\" style=\"%s\"/>", tlx, tly, width, width, style.c_str());
+        fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"%s\"/>", int(tlx), int(tly), int(width), int(width), style.c_str());
     }
 
     void rect(size_t tlx, size_t tly, size_t width, size_t height) {
-        fprintf(fout, "  <rect x=\"%Zd\" y=\"%Zd\" width=\"%Zd\" height=\"%Zd\" style=\"%s\"/>", tlx, tly, width, height, style.c_str());
+        fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"%s\"/>", int(tlx), int(tly), int(width), int(height), style.c_str());
     }
     
     virtual iPoint project(double x, double y) {

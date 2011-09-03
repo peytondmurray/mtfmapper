@@ -75,7 +75,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         FILE* file = fopen(fname.c_str(), "wt");
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
-                fprintf(file, "%Zd %Zd %.3lf\n", x*img.cols/grid_x, y*img.rows/grid_y, grid.at<float>(y,x));
+                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y), grid.at<float>(y,x));
             }
             fprintf(file, "\n");
         }
