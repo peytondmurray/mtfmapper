@@ -14,11 +14,11 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
     
-    Block block(rrect);
-    
     if (!valid) {
         return;
     }
+    
+    Block block(rrect);
     
     int current_block_idx=0;
     {
