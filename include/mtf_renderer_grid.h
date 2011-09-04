@@ -82,6 +82,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(file);
         
         FILE* gpf = fopen("grid.gnuplot", "wt");
+        fprintf(gpf, "set yrange [] reverse\n");
         fprintf(gpf, "set size ratio %lf\n", grid.rows / double(grid.cols));
         fprintf(gpf, "set palette rgbformulae 23,28,3 negative\n");
         fprintf(gpf, "set pm3d at bs depthorder interpolate 2,2\n");
