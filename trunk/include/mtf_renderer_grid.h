@@ -87,7 +87,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set pm3d at bs depthorder interpolate 2,2\n");
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"row (pixels)\"\n");
-        fprintf(gpf, "set term png\n");
+        fprintf(gpf, "set term png size %d, %d\n", 1024, (int)lrint(1024*grid.rows/double(grid.cols)));
         fprintf(gpf, "set output \"grid_image.png\"\n");
         fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, fname.c_str());
         fprintf(gpf, "set output \"grid_surface.png\"\n");
@@ -95,7 +95,17 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "splot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w d\n", img.cols, img.rows, fname.c_str());
         fclose(gpf);
         
-        printf("execute \"gnuplot grid.gnuplot\" to render the plots\n");
+        char* buffer = new char[1024];
+        sprintf(buffer, "gnuplot grid.gnuplot");
+        int rval = system(buffer);
+        if (rval != 0) {
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute \"%s\" to render the plots manually\n", buffer);
+        } else {
+            printf("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
+        }
+        
+        delete [] buffer;
         
     }
     
