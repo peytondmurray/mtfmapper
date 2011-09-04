@@ -139,7 +139,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot profile.gnuplot");
+        sprintf(buffer, "gnuplot%s profile.gnuplot", EXE_SUFFIX);
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);

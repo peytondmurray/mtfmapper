@@ -26,6 +26,12 @@ typedef map<int, Pointlist> Boundarylist;
 
 using std::make_pair;
 
+#ifdef _WIN32
+	#define EXE_SUFFIX ".exe"
+#else
+	#define EXE_SUFFIX ""
+#endif
+
 #ifdef _MSC_VER
 	typedef unsigned short int uint16_t;
 

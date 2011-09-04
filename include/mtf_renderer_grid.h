@@ -96,7 +96,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot grid.gnuplot");
+        sprintf(buffer, "gnuplot%s grid.gnuplot", EXE_SUFFIX);
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
