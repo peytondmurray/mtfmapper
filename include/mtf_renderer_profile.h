@@ -5,6 +5,8 @@
 #include "common_types.h"
 #include "loess_fit.h"
 
+#include <stdlib.h>
+
 class Mtf_renderer_profile : public Mtf_renderer {
   public:
     Mtf_renderer_profile(const std::string& prof_fname, const std::string& peak_fname, const cv::Mat& img) 
@@ -130,13 +132,23 @@ class Mtf_renderer_profile : public Mtf_renderer {
         FILE* gpf = fopen("profile.gnuplot", "wt");
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
-        fprintf(gpf, "set term png\n");
+        fprintf(gpf, "set term png size 1024, 768\n");
         fprintf(gpf, "set output \"profile_image.png\"\n");
-        fprintf(gpf, "plot \"%s\" u 1:2 t \"MTF50 (c/p) raw\" w d, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lw 3\n", 
+        fprintf(gpf, "plot \"%s\" u 1:2 t \"MTF50 (c/p) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lw 3\n", 
             prname.c_str(), prname.c_str(), pfname.c_str());
         fclose(gpf);
         
-        printf("execute \"gnuplot profile.gnuplot\" to render the plots\n");
+        char* buffer = new char[1024];
+        sprintf(buffer, "gnuplot profile.gnuplot");
+        int rval = system(buffer);
+        if (rval != 0) {
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute \"%s\" to render the plots manually\n", buffer);
+        } else {
+            printf("Gnuplot plot completed successfully. Look for profile_image.png\n");
+        }
+        
+        delete [] buffer;
         
     }
     
