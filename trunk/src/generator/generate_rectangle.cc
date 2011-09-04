@@ -110,16 +110,11 @@ int main(int argc, char** argv) {
     ss << genrectangle_VERSION_MAJOR << "." << genrectangle_VERSION_MINOR;
     
     TCLAP::CmdLine cmd("Generate rectangles with known MTF50 values", ' ', ss.str());
-    TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "string");
-    cmd.add(tc_out_name);
-    TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "double");
-    cmd.add(tc_theta);
-    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "int");
-    cmd.add(tc_seed);
-    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.005, "double");
-    cmd.add(tc_noise);
-    TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "double");
-    cmd.add(tc_blur);
+    TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "string", cmd);
+    TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "double", cmd);
+    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "int", cmd);
+    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.005, "double", cmd);
+    TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "double", cmd);
     
     cmd.parse(argc, argv);
     
