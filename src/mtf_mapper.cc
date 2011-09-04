@@ -57,8 +57,9 @@ int main(int argc, char** argv) {
     ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR;
     
     TCLAP::CmdLine cmd("Measure MTF50 values across edges of rectangular targets", ' ', ss.str());
-    TCLAP::ValueArg<std::string> tc_in_name("i", "input", "Input image file name (many extensions supported)", true, "input.png", "string");
-    cmd.add(tc_in_name);
+    TCLAP::UnlabeledValueArg<std::string>  tc_in_name("input", 
+        "Input image file name (many extensions supported)", true, "input.png", "string", cmd
+    );
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
     TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
