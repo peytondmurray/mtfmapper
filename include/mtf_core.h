@@ -17,6 +17,7 @@ using namespace tbb;
 const double max_dot = 16;
 const int SAMPLES_PER_PIXEL = 32;
 const size_t FFT_SIZE = int(max_dot)*2*SAMPLES_PER_PIXEL;
+const double max_edge_length = 100;
 
 class Mtf_core {
   public:
