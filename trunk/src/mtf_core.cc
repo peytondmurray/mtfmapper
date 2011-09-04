@@ -171,6 +171,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         
         mean_grad.x = cos(ea);
         mean_grad.y = sin(ea);
+        
+        Point edge_direction(sin(ea), cos(ea));
     
         vector<Ordered_point> local_ordered;
         for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
@@ -178,7 +180,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
             for (int x=it->second.start; x <= it->second.end; x++) {
                 Point d((x) - cent.x, (y) - cent.y);
                 double dot = d.ddot(mean_grad); 
-                if (fabs(dot) < max_dot) {
+                double dist_along_edge = d.ddot(edge_direction);
+                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                     local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
                 }
             }
