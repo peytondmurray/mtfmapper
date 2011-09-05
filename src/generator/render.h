@@ -12,7 +12,7 @@ const double transparent = -1.0;
 class Render_target {
   public:
       Render_target(void) {}
-      virtual double evaluate(int x, int y, double background) const = 0;
+      virtual double evaluate(int x, int y, double oject_value, double background_value) const = 0;
 };
 
 
@@ -60,7 +60,7 @@ class Render_rectangle : public Render_target {
         } // supersamples
     }
     
-    double evaluate(int x, int y, double background) const {
+    double evaluate(int x, int y, double object_value, double background_value) const {
    
         double accumulator = 0;
         for (int ss_x=-hs; ss_x <= hs; ss_x++) {
@@ -71,9 +71,9 @@ class Render_rectangle : public Render_target {
                 double weight = weights(ss_y+hs, ss_x+hs);
                 
                 if ( is_inside(ex + x, ey + y) ) {
-                    accumulator += background * weight;
+                    accumulator += object_value * weight;
                 } else {
-                    accumulator += (1.0 - background) * weight;
+                    accumulator += background_value * weight;
                 }
             }
         } // supersamples
