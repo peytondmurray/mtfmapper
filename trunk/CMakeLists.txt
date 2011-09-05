@@ -54,7 +54,7 @@ include_directories("${FFTW_INCLUDE_DIR}")
 include_directories("${OpenCV_INCLUDE_DIR}")
 include_directories("${TCLAP_INCLUDE_DIR}")
 include_directories("${TBB_INCLUDE_DIR}")
-include_directories("${CMAKE_CURRENT_LIST_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/bin")
 
 #optional
