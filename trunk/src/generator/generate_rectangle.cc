@@ -38,6 +38,21 @@ inline unsigned char reverse_gamma(double x) {
     return lrint(255 * ((1 + SRGB_a) * pow(x, 1.0/2.4) - SRGB_a));
 }
 
+inline double gamma(double x) { // x in [0,1]
+    const double S_linear = 12.9232102;
+    const double C_srgb = 0.04045;
+    const double SRGB_a = 0.055;
+    
+    if (x < 0.0) return 0.0;
+    if (x > 1.0) return 1.0;
+    
+    if (x < C_srgb) {
+        return x / S_linear;
+    }
+    
+    return  pow( (x + SRGB_a)/(1+SRGB_a), 2.4 );
+}
+
 
 double randdu(void) {
     return double(rand())/double(RAND_MAX);
@@ -52,38 +67,50 @@ double rand_norm(double m, double s) {
 // functor for tbb
 class Render_rows {
   public:
-    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.005)
-     : img(in_img), rect(in_r), noise(img.rows*img.cols, 0.0) {
+    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.05, double contrast_reduction=0.05, bool gamma_correct=true)
+     : img(in_img), rect(in_r), noise(img.rows*img.cols, 0.0), 
+       gamma_correct(gamma_correct),contrast_reduction(contrast_reduction) {
      
+        double gc_noise_sigma = noise_sigma;
+        //if (gamma_correct) {
+        //    gc_noise_sigma = gamma(noise_sigma);
+        //} 
         for (size_t i=0; i < size_t(img.rows*img.cols); i++) {
-            noise[i] = rand_norm(0, noise_sigma);
+            noise[i] = rand_norm(0, gc_noise_sigma);
         }
     }
      
     void operator()(const blocked_range<size_t>& r) const {
+        // assume a dynamic range of 5% to 95% of full scale
+        double object_value = contrast_reduction / 2.0;
+        double background_value = 1 - object_value;
+        //if (gamma_correct) {
+        //    background_value = gamma(background_value);
+        //    object_value = gamma(object_value);
+        //    printf("gamma correction on, new values are: %lf, %lf\n", background_value, object_value);
+        //}
         for (size_t row=r.begin(); row != r.end(); ++row) {
         
             for (int col = 0; col < img.cols; col++) {
                 int index = row * img.cols + col;
                 
-                double background = 0.01; // start with white background
                 double rval = 0;
-                rval = rect.evaluate(col, row, background);
-                if (rval != transparent) {
-                    background = rval;
+                rval = rect.evaluate(col, row, object_value, background_value);
+                
+                rval += noise[index];
+                
+                if (rval < 0.0) {
+                    rval = 0.0;
+                }
+                if (rval > 1.0) {
+                    rval = 1.0;
                 }
                 
-                background *= 0.9; // only use 90% of dynamic range
-                background += 0.01; // shift black level to 5%
-                background += noise[index];
-                if (background < 0.0) {
-                    background = 0.0;
+                if (gamma_correct) {
+                    img.at<uchar>(row, col) = reverse_gamma(rval);
+                } else {
+                    img.at<uchar>(row, col) = lrint(rval*255);
                 }
-                if (background > 1.0) {
-                    background = 1.0;
-                }
-                
-                img.at<uchar>(row, col) = reverse_gamma(background);
             }
         }
     } 
@@ -91,6 +118,8 @@ class Render_rows {
     cv::Mat& img;
     const Render_rectangle& rect;
     vector<double> noise;
+    bool gamma_correct;
+    double contrast_reduction;
 };
 
 
@@ -113,8 +142,10 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "string", cmd);
     TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "double", cmd);
     TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "int", cmd);
-    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.005, "double", cmd);
+    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "double", cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "double", cmd);
+    TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "double", cmd);
+    TCLAP::SwitchArg tc_gamma("g","gamma","Generate output image with sRGB gamma", cmd, true);
     
     cmd.parse(argc, argv);
     
@@ -130,6 +161,9 @@ int main(int argc, char** argv) {
     printf("output filename = %s, sigma = %lf, theta = %lf degrees, seed = %d, noise = %lf\n", 
         tc_out_name.getValue().c_str(), sigma, theta/M_PI*180, rseed, tc_noise.getValue()
     );
+    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf]\n",
+        tc_gamma.getValue(), tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0
+    );
     
     const double rwidth = width / 4;
     const double rheight = height / 3;
@@ -138,7 +172,7 @@ int main(int argc, char** argv) {
     
     cv::Mat img(height, width, CV_8UC1);
     
-    Render_rows rr(img, rect, tc_noise.getValue());
+    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), tc_gamma.getValue());
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 2.0/(2*sigma*sigma);
