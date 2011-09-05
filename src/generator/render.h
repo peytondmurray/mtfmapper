@@ -49,9 +49,9 @@ class Render_rectangle : public Render_target {
                 double ex = 0;
                 double ey = 0;
                     
-                sampler.rnorm2d(ex, ey, 2*sigma);
+                sampler.rnorm2d(ex, ey, sigma);
                     
-                double weight = exp(-(ex*ex + ey*ey)/(2*sigma*sigma)) / (2*M_PI*sigma*sigma);
+                double weight = 1.0;
                 weights(ss_y+hs, ss_x+hs) = weight; 
                 pos_x(ss_y+hs, ss_x+hs) = ex;
                 pos_y(ss_y+hs, ss_x+hs) = ey;
