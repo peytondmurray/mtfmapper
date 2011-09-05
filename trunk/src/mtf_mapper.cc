@@ -63,13 +63,14 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
     TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
+    TCLAP::SwitchArg tc_gamma("g","gamma","Input image (8-bit) assumed to be sRGB gamma corrected", cmd, true);
     
     cmd.parse(argc, argv);
 
     cv::Mat cvimg = cv::imread(tc_in_name.getValue(), 0);
     
     if (cvimg.type() == CV_8UC1) {
-        convert_8bit_input(cvimg);        
+        convert_8bit_input(cvimg, tc_gamma.getValue());        
     }
    
     assert(cvimg.type() == CV_16UC1);
