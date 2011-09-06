@@ -67,14 +67,13 @@ double rand_norm(double m, double s) {
 // functor for tbb
 class Render_rows {
   public:
-    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.05, double contrast_reduction=0.05, bool gamma_correct=true)
+    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.05, 
+        double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false)
      : img(in_img), rect(in_r), noise(img.rows*img.cols, 0.0), 
-       gamma_correct(gamma_correct),contrast_reduction(contrast_reduction) {
+       gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
+       use_16bit(use_16bit) {
      
         double gc_noise_sigma = noise_sigma;
-        //if (gamma_correct) {
-        //    gc_noise_sigma = gamma(noise_sigma);
-        //} 
         for (size_t i=0; i < size_t(img.rows*img.cols); i++) {
             noise[i] = rand_norm(0, gc_noise_sigma);
         }
@@ -84,11 +83,6 @@ class Render_rows {
         // assume a dynamic range of 5% to 95% of full scale
         double object_value = contrast_reduction / 2.0;
         double background_value = 1 - object_value;
-        //if (gamma_correct) {
-        //    background_value = gamma(background_value);
-        //    object_value = gamma(object_value);
-        //    printf("gamma correction on, new values are: %lf, %lf\n", background_value, object_value);
-        //}
         for (size_t row=r.begin(); row != r.end(); ++row) {
         
             for (int col = 0; col < img.cols; col++) {
@@ -106,11 +100,17 @@ class Render_rows {
                     rval = 1.0;
                 }
                 
-                if (gamma_correct) {
-                    img.at<uchar>(row, col) = reverse_gamma(rval);
+                if (use_16bit) {
+                    img.at<uint16_t>(row, col) = lrint(rval*65535);
                 } else {
-                    img.at<uchar>(row, col) = lrint(rval*255);
+                    if (gamma_correct) {
+                        img.at<uchar>(row, col) = reverse_gamma(rval);
+                    } else {
+                        img.at<uchar>(row, col) = lrint(rval*255);
+                    }
                 }
+                
+                
             }
         }
     } 
@@ -120,6 +120,7 @@ class Render_rows {
     vector<double> noise;
     bool gamma_correct;
     double contrast_reduction;
+    bool use_16bit;
 };
 
 
@@ -145,7 +146,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "double", cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "double", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "double", cmd);
-    TCLAP::SwitchArg tc_gamma("g","gamma","Generate output image with sRGB gamma", cmd, true);
+    TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
+    TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
     
     cmd.parse(argc, argv);
     
@@ -158,11 +160,19 @@ int main(int argc, char** argv) {
         printf("It does not make sense to set blur below 0.185; you are on your own ...\n");
     }
     
+    bool use_gamma = !tc_linear.getValue();
+    bool use_16bit = tc_16.getValue();
+    
+    if (use_gamma && use_16bit) {
+        printf("Setting both gamma and 16-bit output not supported. Choosing to disable gamma, and enable 16-bit output\n");
+        use_gamma = false;
+    }
+    
     printf("output filename = %s, sigma = %lf, theta = %lf degrees, seed = %d, noise = %lf\n", 
         tc_out_name.getValue().c_str(), sigma, theta/M_PI*180, rseed, tc_noise.getValue()
     );
-    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf]\n",
-        tc_gamma.getValue(), tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0
+    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d\n",
+        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit
     );
     
     const double rwidth = width / 4;
@@ -170,9 +180,14 @@ int main(int argc, char** argv) {
     
     Render_rectangle rect(width*0.5 - 0.5*rwidth, height*0.5 - 0.5*rheight, rwidth, rheight, theta, sigma);
     
-    cv::Mat img(height, width, CV_8UC1);
+    cv::Mat img;
+    if (use_16bit) {
+        img = cv::Mat(height, width, CV_16UC1);
+    } else {
+        img = cv::Mat(height, width, CV_8UC1);
+    }
     
-    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), tc_gamma.getValue());
+    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), use_gamma, use_16bit);
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 2.0/(2*sigma*sigma);
