@@ -20,7 +20,7 @@ public:
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
     double mid,  Point& sol, int mode=1);
     
-void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, bool deriv=true);
+void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv=true);
 
 #ifndef SQR
 #define SQR(x) ((x)*(x))

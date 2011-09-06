@@ -206,20 +206,14 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         return 1000;
     }
     
-    const int nsteps = FFT_SIZE+1;
-    double x_span = (ordered.back().first - ordered[0].first);
-    double step = x_span / nsteps;
-    
     double* fft_in_buffer = (double*)fftw_malloc(sizeof(double)*2*(FFT_SIZE+2));
     for (size_t i=0; i < 2*(FFT_SIZE+2); i++) {
         fft_in_buffer[i] = 0.0;
     }
+
+    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     
-    loess_fit(ordered, fft_in_buffer, FFT_SIZE); // loess_fit computes the ESF derivative as part of the fitting procedure
-    
-    int nc = (FFT_SIZE)  + 1;
-    fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * nc);
-    
+    fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
     
     double n0 = sqrt(SQR(fft_out_buffer[0][0]) + SQR(fft_out_buffer[0][1]));
@@ -233,7 +227,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         double mag = sqrt(SQR(fft_out_buffer[i][0]) + SQR(fft_out_buffer[i][1])) / n0;
         if (prev_val > 0.5 && mag <= 0.5) {
             // interpolate
-            double m = -(mag - prev_val)/(step/x_span);
+            double m = -(mag - prev_val)*(FFT_SIZE);
             mtf50 = -(0.5 - prev_val - m*prev_freq) / m;
             done = true;
         }
@@ -241,7 +235,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         prev_freq = i / double(FFT_SIZE);
     }
     
-    mtf50 *= 2*max_dot; // twice the span
+    mtf50 *= SAMPLES_PER_PIXEL; // twice the span
     
     fftw_free(fft_out_buffer);
     fftw_free(fft_in_buffer);        
