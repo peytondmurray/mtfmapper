@@ -17,6 +17,7 @@ using std::stringstream;
 #include "include/mtf_renderer_annotate.h"
 #include "include/mtf_renderer_profile.h"
 #include "include/mtf_renderer_grid.h"
+#include "include/mtf_renderer_print.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -63,14 +64,15 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
     TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
-    TCLAP::SwitchArg tc_gamma("g","gamma","Input image (8-bit) assumed to be sRGB gamma corrected", cmd, true);
+    TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
+    TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
     
     cmd.parse(argc, argv);
 
     cv::Mat cvimg = cv::imread(tc_in_name.getValue(), 0);
     
     if (cvimg.type() == CV_8UC1) {
-        convert_8bit_input(cvimg, tc_gamma.getValue());        
+        convert_8bit_input(cvimg, !tc_linear.getValue());        
     }
    
     assert(cvimg.type() == CV_16UC1);
@@ -122,6 +124,11 @@ int main(int argc, char** argv) {
             Mtf_renderer_grid grid(string("grid.txt"),  cvimg);
             grid.render(mtf_core.get_blocks());
         }
+    }
+    
+    if (tc_print.getValue()) {
+        Mtf_renderer_print printer(string("raw_mtf_values.txt"));
+        printer.render(mtf_core.get_blocks());
     }
     
     return 0;
