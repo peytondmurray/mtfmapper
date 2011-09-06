@@ -73,17 +73,17 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
-void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, bool deriv) {
-    const int nsteps = fft_size+1;
-    double x_span = (ordered.back().first - ordered[0].first);
-    double step = x_span / nsteps;
+void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv) {
+    const int nsteps = fft_size;
+    double x_span = upper - lower;
+    double step = x_span / double(nsteps);
     
     // now perform a least-squares quadratic fit on the first bin
     size_t start_idx = 0;
     size_t end_idx = 0;
     
     int fft_idx = 0;
-    for (double step_base = ordered[0].first; step_base < ordered.back().first; step_base += step) {
+    for (double step_base = lower; step_base < upper; step_base += step) {
     
         double mid = step_base + 0.5*step;
         
