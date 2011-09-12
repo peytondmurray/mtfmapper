@@ -61,6 +61,11 @@ class Block {
     
     
     
+    double get_edge_angle(size_t edge_number) const {
+        assert(edge_number < 4);
+        return rect.thetas[edge_number];
+    }
+    
     Point get_edge_centroid(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.centroids[edge_number];

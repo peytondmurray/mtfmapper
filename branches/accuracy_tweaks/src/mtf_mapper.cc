@@ -66,13 +66,24 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
+    TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "double", cmd);
     
     cmd.parse(argc, argv);
 
-    cv::Mat cvimg = cv::imread(tc_in_name.getValue(), 0);
+    cv::Mat cvimg = cv::imread(tc_in_name.getValue(),-1);
+    
+    if (cvimg.type() == CV_8UC3 || cvimg.type() == CV_16UC3) {
+        printf("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
+        cv::Mat dest;
+        cv::cvtColor(cvimg, dest, CV_RGB2GRAY);  // force to grayscale
+        cvimg = dest;
+    }
     
     if (cvimg.type() == CV_8UC1) {
+        printf("8-bit input image, upconverting\n");
         convert_8bit_input(cvimg, !tc_linear.getValue());        
+    } else {
+        printf("16-bit input image, no upconversion required\n");
     }
    
     assert(cvimg.type() == CV_16UC1);
@@ -127,7 +138,7 @@ int main(int argc, char** argv) {
     }
     
     if (tc_print.getValue()) {
-        Mtf_renderer_print printer(string("raw_mtf_values.txt"));
+        Mtf_renderer_print printer(string("raw_mtf_values.txt"), tc_angle.getValue() != 1000, tc_angle.getValue()/180.0*M_PI);
         printer.render(mtf_core.get_blocks());
     }
     
