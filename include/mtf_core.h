@@ -66,7 +66,11 @@ class Mtf_core {
     fftw_plan plan_forward;
     vector<int> valid_obj;
     
-    vector<Block> detected_blocks;  
+    vector<Block> detected_blocks;
+    
+  private:
+    void apodize(double* data, int dlen);
+    
 };
 
 #endif
