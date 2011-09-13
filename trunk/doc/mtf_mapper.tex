@@ -156,72 +156,49 @@ sharpest focus region is relatively well aligned with the position of the
 
 TODO: include examples of grid chart.
 
-\section{Accuracy}
-The accuracy of the MTF50 estimates produced by MTF Mapper depends on the
-following factors:
-\begin{enumerate}
-  \item Image resolution, and resulting edge length
-  \item Image noise levels
-  \item Edge orientation relative to horizontal or vertical directions
-  \item Edge MTF50 value --- the sharper the edge, the more critical the
-  above factors become
-\end{enumerate}
-
-\begin{figure}
-\centering
-\includegraphics[width=0.95\textwidth]{figures/accuracy_plot}
-\caption{Median error in MTF50 accuracy at various levels of edge acuity}
-\label{fig:mtf_accuracy}
-\end{figure}
-
-Figure~\ref{fig:mtf_accuracy} presents an indication of the error in MTF50
-estimates. The following parameters were fixed for this set of results:
-\begin{enumerate}
-  \item Resolution: an image of $300\times300$ pixels was generated using
-\texttt{generate\_rectangle} (Section~\ref{sec:rectangle_generator}), 
-containing a rectangle with edge lengths of $75\times100$ pixels.
-  \item Noise was set to 1\% of dynamic range, \emph{before} gamma
-correction to sRGB. Reverse gamma correction was applied in
-\texttt{mtf\_mapper}, but some quantization error would remain.
-  \item Edge MTF50 values over the range [0.06,0.7) were sampled.
-  \item Edge orientations of $4^\circ$, $10^\circ$ and $30^\circ$ were
-explored.
-  \item A total of 30 runs (different random seeds for image noise) were
-performed for each data point. Plotted values are the median over each set
-of 30 values.
-\end{enumerate}
-The median absolute error in MTF50 estimates shown in
-Figure~\ref{fig:mtf_accuracy} clearly illustrates how the error increases
-with higher edge acuity, especially at slant angles that are further from
-ideal. Sharp lenses should produce values in the range of (0.2,0.35) cycles
-per pixel using unsharpened raw images; in this range the median error in
-MTF50 estimates is below 5\%, even for slant angles of $30^\circ$.
-
-The slight uptick in error below MTF50 values of 0.1 is most likely not an
-artifact; it is probably caused by the 32-pixel window (measured normal to
-the edge) that is used to compute MTF50 values. This is a trade-off: a
-larger window would allow more accurate estimates down to very low MTF50
-values, but would require an increase in the distance between blocks in the
-image.
-
 
 \section{Autofocus fine-tuning}
 \label{sec:autofocus}
+%
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/af_setup}
+\caption{Illustration showing the top view of the autfocus calibration
+set-up}
+\label{fig:af_setup}
+\end{figure}
+%
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/af_sensor_placement}
+\caption{Where to place your autofocus sensor}
+\label{fig:af_sensor_placement}
+\end{figure}
+%
 The following steps can be used to calibrate the autofocus fine-tuning of a
 DSLR:
 \begin{enumerate}
+    \item Figure~\ref{fig:af_setup} illustrates the basic set-up. The
+distance $d$ is the ``distance to chart'', and the angle $\theta$ is the
+``angle with respect to the test chart''.
     \item Print out the test chart at a large enough scale. Ideally, your
 test chart must be large enough so that you can use it at a distance of
 $30\times$ the focal length of your lens. Position your camera so that you
 see the chart from an angle of at least $45^\circ$ --- the idea is that you
 want some of the small blocks to be in front of the plane of focus, and some
-of the blocks behind the plane of focus. The reference edge should be
+of the blocks behind the plane of focus. The reference edge
+(Section~\ref{sec:profile_mode}) should be
 exactly at the plane of focus, but since you are reading this, I take it you
 are still trying to adjust the autofocus fine-tuning to achieve this.
     \item Using a tripod (and remote release / timed release), take a
 picture of the test chart \emph{with your chosen (centre recommended)
-autofocus sensor straddling the edge of the reference block}. (TODO: add more
-pictures to illustrate)
+autofocus sensor straddling the edge of the reference block}, as illustrated
+in Figure~\ref{fig:af_sensor_placement}. Take care that the autofocus sensor
+is sufficiently far away from other edges (e.g., the horizontal edges of the
+reference block in Figure~\ref{fig:af_sensor_placement}, or any of the small
+blocks). Keep in mind that the actual sensing area of the autofocus sensor
+is typically larger than the reticule you see in the viewfinder, so leave
+some padding.
     \item Feed the captured image through MTF mapper to produce a profile
 (such as illustrated in Figure~\ref{fig:sample_profile}. The vertical red
 line denotes the position of the autofocus reference edge (at least, the one
@@ -301,11 +278,146 @@ where $h_{\mathrm{mm}}$ is the image height in mm, and $h_{\mathrm{pixels}}$
 is the image height in pixels.
 \end{enumerate}
 
+\appendix
+\section{Internal workings}
+Here is a brief outline of how MTF Mapper works:
+\begin{enumerate}
+    \item The input image is read in, and converted to grayscale (using
+OpenCV's default colour matrix). If the input image is an 8-bit image, the
+pixel intensities are scaled up to 16 bits; the default is to assume that
+8-bit images are sRGB gamma corrected, so the values are linearised while
+begin scaled to 16 bits. If the input image has a pixel bit depth of 16
+bits, no gamma conversion or scaling is applied.
+    \item The image is thresholded using Bradley's adaptive thresholding 
+algorithm \cite{bradley}. This is done to identify all the dark objects in
+the image.
+    \item The thresholded image is then scanned to extract all the connected
+components using the method of Chang \textit{et al.}\cite{chang}. This step
+gathers the boundary lists of all the dark objects in the image.
+    \item The image gradient is computed on the original input image. This
+is combined with the object boundary lists to identify all
+roughly-rectangular objects (called blocks in the sequel).
+    \item For each edge of each detected block, the MTF50 value is computed
+as follows (roughly the method of Khom \cite{khom}):
+	\begin{enumerate}
+	  \item Define a rectangular buffer region that is aligned with and
+centered over each edge. The width of this buffer is 32 pixels.
+	  \item Compute a reasonable estimate of the orientation of the edge
+(using the image gradient information).
+	  \item Extract the intensity values of each pixel within the
+rectangular buffer, and project the coordinates of this pixel onto the
+direction normal to the edge.
+          \item Systematically refine the edge normal to minimise the
+difference between sequential projected values; this effectively optimises
+the edge normal estimate.
+	  \item For each pixel in the buffer, record a pair of values
+(\textsf{distance}, \textsf{intensity}), where \textsf{distance} denotes the
+length of the pixel coordinates projected onto the edge normal, and
+\textsf{intensity} represents the actual pixel intensity value. Note that
+the distance values are unevenly sampled. These values are a representation
+of the edge spread function (ESF).
+	  \item Perform LOESS fitting using a linear model to resample the 
+(\textsf{distance}, \textsf{intensity}) values to a regular grid. The
+resampled points are generated at a spacing of 1/32 pixels, i.e., the
+profile is oversampled at a factor of 32. In addition, the derivative of the
+ESF is not computed with discrete differentiation; instead, the slope of the
+local linear fit is used to construct the line spread function (LSF) directly.
+	  \item Apodization is performed by windowing the resampled LSF with
+a Hamming window.
+	  \item An FFT is computed on the resampled points, and the
+normalised FFT magnitude sequence is calculated.
+	  \item The frequency at which the FFT magnitude sequence reaches a
+value of 0.5 is computed using linear interpolation, yielding the MTF50
+value.
+	  \item A 7th-order polynomial is used to correct any remaining
+systematic bias. Pathologically poor edge orientations are identified, and
+suppressed; these are around $22^\circ$ and $45^\circ$ degrees with respect
+to either the vertical or horizontal image directions.
+	\end{enumerate}
+    \item The computed MTF50 values are then rendered in various ways,
+depending on which output options are selected.
+\end{enumerate}
+
+\section{Accuracy}
+The accuracy of the MTF50 estimates produced by MTF Mapper depends on the
+following factors:
+\begin{enumerate}
+  \item Image resolution, and resulting edge length
+  \item Image noise levels
+  \item Edge orientation relative to horizontal or vertical directions
+  \item Edge MTF50 value --- the sharper the edge, the more critical the
+  above factors become
+\end{enumerate}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a05}
+\caption{Error in MTF50 estimate for $5^\circ$ edges}
+\label{fig:mtf_accuracy_a5}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a10}
+\caption{Error in MTF50 estimate for $10^\circ$ edges}
+\label{fig:mtf_accuracy_a10}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a15}
+\caption{Error in MTF50 estimate for $15^\circ$ edges}
+\label{fig:mtf_accuracy_a15}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a40}
+\caption{Error in MTF50 estimate for $40^\circ$ edges}
+\label{fig:mtf_accuracy_a40}
+\end{figure}
+
+
+Figures~\ref{fig:mtf_accuracy_a5}--\ref{fig:mtf_accuracy_a40} present an indication of the error in MTF50
+estimates. The following parameters were fixed for these results:
+\begin{enumerate}
+  \item Resolution: an image of $300\times300$ pixels was generated using
+\texttt{generate\_rectangle} (Section~\ref{sec:rectangle_generator}), 
+containing a rectangle with edge lengths of $75\times100$ pixels. Only the
+edges of length $75$ pixels were analysed, though.
+  \item Noise was set to 1\% of dynamic range, at a signal-to-noise ratio
+(SNR) of 90.
+  \item Edge MTF50 values over the range [0.06,0.7) were sampled.
+  \item Edge orientations of $2^\circ$ to $44^\circ$ were
+explored.
+  \item A total of 10 runs (different random seeds for image noise) were
+performed for each data point, each yielding two edge measurements, for a
+total of 20 data points per angle/mtf combination.
+\end{enumerate}
+Figures~\ref{fig:mtf_accuracy_a5}--\ref{fig:mtf_accuracy_a40}
+clearly illustrate how the error increases
+with higher edge acuity, especially at slant angles that are further from
+ideal. Sharp lenses should produce values in the range of (0.2,0.35) cycles
+per pixel using unsharpened raw images; in this range the error in
+MTF50 estimates is below 5\%, even for slant angles of $40^\circ$.
+
+Overall, both absolute accuracy (bias) and uncertainty (variance) remain
+fairly well controlled up to the Nyquist frequency of 0.5 cycles per pixel.
+
 \begin{thebibliography}{9}
 \bibitem{khom} Kohm, K., \newblock{Modulation transfer function measurement
 method and results for the Orbview-3 high resolution imaging
 satellite}, \newblock{Congress International Society for Photogrammetry and Remote
 Sensing}, 20:12--23, 2004.
+\bibitem{bradley} Bradley, D. and Roth, G.,
+\newblock{Adaptive thresholding using the integral image},
+\newblock{\textit{Journal of Graphics, GPU, \& Game Tools}}, \textbf{12(2)}:13--21,
+2007.
+\bibitem{chang} Chang, F., Chen, C.J., Lu, C.J.,
+\newblock{A linear-time component-labeling algorithm using contour tracing
+technique},
+\newblock{\textit{Computer Vision and Image Understanding}}, \textbf{93(2)}:206--220,
+2004
 \end{thebibliography}
 
 \end{document}
