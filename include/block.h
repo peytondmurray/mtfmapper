@@ -11,7 +11,7 @@ class Block {
   public:
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
     
-    Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), centroid(0,0) {
+    Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), quality(4, false), centroid(0,0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -61,6 +61,11 @@ class Block {
     
     
     
+    double get_edge_angle(size_t edge_number) const {
+        assert(edge_number < 4);
+        return rect.thetas[edge_number];
+    }
+    
     Point get_edge_centroid(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.centroids[edge_number];
@@ -71,9 +76,10 @@ class Block {
         return rect.centroids[it->second];
     }
     
-    void set_mtf50_value(size_t edge_number, double mtf50_value) {
+    void set_mtf50_value(size_t edge_number, double mtf50_value, bool quality_flag) {
         assert(edge_number < 4);
         mtf50[edge_number] = mtf50_value;
+        quality[edge_number] = quality_flag;
     }
     
     double get_mtf50_value(size_t edge_number) const {
@@ -97,6 +103,7 @@ class Block {
     
     Mrectangle rect;
     vector<double> mtf50;
+    vector<bool> quality;
     map<edge_position, size_t> edge_lut;
     Point centroid;
     double area;

@@ -5,6 +5,7 @@
 #include "include/peak_detector.h"
 
 #include "include/point_helpers.h"
+#include "include/mtf50_correction_polynomials.h"
 
 // global lock to prevent race conditions on detected_blocks
 tbb::mutex global_mutex;
@@ -58,10 +59,11 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                 }
             }
         }
-        double mtf50 = compute_mtf(centroids[k], scanset);
+        bool poor_quality = false;
+        double mtf50 = compute_mtf(centroids[k], scanset, poor_quality);
         
         if (mtf50 <= 1.0) { // reject mtf values above 1.0, since these are impossible
-            detected_blocks[current_block_idx].set_mtf50_value(k, mtf50);
+            detected_blocks[current_block_idx].set_mtf50_value(k, mtf50, !poor_quality);
         }
     }
     
@@ -101,7 +103,8 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     return rrect.valid;
 }
 
-double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset) {
+double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, bool& poor) {
+    poor = false; // assume this is a good edge
     
     Point cent(in_cent);
     
@@ -203,6 +206,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     mean_grad.y = sin(best_angle);
     
     if (ordered.size() < 10) {
+        poor = true;
         return 1000;
     }
     
@@ -235,7 +239,38 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         prev_freq = i / double(FFT_SIZE);
     }
     
-    mtf50 *= SAMPLES_PER_PIXEL; // twice the span
+    mtf50 *= SAMPLES_PER_PIXEL; 
+    
+    #if 1
+    // find closest angle
+    double quad1 = fabs(fmod(best_angle, M_PI/2.0));
+    if (quad1 > M_PI/4.0) {
+        quad1 = M_PI/2.0 - quad1;
+    }
+    quad1 = quad1 / M_PI * 180;
+    size_t angle_idx = 0;
+    double closest_dist = 90;
+    for (size_t i=0; i < mtf50_corrections_num_angles; i++) {
+        if (fabs(mtf_correction_coeffs[i][0] - quad1) < 
+            fabs(mtf_correction_coeffs[angle_idx][0] - quad1)) {
+        
+            angle_idx = i;
+            closest_dist = fabs(mtf_correction_coeffs[i][0] - quad1);
+        }    
+    }
+    
+    if (closest_dist >= 1) {
+        poor = true;
+    }
+    
+    double s = mtf_correction_coeffs[angle_idx][1];
+    double xp = mtf50;
+    for (int i=2; i < 9; i++) {
+        s += xp * mtf_correction_coeffs[angle_idx][i];
+        xp *= mtf50;
+    }
+    mtf50 = s;
+    #endif
     
     fftw_free(fft_out_buffer);
     fftw_free(fft_in_buffer);        
