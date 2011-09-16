@@ -16,9 +16,9 @@
 
 \section{Overview}
 The MTF mapper package offers a collection of tools to measure Modulation
-Transfer Function (MTF) values in images. It does this by computing the edge
-spread function of a step edge in an image, using the method described in
-\cite{khom}.
+Transfer Function (MTF) values across edges in images. It does this by computing the edge
+spread function of a step edge in an image, using the method described by
+Khom \cite{khom} (Section~\ref{sec:description} provides a brief overview).
 
 MTF mapper offers fully automated operation, producing the following
 outputs:
@@ -280,6 +280,7 @@ is the image height in pixels.
 
 \appendix
 \section{Internal workings}
+\label{sec:description}
 Here is a brief outline of how MTF Mapper works:
 \begin{enumerate}
     \item The input image is read in, and converted to grayscale (using
@@ -344,6 +345,8 @@ following factors:
 \begin{enumerate}
   \item Image resolution, and resulting edge length
   \item Image noise levels
+  \item Image edge contrast (combined with noise levels, expressed as
+  Signal-to-Noise Ratio, SNR)
   \item Edge orientation relative to horizontal or vertical directions
   \item Edge MTF50 value --- the sharper the edge, the more critical the
   above factors become
@@ -351,55 +354,58 @@ following factors:
 
 \begin{figure}
 \centering
-\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a05}
-\caption{Error in MTF50 estimate for $5^\circ$ edges}
-\label{fig:mtf_accuracy_a5}
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a10_90}
+\caption{Error in MTF50 estimate for $10^\circ$ edges, SNR=90}
+\label{fig:mtf_accuracy_a10_snr90}
 \end{figure}
 
 \begin{figure}
 \centering
-\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a10}
-\caption{Error in MTF50 estimate for $10^\circ$ edges}
-\label{fig:mtf_accuracy_a10}
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a10_57}
+\caption{Error in MTF50 estimate for $10^\circ$ edges, SNR=57}
+\label{fig:mtf_accuracy_a10_snr57}
 \end{figure}
 
 \begin{figure}
 \centering
-\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a15}
-\caption{Error in MTF50 estimate for $15^\circ$ edges}
-\label{fig:mtf_accuracy_a15}
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_90}
+\caption{95\% confidence interval for MTF50 estimate at SNR=90}
+\label{fig:mtf_accuracy_snr90}
 \end{figure}
 
 \begin{figure}
 \centering
-\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_a40}
-\caption{Error in MTF50 estimate for $40^\circ$ edges}
-\label{fig:mtf_accuracy_a40}
+\includegraphics[width=0.95\textwidth]{figures/accuracy_plot_57}
+\caption{95\% confidence interval for MTF50 estimate at SNR=57}
+\label{fig:mtf_accuracy_snr57}
 \end{figure}
 
 
-Figures~\ref{fig:mtf_accuracy_a5}--\ref{fig:mtf_accuracy_a40} present an indication of the error in MTF50
-estimates. The following parameters were fixed for these results:
+Figures~\ref{fig:mtf_accuracy_a10_snr90}--\ref{fig:mtf_accuracy_a10_snr57} present an indication of the error in MTF50
+estimates. The following parameters applied:
 \begin{enumerate}
-  \item Resolution: an image of $300\times300$ pixels was generated using
-\texttt{generate\_rectangle} (Section~\ref{sec:rectangle_generator}), 
-containing a rectangle with edge lengths of $75\times100$ pixels. Only the
-edges of length $75$ pixels were analysed, though.
-  \item Noise was set to 1\% of dynamic range, at a signal-to-noise ratio
-(SNR) of 90.
+  \item Edge length was fixed at 75 pixels.
+  \item Two noise levels were investigated: edge contrast at 0.9 times
+dynamic range, with noise standard deviation at 0.01 times dynamic range, for an SNR of 90, and
+edge contrast at 0.67 with noise at 0.012, for an SNR of 57. The latter case
+approximates closely the real world conditions observed with a DSLR camera.
   \item Edge MTF50 values over the range [0.06,0.7) were sampled.
   \item Edge orientations of $2^\circ$ to $44^\circ$ were
 explored.
-  \item A total of 10 runs (different random seeds for image noise) were
-performed for each data point, each yielding two edge measurements, for a
-total of 20 data points per angle/mtf combination.
+  \item A total 200 data points were collected for each MTF50/angle
+combination.
 \end{enumerate}
-Figures~\ref{fig:mtf_accuracy_a5}--\ref{fig:mtf_accuracy_a40}
+Figures~\ref{fig:mtf_accuracy_a10_snr90}--\ref{fig:mtf_accuracy_a10_snr57}
 clearly illustrate how the error increases
 with higher edge acuity, especially at slant angles that are further from
-ideal. Sharp lenses should produce values in the range of (0.2,0.35) cycles
-per pixel using unsharpened raw images; in this range the error in
-MTF50 estimates is below 5\%, even for slant angles of $40^\circ$.
+ideal. The boxplots are intepreted as follows: the ``whiskers'' indicate the
+extreme values observed, although outliers may be excluded and shown
+separately as circles; the solid black line in the centre of each box is the
+median of the 200 data points, with the red box bounding the 50\%
+middle-most values.
+
+Sharp lenses should produce values in the range of (0.2,0.35) cycles
+per pixel using unsharpened raw images.
 
 Overall, both absolute accuracy (bias) and uncertainty (variance) remain
 fairly well controlled up to the Nyquist frequency of 0.5 cycles per pixel.
