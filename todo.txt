@@ -3,4 +3,5 @@
 3. add threading to gradient 
 4. add threading to threshold (use opencv integral)
 5. make tbb optional (maybe use boost?)
-
+6. use the knowledge of block shapes to improve systematic edge orientation
+estimation
