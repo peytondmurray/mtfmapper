@@ -12,11 +12,11 @@ class Svg_page_perspective : public Svg_page {
     }
     
     void render(void) {
-        double ang=5.0/180.0*M_PI;
+        double ang=10.0/180.0*M_PI;
         double bsize=0.0214; // block size ....
         
-        strip(-6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang*1.5, 1);
-        strip( 6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang*1.5, 0);
+        strip(-6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang, 1);
+        strip( 6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang, 0);
         perspective_rectangle(-0.2, 0.5, 0.4, 0.5, 1.0/180.0*3.14159, 0);
     }
     
