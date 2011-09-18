@@ -28,10 +28,15 @@ Point average_dir(const Gradient& g, int x, int y) {
     
         int lx = x + offsets[k][0];
         int ly = y + offsets[k][1];
+        
+        
+        if (lx >= 0 && lx < g.width() &&
+            ly >= 0 && ly < g.height()) {
     
-        mx += g.grad_x(lx,ly) * g.grad_magnitude(lx,ly);
-        my += g.grad_y(lx,ly) * g.grad_magnitude(lx,ly);
-        wsum += g.grad_magnitude(lx,ly);
+            mx += g.grad_x(lx,ly) * g.grad_magnitude(lx,ly);
+            my += g.grad_y(lx,ly) * g.grad_magnitude(lx,ly);
+            wsum += g.grad_magnitude(lx,ly);
+        }
         
     }
     
