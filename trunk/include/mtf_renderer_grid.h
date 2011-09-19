@@ -35,8 +35,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_grid : public Mtf_renderer {
   public:
-    Mtf_renderer_grid(const std::string& in_fname, const cv::Mat& img)
-      :  fname(in_fname), img_y(img.rows), img_x(img.cols), img(img) {
+    Mtf_renderer_grid(const std::string& wdir, const std::string& in_fname, const cv::Mat& img)
+      :  wdir(wdir), fname(in_fname), img_y(img.rows), img_x(img.cols), img(img), 
+         gnuplot_failure(false), gnuplot_warning(true) {
       
           if (img.rows > img.cols) {
               grid_y = 150;
@@ -46,6 +47,10 @@ class Mtf_renderer_grid : public Mtf_renderer {
               grid_y = 150 * img.rows / img.cols;
           }
       
+    }
+    
+    void set_gnuplot_warning(bool gnuplot) {
+        gnuplot_warning = gnuplot;
     }
     
     void render(const vector<Block>& blocks) {
@@ -99,7 +104,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         cv::blur(grid, dest, cv::Size(5,5));
         grid = dest;
 
-        FILE* file = fopen(fname.c_str(), "wt");
+        FILE* file = fopen((wdir+fname).c_str(), "wt");
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
                 fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y), grid.at<float>(y,x));
@@ -108,7 +113,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         }
         fclose(file);
         
-        FILE* gpf = fopen("grid.gnuplot", "wt");
+        FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set yrange [] reverse\n");
         fprintf(gpf, "set size ratio %lf\n", grid.rows / double(grid.cols));
         fprintf(gpf, "set palette rgbformulae 23,28,3 negative\n");
@@ -124,11 +129,12 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot%s grid.gnuplot", EXE_SUFFIX);
+        sprintf(buffer, "cd %s; gnuplot%s grid.gnuplot", wdir.c_str(), EXE_SUFFIX);
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
             printf("You can try to execute \"%s\" to render the plots manually\n", buffer);
+            gnuplot_failure = true;
         } else {
             printf("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
         }
@@ -137,6 +143,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         
     }
     
+    bool gnuplot_failed(void) {
+        return gnuplot_failure;
+    }
+    
+    std::string wdir;
     std::string fname;
     size_t grid_x;
     size_t grid_y;
@@ -144,6 +155,9 @@ class Mtf_renderer_grid : public Mtf_renderer {
     double img_y;
     double img_x;
     const cv::Mat& img;
+    
+    bool gnuplot_failure;
+    bool gnuplot_warning;
 };
 
 #endif

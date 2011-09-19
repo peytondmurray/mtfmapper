@@ -85,8 +85,11 @@ int main(int argc, char** argv) {
     ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR;
     
     TCLAP::CmdLine cmd("Measure MTF50 values across edges of rectangular targets", ' ', ss.str());
-    TCLAP::UnlabeledValueArg<std::string>  tc_in_name("input", 
+    TCLAP::UnlabeledValueArg<std::string>  tc_in_name("<input_filename>", 
         "Input image file name (many extensions supported)", true, "input.png", "string", cmd
+    );
+    TCLAP::UnlabeledValueArg<std::string>  tc_wdir("<working_directory>", 
+        "Working directory (for output files); \".\" is fine", true, ".", "string", cmd
     );
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
     TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
@@ -107,13 +110,19 @@ int main(int argc, char** argv) {
     }
     
     if (cvimg.type() == CV_8UC1) {
-        printf("8-bit input image, upconverting\n");
+        printf("8-bit input image, upconverting %s\n", tc_linear.getValue() ? "with linear scaling" : "with sRGB gamma correction");
         convert_8bit_input(cvimg, !tc_linear.getValue());        
     } else {
         printf("16-bit input image, no upconversion required\n");
     }
    
     assert(cvimg.type() == CV_16UC1);
+    
+    // process working directory
+    std::string wdir(tc_wdir.getValue());
+    if (wdir.find('/') == std::string::npos) {
+        wdir = tc_wdir.getValue() + "/";
+    }
     
     cv::Mat masked_img;
     
@@ -125,9 +134,9 @@ int main(int argc, char** argv) {
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
     
-    printf("Component labelling\n");
+    printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 100, false, 4000);
+    Component_labeller cl(masked_img, 60, false, 4000);
     
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
@@ -142,30 +151,38 @@ int main(int argc, char** argv) {
     
     // now render the computed MTF values
     if (tc_annotate.getValue()){
-        Mtf_renderer_annotate annotate(cvimg, string("annotated.png"));
+        Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"));
         annotate.render(mtf_core.get_blocks());
     }
     
+    bool gnuplot_warning = true;
+    bool few_edges_warned = false;
+    
     if (tc_profile.getValue()) {
         if (mtf_core.get_blocks().size() < 10) {
-            printf("Warning: fewer than 10 edges found, so MTF50 profiles will not be generated. Are you using suitable input images?\n");
+            printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+            few_edges_warned = true;
         } else {
-            Mtf_renderer_profile profile(string("profile.txt"), string("profile_peak.txt"), cvimg);
+            Mtf_renderer_profile profile(wdir, string("profile.txt"),string("profile_peak.txt"), cvimg);
             profile.render(mtf_core.get_blocks());
+            gnuplot_warning = !profile.gnuplot_failed();
         }
     }
 
     if (tc_surface.getValue()) {
         if (mtf_core.get_blocks().size() < 10) {
-            printf("Warning: fewer than 10 edges found, so MTF50 surfaces will not be generated. Are you using suitable input images?\n");
+            if (!few_edges_warned) {
+                printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+            }
         } else {
-            Mtf_renderer_grid grid(string("grid.txt"),  cvimg);
+            Mtf_renderer_grid grid(wdir, string("grid.txt"),  cvimg);
+            grid.set_gnuplot_warning(gnuplot_warning);
             grid.render(mtf_core.get_blocks());
         }
     }
     
     if (tc_print.getValue()) {
-        Mtf_renderer_print printer(string("raw_mtf_values.txt"), tc_angle.getValue() != 1000, tc_angle.getValue()/180.0*M_PI);
+        Mtf_renderer_print printer(wdir + string("raw_mtf_values.txt"), tc_angle.getValue() != 1000, tc_angle.getValue()/180.0*M_PI);
         printer.render(mtf_core.get_blocks());
     }
     
