@@ -14,7 +14,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 
 project(mtfmapper CXX)
 set(mtfmapper_VERSION_MAJOR 0)
-set(mtfmapper_VERSION_MINOR 1)
+set(mtfmapper_VERSION_MINOR 2)
 set(genrectangle_VERSION_MAJOR 0)
 set(genrectangle_VERSION_MINOR 1)
 

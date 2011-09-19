@@ -36,9 +36,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_profile : public Mtf_renderer {
   public:
-    Mtf_renderer_profile(const std::string& prof_fname, const std::string& peak_fname, const cv::Mat& img) 
-      :  prname(prof_fname), pfname(peak_fname), img(img) {
+    Mtf_renderer_profile(const std::string& wdir, const std::string& prof_fname, const std::string& peak_fname, const cv::Mat& img) 
+      :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
+         img(img), gnuplot_failure(false), gnuplot_warning(true) {
       
+    }
+    
+    void set_gnuplot_warning(bool gnuplot) {
+        gnuplot_warning = gnuplot;
     }
     
     void render(const vector<Block>& blocks) {
@@ -120,7 +125,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
         
-        FILE* prfile = fopen(prname.c_str(), "wt");
+        FILE* prfile = fopen((wdir+prname).c_str(), "wt");
         i=0;
         for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
             fprintf(prfile, "%d %lf %lf\n", it->first, it->second, med_filt_mtf[i++]);
@@ -148,7 +153,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
         
-        FILE* pffile = fopen(pfname.c_str(), "wt");
+        FILE* pffile = fopen((wdir+pfname).c_str(), "wt");
         fprintf(pffile, "%lf %lf %lf\n", 
             blocks[largest_block].get_edge_centroid(peak_idx).y, 
             blocks[largest_block].get_mtf50_value(peak_idx),
@@ -156,7 +161,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         );
         fclose(pffile);
         
-        FILE* gpf = fopen("profile.gnuplot", "wt");
+        FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
         fprintf(gpf, "set term png size 1024, 768\n");
@@ -166,11 +171,12 @@ class Mtf_renderer_profile : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot%s profile.gnuplot", EXE_SUFFIX);
+        sprintf(buffer, "cd %s; gnuplot%s profile.gnuplot", wdir.c_str(), EXE_SUFFIX);
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
             printf("You can try to execute \"%s\" to render the plots manually\n", buffer);
+            gnuplot_failure = true;
         } else {
             printf("Gnuplot plot completed successfully. Look for profile_image.png\n");
         }
@@ -179,9 +185,16 @@ class Mtf_renderer_profile : public Mtf_renderer {
         
     }
     
+    bool gnuplot_failed(void) {
+        return gnuplot_failure;
+    }
+    
+    std::string wdir;
     std::string prname;
     std::string pfname;
     const cv::Mat& img;
+    bool gnuplot_failure;
+    bool gnuplot_warning;
 };
 
 #endif
