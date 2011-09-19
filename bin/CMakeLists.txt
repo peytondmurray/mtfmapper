@@ -14,3 +14,4 @@ add_executable(generate_test_chart ${chart_sources})
 set_target_properties(generate_test_chart PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME generate_test_chart)
 target_link_libraries(generate_test_chart ${OpenCV_LIBS} )
 
+install(PROGRAMS ${PROJECT_BINARY_DIR}/bin/mtf_mapper ${PROJECT_BINARY_DIR}/bin/generate_rectangle ${PROJECT_BINARY_DIR}/bin/generate_test_chart DESTINATION bin)
