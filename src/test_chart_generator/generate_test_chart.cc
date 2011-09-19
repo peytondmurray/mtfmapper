@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     cmd.add(tc_type);
     TCLAP::ValueArg<std::string> tc_size("s", "size", "Chart size (currently \"a4\", \"a3\" or \"a2\")", false, "a3", &size_constraints );
     cmd.add(tc_size);
-    TCLAP::ValueArg<std::string> tc_ofname("o", "output", "Output file name (default chart.svg)", false, "chart.svg", "string" );
+    TCLAP::ValueArg<std::string> tc_ofname("o", "output", "Output file name (default chart.svg)", false, "chart.svg", "filename" );
     cmd.add(tc_ofname);
     
     cmd.parse(argc, argv);

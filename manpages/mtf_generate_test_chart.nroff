@@ -1,0 +1,49 @@
+.\" Process this file with
+.\" groff -man -Tascii foo.1
+.\"
+.TH MTF_GENERATE_RECTANGLE 1 "SEPT 2011" Linux "User Manuals"
+.SH NAME
+mtf_generate_test_chart \- generate test charts for evaluating lens sharpness
+.SH SYNOPSIS
+.B mtf_generate_test_chart [-o 
+.I <filename>
+.B ] [-s 
+.I <a4|A4|a3|A3|a2|A2>
+.B ] [-t 
+.I <perspective|grid>
+.B ]
+.SH DESCRIPTION
+.B mtf_generate_test_chart
+generates scalable vector graphics (SVG) files containing test charts for 
+evaluating digital camera lens performance (sharpness) as well as autofocus
+accuracy / fine-tuning.
+.B mtf_generate_test_chart
+should be used to generate suitable test charts of use with the
+.BR mtf_mapper (1)
+tool.
+
+.SH OPTIONS
+.IP "-o <filename>"
+Specify output file name
+.IP "-s <a4|A4|a3|A3|a2|A2>"
+Specify page size of the chart
+.IP "-c <perspective|grid>"
+Specify chart type. The "perspective" chart is for evaluating autofocus
+behaviour, and is intended to be photographed at an angle, typically 45
+degrees. The "grid" chart is intended to evaluate lens sharpness across the
+focal plane, and should be photographed perpendiculary.
+.IP -h
+Displays usage information
+.SH BUGS
+In theory, the perspective chart can be corrected so that the perspective
+distortion is cancelled perfectly when the chart is photographed from the
+correct distance. This ensures that all the rectanles appear as squares in
+the photograph; however, this is not required for 
+.BR mtf_mapper (1)
+to work correctly. Currently, the perspective distortion and optimal
+distance is fixed in the source code.
+.SH AUTHOR
+Frans van den Bergh <fvdbergh at gmail dot com>
+.SH "SEE ALSO"
+.BR mtf_generate_rectangle (1),
+.BR mtf_mapper (1),

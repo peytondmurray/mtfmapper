@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
-    TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "double", cmd);
+    TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
     
     cmd.parse(argc, argv);
 

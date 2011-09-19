@@ -65,6 +65,14 @@ if (LATEX_COMPILER)
   add_subdirectory(doc)
 endif (LATEX_COMPILER)
 
+# man pages for unix platforms
+if (UNIX)
+  if(NOT MANDIR)
+      set(MANDIR "/usr/man")
+  endif(NOT MANDIR)
+  add_subdirectory(manpages)
+endif(UNIX)
+
 # configure a header file to pass some of the CMake settings
 # to the source code
 configure_file (
