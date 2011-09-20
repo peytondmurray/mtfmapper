@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
     
     // process working directory
     std::string wdir(tc_wdir.getValue());
-    if (wdir.find('/') == std::string::npos) {
+    if (wdir[wdir.length()-1]) {
         wdir = tc_wdir.getValue() + "/";
     }
     
