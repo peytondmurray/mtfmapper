@@ -33,31 +33,31 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Gradient {
 public:
-    Gradient(const cv::Mat& in_img, bool snapshot = false, bool thin = false);
+    Gradient(const cv::Mat& in_img, bool snapshot = false);
     virtual ~Gradient(void);
 
-    inline const float* grad_x(void) const {
+    inline const cv::Mat& grad_x(void) const {
         return _gradient_x;
     }
 
-    inline const float* grad_y(void) const {
+    inline const cv::Mat& grad_y(void) const {
         return _gradient_y;
     }
     
     inline float grad_x(int x, int y) const {
-        return _gradient_x[y*_width + x];
+        return _gradient_x.at<float>(y, x);
     }
 
     inline float grad_y(int x, int y) const {
-        return _gradient_y[y*_width + x];
+        return _gradient_y.at<float>(y, x);
     }
 
-    inline const float* grad_magnitude(void) const {
+    inline const cv::Mat& grad_magnitude(void) const {
         return _gradient_m;
     }
     
     inline float grad_magnitude(int x, int y) const {
-        return _gradient_m[y*_width + x];
+        return _gradient_m.at<float>(y, x);
     }
 
     inline int width(void) const {
@@ -71,18 +71,15 @@ public:
     static void _blur(const cv::Mat& image, float **smoothedim);
 private:
 
-    void _compute_gradients(const float* smoothed_im, int rows, int cols, float** grad_x, float** grad_y);
+    void _compute_gradients(const cv::Mat& smoothed_im);
 
 protected:
     int _width;
     int _height;
 
-    float*      _gradient_x;
-    float*      _gradient_y;
-    float*      _gradient_m;
-    float*      _smoothed;
-
-    bool    _thin;
+    cv::Mat     _gradient_x;
+    cv::Mat     _gradient_y;
+    cv::Mat     _gradient_m;
 };
 
 #endif // GRADIENT_H
