@@ -121,15 +121,15 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"row (pixels)\"\n");
         fprintf(gpf, "set term png size %d, %d\n", 1024, (int)lrint(1024*grid.rows/double(grid.cols)));
-        fprintf(gpf, "set output \"grid_image.png\"\n");
-        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, fname.c_str());
-        fprintf(gpf, "set output \"grid_surface.png\"\n");
+        fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
+        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, (wdir+fname).c_str());
+        fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
         fprintf(gpf, "set view 25, 350\n");
-        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w d\n", img.cols, img.rows, fname.c_str());
+        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w d\n", img.cols, img.rows, (wdir+fname).c_str());
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "cd %s; gnuplot%s grid.gnuplot", wdir.c_str(), EXE_SUFFIX);
+        sprintf(buffer, "gnuplot%s %sgrid.gnuplot", EXE_SUFFIX, wdir.c_str());
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
