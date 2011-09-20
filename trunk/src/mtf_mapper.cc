@@ -123,7 +123,21 @@ int main(int argc, char** argv) {
     if (wdir[wdir.length()-1]) {
         wdir = tc_wdir.getValue() + "/";
     }
-    
+
+	#ifdef _WIN32
+	// on windows, mangle the '/' into a '\\'
+	std::string wdm;
+	for (size_t i=0; i < wdir.length(); i++) {
+		if (wdir[i] == '/') {
+			wdm.push_back('\\');
+			wdm.push_back('\\');
+		} else {
+			wdm.push_back(wdir[i]);
+		}
+	}
+	wdir = wdm;
+	#endif
+
     cv::Mat masked_img;
     
     printf("Thresholding image ...\n");

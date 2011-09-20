@@ -160,18 +160,19 @@ class Mtf_renderer_profile : public Mtf_renderer {
             blocks[largest_block].get_mtf50_value(peak_idx)*3
         );
         fclose(pffile);
-        
+
+		       
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
         fprintf(gpf, "set term png size 1024, 768\n");
-        fprintf(gpf, "set output \"profile_image.png\"\n");
+        fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
         fprintf(gpf, "plot \"%s\" u 1:2 t \"MTF50 (c/p) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lw 3\n", 
-            prname.c_str(), prname.c_str(), pfname.c_str());
+            (wdir+prname).c_str(), (wdir+prname).c_str(), (wdir+pfname).c_str());
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "cd %s; gnuplot%s profile.gnuplot", wdir.c_str(), EXE_SUFFIX);
+        sprintf(buffer, "gnuplot%s %sprofile.gnuplot", EXE_SUFFIX, wdir.c_str());
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
