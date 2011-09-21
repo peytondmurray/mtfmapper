@@ -46,6 +46,9 @@ class Peak_detector {
           
         range = max_data - min_data;
         
+        // bias the counts so that ties during NMS are impossible
+        for (size_t i=0; i < in_bins; i++) counts[i] = i;
+        
         // build histogram
         DBG(FILE* rawpts = fopen("raw_points.txt", "wt");)
         for (size_t i=0; i < data.size(); i++) {
@@ -54,11 +57,11 @@ class Peak_detector {
             if (idx > counts.size() - 1) {
                 idx = counts.size() - 1;
             }
-            counts[idx]++;
+            counts[idx] += in_bins+1;
         }
         DBG(fclose(rawpts);)
   
-        // perform non-minimum suppression
+        // perform non-maximum suppression
         vector<size_t> nm(nbins, 0);
         const int delta = 3;
         for (size_t i=0; i < nbins; i++) {
