@@ -49,10 +49,12 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     Block block(rrect);
     
     int current_block_idx=0;
-    {
+    if (block.get_area() > 225) {
         tbb::mutex::scoped_lock lock(global_mutex);
         detected_blocks.push_back(block);
         current_block_idx = detected_blocks.size() - 1;
+    } else {
+        return;
     }
     
     vector<Point>& centroids = rrect.centroids;
