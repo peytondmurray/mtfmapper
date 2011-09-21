@@ -161,7 +161,7 @@ class Mrectangle {
                 }
             }
             size_t corner_idx = 0;
-            if (outlier_count > points.size()/10) {
+            if (outlier_count > points.size()/8) {
                 valid = false;
             } else {
                 valid = true;
@@ -172,7 +172,7 @@ class Mrectangle {
                         // check if edges are approximately normal
                         
                         double dot = acos(edges[k1].ddot(edges[k2]));
-                        if ( fabs(fabs(dot) - M_PI/2.0) < M_PI/8.0 ) {
+                        if ( fabs(fabs(dot) - M_PI/2.0) < M_PI/6.0 ) {
                             // edges are approximately normal, find intersection
                             Point isect(0.0,0.0);
                             intersect(centroids[k1], normals[k1], centroids[k2], normals[k2], isect);
