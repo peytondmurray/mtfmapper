@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii foo.1
 .\"
-.TH MTF_GENERATE_RECTANGLE 1 "SEPT 2011" Linux "User Manuals"
+.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
 .SH NAME
 mtf_generate_rectangle \- generate images containing edges with known MTF50 values
 .SH SYNOPSIS
@@ -10,6 +10,8 @@ mtf_generate_rectangle \- generate images containing edges with known MTF50 valu
 .I <factor>
 .B ][-b 
 .I <std. dev>
+.B ] [-m 
+.I <mtf50>
 .B ] [-n 
 .I <std. dev>
 .B ] [-s 
@@ -42,7 +44,12 @@ contrast is 1 - 0.3 = 0.7.
 .IP "-b <std. dev>"
 Specify the standard deviation of the Gaussian point spread function (PSF)
 with which the edges are sampled. This parameter effectively controls the
-resulting MTF50 value of the edges.
+resulting MTF50 value of the edges. Mutually exclusive with 
+.B -m.
+.IP "-m <mtf50>"
+Directly specify the desired MTF50 value. This indirectly controls the
+Gaussian PSF standard deviation. Mutually exclusive with 
+.B -b
 .IP "-n <std. dev>"
 Specify the noise standard deviation [0-1) of the Gaussian noise that is
 added to the image.
