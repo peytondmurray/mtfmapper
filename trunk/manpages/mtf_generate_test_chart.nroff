@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii foo.1
 .\"
-.TH MTF_GENERATE_RECTANGLE 1 "SEPT 2011" Linux "User Manuals"
+.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
 .SH NAME
 mtf_generate_test_chart \- generate test charts for evaluating lens sharpness
 .SH SYNOPSIS
@@ -11,6 +11,8 @@ mtf_generate_test_chart \- generate test charts for evaluating lens sharpness
 .I <a4|A4|a3|A3|a2|A2>
 .B ] [-t 
 .I <perspective|grid>
+.B ] [-d
+.I <distance>
 .B ]
 .SH DESCRIPTION
 .B mtf_generate_test_chart
@@ -32,6 +34,10 @@ Specify chart type. The "perspective" chart is for evaluating autofocus
 behaviour, and is intended to be photographed at an angle, typically 45
 degrees. The "grid" chart is intended to evaluate lens sharpness across the
 focal plane, and should be photographed perpendiculary.
+.IP "-d <distance>"
+Specify the desired viewing distance from the chart for perspective mode.
+Distance is in mm, measured from the reference edge on the chart, to the
+camera focal plane.
 .IP -h
 Displays usage information
 .SH BUGS

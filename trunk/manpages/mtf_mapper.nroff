@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii foo.1
 .\"
-.TH MTF_MAPPER 1 "SEPT 2011" Linux "User Manuals"
+.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
 .SH NAME
 mtf_mapper \- compute MTF50 edge sharpness measure in images
 .SH SYNOPSIS
