@@ -127,6 +127,15 @@ class Block {
         return area;
     }
     
+    bool get_quality(size_t edge_number) const {
+        return quality[edge_number];
+    }
+    
+    bool get_quality(edge_position ep) const {
+        map<edge_position, size_t>::const_iterator it = edge_lut.find(ep);
+        return quality[it->second];
+    }
+    
     
     Mrectangle rect;
     vector<double> mtf50;

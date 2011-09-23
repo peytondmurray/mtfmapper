@@ -91,7 +91,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         bool poor_quality = false;
         double mtf50 = compute_mtf(centroids[k], scanset, poor_quality);
         
-        if (mtf50 <= 1.0) { // reject mtf values above 1.0, since these are impossible
+        if (mtf50 <= 1.2 && !poor_quality) { // reject mtf values above 1.0, since these are impossible
             detected_blocks[current_block_idx].set_mtf50_value(k, mtf50, !poor_quality);
         }
     }
@@ -199,6 +199,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     vector<Ordered_point> ordered;
     double min_sum = 1e50;
     double best_angle = 0;
+    double min_along_edge = 1e50;
+    double max_along_edge = -1e50;
     for (double ea=angle-2.0/180.0*M_PI; ea < angle + 2.0/180.0; ea += 0.1/180.0*M_PI) {
         
         mean_grad.x = cos(ea);
@@ -215,6 +217,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
                 double dist_along_edge = d.ddot(edge_direction);
                 if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                     local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                    max_along_edge = std::max(max_along_edge, dist_along_edge);
+                    min_along_edge = std::min(min_along_edge, dist_along_edge);
                 }
             }
         }
@@ -230,6 +234,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
             best_angle = ea;
         }
     }
+    double edge_length = max_along_edge - min_along_edge;
     
     mean_grad.x = cos(best_angle);
     mean_grad.y = sin(best_angle);
@@ -288,17 +293,20 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         }    
     }
     
-    if (closest_dist >= 1) {
+    if (closest_dist >= 1 || edge_length < 25) {
+        //printf("poor angle: %lf, edge_length= %lf\n", quad1, edge_length);
         poor = true;
     }
     
     double s = mtf_correction_coeffs[angle_idx][1];
     double xp = mtf50;
-    for (int i=2; i < 9; i++) {
+    for (int i=2; i < 13; i++) {
         s += xp * mtf_correction_coeffs[angle_idx][i];
         xp *= mtf50;
     }
-    mtf50 = s;
+    if (mtf50 <= 1.1) {
+        mtf50 = s;
+    }
     #endif
     
     fftw_free(fft_out_buffer);
