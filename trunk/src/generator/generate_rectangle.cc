@@ -172,6 +172,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "seed", cmd);
     TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "std. dev", cmd);
+    TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
@@ -182,7 +183,19 @@ int main(int argc, char** argv) {
     srand(rseed);
     
     theta = tc_theta.getValue() / 180.0 * M_PI;
-    sigma = tc_blur.getValue();
+    
+    if (tc_mtf.isSet() && tc_blur.isSet()) {
+        printf("Warning: you can not specify both blur and mtf50 values; choosing mtf50 value, and proceeding ...\n");
+    }
+    
+    double mtf = tc_mtf.getValue();
+    if (tc_mtf.isSet()) {
+        sigma = sqrt( log(0.5)/(-2*M_PI*M_PI*mtf*mtf) );
+    } else {
+        sigma = tc_blur.getValue();
+        mtf   = sqrt( log(0.5)/(-2*M_PI*M_PI*sigma*sigma) );
+    }
+    
     if (sigma < 0.185) {
         printf("It does not make sense to set blur below 0.185; you are on your own ...\n");
     }
@@ -195,8 +208,8 @@ int main(int argc, char** argv) {
         use_gamma = false;
     }
     
-    printf("output filename = %s, sigma = %lf, theta = %lf degrees, seed = %d, noise = %lf\n", 
-        tc_out_name.getValue().c_str(), sigma, theta/M_PI*180, rseed, tc_noise.getValue()
+    printf("output filename = %s, sigma = %lf (or mtf50 = %lf), theta = %lf degrees, seed = %d, noise = %lf\n", 
+        tc_out_name.getValue().c_str(), sigma, mtf, theta/M_PI*180, rseed, tc_noise.getValue()
     );
     printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d\n",
         use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit
@@ -217,10 +230,10 @@ int main(int argc, char** argv) {
     Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), use_gamma, use_16bit);
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
-    double a = 2.0/(2*sigma*sigma);
-    printf("MTF curve:  exp(%le*x*x)\n", -2*M_PI*M_PI/a);
-    double s = -2*M_PI*M_PI/a;
-    printf("MTF50 = %lf\n", sqrt(log(0.5)/(s)));    
+    double a = 1.0/(sigma*sigma);
+    printf("MTF curve:  exp(%lg*x*x)\n", -2*M_PI*M_PI/a);
+    printf("PSF : exp(-x*x/%lg)\n", 2*sigma*sigma);
+    printf("MTF50 = %lf\n", mtf);    
 
     imwrite(tc_out_name.getValue(), img);
     
