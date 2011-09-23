@@ -14,9 +14,9 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 
 project(mtfmapper CXX)
 set(mtfmapper_VERSION_MAJOR 0)
-set(mtfmapper_VERSION_MINOR 2)
+set(mtfmapper_VERSION_MINOR 3)
 set(genrectangle_VERSION_MAJOR 0)
-set(genrectangle_VERSION_MINOR 1)
+set(genrectangle_VERSION_MINOR 2)
 
 
 # Turn all compiler warnings on when building with GCC
