@@ -30,35 +30,74 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "svg_page.h"
 
+#include <string>
+
+using std::string;
+using std::ostringstream;
+
 class Svg_page_perspective : public Svg_page {
   public:
     Svg_page_perspective(const string& page_spec, const string& fname) 
-      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), sensor(15.6, 23.6) {
-        set_viewing_parameters(pl[2], fl, 15.6);
-        compute_perspective_extremes();
+      : Svg_page(page_spec, fname), cop(0,0,0), pl(0,0,2000), 
+        normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), 
+        sensor(15.6, 23.6), outside_limits(false), width_scale(1) {
+        
+        // must call set_viewing_parameters before render
     }
     
     void render(void) {
         double ang=10.0/180.0*M_PI;
         double bsize=0.0214; // block size ....
         
+        // TODO: work out the correct number of blocks, given the block size
+        
         strip(-6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang, 1);
         strip( 6*2*1.5*2*bsize, -30*bsize, 2.5*bsize, 2*bsize, 15, 5, -ang, 0);
-        perspective_rectangle(-0.2, 0.5, 0.4, 0.5, 1.0/180.0*3.14159, 0);
+        perspective_rectangle(-0.2, 0.5, 0.4, 0.5, 0*M_PI/180.0, 0);
+        
+        // print out chart specification
+        fprintf(fout, "\n");
+        text(chart_description, 0.1, 0.97, 30);
+        
+        if (outside_limits) {
+            printf("Warning: chart size exceeds the dimensions of the page you have specified.\n");
+            printf("\tThe most likely cause of this is that the specified distance is too small,\n");
+            printf("\ti.e., you are too close to the chart; increase distance with -d.\n");
+        }
+    }
+    
+    void set_viewing_parameters(double distance_to_target, double angle=-45.0/180*M_PI) {
+        pl[2] = distance_to_target;
+        normal[1] = cos(angle);
+        normal[2] = sin(angle);
+        
+        double effective_angle = 2*atan(width_mm/(2*distance_to_target));
+        
+        width_scale = fl * tan(effective_angle/2);
+        double f = 15.6/(2*tan(effective_angle/2));
+        printf("maximum focal length (15.6 mm sensor height): %.2lf mm\n", f);
+        printf("maximum focal length (24 mm sensor height): %.2lf mm\n", 24/(2*tan(effective_angle/2)));
+        printf("distance-to-focal-length ratio: %lfx\n", pl[2]/f);
+        
+        ostringstream ss;
+        ss << "Chart size: " << page_size << ", ";
+        ss << "design viewing distance: " << pl[2] << " mm, ";
+        ss << "design viewing angle: " << lrint(angle/M_PI*1800)/10.0 << " degrees, ";
+        ss << "maximum focal length (sensor height = " << 15.6 << " mm): " << lrint(f*10)/10.0 << " mm, ";
+        ss << "ratio at maximum focal length: " << lrint(pl[2]/f*10)/10.0;
+        chart_description = ss.str();
     }
     
   protected:  
   
     dPoint project_core(double x, double y) {
-        //Vec3d d(x, y, fl/4.0); // fudge factor --- this definitely still needs work
-        
-        Vec3d d(x/(0.5*sensor[1]), y/(0.4*sensor[1]), focal_distance);
+        Vec3d d(x*width_scale, y*width_scale, fl);
         
         d = d * (1.0/norm(d));
         double t = ((pl - cop).ddot(normal)) / (d.dot(normal));
         Vec3d pi = cop + d * t;
         
-        Vec3d cr = normal.cross(Vec3d(1,0,0));
+        Vec3d cr = normal.cross(Vec3d(1,0,0)); // basis vector in plane, along y direction
         dPoint p;
         p.y = (pi - pl).dot(cr);
         p.x = (pi - pl).dot(Vec3d(1,0,0));
@@ -70,28 +109,19 @@ class Svg_page_perspective : public Svg_page {
     
         dPoint p = project_core(x,y);
         
-        p.x = floor(p.x/(2*extremes[0])*width + 0.5*width);
-        p.y = floor(p.y/(2*extremes[1])*height + 0.5*height);
+        p.x = floor(p.x*100 + 0.5*width);
+        p.y = floor(p.y*100 + 0.5*height);
+        
+        if (p.x < 0 || p.x > width ||
+            p.y < 0 || p.y > height) {
+            
+            outside_limits = true;
+        }
         
         return iPoint(int(p.x), int(p.y));
     }
     
-    void set_viewing_parameters(double distance_to_target, double focal_length, double sensor_height, double angle=-45.0/180*M_PI) {
-        pl[2] = distance_to_target;
-        fl = focal_length;
-        normal[1] = cos(angle);
-        normal[2] = sin(angle);
-        sensor[0] = sensor_height;
-        
-        // where should the focal plane be so that the image size matches the sensor size:
-        const double desired_angle = 0.5 * 17.735 / 180.0 * M_PI;
-        focal_distance = 0.5 * sensor_height / tan(desired_angle);
-        
-        printf("focal distance = %lf\n", focal_distance);
-        printf("size: (%lf, %lf)\n", tan(desired_angle)*focal_distance*2, tan(0.5*26.56/180.0*M_PI)*focal_distance*2);
-        
-        compute_perspective_extremes();
-    }
+    
     
     void perspective_rectangle(double tlx, double tly, double width, double height, double angle, bool right) {
         if (right) {
@@ -153,28 +183,14 @@ class Svg_page_perspective : public Svg_page {
         } // rows
     }
     
-    void compute_perspective_extremes(void) {    
-    
-        dPoint p1 = project_core(0, -1);
-        dPoint p2 = project_core(0, 1);
-        
-        extremes[1] = std::max(fabs(p1.y), fabs(p2.y)) * width / double(height);
-        
-        p1 = project_core(-1, 0);
-        p2 = project_core( 1, 0);
-        
-        extremes[0] = std::max(fabs(p1.x), fabs(p2.x));
-        
-        printf("extremes: %le, %le\n", extremes[0], extremes[1]);
-    }
-    
     Vec3d cop;      // centre of projection
     Vec3d pl;       // position of focal plane
     Vec3d normal;     // normal vector of target
     double fl;          // focal length of lens
-    Vec2d extremes;
     Vec2d sensor;
-    double focal_distance;
+    bool outside_limits;
+    double width_scale;
+    std::string chart_description;
 };
 
 #endif
