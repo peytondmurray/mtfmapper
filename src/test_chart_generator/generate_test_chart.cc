@@ -53,24 +53,29 @@ int main(int argc, char** argv) {
     allowed_sizes.push_back("A3");
     allowed_sizes.push_back("a2");
     allowed_sizes.push_back("A2");
+    allowed_sizes.push_back("a1");
+    allowed_sizes.push_back("A1");
+    allowed_sizes.push_back("a0");
+    allowed_sizes.push_back("A0");
     TCLAP::ValuesConstraint<string> size_constraints(allowed_sizes);
     
     TCLAP::CmdLine cmd("Generate test charts for MTF50 measurements", ' ', ss.str());
     TCLAP::ValueArg<std::string> tc_type("t", "type", "Chart type (currently \"grid\" or \"perspective\")", false, "perspective", &type_constraints );
     cmd.add(tc_type);
-    TCLAP::ValueArg<std::string> tc_size("s", "size", "Chart size (currently \"a4\", \"a3\" or \"a2\")", false, "a3", &size_constraints );
+    TCLAP::ValueArg<std::string> tc_size("s", "size", "Chart size (currently \"a4\" to \"a0\")", false, "a3", &size_constraints );
     cmd.add(tc_size);
     TCLAP::ValueArg<std::string> tc_ofname("o", "output", "Output file name (default chart.svg)", false, "chart.svg", "filename" );
     cmd.add(tc_ofname);
+    TCLAP::ValueArg<double> tc_distance("d", "distance", "Distance from test chart (mm)", false, 1500, "distance", cmd);
     
     cmd.parse(argc, argv);
     
-    printf("char type: %s at %s size\n", tc_type.getValue().c_str(), tc_size.getValue().c_str());
+    printf("Chart type: %s at %s size\n", tc_type.getValue().c_str(), tc_size.getValue().c_str());
     
     if ( tc_type.getValue().compare("perspective") == 0) {
         Svg_page_perspective p(tc_size.getValue(), tc_ofname.getValue());
-    
-        //p.set_viewing_parameters(20, 5, 45/180.0*M_PI); // must still become paramers
+        printf("Generating chart for viewing distance of %.0lf mm\n", tc_distance.getValue());
+        p.set_viewing_parameters(tc_distance.getValue(), -45/180.0*M_PI); // must still become paramers
         p.render();
     } else
     if ( tc_type.getValue().compare("grid") == 0) {

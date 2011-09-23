@@ -50,7 +50,7 @@ typedef cv::Point_<int> iPoint;
 class Svg_page {
   public:
     Svg_page(const string& page_spec, const string& fname) 
-      : fname(fname)  {
+      : fname(fname), page_size(page_spec)  {
         
         if (page_spec == "A4" || page_spec == "a4") {
             width_mm = 210;
@@ -63,6 +63,14 @@ class Svg_page {
         if (page_spec == "A2" || page_spec == "a2") {
             width_mm = 420;
             height_mm = 594;
+        }
+        if (page_spec == "A1" || page_spec == "a1") {
+            width_mm = 594;
+            height_mm = 841;
+        }
+        if (page_spec == "A0" || page_spec == "a0") {
+            width_mm = 841;
+            height_mm = 1189;
         }
         
         width  = width_mm * 100;
@@ -127,7 +135,13 @@ class Svg_page {
         p = project(tlx + bwidth*cos(angle+M_PI), tly + bwidth*sin(angle+M_PI));
         fprintf(fout, "%d,%d ", p.x, p.y);
         p = project(tlx + bwidth*cos(angle+1.5*M_PI), tly + bwidth*sin(angle+1.5*M_PI));
-        fprintf(fout, "%d,%d\" style=\"%s\"/>", p.x, p.y, style.c_str());
+        fprintf(fout, "%d,%d\" style=\"%s\"/>\n", p.x, p.y, style.c_str());
+    }
+    
+    void text(const std::string& s, double x, double y, int font_size=20) { // x, y are fractional positions
+        fprintf(fout, "  <text x=\"%ld\" y=\"%ld\" font-family=\"Verdana\" font-size=\"%ldmm\" fill=\"black\" > %s </text>\n",
+            lrint(x*width), lrint(y*height), lrint(font_size), s.c_str()
+        );   
     }
     
     
@@ -139,6 +153,7 @@ class Svg_page {
     size_t height_mm;  // in mm
     size_t width;   // in svg units
     size_t height;  // in svg units
+    std::string page_size;
     
 };
 
