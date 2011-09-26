@@ -25,32 +25,62 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
+#ifndef MTF_EDGE_QUALITY_RATING
+#define MTF_EDGE_QUALITY_RATING
 
-#include <vector>
-using std::vector;
+const double good_quality      = 1.0;
+const double medium_quality    = 0.8;
+const double poor_quality      = 0.5;
+const double very_poor_quality = 0.2;
+const double unusable_quality  = 0.0;
 
-#include "include/common_types.h"
-
-class Ordered_point {
-public:
-    Ordered_point(double in_first=0, double in_second=0) : first(in_first), second(in_second) {}
-    bool operator< (const Ordered_point& b) const {
-        return first < b.first;
-    }
-    
-    double first;
-    double second;
+double edge_quality_map[46][2] = {
+    {0, very_poor_quality},
+    {1, poor_quality},
+    {2, medium_quality},
+    {3, good_quality},
+    {4, good_quality},
+    {5, good_quality},
+    {6, good_quality},
+    {7, good_quality},
+    {8, good_quality},
+    {9, good_quality},
+    {10, good_quality},
+    {11, good_quality},
+    {12, medium_quality},
+    {13, medium_quality},
+    {14, medium_quality},
+    {15, medium_quality},
+    {16, medium_quality},
+    {17, poor_quality},
+	{18, poor_quality},    
+	{19, poor_quality},
+	{20, poor_quality},
+	{21, poor_quality},
+	{22, very_poor_quality},
+	{23, very_poor_quality},
+	{24, very_poor_quality},
+	{25, very_poor_quality},
+	{26, very_poor_quality},
+	{27, poor_quality},
+	{28, poor_quality},
+	{29, poor_quality},
+	{30, poor_quality},
+	{31, poor_quality},
+	{32, poor_quality},
+	{33, poor_quality},
+	{34, very_poor_quality},
+	{35, medium_quality},
+	{36, medium_quality},
+	{37, medium_quality},
+	{38, medium_quality},
+	{39, medium_quality},
+	{40, medium_quality},
+	{41, medium_quality},
+	{42, good_quality},
+	{43, good_quality},
+	{44, good_quality},
+	{45, very_poor_quality},
 };
 
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point& sol);
-    
-void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, double& rms_residual, bool deriv=true);
-
-#ifndef SQR
-#define SQR(x) ((x)*(x))
 #endif
-
-#endif // LOESS_FIT_H

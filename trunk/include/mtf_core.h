@@ -79,7 +79,7 @@ class Mtf_core {
     
     void search_borders(const Point& cent, int label);
     bool extract_rectangle(const Point& cent, int label, Mrectangle& rect);
-    double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, bool& poor);
+    double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, double& poor);
     
     vector<Block>& get_blocks(void) {
         return detected_blocks;

@@ -33,6 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/point_helpers.h"
 #include "include/mtf50_correction_polynomials.h"
+#include "include/mtf50_edge_quality_rating.h"
 
 // global lock to prevent race conditions on detected_blocks
 tbb::mutex global_mutex;
@@ -88,11 +89,11 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                 }
             }
         }
-        bool poor_quality = false;
-        double mtf50 = compute_mtf(centroids[k], scanset, poor_quality);
+        double quality = 0;
+        double mtf50 = compute_mtf(centroids[k], scanset, quality);
         
-        if (mtf50 <= 1.2 && !poor_quality) { // reject mtf values above 1.0, since these are impossible
-            detected_blocks[current_block_idx].set_mtf50_value(k, mtf50, !poor_quality);
+        if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
+            detected_blocks[current_block_idx].set_mtf50_value(k, mtf50, quality);
         }
     }
     
@@ -132,8 +133,8 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     return rrect.valid;
 }
 
-double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, bool& poor) {
-    poor = false; // assume this is a good edge
+double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, double& quality) {
+    quality = 1.0; // assume this is a good edge
     
     Point cent(in_cent);
     
@@ -240,7 +241,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     mean_grad.y = sin(best_angle);
     
     if (ordered.size() < 10) {
-        poor = true;
+        quality = 0; // this edge is not usable in any way
         return 1000;
     }
     
@@ -249,7 +250,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
+    double residual = 0;
+    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot, residual); // loess_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
@@ -283,6 +285,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
     quad1 = quad1 / M_PI * 180;
     size_t angle_idx = 0;
+    
     double closest_dist = 90;
     for (size_t i=0; i < mtf50_corrections_num_angles; i++) {
         if (fabs(mtf_correction_coeffs[i][0] - quad1) < 
@@ -290,12 +293,23 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         
             angle_idx = i;
             closest_dist = fabs(mtf_correction_coeffs[i][0] - quad1);
-        }    
+        }
+        
+        
     }
     
-    if (closest_dist >= 1 || edge_length < 25) {
-        //printf("poor angle: %lf, edge_length= %lf\n", quad1, edge_length);
-        poor = true;
+    size_t qa_idx = 0;
+    for (size_t i=0; i < 46; i++) {
+        if (fabs(edge_quality_map[i][0] - quad1) < 
+            fabs(edge_quality_map[qa_idx][0] - quad1)) {    
+            
+            qa_idx = i;
+        }
+    }
+    quality = edge_quality_map[qa_idx][1];
+    
+    if (edge_length < 25) {  // derate short edges
+        quality *= poor_quality;
     }
     
     double s = mtf_correction_coeffs[angle_idx][1];
@@ -305,7 +319,11 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         xp *= mtf50;
     }
     if (mtf50 <= 1.1) {
-        mtf50 = s;
+        if (quality > very_poor_quality) {  // do not correct mtf50 when the correction polynomial itself is questionable?
+            mtf50 = s;
+        }
+    } else {
+        quality = unusable_quality;
     }
     #endif
     

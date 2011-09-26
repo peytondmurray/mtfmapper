@@ -45,6 +45,7 @@ using std::stringstream;
 #include "include/mtf_renderer_profile.h"
 #include "include/mtf_renderer_grid.h"
 #include "include/mtf_renderer_print.h"
+#include "include/mtf_renderer_stats.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -97,6 +98,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
+    TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     
     cmd.parse(argc, argv);
 
@@ -140,17 +142,23 @@ int main(int argc, char** argv) {
 
     cv::Mat masked_img;
     
-    printf("Thresholding image ...\n");
-    int brad_S = 2*cvimg.cols/3;
-    const double brad_threshold = 0.75;
-    bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
-    
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
+    printf("maximum gradient contrast: %lf\n", gradient.get_max_contrast());
+    
+    printf("Thresholding image ...\n");
+    int brad_S = 2*cvimg.cols/3;
+    double brad_threshold = tc_thresh.getValue();
+    bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
     
     printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 4000);
+    
+    if (cl.get_boundaries().size() == 0) {
+        printf("No black objects found. Try a lower threshold value with the -t option.\n");
+        return 0;
+    }
     
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
@@ -199,6 +207,9 @@ int main(int argc, char** argv) {
         Mtf_renderer_print printer(wdir + string("raw_mtf_values.txt"), tc_angle.getValue() != 1000, tc_angle.getValue()/180.0*M_PI);
         printer.render(mtf_core.get_blocks());
     }
+    
+    Mtf_renderer_stats stats;
+    stats.render(mtf_core.get_blocks());
     
     return 0;
 }

@@ -50,6 +50,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
         size_t largest_block = 0;
         Point centroid(0,0);
         
+        if (blocks.size() < 10) { // probably not a valid image for profiles
+            return;
+        }
+        
         map<int, double> row_max;
         
         for (size_t i=0; i < blocks.size(); i++) {
@@ -60,7 +64,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             centroid.y += blocks[i].get_centroid().y;
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
-                if (val > 0) {
+                if (val > 0 && blocks[i].get_quality(k) >= 0.5) {
                     Point cent = blocks[i].get_edge_centroid(k);
                     
                     int y = lrint(cent.y);
@@ -76,6 +80,11 @@ class Mtf_renderer_profile : public Mtf_renderer {
                     }
                 }
             }
+        }
+        
+        if (row_max.size() == 0) {
+            printf("Warning: All mtf50 values are zero; cannot generate a profile.\n");
+            return;
         }
         
         // apply some median filtering to remove obvious outliers
