@@ -38,7 +38,7 @@ class Block {
   public:
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
     
-    Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), quality(4, false), centroid(0,0) {
+    Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), quality(4, 0.0), centroid(0,0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -103,10 +103,11 @@ class Block {
         return rect.centroids[it->second];
     }
     
-    void set_mtf50_value(size_t edge_number, double mtf50_value, bool quality_flag) {
+    // quality of 1.0 means good quality, 0.0 means unusably poor
+    void set_mtf50_value(size_t edge_number, double mtf50_value, double quality_value) {
         assert(edge_number < 4);
         mtf50[edge_number] = mtf50_value;
-        quality[edge_number] = quality_flag;
+        quality[edge_number] = quality_value;
     }
     
     double get_mtf50_value(size_t edge_number) const {
@@ -127,11 +128,11 @@ class Block {
         return area;
     }
     
-    bool get_quality(size_t edge_number) const {
+    double get_quality(size_t edge_number) const {
         return quality[edge_number];
     }
     
-    bool get_quality(edge_position ep) const {
+    double get_quality(edge_position ep) const {
         map<edge_position, size_t>::const_iterator it = edge_lut.find(ep);
         return quality[it->second];
     }
@@ -139,7 +140,7 @@ class Block {
     
     Mrectangle rect;
     vector<double> mtf50;
-    vector<bool> quality;
+    vector<double> quality;
     map<edge_position, size_t> edge_lut;
     Point centroid;
     double area;

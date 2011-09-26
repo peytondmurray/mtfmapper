@@ -36,7 +36,17 @@ class Mtf_renderer_annotate : public Mtf_renderer {
     Mtf_renderer_annotate(const cv::Mat& in_img, const std::string& fname) 
       : img(in_img), ofname(fname) {
       
-          out_img = img.clone();
+          unsigned int max_val = 0;
+          for (int r=0; r < img.rows; r++) {
+              for (int c=0; c < img.cols; c++) {
+                  if (img.at<uint16_t>(r,c) > max_val) {
+                      max_val = img.at<uint16_t>(r,c);
+                  }
+              }
+          }
+          cv::Mat temp_img;
+          img.convertTo(temp_img, CV_8UC3, 255.0/double(max_val));
+          cv::merge(vector<cv::Mat>(3, temp_img), out_img);
     }
     
     void render(const vector<Block>& blocks) {
@@ -45,7 +55,7 @@ class Mtf_renderer_annotate : public Mtf_renderer {
                 double val = blocks[i].get_mtf50_value(k);
                 if (val > 0) {
                     Point cent = blocks[i].get_edge_centroid(k);
-                    write_number(out_img, lrint(cent.x), lrint(cent.y), val);
+                    write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
                 }
             }
         }    
@@ -53,7 +63,7 @@ class Mtf_renderer_annotate : public Mtf_renderer {
         imwrite(ofname, out_img);
     }
     
-    void write_number(cv::Mat& img, int px, int py, double val) {
+    void write_number(cv::Mat& img, int px, int py, double val, double quality) {
         char buffer[10];
         sprintf(buffer, "%.2lf", val);
         
@@ -61,7 +71,8 @@ class Mtf_renderer_annotate : public Mtf_renderer {
         
         cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
         
-        ts.width -= 4; // tweak box size slightly
+        ts.width -= 8;  // tweak box size slightly
+        ts.height += 6; // tweak box height slighly
         
         cv::Point to( px - ts.width/2, py + ts.height/2 );
         
@@ -74,12 +85,40 @@ class Mtf_renderer_annotate : public Mtf_renderer {
         cv::rectangle(img, 
             cv::Point( px - ts.width + 1, py - ts.height + 1), 
             cv::Point( px + ts.width - 1, py + ts.height - 1 ),
-            CV_RGB(65535,65535,65535), 1
+            CV_RGB(255,255,255), 1
         );
         
+        to.y -= 9;
         cv::putText(img, buffer, to, 
             cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-            CV_RGB(65535, 65535, 65535), 1, 8
+            CV_RGB(255, 255, 255), 1, 8
+        );
+        
+        sprintf(buffer, "(%.2lf)", quality);
+        ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.3, 1, &baseline);
+        to.x = px - ts.width/2;
+        to.y += 8 + 3;
+        
+        cv::Scalar col = CV_RGB(255, 0, 0);
+        if (quality == 1.0) {
+            col = CV_RGB(0, 255, 0);
+        }
+        if (quality < 1.0) {
+            col = CV_RGB(8, 202, 255);
+        }
+        if (quality < 0.8) {
+            col = CV_RGB(255, 255, 0);
+        }
+        if (quality < 0.5) {
+            col = CV_RGB(255, 187, 8);
+        } 
+        if (quality < 0.2) {
+            col = CV_RGB(255, 0, 0);
+        }
+        
+        cv::putText(img, buffer, to, 
+            cv::FONT_HERSHEY_SIMPLEX, 0.3, 
+            col, 1, 8
         );
         
     }

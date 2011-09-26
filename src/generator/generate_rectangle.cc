@@ -154,8 +154,8 @@ class Render_rows {
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
 
-    const int width  = 300;
-    const int height = 300;
+    int width  = 300;
+    int height = 300;
     
     double sigma = 0.3;
     
@@ -174,6 +174,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
+    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 300, "dimension", cmd);
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
     
@@ -183,6 +184,8 @@ int main(int argc, char** argv) {
     srand(rseed);
     
     theta = tc_theta.getValue() / 180.0 * M_PI;
+    
+    width = height = lrint(tc_dim.getValue());
     
     if (tc_mtf.isSet() && tc_blur.isSet()) {
         printf("Warning: you can not specify both blur and mtf50 values; choosing mtf50 value, and proceeding ...\n");
@@ -211,8 +214,8 @@ int main(int argc, char** argv) {
     printf("output filename = %s, sigma = %lf (or mtf50 = %lf), theta = %lf degrees, seed = %d, noise = %lf\n", 
         tc_out_name.getValue().c_str(), sigma, mtf, theta/M_PI*180, rseed, tc_noise.getValue()
     );
-    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d\n",
-        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit
+    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
+        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
     
     const double rwidth = width / 4;

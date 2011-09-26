@@ -88,7 +88,7 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
-void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv) {
+void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, double& rms_residual, bool deriv) {
     const int nsteps = fft_size;
     double x_span = upper - lower;
     double step = x_span / double(nsteps);
@@ -96,27 +96,24 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
     size_t start_idx = 0;
     size_t end_idx = 0;
     
+    rms_residual = 0;
+    double max_reconstructed = 0;
+    
     int fft_idx = 0;
     for (double step_base = lower; step_base < upper; step_base += step) {
     
         double mid = step_base + 0.5*step;
         
-        double min_rsq = 1e50;
-        double mid_rsq = 1e50;
         double rsq = 0;
         Point sol;
-        Point lsol;
         
         // try symmetric solution
         start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.25) - ordered.begin();
         end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.25) - ordered.begin();
-        rsq = loess_core(ordered, start_idx, end_idx, mid, lsol);
+        rsq = loess_core(ordered, start_idx, end_idx, mid, sol);
         
-        if (rsq < min_rsq) {
-            min_rsq = rsq;
-            mid_rsq = rsq;
-            sol = lsol;
-        }
+        max_reconstructed = std::max(max_reconstructed, ordered[end_idx].second);
+        rms_residual += rsq;
         
         double w = 0.54 + 0.46*cos(2*M_PI*(fft_idx - fft_size/2)/double(fft_size-1));  // Hamming window function
         fft_idx++;
@@ -132,6 +129,8 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
             fft_in_buffer[fft_idx-1-i] = 0;
         }
     }
+    rms_residual /= double(fft_idx+1);
+    rms_residual /= max_reconstructed;
 }
 
 
