@@ -321,6 +321,10 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     if (mtf50 <= 1.1) {
         if (quality > very_poor_quality) {  // do not correct mtf50 when the correction polynomial itself is questionable?
             mtf50 = s;
+            if (mtf50 < 0) {                // if the correction pushes the value below zero, discard it
+                mtf50 = 0;
+                quality = very_poor_quality;
+            }
         }
     } else {
         quality = unusable_quality;

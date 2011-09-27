@@ -144,7 +144,6 @@ int main(int argc, char** argv) {
     
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
-    printf("maximum gradient contrast: %lf\n", gradient.get_max_contrast());
     
     printf("Thresholding image ...\n");
     int brad_S = 2*cvimg.cols/3;
