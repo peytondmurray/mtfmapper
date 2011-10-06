@@ -35,8 +35,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_grid : public Mtf_renderer {
   public:
-    Mtf_renderer_grid(const std::string& wdir, const std::string& in_fname, const cv::Mat& img)
-      :  wdir(wdir), fname(in_fname), img_y(img.rows), img_x(img.cols), img(img), 
+    Mtf_renderer_grid(const std::string& wdir, const std::string& in_fname, 
+        const std::string& gnuplot_binary, const cv::Mat& img)
+      :  wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
+         img_y(img.rows), img_x(img.cols), img(img), 
          gnuplot_failure(false), gnuplot_warning(true) {
       
           if (img.rows > img.cols) {
@@ -129,7 +131,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot%s %sgrid.gnuplot", EXE_SUFFIX, wdir.c_str());
+        sprintf(buffer, "%s %sgrid.gnuplot", gnuplot_binary.c_str(), wdir.c_str());
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
@@ -149,6 +151,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
     
     std::string wdir;
     std::string fname;
+    std::string gnuplot_binary;
     size_t grid_x;
     size_t grid_y;
     

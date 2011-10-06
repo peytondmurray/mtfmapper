@@ -92,15 +92,20 @@ int main(int argc, char** argv) {
     TCLAP::UnlabeledValueArg<std::string>  tc_wdir("<working_directory>", 
         "Working directory (for output files); \".\" is fine", true, ".", "string", cmd
     );
-    TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, true);
-    TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, true);
-    TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, true);
+    TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, false);
+    TCLAP::SwitchArg tc_annotate("a","annotate","Annotate input image with MTF50 values", cmd, false);
+    TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, false);
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
+    TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
     
     cmd.parse(argc, argv);
+
+    if (!tc_profile.getValue() && !tc_annotate.getValue() && !tc_surface.getValue() && !tc_print.getValue() ) {
+        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s]\n");
+    }
 
     cv::Mat cvimg = cv::imread(tc_in_name.getValue(),-1);
     
@@ -184,7 +189,13 @@ int main(int argc, char** argv) {
             printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
             few_edges_warned = true;
         } else {
-            Mtf_renderer_profile profile(wdir, string("profile.txt"),string("profile_peak.txt"), cvimg);
+            Mtf_renderer_profile profile(
+                wdir, 
+                string("profile.txt"),
+                string("profile_peak.txt"),
+                tc_gnuplot.getValue(),
+                cvimg
+            );
             profile.render(mtf_core.get_blocks());
             gnuplot_warning = !profile.gnuplot_failed();
         }
@@ -196,7 +207,12 @@ int main(int argc, char** argv) {
                 printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
             }
         } else {
-            Mtf_renderer_grid grid(wdir, string("grid.txt"),  cvimg);
+            Mtf_renderer_grid grid(
+                wdir, 
+                string("grid.txt"),
+                tc_gnuplot.getValue(),
+                cvimg
+            );
             grid.set_gnuplot_warning(gnuplot_warning);
             grid.render(mtf_core.get_blocks());
         }

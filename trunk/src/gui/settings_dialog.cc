@@ -43,6 +43,15 @@ const QString setting_profile = "setting_profile";
 const Qt::CheckState setting_profile_default = Qt::Checked;
 const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
+const QString setting_gnuplot = "setting_gnuplot";
+const QString setting_exiv = "setting_exiv";
+#ifdef _WIN32
+static QString setting_gnuplot_default = "gnuplot.exe";
+static QString setting_exiv_default = "exiv2.exe";
+#else
+const QString setting_gnuplot_default = "/usr/bin/gnuplot";
+const QString setting_exiv_default = "/usr/bin/exiv2";
+#endif
 
 Settings_dialog::Settings_dialog(QWidget *parent)
  : settings("mtfmapper", "mtfmapper")
@@ -51,9 +60,19 @@ Settings_dialog::Settings_dialog(QWidget *parent)
     arguments_line  = new QLineEdit;
     threshold_label = new QLabel(tr("Threshold:"));
     threshold_line  = new QLineEdit;
-    
+
+    gnuplot_label  = new QLabel(tr("gnuplot executable:"));
+    gnuplot_line   = new QLineEdit;
+    gnuplot_button = new QPushButton(tr("Browse"));
+
+    exiv_label  = new QLabel(tr("exiv2 executable:"));
+    exiv_line   = new QLineEdit;
+    exiv_button = new QPushButton(tr("Browse"));
+
     accept_button = new QPushButton(tr("&Accept"));
+    accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     cancel_button = new QPushButton(tr("&Cancel"));
+    cancel_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     
     cb_linear_gamma = new QCheckBox("Linear gamma (8 bit)");
     cb_annotation   = new QCheckBox("Annotation");
@@ -73,7 +92,14 @@ Settings_dialog::Settings_dialog(QWidget *parent)
     cb_grid->setCheckState(
         (Qt::CheckState)settings.value(setting_grid, setting_grid_default).toInt()
     );
-    
+
+    #ifdef _WIN32
+    setting_gnuplot_default = QCoreApplication::applicationDirPath() + QString("\\gnuplot\\gnuplot.exe");
+    setting_exiv_default = QCoreApplication::applicationDirPath() + QString("\\exiv2\\exiv2.exe");
+    #endif
+
+    gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
+    exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
     
     QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"));
     QVBoxLayout *cb_layout = new QVBoxLayout;
@@ -82,20 +108,34 @@ Settings_dialog::Settings_dialog(QWidget *parent)
     cb_layout->addWidget(cb_profile);
     cb_layout->addWidget(cb_grid);
     v2GroupBox->setLayout(cb_layout);
+
+    QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"));
+    QGridLayout *helper_layout = new QGridLayout;
+    helper_layout->addWidget(gnuplot_label, 0, 0);
+    helper_layout->addWidget(gnuplot_line, 0, 1);
+    helper_layout->addWidget(gnuplot_button, 0, 2);
+    helper_layout->addWidget(exiv_label, 1, 0);
+    helper_layout->addWidget(exiv_line, 1, 1);
+    helper_layout->addWidget(exiv_button, 1, 2);
+    v3GroupBox->setLayout(helper_layout);
+
     
     QGroupBox* vGroupBox = new QGroupBox(tr("Settings"));
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(v2GroupBox, 0, 0, 1, 2);
-    vlayout->addWidget(threshold_label, 1, 0);
-    vlayout->addWidget(threshold_line, 1, 1);
-    vlayout->addWidget(arguments_label, 2, 0);
-    vlayout->addWidget(arguments_line, 2, 1);
-    vlayout->addWidget(accept_button, 3, 0);
-    vlayout->addWidget(cancel_button, 3, 1);
+    vlayout->addWidget(v3GroupBox, 1, 0, 1, 2);
+    vlayout->addWidget(threshold_label, 2, 0);
+    vlayout->addWidget(threshold_line, 2, 1);
+    vlayout->addWidget(arguments_label, 3, 0);
+    vlayout->addWidget(arguments_line, 3, 1);
+    vlayout->addWidget(accept_button, 4, 0);
+    vlayout->addWidget(cancel_button, 4, 1);
     vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
+    connect(gnuplot_button, SIGNAL(clicked()), this, SLOT( browse_for_gnuplot() ));
+    connect(exiv_button, SIGNAL(clicked()), this, SLOT( browse_for_exiv() ));
     
     setLayout(vlayout);
 }
@@ -111,15 +151,15 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" -l");
     }
     
-    if (!cb_annotation->checkState()) {
+    if (cb_annotation->checkState()) {
         args = args + QString(" -a");
     }
     
-    if (!cb_profile->checkState()) {
+    if (cb_profile->checkState()) {
         args = args + QString(" -p");
     }
     
-    if (!cb_grid->checkState()) {
+    if (cb_grid->checkState()) {
         args = args + QString(" -s");
     }
     
@@ -127,15 +167,78 @@ void Settings_dialog::send_argument_string(void) {
 }
 
 void Settings_dialog::save_and_close() {
-    printf("saving settings\n");
+    check_gnuplot_binary();
+    check_exiv2_binary();
     settings.setValue(setting_threshold, threshold_line->text());
     settings.setValue(setting_linear_gamma, cb_linear_gamma->checkState());
     settings.setValue(setting_annotation, cb_annotation->checkState());
     settings.setValue(setting_profile, cb_profile->checkState());
     settings.setValue(setting_grid, cb_grid->checkState());
+    settings.setValue(setting_gnuplot, gnuplot_line->text());
+    settings.setValue(setting_exiv, exiv_line->text());
     
     send_argument_string();
     
     close();
 }
 
+void Settings_dialog::browse_for_gnuplot(void) {
+    QString gnuplot = QFileDialog::getOpenFileName(
+        this,
+        "Locate gnuplot binary",
+        QString("/usr/bin/gnuplot"),
+        QString::null
+    );
+
+    if (gnuplot != QString::null) {
+        gnuplot_line->setText(gnuplot);
+    }
+
+    check_gnuplot_binary();
+}
+
+
+void Settings_dialog::check_gnuplot_binary(void) {
+    bool gnuplot_exists = QFile::exists(get_gnuplot_binary());
+    if (!gnuplot_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("gnuplot helper"), 
+            QString("gnuplot helper executable not found. Please reconfigure.")
+        );
+    }
+}
+
+void Settings_dialog::browse_for_exiv(void) {
+    QString exiv = QFileDialog::getOpenFileName(
+        this,
+        "Locate exiv2 binary",
+        QString("/usr/bin/exiv2"),
+        QString::null
+    );
+
+    if (exiv != QString::null) {
+        exiv_line->setText(exiv);
+    }
+
+    check_exiv2_binary();
+}
+
+void Settings_dialog::check_exiv2_binary(void) {    
+    bool exiv_exists = QFile::exists(get_exiv2_binary());
+    if (!exiv_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("Exiv2 helper"), 
+            QString("Exiv2 helper executable not found. Please reconfigure.")
+        );
+    }
+}
+
+QString Settings_dialog::get_gnuplot_binary(void) const {
+    return gnuplot_line->text();
+}
+
+QString Settings_dialog::get_exiv2_binary(void) const {
+    return exiv_line->text();
+}

@@ -32,49 +32,68 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QWidget>
 #include <stdio.h>
 
-Img_frame::Img_frame(QWidget* parent) : parent(parent) {
+Img_frame::Img_frame(QWidget* parent) : parent(parent), ctrl_down(false) {
+    setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
 }
 
 const int ScrollStep = 10;
 
 void Img_frame::keyPressEvent(QKeyEvent* event) {
     switch (event->key()) {
-        case Qt::Key_Plus:
-            zoom(1);
-            break;
-        case Qt::Key_Minus:
-            zoom(-1);
-            break;
-        case Qt::Key_Left:
-            scroll(-ScrollStep, 0);
-            break;
-        case Qt::Key_Right:
-            scroll(+ScrollStep, 0);
-            break;
-        case Qt::Key_Down:
-            scroll(0, -ScrollStep);
-            break;
-        case Qt::Key_Up:
-            scroll(0, +ScrollStep);
-            break;
-        default:
-            QWidget::keyPressEvent(event);
+    case Qt::Key_Control:
+        ctrl_down = true;
+        break;
+    case Qt::Key_Equal:
+        emit zoom_to_100();
+        break;
+    case Qt::Key_Plus:
+        zoom(1);
+        break;
+    case Qt::Key_Minus:
+        zoom(-1);
+        break;
+    case Qt::Key_Left:
+        scroll(-ScrollStep, 0);
+        break;
+    case Qt::Key_Right:
+        scroll(+ScrollStep, 0);
+        break;
+    case Qt::Key_Down:
+        scroll(0, -ScrollStep);
+        break;
+    case Qt::Key_Up:
+        scroll(0, +ScrollStep);
+        break;
+    default:
+        QWidget::keyPressEvent(event);
+    }
+}
+
+void Img_frame::keyReleaseEvent(QKeyEvent* event) {
+    switch (event->key()) {
+    case Qt::Key_Control:
+        ctrl_down = false;
+        break;
+    default:
+        QWidget::keyReleaseEvent(event);
     }
 }
 
 void Img_frame::wheelEvent(QWheelEvent* event) {
     int numDegrees = event->delta() / 8;
-    if (event->delta() > 0) {
-        emit zoom_in();
-    } else {
-        emit zoom_out();
+    if (ctrl_down) {
+        if (event->delta() > 0) {
+            emit zoom_in();
+        } else {
+            emit zoom_out();
+        }
     }
     //double numSteps = numDegrees / 15.0f;
     //zoom(pow(ZoomInFactor, numSteps));
 }
 
 void Img_frame::zoom(int dir) {
-    printf("zooming %d\n", dir);
     if (dir < 0) {
         emit zoom_out();
     } else {

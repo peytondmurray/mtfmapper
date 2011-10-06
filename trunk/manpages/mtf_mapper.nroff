@@ -7,7 +7,11 @@ mtf_mapper \- compute MTF50 edge sharpness measure in images
 .SH SYNOPSIS
 .B mtf_mapper 
 .I <image> <output_dir>
-.B [-g
+.B [--gnuplot-executable 
+.I <filepath>
+.B ] [-t 
+.I <threshold>
+.B ] [-g
 .I <angle>
 .B ] [-r] [-l] [-s] [-a] [-p]
 .SH DESCRIPTION
@@ -21,6 +25,14 @@ images with rectangles containing known MTF50 values can be generated with
 .BR mtf_generate_rectangle (1).
 
 .SH OPTIONS
+.IP "--gnuplot-executable <filepath>"
+Specify the full path to the gnuplot executable. Defaults to 
+.I /usr/bin/gnuplot, 
+which is usually correct on most Linux distributions
+.IP "-t <threshold>"
+Specify the dark object threshold, with a default of 0.75. 
+Lower values are required if your dark objects are light relative to the 
+background, e.g., gray rectangles rather than black rectangles.
 .IP "-g <angle>"
 Only report MTF50 values on edges with an orientation of <angle> degrees in
 raw output mode (-r)
@@ -32,17 +44,17 @@ Linear input mode; assumes that an 8-bit input image has a linear intensity
 scale. The default is to assume that 8-bit input images have an sRGB gamma
 intensity profile (approximately gamma 2.2)
 .IP -s
-Turn off Surface mode. Surface mode (enabled by default) generates two output plots: an
+Turn on Surface mode. Surface mode (enabled by default) generates two output plots: an
 color-graded 2D view of the MTF50 values across the image, and a 3D surface
 plot of the same data.
 .IP -a
-Turn off Annotate mode. If Annotate mode is enabled (as by default),
+Turn on Annotate mode. If Annotate mode is enabled (as by default),
 .B mtf_mapper
 produces an output file called
 .I annotated.png
 wherein each edge is annotated with its MTF50 value.
 .IP -p
-Turn off Profile mode. If Profile mode is enables, 
+Turn on Profile mode. If Profile mode is enables, 
 .B mtf_mapper
 produces a plot (
 .I profile_image.png

@@ -41,7 +41,10 @@ class Img_frame : public QFrame
     Img_frame(QWidget* parent);
     
     void keyPressEvent(QKeyEvent* event);
+    void keyReleaseEvent(QKeyEvent* event);
     void wheelEvent(QWheelEvent* event);
+    //void mouseMoveEvent(QMouseEvent* event);
+    //void mousePressEvent(QMouseEvent *event);
     
     void zoom(int dir);
     void scroll(int x, int y);
@@ -49,11 +52,15 @@ class Img_frame : public QFrame
   signals:
     void zoom_in(void);
     void zoom_out(void);
+    void zoom_to_100(void);
   
   //public slots:
   
   private:
     QWidget* parent;
+    bool     ctrl_down;
+    QPoint   offset;
+    QPoint   last_drag_pos;
 };
 
 #endif

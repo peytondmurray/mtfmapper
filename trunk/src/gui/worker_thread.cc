@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <QFileInfo>
 #include <QSharedPointer>
+#include <QCoreApplication>
 #include "mtfmapper_app.h"
 
 using std::cout;
@@ -51,17 +52,20 @@ void Worker_thread::set_files(const QStringList& files) {
 void Worker_thread::run(void) {
     output_files.clear();
     for (int i=0; i < input_files.size(); i++) {
-        emit send_progress_indicator(i);
+        emit send_progress_indicator(i+1);
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(i);
         QDir().mkdir(tempdir);
         char* buffer = new char[4096];
-        sprintf(buffer, "./mtf_mapper %s %s %s", 
+        sprintf(buffer, "%s/mtf_mapper --gnuplot-executable %s %s %s %s", 
+            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
+            gnuplot_binary.toLocal8Bit().constData(),
             input_files.at(i).toLocal8Bit().constData(),
             tempdir.toLocal8Bit().constData(),
             arguments.toLocal8Bit().constData()
         );
         cout << "Processing file " << input_files.at(i).toLocal8Bit().constData() << ":" 
              << arguments.toLocal8Bit().constData() << endl;
+        printf("actual command = [%s]\n", buffer);
         int rval = system(buffer);
         
         if (rval >= 0) {
@@ -104,7 +108,7 @@ void Worker_thread::run(void) {
         }
         delete [] buffer;
     }
-    emit send_progress_indicator(input_files.size());
+    emit send_progress_indicator(input_files.size()+1);
 }
 
 void Worker_thread::receive_arg_string(QString s) {

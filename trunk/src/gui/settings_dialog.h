@@ -43,6 +43,10 @@ class Settings_dialog : public QDialog
   public:
     Settings_dialog(QWidget *parent);
     void send_argument_string(void);
+    QString get_gnuplot_binary(void) const;
+    QString get_exiv2_binary(void) const;
+    void check_gnuplot_binary(void);
+    void check_exiv2_binary(void);
     
     QSettings   settings;
     
@@ -57,6 +61,14 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_annotation;
     QCheckBox*  cb_profile;
     QCheckBox*  cb_grid;
+
+    QLabel*     gnuplot_label;
+    QLineEdit*  gnuplot_line;
+    QPushButton* gnuplot_button;
+
+    QLabel*     exiv_label;
+    QLineEdit*  exiv_line;
+    QPushButton* exiv_button;
     
   signals:
     void argument_string(QString s);  
@@ -64,6 +76,8 @@ class Settings_dialog : public QDialog
   public slots:
     void open();
     void save_and_close();
+    void browse_for_gnuplot();
+    void browse_for_exiv();
     
 };
 
