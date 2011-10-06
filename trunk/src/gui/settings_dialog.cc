@@ -63,10 +63,12 @@ Settings_dialog::Settings_dialog(QWidget *parent)
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"));
     gnuplot_line   = new QLineEdit;
+    //gnuplot_line->resize(200,20);
     gnuplot_button = new QPushButton(tr("Browse"));
 
     exiv_label  = new QLabel(tr("exiv2 executable:"));
     exiv_line   = new QLineEdit;
+    //exiv_line->resize(200,20);
     exiv_button = new QPushButton(tr("Browse"));
 
     accept_button = new QPushButton(tr("&Accept"));
@@ -112,24 +114,29 @@ Settings_dialog::Settings_dialog(QWidget *parent)
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"));
     QGridLayout *helper_layout = new QGridLayout;
     helper_layout->addWidget(gnuplot_label, 0, 0);
-    helper_layout->addWidget(gnuplot_line, 0, 1);
-    helper_layout->addWidget(gnuplot_button, 0, 2);
-    helper_layout->addWidget(exiv_label, 1, 0);
-    helper_layout->addWidget(exiv_line, 1, 1);
-    helper_layout->addWidget(exiv_button, 1, 2);
+    helper_layout->addWidget(gnuplot_line, 1, 0);
+    helper_layout->addWidget(gnuplot_button, 1, 1);
+    helper_layout->addWidget(exiv_label, 2, 0);
+    helper_layout->addWidget(exiv_line, 3, 0);
+    helper_layout->addWidget(exiv_button, 3, 1);
     v3GroupBox->setLayout(helper_layout);
+
+    QGroupBox* advanced = new QGroupBox(tr("Advanced"));
+    QGridLayout* adv_layout = new QGridLayout;
+    adv_layout->addWidget(threshold_label, 0, 0);
+    adv_layout->addWidget(threshold_line, 0, 1);
+    adv_layout->addWidget(arguments_label, 1, 0);
+    adv_layout->addWidget(arguments_line, 1, 1);
+    advanced->setLayout(adv_layout);
 
     
     QGroupBox* vGroupBox = new QGroupBox(tr("Settings"));
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(v2GroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v3GroupBox, 1, 0, 1, 2);
-    vlayout->addWidget(threshold_label, 2, 0);
-    vlayout->addWidget(threshold_line, 2, 1);
-    vlayout->addWidget(arguments_label, 3, 0);
-    vlayout->addWidget(arguments_line, 3, 1);
-    vlayout->addWidget(accept_button, 4, 0);
-    vlayout->addWidget(cancel_button, 4, 1);
+    vlayout->addWidget(advanced, 2, 0, 1, 2);
+    vlayout->addWidget(accept_button, 3, 0);
+    vlayout->addWidget(cancel_button, 3, 1);
     vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));

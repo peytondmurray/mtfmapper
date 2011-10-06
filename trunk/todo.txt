@@ -1,5 +1,11 @@
-1. add some basic quality evaluation for each mtf edge
-2. add threading to threshold (use opencv integral)
-3. make tbb optional (maybe use boost?)
-4. use the knowledge of block shapes to improve systematic edge orientation
+1. add threading to threshold (use opencv integral)
+2. make tbb optional (maybe use boost?)
+3. use the knowledge of block shapes to improve systematic edge orientation
 estimation
+4. handle transposing of images (can this be automated?)
+5. separate left/right profiles
+6. use only vertical mtf values on profiles
+7. improve handling of very small rectangles, especially when roi buffers
+overlap
+8. make profiles more robust, i.e., resolve reference block orientation
+issues

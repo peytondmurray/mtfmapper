@@ -261,7 +261,6 @@ void mtfmapper_app::open()
         exif_properties.clear();
         
         progress->setRange(0, input_files.size()+1);
-        progress->setValue(1);
         
         QStringList labels;
         labels.push_back(QString("Data set"));
@@ -289,9 +288,10 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         QStandardItem* current_dataset_item = dataset_contents.item(row);
         count_before += current_dataset_item->rowCount() + 1;
     }
-    
-    view_image(dataset_files.at(count_before));
-    display_exif_properties(count_before);
+    if (dataset_contents.itemFromIndex(index)->isEnabled()) {
+        view_image(dataset_files.at(count_before));
+        display_exif_properties(count_before);
+    }
 }
 
 void mtfmapper_app::dataset_selected_changed(const QModelIndex& i1, const QModelIndex& i2) {
