@@ -64,12 +64,10 @@ class Render_rectangle : public Render_target {
         hs = 22; // seems like enough samples for up to sigma=6, at least
               
         int nsamples = hs*2 + 1;
-        weights = cv::Mat_<double>(nsamples, nsamples);
         pos_x   = cv::Mat_<double>(nsamples, nsamples);
         pos_y   = cv::Mat_<double>(nsamples, nsamples);
               
         normal_sampler sampler;
-        weightsum = 0;
         for (int ss_x=-hs; ss_x <= hs; ss_x++) {
             for (int ss_y=-hs; ss_y <= hs; ss_y++) {
                   
@@ -78,11 +76,8 @@ class Render_rectangle : public Render_target {
                     
                 sampler.rnorm2d(ex, ey, sigma);
                     
-                double weight = 1.0;
-                weights(ss_y+hs, ss_x+hs) = weight; 
                 pos_x(ss_y+hs, ss_x+hs) = ex;
                 pos_y(ss_y+hs, ss_x+hs) = ey;
-                weightsum += weight;
             }
         } // supersamples
     }
@@ -95,17 +90,16 @@ class Render_rectangle : public Render_target {
             
                 double ex = pos_x(ss_y+hs, ss_x+hs);
                 double ey = pos_y(ss_y+hs, ss_x+hs);
-                double weight = weights(ss_y+hs, ss_x+hs);
                 
                 if ( is_inside(ex + x, ey + y) ) {
-                    accumulator += object_value * weight;
+                    accumulator += object_value;
                 } else {
-                    accumulator += background_value * weight;
+                    accumulator += background_value;
                 }
             }
         } // supersamples
          
-        double value = accumulator / weightsum;
+        double value = accumulator / ((2*hs+1)*(2*hs+1));
         return value;
     }
       
@@ -123,11 +117,9 @@ class Render_rectangle : public Render_target {
     }      
       
     double sigma;
-    double weightsum;
     int    hs;
     cv::Vec2d normals[4];
     cv::Vec2d bases[4];
-    cv::Mat_<double> weights;
     cv::Mat_<double> pos_x;
     cv::Mat_<double> pos_y;
 };
