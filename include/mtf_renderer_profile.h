@@ -36,9 +36,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_profile : public Mtf_renderer {
   public:
-    Mtf_renderer_profile(const std::string& wdir, const std::string& prof_fname, const std::string& peak_fname, const cv::Mat& img) 
+    Mtf_renderer_profile(const std::string& wdir, const std::string& prof_fname, 
+        const std::string& peak_fname, const std::string& gnuplot_binary,
+        const cv::Mat& img) 
       :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
-         img(img), gnuplot_failure(false), gnuplot_warning(true) {
+         gnuplot_binary(gnuplot_binary), img(img), gnuplot_failure(false), 
+         gnuplot_warning(true) {
       
     }
     
@@ -189,7 +192,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "gnuplot%s %sprofile.gnuplot", EXE_SUFFIX, wdir.c_str());
+        sprintf(buffer, "%s %sprofile.gnuplot", gnuplot_binary.c_str(), wdir.c_str());
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
@@ -210,6 +213,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
     std::string wdir;
     std::string prname;
     std::string pfname;
+    std::string gnuplot_binary;
     const cv::Mat& img;
     bool gnuplot_failure;
     bool gnuplot_warning;

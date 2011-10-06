@@ -94,8 +94,10 @@ mtfmapper_app::mtfmapper_app(QWidget *parent)
     qgs = new QGraphicsScene;
     qgs->setSceneRect(0,0,400,400);
     qgv = new QGraphicsView(qgs);
+    qgv->setDragMode(QGraphicsView::ScrollHandDrag);
+    qgv->setRenderHints(QPainter::SmoothPixmapTransform);
     qgpi = new QGraphicsPixmapItem;
-    //qgpi->setTransformationMode(Qt::SmoothTransformation);
+    qgpi->setTransformationMode(Qt::SmoothTransformation);
     qgs->addItem(qgpi);
     qgv->resize(600,300);
     
@@ -183,6 +185,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent)
     connect(zoom_spinbox, SIGNAL(valueChanged(int)), this, SLOT(zoom_changed(int)));
     connect(img_frame, SIGNAL(zoom_in()), this, SLOT(zoom_in()));
     connect(img_frame, SIGNAL(zoom_out()), this, SLOT(zoom_out()));
+    connect(img_frame, SIGNAL(zoom_to_100()), this, SLOT(zoom_to_100()));
     
     connect(&processor, SIGNAL(send_progress_indicator(int)), progress, SLOT(setValue(int)));
     connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
@@ -191,6 +194,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent)
     resize(920,600);
     
     settings->send_argument_string();
+    check_if_helpers_exist();
 }
 
 mtfmapper_app::~mtfmapper_app(void) {
@@ -237,7 +241,7 @@ void mtfmapper_app::view_image(const QString& fname) {
     }
     int rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
     int rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
-    qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight)));
+    qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
 } 
  
@@ -256,14 +260,15 @@ void mtfmapper_app::open()
         dataset_files.clear();
         exif_properties.clear();
         
-        progress->setRange(0, input_files.size());
+        progress->setRange(0, input_files.size()+1);
+        progress->setValue(1);
         
         QStringList labels;
         labels.push_back(QString("Data set"));
         dataset_contents.setHorizontalHeaderLabels(labels);
         processor.set_files(input_files);
+        processor.set_gnuplot_binary(settings->get_gnuplot_binary());
         processor.start();
-        
     }
 }
  
@@ -379,6 +384,10 @@ void mtfmapper_app::zoom_out(void) {
     zoom_spinbox->setValue(zoom_spinbox->value() - 10);
 }
 
+void mtfmapper_app::zoom_to_100(void) {
+    zoom_spinbox->setValue(100);
+}
+
 void mtfmapper_app::display_exif_properties(int index) {
     Exiv2_property* props = exif_properties.at(index);
     img_comment_value->setText(props->get_comment());
@@ -394,4 +403,25 @@ void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 
     // actually, we could delete it right away ...
     item_for_deletion(tempdir + QString("/exifinfo.txt"));
+}
+
+void mtfmapper_app::check_if_helpers_exist(void) {
+    bool gnuplot_exists = QFile::exists(settings->get_gnuplot_binary());
+    bool exiv_exists = QFile::exists(settings->get_exiv2_binary());
+
+    if (!gnuplot_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("gnuplot helper"), 
+            QString("gnuplot helper executable not found. Please configure this in the settings.")
+        );
+    }
+
+    if (!exiv_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("Exiv2 helper"), 
+            QString("Exiv2 helper executable not found. Please configure this in the settings.")
+        );
+    }
 }

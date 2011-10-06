@@ -63,6 +63,7 @@ class mtfmapper_app : public QMainWindow
     void view_image(const QString& fname);
     void display_exif_properties(int index);
     void clear_temp_files(void);
+    void check_if_helpers_exist(void);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
@@ -133,6 +134,7 @@ class mtfmapper_app : public QMainWindow
   
     void zoom_in(void);
     void zoom_out(void);  
+    void zoom_to_100(void);
 };
                                
                                 

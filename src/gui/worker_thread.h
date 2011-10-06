@@ -47,6 +47,14 @@ class Worker_thread : public QThread
     const QStandardItemModel& get_output_files(void) {
         return output_files;
     }
+
+    void set_gnuplot_binary(const QString& s) {
+        gnuplot_binary = s;
+    }
+
+    void set_exiv2_binary(const QString& s) {
+        exiv2_binary = s;
+    }
     
   signals:
     void send_parent_item(QString s, QString f);
@@ -65,6 +73,8 @@ class Worker_thread : public QThread
     QStringList input_files;
     QStandardItemModel output_files;
     QString      arguments;
+    QString      gnuplot_binary;
+    QString      exiv2_binary;
 };
 
 #endif
