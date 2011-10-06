@@ -33,6 +33,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::lower_bound;
 using std::upper_bound;
 
+const int MIN_POINTS_TO_FIT = 8;
+
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
     double mid,  Point& sol) {
 
@@ -40,7 +42,7 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
 
     int n = end_idx - start_idx;
     
-    if (n < 8) {
+    if (n < MIN_POINTS_TO_FIT) {
         sol.x = 0;
         sol.y = 0;
         return 1e10;
@@ -92,7 +94,7 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
     const int nsteps = fft_size;
     double x_span = upper - lower;
     double step = x_span / double(nsteps);
-    
+
     size_t start_idx = 0;
     size_t end_idx = 0;
     
@@ -110,8 +112,34 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
         // try symmetric solution
         start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.25) - ordered.begin();
         end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.25) - ordered.begin();
-        rsq = loess_core(ordered, start_idx, end_idx, mid, sol);
+
+        bool end_capped = false;
+        bool start_capped = false;
+
+        // if we have too few points, expand the range a bit
+        while ( (end_idx - start_idx) < MIN_POINTS_TO_FIT && !(end_capped && start_capped)) {
+            if (end_idx < ordered.size()-4) {
+                end_idx += 3;
+            } else {
+                end_capped = true;
+            }
+            if (start_idx > 2) {
+                start_idx -= 3;
+            } else {
+                start_capped = true;
+            }
+            if (end_idx > ordered.size()-1) {
+                end_idx = ordered.size()-1;
+            }
+            if (start_idx <= 0 || start_idx > ordered.size()) {
+                start_idx = 0;
+            }
+        }
+        // it is possible that we still have fewer than MIN_POINTS_TO_FIT, 
+        // so this would be a good place to raise a warning
         
+        rsq = loess_core(ordered, start_idx, end_idx, mid, sol);
+              
         max_reconstructed = std::max(max_reconstructed, ordered[end_idx].second);
         rms_residual += rsq;
         
