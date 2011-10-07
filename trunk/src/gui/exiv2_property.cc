@@ -40,8 +40,8 @@ using std::cout;
 using std::endl;
 
 
-Exiv2_property::Exiv2_property(QString ifname, QString tfname)
-: ifname(ifname), tfname(tfname)
+Exiv2_property::Exiv2_property(QString bin_name, QString ifname, QString tfname)
+: exiv2_binary(bin_name),ifname(ifname), tfname(tfname)
 {
 
     // ping exiv2 to get camera make
@@ -74,7 +74,8 @@ char*   Exiv2_property::eat_whitespace(char* cp) {
 
 QString Exiv2_property::extract_property(QString propname) {
     char* buffer = new char[4096];
-    sprintf(buffer, "exiv2 %s -g %s > %s",
+    sprintf(buffer, "%s %s -g %s > %s",
+		exiv2_binary.toLocal8Bit().constData(),
         ifname.toLocal8Bit().constData(),
         propname.toLocal8Bit().constData(),
         tfname.toLocal8Bit().constData()
