@@ -250,8 +250,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    double residual = 0;
-    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot, residual); // loess_fit computes the ESF derivative as part of the fitting procedure
+    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);

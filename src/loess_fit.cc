@@ -90,16 +90,13 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
-void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, double& rms_residual, bool deriv) {
+void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv) {
     const int nsteps = fft_size;
     double x_span = upper - lower;
     double step = x_span / double(nsteps);
 
     size_t start_idx = 0;
     size_t end_idx = 0;
-    
-    rms_residual = 0;
-    double max_reconstructed = 0;
     
     int fft_idx = 0;
     for (double step_base = lower; step_base < upper; step_base += step) {
@@ -118,21 +115,15 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
 
         // if we have too few points, expand the range a bit
         while ( (end_idx - start_idx) < MIN_POINTS_TO_FIT && !(end_capped && start_capped)) {
-            if (end_idx < ordered.size()-4) {
-                end_idx += 3;
+            if (end_idx < ordered.size()-1) {
+                end_idx += 1;
             } else {
                 end_capped = true;
             }
-            if (start_idx > 2) {
-                start_idx -= 3;
+            if (start_idx > 0) {
+                start_idx -= 1;
             } else {
                 start_capped = true;
-            }
-            if (end_idx > ordered.size()-1) {
-                end_idx = ordered.size()-1;
-            }
-            if (start_idx <= 0 || start_idx > ordered.size()) {
-                start_idx = 0;
             }
         }
         // it is possible that we still have fewer than MIN_POINTS_TO_FIT, 
@@ -140,9 +131,6 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
         
         rsq = loess_core(ordered, start_idx, end_idx, mid, sol);
               
-        max_reconstructed = std::max(max_reconstructed, ordered[end_idx].second);
-        rms_residual += rsq;
-        
         double w = 0.54 + 0.46*cos(2*M_PI*(fft_idx - fft_size/2)/double(fft_size-1));  // Hamming window function
         fft_idx++;
         if (deriv) {
@@ -157,8 +145,6 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
             fft_in_buffer[fft_idx-1-i] = 0;
         }
     }
-    rms_residual /= double(fft_idx+1);
-    rms_residual /= max_reconstructed;
 }
 
 
