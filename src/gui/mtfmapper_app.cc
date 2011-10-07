@@ -398,7 +398,7 @@ void mtfmapper_app::display_exif_properties(int index) {
 
 void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 
-    Exiv2_property* props = new Exiv2_property(s, tempdir + "/exifinfo.txt");
+    Exiv2_property* props = new Exiv2_property(settings->get_exiv2_binary(), s, tempdir + "/exifinfo.txt");
     exif_properties.push_back(props);
 
     // actually, we could delete it right away ...

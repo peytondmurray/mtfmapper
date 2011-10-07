@@ -42,7 +42,7 @@ class Exiv2_property {
 
     Exiv_mode mode;
 
-    Exiv2_property(QString ifname, QString tfname);
+    Exiv2_property(QString bin_name, QString ifname, QString tfname);
 
     Exiv_mode get_mode(void) const {
         return mode;
@@ -64,6 +64,10 @@ class Exiv2_property {
         return p_focal_length;
     }
 
+	void set_exiv2_binary(const QString& s) {
+		exiv2_binary = s;
+	}
+
   private:
     QString extract_property(QString propname);
     QString extract_af_tune(void);
@@ -82,6 +86,8 @@ class Exiv2_property {
     QString p_comment;
     QString p_focus_distance;
     QString p_focal_length;
+
+	QString exiv2_binary;
 };
 
 #endif
