@@ -45,9 +45,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
       
     }
     
-    void set_gnuplot_warning(bool gnuplot) {
-        gnuplot_warning = gnuplot;
-    }
+    
     
     void render(const vector<Block>& blocks) {
         size_t largest_block = 0;
@@ -58,31 +56,32 @@ class Mtf_renderer_profile : public Mtf_renderer {
         }
         
         map<int, double> row_max;
-        
+        extract_row_maxima(row_max, blocks, false);
+
+        // check distribution: a bimodal distribution probably means the image is rotated
+        bool transpose = test_for_bimodal_distribution(row_max);
+        if (transpose) {
+            printf("bimodal distribution found, taking transpose\n");
+            extract_row_maxima(row_max, blocks, true);
+        }
+
+        // compute robust maximum
+        vector<double> mtf50_values;
+        for (map<int,double>::const_iterator it=row_max.begin(); it != row_max.end(); it++) {
+            mtf50_values.push_back(it->second);
+        }
+        sort(mtf50_values.begin(), mtf50_values.end());
+        // pick 95% percentile
+        double effective_max = mtf50_values[0.98*mtf50_values.size()];
+        // adjust it upwards a little
+        effective_max /= 0.9; 
+
         for (size_t i=0; i < blocks.size(); i++) {
             if (blocks[i].get_area() > blocks[largest_block].get_area()) {
                 largest_block = i;
             }
             centroid.x += blocks[i].get_centroid().x;
             centroid.y += blocks[i].get_centroid().y;
-            for (size_t k=0; k < 4; k++) {
-                double val = blocks[i].get_mtf50_value(k);
-                if (val > 0 && blocks[i].get_quality(k) >= 0.5) {
-                    Point cent = blocks[i].get_edge_centroid(k);
-                    
-                    int y = lrint(cent.y);
-                    
-                    map<int, double>::iterator it = row_max.find(y);
-                    
-                    if (it == row_max.end()) {
-                        row_max[y] = val;
-                    } else {
-                        if (val > row_max[y]) {
-                            row_max[y] = val;
-                        }
-                    }
-                }
-            }
         }
         
         if (row_max.size() == 0) {
@@ -175,7 +174,9 @@ class Mtf_renderer_profile : public Mtf_renderer {
             peak_quality_good = false;
         }
         fprintf(pffile, "%lf %lf %lf\n", 
-            blocks[largest_block].get_edge_centroid(peak_idx).y, 
+            transpose ? 
+                 blocks[largest_block].get_edge_centroid(peak_idx).x :
+                 blocks[largest_block].get_edge_centroid(peak_idx).y , 
             peak_mtf50,
             peak_mtf50*3
         );
@@ -187,7 +188,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
         fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
         fprintf(gpf, "set term png size 1024, 768\n");
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot \"%s\" u 1:2 t \"MTF50 (c/p) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
+        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (c/p) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
+            effective_max,
             (wdir+prname).c_str(), (wdir+prname).c_str(), (wdir+pfname).c_str(), peak_quality_good ? 3 : 1);
         fclose(gpf);
         
@@ -205,9 +207,122 @@ class Mtf_renderer_profile : public Mtf_renderer {
         delete [] buffer;
         
     }
+
+    void set_gnuplot_warning(bool gnuplot) {
+        gnuplot_warning = gnuplot;
+    }
     
     bool gnuplot_failed(void) {
         return gnuplot_failure;
+    }
+
+  private:
+    static double angular_diff(double a, double b) {
+        return acos(cos(a)*cos(b) + sin(a)*sin(b));
+    }
+
+    bool test_for_bimodal_distribution(const map<int, double>& data) {
+        int minval = data.begin()->first;
+        int maxval = data.rbegin()->first;
+        int span = maxval - minval;
+
+        int nbins = 60;
+
+        // bin coarser
+        vector<double> counts(nbins, 0);
+        for (map<int, double>::const_iterator it = data.begin(); it != data.end(); it++) {
+            int idx = (it->first - minval)*nbins/(span);
+            idx = std::max(0, idx);
+            idx = std::min(nbins-1, idx);
+            counts[idx] = std::max(it->second, counts[idx]);
+        }
+
+        // find two breakpoints in density; we are looking for a -_- shape, which
+        // indicates that the chart has been rotated
+        double min_cost = 1e50;
+        int min_start=0;
+        int min_end=0;
+        for (int b_start=10; b_start < 2*nbins/3; b_start += 2) {
+            for (int b_end=std::max(nbins/2, b_start+4); b_end < nbins-10; b_end += 2) {
+                double cost = 
+                    IQR(counts,0, b_start) + 
+                    10*IQR(counts, b_start, b_end) + 
+                    IQR(counts, b_end, nbins);
+                if (cost < min_cost) {
+                    min_cost = cost;
+                    min_start = b_start;
+                    min_end = b_end;
+                }
+            }
+        }
+        double first_segment = median(counts, 0, min_start);
+        double middle_segment = median(counts, min_start, min_end);
+        double last_segment = median(counts, min_end, nbins);
+
+        return middle_segment <= first_segment && middle_segment <= last_segment;
+    }
+
+    double IQR(const vector<double>& counts, int start, int end) {
+        vector<double> sorted;
+        start = std::max(0, start);
+        end = std::min(counts.size()-1, size_t(end));
+        for (size_t i=start; i < size_t(end); i++) {
+            sorted.push_back(counts[i]);
+        }
+        sort(sorted.begin(), sorted.end());
+        return sorted[lrint(sorted.size()*0.75)] - sorted[lrint(sorted.size()*0.25)];
+    }
+
+    double median(const vector<double>& counts, int start, int end) {
+        vector<double> sorted;
+        start = std::max(0, start);
+        end = std::min(counts.size()-1, size_t(end));
+        for (size_t i=start; i < size_t(end); i++) {
+            sorted.push_back(counts[i]);
+        }
+        sort(sorted.begin(), sorted.end());
+        return sorted[lrint(sorted.size()*0.5)];
+    }
+
+    void extract_row_maxima(map<int,double>& row_max, const vector<Block>& blocks, bool transpose=false) {
+        row_max.clear();
+        for (size_t i=0; i < blocks.size(); i++) {
+            for (size_t k=0; k < 4; k++) {
+                double val = blocks[i].get_mtf50_value(k);
+                double angle = blocks[i].get_edge_angle(k);
+                double mindiff = 0;
+
+                if (transpose) {
+                    mindiff = std::min(angular_diff(angle, 0)/M_PI*180, angular_diff(angle, M_PI)/M_PI*180);
+                } else {
+                    mindiff = std::min(angular_diff(angle, M_PI/2)/M_PI*180, angular_diff(angle, -M_PI/2)/M_PI*180);
+                }
+
+                if (val > 0 && blocks[i].get_quality(k) >= 0.5 && mindiff < 30) {
+                    Point cent = blocks[i].get_edge_centroid(k);
+                    
+                    int y = 0;
+
+                    if (transpose) {
+                        y = lrint(cent.x);
+                        //fprintf(stderr, "%lf %lf %lf\n", cent.y, cent.x, val);
+                    } else {
+                        y = lrint(cent.y);
+                        //fprintf(stderr, "%lf %lf %lf\n", cent.x, cent.y, val);
+                    }
+                    
+                    map<int, double>::iterator it = row_max.find(y);
+                    
+                    if (it == row_max.end()) {
+                        row_max[y] = val;
+                    } else {
+                        if (val >= row_max[y]) {
+                            row_max[y] = val;
+                        }
+                    }
+                }
+            }
+        }
     }
     
     std::string wdir;
