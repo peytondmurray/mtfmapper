@@ -35,9 +35,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/mtf50_correction_polynomials.h"
 #include "include/mtf50_edge_quality_rating.h"
 
-// global lock to prevent race conditions on detected_blocks
-tbb::mutex global_mutex;
-
 void Mtf_core::search_borders(const Point& cent, int label) {
     
     Mrectangle rrect;
@@ -48,12 +45,11 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     }
     
     Block block(rrect);
+
+    concurrent_vector<Block>::iterator current_block_it;
     
-    int current_block_idx=0;
     if (block.get_area() > 225) {
-        tbb::mutex::scoped_lock lock(global_mutex);
-        detected_blocks.push_back(block);
-        current_block_idx = detected_blocks.size() - 1;
+        current_block_it = shared_blocks.push_back(block);
     } else {
         return;
     }
@@ -93,7 +89,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         double mtf50 = compute_mtf(centroids[k], scanset, quality);
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
-            detected_blocks[current_block_idx].set_mtf50_value(k, mtf50, quality);
+            current_block_it->set_mtf50_value(k, mtf50, quality);
         }
     }
     

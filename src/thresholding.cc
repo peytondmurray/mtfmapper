@@ -55,7 +55,7 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
         // reset this column sum
         sum = 0;
 
-        for (j=0; j<out.rows; j++) {
+        for (j=0; j < out.rows; j++) {
             index = j*out.cols+i;
 
             sum += int64_t(cvimg.at<uint16_t>(j, i));

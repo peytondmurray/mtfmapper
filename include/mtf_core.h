@@ -34,8 +34,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/rectangle.h"
 
 #include "tbb/tbb.h"
-#include "tbb/mutex.h"
+#include "tbb/concurrent_vector.h"
 using namespace tbb;
+
+typedef vector<Block> block_vector;
 
 #include <fftw3.h>
 
@@ -82,6 +84,14 @@ class Mtf_core {
     double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, double& poor);
     
     vector<Block>& get_blocks(void) {
+        // make a copy into an STL container if necessary
+        if (detected_blocks.size() == 0) {
+            for (concurrent_vector<Block>::const_iterator it=shared_blocks.begin(); 
+                 it != shared_blocks.end(); it++) {
+
+                detected_blocks.push_back(*it);
+            }
+        }
         return detected_blocks;
     }
     
@@ -94,6 +104,7 @@ class Mtf_core {
     vector<int> valid_obj;
     
     vector<Block> detected_blocks;  
+    concurrent_vector<Block> shared_blocks;
 };
 
 #endif
