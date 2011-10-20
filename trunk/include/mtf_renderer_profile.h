@@ -135,16 +135,20 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 break;
             }
         }
-        
+
         FILE* prfile = fopen((wdir+prname).c_str(), "wt");
         i=0;
         double max_med_filt = 0;
+        int max_med_filt_coord = 0;
         for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
-            max_med_filt = std::max(max_med_filt, med_filt_mtf[i]);
+            if (med_filt_mtf[i] >= max_med_filt) {
+                max_med_filt = med_filt_mtf[i];
+                max_med_filt_coord = it->first;
+            }
             fprintf(prfile, "%d %lf %lf\n", it->first, it->second, med_filt_mtf[i++]);
         }
         fclose(prfile);
-        
+
         centroid.x -= blocks[largest_block].get_centroid().x;
         centroid.y -= blocks[largest_block].get_centroid().y;
         
@@ -165,6 +169,32 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 peak_idx = k;
             }
         }
+
+        double peak_shift = 0;
+        double ref_edge_position = 0;
+        if (transpose) {
+            ref_edge_position = blocks[largest_block].get_edge_centroid(peak_idx).x;
+        } else {
+            ref_edge_position = blocks[largest_block].get_edge_centroid(peak_idx).y;
+        }
+        peak_shift = ref_edge_position - max_med_filt_coord;
+
+        // The LOESS-filtered curve is already a good approximation of the mean MTF50
+        // at any given position along the curve. We can thus estimate mean MTF50 at
+        // the position of the reference edge by directly looking up the value in the 
+        // smoothed curve.
+        double mean_mtf50_at_ref_edge = 0;
+        min_dist = 1e50;
+        i = 0;
+        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
+            double dist = fabs(it->first - ref_edge_position);
+            if (dist < min_dist) {
+                min_dist = dist;
+                mean_mtf50_at_ref_edge = med_filt_mtf[i++];
+            }
+        }
+
+        printf("peak_shift = %lf mtf_at_peak = %lf\n", peak_shift, mean_mtf50_at_ref_edge);
         
         FILE* pffile = fopen((wdir+pfname).c_str(), "wt");
         double peak_mtf50 = blocks[largest_block].get_mtf50_value(peak_idx);
