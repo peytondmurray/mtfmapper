@@ -29,6 +29,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "settings_dialog.h"
 #include "settings_dialog.moc"
 
+#include "common.h"
+
 #include <iostream>
 using std::cout;
 using std::endl;
@@ -53,7 +55,7 @@ const QString setting_gnuplot_default = "/usr/bin/gnuplot";
 const QString setting_exiv_default = "/usr/bin/exiv2";
 #endif
 
-Settings_dialog::Settings_dialog(QWidget *parent)
+Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
  : settings("mtfmapper", "mtfmapper")
 {
     arguments_label = new QLabel(tr("Arguments:"));

@@ -59,12 +59,14 @@ include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/bin")
 
 #optional
-find_package(LATEX)
-# documenation in LaTeX
-if (LATEX_COMPILER)
-  include(cmake_helpers/UseLATEX.cmake)
-  add_subdirectory(doc)
-endif (LATEX_COMPILER)
+if (BUILD_DOC)
+  find_package(LATEX)
+  # documenation in LaTeX
+  if (LATEX_COMPILER)
+    include(cmake_helpers/UseLATEX.cmake)
+    add_subdirectory(doc)
+  endif (LATEX_COMPILER)
+endif (BUILD_DOC)
 
 # man pages for unix platforms
 if (UNIX)

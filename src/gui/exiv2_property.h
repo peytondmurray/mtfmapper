@@ -79,6 +79,8 @@ class Exiv2_property {
     char*   eat_whitespace(char* p);
     char*   eat_non_whitespace(char* p);
 
+    QString exiv2_binary;
+
     QString ifname;
     QString tfname;
 
@@ -86,8 +88,6 @@ class Exiv2_property {
     QString p_comment;
     QString p_focus_distance;
     QString p_focal_length;
-
-	QString exiv2_binary;
 };
 
 #endif
