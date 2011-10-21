@@ -28,6 +28,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "img_frame.h"
 #include "img_frame.moc"
 
+#include "common.h"
+
 #include <QKeyEvent>
 #include <QWidget>
 #include <stdio.h>
@@ -53,18 +55,6 @@ void Img_frame::keyPressEvent(QKeyEvent* event) {
     case Qt::Key_Minus:
         zoom(-1);
         break;
-    case Qt::Key_Left:
-        scroll(-ScrollStep, 0);
-        break;
-    case Qt::Key_Right:
-        scroll(+ScrollStep, 0);
-        break;
-    case Qt::Key_Down:
-        scroll(0, -ScrollStep);
-        break;
-    case Qt::Key_Up:
-        scroll(0, +ScrollStep);
-        break;
     default:
         QWidget::keyPressEvent(event);
     }
@@ -81,7 +71,6 @@ void Img_frame::keyReleaseEvent(QKeyEvent* event) {
 }
 
 void Img_frame::wheelEvent(QWheelEvent* event) {
-    int numDegrees = event->delta() / 8;
     if (ctrl_down) {
         if (event->delta() > 0) {
             emit zoom_in();
@@ -89,8 +78,6 @@ void Img_frame::wheelEvent(QWheelEvent* event) {
             emit zoom_out();
         }
     }
-    //double numSteps = numDegrees / 15.0f;
-    //zoom(pow(ZoomInFactor, numSteps));
 }
 
 void Img_frame::zoom(int dir) {
@@ -101,5 +88,3 @@ void Img_frame::zoom(int dir) {
     }
 }
 
-void Img_frame::scroll(int x, int y) {
-}

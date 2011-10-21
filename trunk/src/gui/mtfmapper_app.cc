@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "mtfmapper_app.moc"
 
 #include "worker_thread.h"
+#include "common.h"
 
 #include <string>
 #include <iostream>
@@ -38,7 +39,7 @@ using std::cout;
 using std::endl;
 using std::string; 
  
-mtfmapper_app::mtfmapper_app(QWidget *parent)
+mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
   : processor(this)
 {
     
@@ -294,7 +295,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
     }
 }
 
-void mtfmapper_app::dataset_selected_changed(const QModelIndex& i1, const QModelIndex& i2) {
+void mtfmapper_app::dataset_selected_changed(const QModelIndex& i1, const QModelIndex& i2 ATTRIBUTE_UNUSED) {
     dataset_selected(i1);
 }
  
@@ -372,7 +373,7 @@ void mtfmapper_app::img_gridsurf_toggled(void) {
     }
 }
 
-void mtfmapper_app::zoom_changed(int i) {
+void mtfmapper_app::zoom_changed(int i ATTRIBUTE_UNUSED) {
     dataset_selected(datasets->selectionModel()->currentIndex());
 }
 
