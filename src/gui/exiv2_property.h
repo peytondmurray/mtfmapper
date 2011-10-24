@@ -64,6 +64,10 @@ class Exiv2_property {
         return p_focal_length;
     }
 
+    QString get_aperture(void) {
+        return p_aperture;
+    }
+
 	void set_exiv2_binary(const QString& s) {
 		exiv2_binary = s;
 	}
@@ -74,6 +78,7 @@ class Exiv2_property {
     QString extract_comment(void);
     QString extract_focus_distance(void);
     QString extract_focal_length(void);
+    QString extract_aperture(void);
 
 
     char*   eat_whitespace(char* p);
@@ -88,6 +93,7 @@ class Exiv2_property {
     QString p_comment;
     QString p_focus_distance;
     QString p_focal_length;
+    QString p_aperture;
 };
 
 #endif
