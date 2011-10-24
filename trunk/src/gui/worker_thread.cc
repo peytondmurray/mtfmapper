@@ -50,8 +50,9 @@ void Worker_thread::set_files(const QStringList& files) {
 }
 
 void Worker_thread::run(void) {
+    abort = false;
     output_files.clear();
-    for (int i=0; i < input_files.size(); i++) {
+    for (int i=0; i < input_files.size() && !abort; i++) {
         emit send_progress_indicator(i+1);
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(i);
         QDir().mkdir(tempdir);
@@ -138,8 +139,13 @@ void Worker_thread::run(void) {
         delete [] buffer;
     }
     emit send_progress_indicator(input_files.size()+1);
+    emit send_all_done();
 }
 
 void Worker_thread::receive_arg_string(QString s) {
     arguments = s;
+}
+
+void Worker_thread::receive_abort() {
+    abort = true;
 }
