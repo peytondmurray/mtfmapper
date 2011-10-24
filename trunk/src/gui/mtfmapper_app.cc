@@ -268,6 +268,7 @@ void mtfmapper_app::open()
         dataset_contents.setHorizontalHeaderLabels(labels);
         processor.set_files(input_files);
         processor.set_gnuplot_binary(settings->get_gnuplot_binary());
+        processor.set_dcraw_binary(settings->get_dcraw_binary());
         processor.start();
     }
 }
@@ -409,6 +410,7 @@ void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 void mtfmapper_app::check_if_helpers_exist(void) {
     bool gnuplot_exists = QFile::exists(settings->get_gnuplot_binary());
     bool exiv_exists = QFile::exists(settings->get_exiv2_binary());
+    bool dcraw_exists = QFile::exists(settings->get_dcraw_binary());
 
     if (!gnuplot_exists) {
         QMessageBox::warning(
@@ -423,6 +425,14 @@ void mtfmapper_app::check_if_helpers_exist(void) {
             this, 
             QString("Exiv2 helper"), 
             QString("Exiv2 helper executable not found. Please configure this in the settings.")
+        );
+    }
+
+    if (!dcraw_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("dcraw helper"), 
+            QString("dcraw helper executable not found. Please configure this in the settings.")
         );
     }
 }

@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
     
     printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 60, false, 4000);
+    Component_labeller cl(masked_img, 60, false, 8000);
     
     if (cl.get_boundaries().size() == 0) {
         printf("No black objects found. Try a lower threshold value with the -t option.\n");
