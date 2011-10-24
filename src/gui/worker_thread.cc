@@ -60,8 +60,10 @@ void Worker_thread::run(void) {
         QString input_file(input_files.at(i));
 
         QFileInfo fi(input_files.at(i));
-        if ( fi.suffix().compare(QString("NEF"), Qt::CaseInsensitive) == 0 ||
-             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0 ) {
+        if ( fi.suffix().compare(QString("NEF"), Qt::CaseInsensitive) == 0 ||  // Nikon
+             fi.suffix().compare(QString("ARW"), Qt::CaseInsensitive) == 0 ||  // Sony
+             fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
+             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0 ) { // Canon
 
             tempdir.toLocal8Bit().constData();
             input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
