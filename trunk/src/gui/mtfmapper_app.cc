@@ -395,7 +395,9 @@ void mtfmapper_app::display_exif_properties(int index) {
     img_comment_value->setText(props->get_comment());
     af_ft_value->setText(props->get_af_tune());
     focus_distance_value->setText(props->get_focus_distance());
-    focal_length_value->setText(props->get_focal_length());
+    //focal_length_value->setText(props->get_focal_length());
+
+    focal_length_value->setText(props->get_focal_length() + " / " + props->get_aperture());
 }
 
 void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {

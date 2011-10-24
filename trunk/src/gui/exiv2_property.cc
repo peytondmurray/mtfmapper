@@ -56,6 +56,7 @@ Exiv2_property::Exiv2_property(QString bin_name, QString ifname, QString tfname)
     p_comment = extract_comment();
     p_focus_distance = extract_focus_distance();
     p_focal_length = extract_focal_length();
+    p_aperture = extract_aperture();
 }
 
 char*   Exiv2_property::eat_non_whitespace(char* cp) {
@@ -176,6 +177,14 @@ QString Exiv2_property::extract_focus_distance(void) {
 QString Exiv2_property::extract_focal_length(void) {
     if (mode != NONE) {
         return extract_property(QString("Exif.Photo.FocalLength"));
+    } else {
+        return QString("N/A");
+    }
+}
+
+QString Exiv2_property::extract_aperture(void) {
+    if (mode != NONE) {
+        return extract_property(QString("Exif.Photo.FNumber"));
     } else {
         return QString("N/A");
     }
