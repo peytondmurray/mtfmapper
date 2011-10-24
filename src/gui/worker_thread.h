@@ -55,6 +55,10 @@ class Worker_thread : public QThread
     void set_exiv2_binary(const QString& s) {
         exiv2_binary = s;
     }
+
+    void set_dcraw_binary(const QString& s) {
+        dcraw_binary = s;
+    }
     
   signals:
     void send_parent_item(QString s, QString f);
@@ -75,6 +79,7 @@ class Worker_thread : public QThread
     QString      arguments;
     QString      gnuplot_binary;
     QString      exiv2_binary;
+    QString      dcraw_binary;
 };
 
 #endif

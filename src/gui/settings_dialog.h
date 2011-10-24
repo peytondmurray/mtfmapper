@@ -45,8 +45,10 @@ class Settings_dialog : public QDialog
     void send_argument_string(void);
     QString get_gnuplot_binary(void) const;
     QString get_exiv2_binary(void) const;
+    QString get_dcraw_binary(void) const;
     void check_gnuplot_binary(void);
     void check_exiv2_binary(void);
+    void check_dcraw_binary(void);
     
     QSettings   settings;
     
@@ -69,6 +71,10 @@ class Settings_dialog : public QDialog
     QLabel*     exiv_label;
     QLineEdit*  exiv_line;
     QPushButton* exiv_button;
+
+    QLabel*     dcraw_label;
+    QLineEdit*  dcraw_line;
+    QPushButton* dcraw_button;
     
   signals:
     void argument_string(QString s);  
@@ -78,6 +84,7 @@ class Settings_dialog : public QDialog
     void save_and_close();
     void browse_for_gnuplot();
     void browse_for_exiv();
+    void browse_for_dcraw();
     
 };
 

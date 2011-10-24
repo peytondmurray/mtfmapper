@@ -47,12 +47,14 @@ const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
+const QString setting_dcraw = "setting_dcraw";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
 #else
 const QString setting_gnuplot_default = "/usr/bin/gnuplot";
 const QString setting_exiv_default = "/usr/bin/exiv2";
+const QString setting_dcraw_default = "/usr/bin/dcraw";
 #endif
 
 Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
@@ -65,13 +67,15 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"));
     gnuplot_line   = new QLineEdit;
-    //gnuplot_line->resize(200,20);
     gnuplot_button = new QPushButton(tr("Browse"));
 
     exiv_label  = new QLabel(tr("exiv2 executable:"));
     exiv_line   = new QLineEdit;
-    //exiv_line->resize(200,20);
     exiv_button = new QPushButton(tr("Browse"));
+
+    dcraw_label  = new QLabel(tr("dcraw executable:"));
+    dcraw_line   = new QLineEdit;
+    dcraw_button = new QPushButton(tr("Browse"));
 
     accept_button = new QPushButton(tr("&Accept"));
     accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
@@ -100,10 +104,12 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     #ifdef _WIN32
     setting_gnuplot_default = QCoreApplication::applicationDirPath() + QString("\\gnuplot\\gnuplot.exe");
     setting_exiv_default = QCoreApplication::applicationDirPath() + QString("\\exiv2\\exiv2.exe");
+    setting_dcraw_default = QCoreApplication::applicationDirPath() + QString("\\dcraw\\dcraw.exe");
     #endif
 
     gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
     exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
+    dcraw_line->setText(settings.value(setting_dcraw, setting_dcraw_default).toString());
     
     QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"));
     QVBoxLayout *cb_layout = new QVBoxLayout;
@@ -121,6 +127,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     helper_layout->addWidget(exiv_label, 2, 0);
     helper_layout->addWidget(exiv_line, 3, 0);
     helper_layout->addWidget(exiv_button, 3, 1);
+    helper_layout->addWidget(dcraw_label, 4, 0);
+    helper_layout->addWidget(dcraw_line, 5, 0);
+    helper_layout->addWidget(dcraw_button, 5, 1);
     v3GroupBox->setLayout(helper_layout);
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"));
@@ -145,6 +154,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
     connect(gnuplot_button, SIGNAL(clicked()), this, SLOT( browse_for_gnuplot() ));
     connect(exiv_button, SIGNAL(clicked()), this, SLOT( browse_for_exiv() ));
+    connect(dcraw_button, SIGNAL(clicked()), this, SLOT( browse_for_dcraw() ));
     
     setLayout(vlayout);
 }
@@ -244,10 +254,41 @@ void Settings_dialog::check_exiv2_binary(void) {
     }
 }
 
+void Settings_dialog::check_dcraw_binary(void) {
+    bool dcraw_exists = QFile::exists(get_dcraw_binary());
+    if (!dcraw_exists) {
+        QMessageBox::warning(
+            this, 
+            QString("dcraw helper"), 
+            QString("dcraw helper executable not found. Please reconfigure.")
+        );
+    }
+}
+
+
+void Settings_dialog::browse_for_dcraw(void) {
+    QString dcraw = QFileDialog::getOpenFileName(
+        this,
+        "Locate dcraw binary",
+        QString("/usr/bin/dcraw"),
+        QString::null
+    );
+
+    if (dcraw != QString::null) {
+        dcraw_line->setText(dcraw);
+    }
+
+    check_exiv2_binary();
+}
+
 QString Settings_dialog::get_gnuplot_binary(void) const {
     return gnuplot_line->text();
 }
 
 QString Settings_dialog::get_exiv2_binary(void) const {
     return exiv_line->text();
+}
+
+QString Settings_dialog::get_dcraw_binary(void) const {
+    return dcraw_line->text();
 }

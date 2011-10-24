@@ -91,6 +91,11 @@ QString Exiv2_property::extract_property(QString propname) {
     ifstream ifs(tfname.toLocal8Bit().constData());
     if (!ifs.fail()) {
         ifs.getline(buffer, 4096);
+        buffer[4095] = 0; // ensure strlen will stop
+
+        if (strlen(buffer) == 0) {
+            return QString("N/A");
+        }
 
         // seek over three whitespace regions
         char* cp = buffer;

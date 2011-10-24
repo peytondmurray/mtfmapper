@@ -56,14 +56,40 @@ void Worker_thread::run(void) {
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(i);
         QDir().mkdir(tempdir);
         char* buffer = new char[4096];
+
+        QString input_file(input_files.at(i));
+
+        QFileInfo fi(input_files.at(i));
+        if ( fi.suffix().compare(QString("NEF"), Qt::CaseInsensitive) == 0 ||
+             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0 ) {
+
+            tempdir.toLocal8Bit().constData();
+            input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
+
+            sprintf(buffer, "%s -w -4 -T -q 3 -c %s > %s", 
+                dcraw_binary.toLocal8Bit().constData(),
+                input_files.at(i).toLocal8Bit().constData(),
+                input_file.toLocal8Bit().constData()
+            );
+
+            int dc_rval = system(buffer);
+            if (dc_rval < 0) {
+                printf("error. dcraw call failed\n");
+            }
+
+            emit send_delete_item(input_file);
+        }
+
+
+
         sprintf(buffer, "%s/mtf_mapper --gnuplot-executable %s %s %s %s", 
             QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
             gnuplot_binary.toLocal8Bit().constData(),
-            input_files.at(i).toLocal8Bit().constData(),
+            input_file.toLocal8Bit().constData(),
             tempdir.toLocal8Bit().constData(),
             arguments.toLocal8Bit().constData()
         );
-        cout << "Processing file " << input_files.at(i).toLocal8Bit().constData() << ":" 
+        cout << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
              << arguments.toLocal8Bit().constData() << endl;
         printf("actual command = [%s]\n", buffer);
         int rval = system(buffer);
@@ -74,10 +100,11 @@ void Worker_thread::run(void) {
             // may have to perform a raw conversion in the worker thread
             // which would cause the display image filename (root of each data set object)
             // to differ from the file containing the exif info
+            
             emit send_exif_filename(input_files.at(i), tempdir);
             
-            QString fname(QFileInfo(input_files.at(i)).baseName());
-            emit send_parent_item(fname, input_files.at(i));
+            QString fname(QFileInfo(input_file).baseName());
+            emit send_parent_item(fname, input_file);
             
             QString an_file = QString("%1/annotated.png").arg(tempdir);
             if (QFile().exists(an_file)) {
