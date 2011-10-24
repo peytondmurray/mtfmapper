@@ -113,6 +113,7 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_gridsurf;
     
     QProgressBar*   progress;
+    QPushButton*    abort_button;
     
     Img_frame*      img_frame;
               
@@ -135,6 +136,8 @@ class mtfmapper_app : public QMainWindow
     void zoom_in(void);
     void zoom_out(void);  
     void zoom_to_100(void);
+
+    void hide_abort_button(void);
 };
                                
                                 

@@ -195,6 +195,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_grid, cb_grid->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
+    settings.setValue(setting_dcraw, dcraw_line->text());
     
     send_argument_string();
     

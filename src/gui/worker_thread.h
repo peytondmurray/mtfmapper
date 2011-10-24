@@ -68,9 +68,11 @@ class Worker_thread : public QThread
     void send_exif_filename(QString s, QString tempdir);
     
     void send_progress_indicator(int p);
+    void send_all_done(void);
     
   public slots:
     void receive_arg_string(QString s);
+    void receive_abort(void);
     
   private:
     mtfmapper_app* parent;
@@ -80,6 +82,8 @@ class Worker_thread : public QThread
     QString      gnuplot_binary;
     QString      exiv2_binary;
     QString      dcraw_binary;
+
+    bool abort;
 };
 
 #endif

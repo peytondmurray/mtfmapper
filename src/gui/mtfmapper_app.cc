@@ -144,10 +144,15 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(vbox2, 0, 1);
     vlayout->addWidget(v3GroupBox);
     vGroupBox->setLayout(vlayout);
+
     
-    QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(vGroupBox);
-    mainLayout->addWidget(progress);
+    abort_button = new QPushButton("Abort");
+    abort_button->hide();
+    
+    QGridLayout *mainLayout = new QGridLayout;
+    mainLayout->addWidget(vGroupBox, 0, 0, 1, 2);
+    mainLayout->addWidget(progress, 1, 0);
+    mainLayout->addWidget(abort_button, 1, 1);
     img_frame->setLayout(mainLayout);
     
     setCentralWidget(img_frame);
@@ -190,6 +195,9 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     connect(&processor, SIGNAL(send_progress_indicator(int)), progress, SLOT(setValue(int)));
     connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
+
+    connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
+    connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
     
     setWindowTitle(tr("Image Viewer"));
     resize(920,600);
@@ -266,6 +274,7 @@ void mtfmapper_app::open()
         QStringList labels;
         labels.push_back(QString("Data set"));
         dataset_contents.setHorizontalHeaderLabels(labels);
+        abort_button->show();
         processor.set_files(input_files);
         processor.set_gnuplot_binary(settings->get_gnuplot_binary());
         processor.set_dcraw_binary(settings->get_dcraw_binary());
@@ -388,6 +397,10 @@ void mtfmapper_app::zoom_out(void) {
 
 void mtfmapper_app::zoom_to_100(void) {
     zoom_spinbox->setValue(100);
+}
+
+void mtfmapper_app::hide_abort_button(void) {
+    abort_button->hide();
 }
 
 void mtfmapper_app::display_exif_properties(int index) {
