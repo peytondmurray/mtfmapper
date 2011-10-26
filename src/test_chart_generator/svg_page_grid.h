@@ -38,7 +38,7 @@ class Svg_page_grid : public Svg_page {
     
     void render(void) {
         double bsize=0.04; // block size ....
-        grid(0.1, 0.1, bsize, bsize, 11*sqrt(2), 11);
+        grid(0.1, 0.1, bsize, bsize, 11*sqrt(2.0), 11);
         //grid(0.05, 0.05*sqrt(2), bsize/2, bsize/2, 2*11*sqrt(2), 2*11);
     }
     
@@ -55,7 +55,7 @@ class Svg_page_grid : public Svg_page {
     
         double allowed_angles[] = {-4,4,-6,6,-86,86,-94,94,-96,96,-84,84};
     
-        dPoint centre(0.5, 0.5*sqrt(2));
+        dPoint centre(0.5, 0.5*sqrt(2.0));
         for (size_t ry=0; ry < nrows; ry++) {
             for (size_t rx=0; rx < ncols; rx++) {
       

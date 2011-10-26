@@ -51,6 +51,7 @@ const QString setting_dcraw = "setting_dcraw";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
+static QString setting_dcraw_default = "dcraw.exe";
 #else
 const QString setting_gnuplot_default = "/usr/bin/gnuplot";
 const QString setting_exiv_default = "/usr/bin/exiv2";

@@ -61,6 +61,8 @@ using std::make_pair;
 
 #ifdef _MSC_VER
 	typedef unsigned short int uint16_t;
+	typedef unsigned int uint32_t;
+	typedef int int32_t;
 
 	#define M_PI 3.14159265358979
 	#define lrint(x) ( (x < 0) ? int(floor(x-0.5)) : int(floor(x+0.5)) )
