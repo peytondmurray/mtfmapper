@@ -85,8 +85,19 @@ class Block {
         
         area = sqrt(SQR(e1.x) + SQR(e1.y)) * sqrt(SQR(e2.x) + SQR(e2.y));
     }
-    
-    
+
+    void set_normal(size_t edge_number, const Point& rgrad) {
+        rect.normals[edge_number] = rgrad;
+    }
+
+    Point get_normal(size_t edge_number) const {
+        return rect.normals[edge_number];
+    }
+
+    Point get_edge(size_t edge_number) const {
+        assert(edge_number < 4);
+        return rect.edges[edge_number];
+    }
     
     double get_edge_angle(size_t edge_number) const {
         assert(edge_number < 4);

@@ -40,15 +40,15 @@ class Mtf_renderer_grid : public Mtf_renderer {
       :  wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
          img_y(img.rows), img_x(img.cols), img(img), 
          gnuplot_failure(false), gnuplot_warning(true) {
-      
-          if (img.rows > img.cols) {
-              grid_y = 150;
-              grid_x = 150 * img.cols / img.rows;
-          } else {
-              grid_x = 150;
-              grid_y = 150 * img.rows / img.cols;
-          }
-      
+
+        const int base_grid_size = 200;
+        if (img.rows > img.cols) {
+            grid_y = base_grid_size;
+            grid_x = base_grid_size * img.cols / img.rows;
+        } else {
+            grid_x = base_grid_size;
+            grid_y = base_grid_size * img.rows / img.cols;
+        }
     }
     
     void set_gnuplot_warning(bool gnuplot) {
@@ -56,78 +56,84 @@ class Mtf_renderer_grid : public Mtf_renderer {
     }
     
     void render(const vector<Block>& blocks) {
-    
-        cv::Mat grid(grid_y, grid_x, CV_32FC1, 0.0);
-        
-        
-        vector<double> vals;
+
+        // first check if we have enough good data to generate a plot
+        vector<double> allvals;
         for (size_t i=0; i < blocks.size(); i++) {
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
-                if (val > 0 && blocks[i].get_quality(k) >= 0.5) {
-                    Point cent = blocks[i].get_edge_centroid(k);
-                    
-                    int ly = lrint(cent.y*grid_y/img.rows); 
-                    int lx = lrint(cent.x*grid_x/img.cols);
-                    
-                    if (val > grid.at<float>(ly,lx)) {
-                        grid.at<float>(ly,lx) = val;
-                        vals.push_back(val);
-                    }
+                if (val > 0) {
+                    allvals.push_back(val);
                 }
-                
             }
         }
-        
-        if (vals.size() < 20) {
+
+        if (allvals.size() < 20) {
             printf("Too few valid edges found. No surface can be generated\n");
             return;
         }
-        
-        sort(vals.begin(), vals.end());
-        double thresh = vals[95*vals.size()/100];
-        for (size_t y=0; y < grid_y; y++) {
-            for (size_t x=0; x < grid_x; x++) {
-                if (grid.at<float>(y,x) > thresh) {
-                    grid.at<float>(y,x) = thresh;
-                }
-            }
-        }
-        
-        const int erosion_size = 3;
-        cv::Mat element = cv::getStructuringElement( 
-            cv::MORPH_ELLIPSE,
-            cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-            cv::Point( erosion_size, erosion_size ) 
-        );
-        
-        cv::Mat dest(grid);
-        cv::dilate(grid, grid, element, cv::Point(-1,-1), 1);
-        cv::blur(grid, dest, cv::Size(5,5));
-        grid = dest;
+
+        sort(allvals.begin(), allvals.end());
+        m_upper = allvals[97*allvals.size()/100];
+        m_lower = allvals[5*allvals.size()/100];
+
+        cv::Mat grid_mer(grid_y, grid_x, CV_32FC1, 0.0);
+        extract_mtf_grid(MERIDIONAL, grid_mer, blocks);
+        cv::Mat grid_sag(grid_y, grid_x, CV_32FC1, 0.0);
+        extract_mtf_grid(SAGITTAL, grid_sag, blocks);
 
         FILE* file = fopen((wdir+fname).c_str(), "wt");
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
-                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y), grid.at<float>(y,x));
+                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y), grid_mer.at<float>(y,x));
+            }
+            fprintf(file, "\n");
+        }
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y + img.rows), grid_sag.at<float>(y,x));
             }
             fprintf(file, "\n");
         }
         fclose(file);
-        
+
+        const int width_in_pixels = 600;
+        const int width_in_pixels_3d = 900;
+        const int height_in_pixels_3d = 1200;
         FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set yrange [] reverse\n");
-        fprintf(gpf, "set size ratio %lf\n", grid.rows / double(grid.cols));
-        fprintf(gpf, "set palette rgbformulae 23,28,3 negative\n");
+        fprintf(gpf, "set palette defined (0 1 1 1, 1 0 0 1, 3 1 1 0, 4 1 0 0, 6 0 1 0)\n");
         fprintf(gpf, "set pm3d at bs depthorder interpolate 2,2\n");
+        fprintf(gpf, "set cbrange [%lf:%lf]\n", m_lower, m_upper);
         fprintf(gpf, "set xlab \"column (pixels)\"\n");
         fprintf(gpf, "set ylab \"row (pixels)\"\n");
-        fprintf(gpf, "set term png size %d, %d\n", 1024, (int)lrint(1024*grid.rows/double(grid.cols)));
+        fprintf(gpf, "set term png size %d, %d\n", width_in_pixels, (int)lrint(width_in_pixels*2*grid_mer.rows/double(grid_mer.cols)));
         fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, (wdir+fname).c_str());
+        fprintf(gpf, "set multiplot\n");
+        fprintf(gpf, "set size 1,0.5\n");   
+        fprintf(gpf, "set origin 0.0,0.0\n");
+        fprintf(gpf, "set title \"Meridional\"\n");
+        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows-1, (wdir+fname).c_str());
+        fprintf(gpf, "set origin 0.0,0.5\n");
+        fprintf(gpf, "set title \"Sagittal\"\n");
+        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, (wdir+fname).c_str(),img.rows);
+        fprintf(gpf, "unset multiplot\n");
+        fprintf(gpf, "set term png size %d, %d font \"arial,9\"\n", width_in_pixels_3d, height_in_pixels_3d);
         fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
+        fprintf(gpf, "unset xlab\n");
+        fprintf(gpf, "unset ylab\n");
+        fprintf(gpf, "set multiplot\n");
+        fprintf(gpf, "set ticslevel %lf\n", m_lower);
         fprintf(gpf, "set view 25, 350\n");
-        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w d\n", img.cols, img.rows, (wdir+fname).c_str());
+        fprintf(gpf, "set title \"Meridional\"\n");
+        fprintf(gpf, "set size 1,0.5\n");   
+        fprintf(gpf, "set origin 0.0,0.0\n");
+        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str());
+        fprintf(gpf, "set view 25, 350\n");
+        fprintf(gpf, "set title \"Sagittal\"\n");
+        fprintf(gpf, "set origin 0.0,0.5\n");
+        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str(), img.rows);
+        fprintf(gpf, "unset multiplot\n");
         fclose(gpf);
         
         char* buffer = new char[1024];
@@ -148,6 +154,155 @@ class Mtf_renderer_grid : public Mtf_renderer {
     bool gnuplot_failed(void) {
         return gnuplot_failure;
     }
+
+  private:
+
+    typedef enum {MERIDIONAL, SAGITTAL, NEITHER} Edge_type;
+
+    void extract_mtf_grid(Edge_type target_edge_type, cv::Mat& grid, const vector<Block>& blocks) {
+        Point centr(0,0);
+        for (size_t i=0; i < blocks.size(); i++) {
+            centr += blocks[i].get_centroid();
+        }
+        centr = centr*(1.0/double(blocks.size()));
+        
+        vector<double> vals;
+        cv::Mat grid_binary(grid_y, grid_x, CV_8UC1, 1);
+        cv::Mat grid_indices(grid_y, grid_x, CV_32SC1, 1);
+        for (size_t i=0; i < blocks.size(); i++) {
+            for (size_t k=0; k < 4; k++) {
+                double val = blocks[i].get_mtf50_value(k);
+                if (val > 0 && blocks[i].get_quality(k) >= 0.2) {
+                    Point cent = blocks[i].get_edge_centroid(k);
+
+                    Point dir = cent - centr;
+                    dir = dir * (1.0/norm(dir));
+
+                    Point norm = blocks[i].get_normal(k);
+                    double delta = dir.x*norm.x + dir.y*norm.y;
+
+                    Edge_type edge_type = NEITHER;
+                    if (target_edge_type == MERIDIONAL) {
+                        if (fabs(delta) > cos(45.0/180*M_PI)) {
+                            edge_type = MERIDIONAL;
+                        } else {
+                            edge_type = SAGITTAL;
+                        }
+                    } else {
+                        if (fabs(delta) > cos(65.0/180*M_PI)) {
+                            edge_type = MERIDIONAL;
+                        } else {
+                            edge_type = SAGITTAL;
+                        }
+                    }
+                    
+                    int ly = lrint(cent.y*grid_y/img.rows); 
+                    int lx = lrint(cent.x*grid_x/img.cols);
+
+                    if (val > grid.at<float>(ly,lx) && edge_type == target_edge_type) {
+                        grid.at<float>(ly,lx) = val;
+                        vals.push_back(val);
+                        grid_binary.at<uchar>(ly,lx) = 0;
+                        grid_indices.at<int32_t>(ly,lx) = vals.size();
+                    }
+                }
+                
+            }
+        }
+
+        // todo: should add NMS to prevent connected components from forming
+        // in grid_binary
+
+        #if 0
+        const int erosion_size = 3;
+        cv::Mat element = cv::getStructuringElement( 
+            cv::MORPH_ELLIPSE,
+            cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
+            cv::Point( erosion_size, erosion_size ) 
+        );
+        
+        cv::Mat dest(grid);
+        cv::dilate(grid, grid, element, cv::Point(-1,-1), 1);
+        cv::blur(grid, dest, cv::Size(5,5));
+        grid = dest;
+        #else
+
+        cv::Mat grid_labels;
+        cv::Mat distmat;
+        cv::distanceTransform(grid_binary, distmat, grid_labels, CV_DIST_L2, 5);
+
+        //grid_labels.convertTo(grid, CV_32FC1);
+        //return;
+
+        cv::Mat flood_labels;
+        grid_labels.convertTo(flood_labels, CV_32FC1);
+
+        // now floodfill this image, using the grid indices as guide:
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                int val = grid_indices.at<int32_t>(y,x);
+                if (val > 1) {
+                    cv::floodFill(flood_labels, Point(x,y), cv::Scalar::all((float)val), 0, cv::Scalar(), cv::Scalar(), 4);
+                }
+            }
+        }
+        // replace indices with actual mtf50 values
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                grid.at<float>(y,x) = vals[int(flood_labels.at<float>(y,x))-1];
+            }
+        }
+
+        sort(vals.begin(), vals.end());
+        double thresh95 = vals[95*vals.size()/100];
+        // suppress upper 5% of values (to filter outliers)
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                if (grid.at<float>(y,x) > thresh95) {
+                    grid.at<float>(y,x) = thresh95;
+                }
+            }
+        }
+
+        //return;
+
+        cv::Mat grid2(grid_y, grid_x, CV_32FC1, 0.0);
+        cv::Mat grid3(grid_y, grid_x, CV_32FC1, 0.0);
+        cv::boxFilter(grid, grid3, grid.type(), cv::Size(7,7));
+
+        const double dist_thresh = 6.5;
+        double far_fraction = 0;
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                if (distmat.at<float>(y,x) > dist_thresh) {
+                    far_fraction += 1.0;
+                }
+            }
+        }
+        far_fraction /= (grid_x*grid_y);
+        printf("far fraction = %lf\n", far_fraction);
+
+        for (size_t y=0; y < grid_y; y++) {
+            for (size_t x=0; x < grid_x; x++) {
+                if (distmat.at<float>(y,x) > dist_thresh) {
+                    if (far_fraction > 0.3) {
+                        grid.at<float>(y, x) = 0;
+                    } else {
+                        grid.at<float>(y, x) = grid3.at<float>(y, x);
+                    }
+                } else {
+                    //if (grid_binary.at<uchar>(y,x) != 0) {
+                        grid.at<float>(y, x) = grid3.at<float>(y, x);
+                    //}   
+                }
+            }
+        }
+        #endif
+    }
+
+    static double angular_diff(double a, double b) {
+        return acos(cos(a)*cos(b) + sin(a)*sin(b));
+    }
     
     std::string wdir;
     std::string fname;
@@ -161,6 +316,9 @@ class Mtf_renderer_grid : public Mtf_renderer {
     
     bool gnuplot_failure;
     bool gnuplot_warning;
+
+    double m_lower;
+    double m_upper;
 };
 
 #endif
