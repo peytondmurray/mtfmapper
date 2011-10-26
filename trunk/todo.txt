@@ -1,4 +1,5 @@
-1. add threading to threshold (use opencv integral)
+1. add threading to threshold (at least run gradient and threshold in
+parallel)
 2. use the knowledge of block shapes to improve systematic edge orientation
 estimation
 3. separate left/right profiles (can be used to check if chart is set-up
@@ -7,5 +8,4 @@ correctly)
 overlap
 5. make profiles more robust, i.e., resolve reference block orientation
 issues
-6. add abort button to gui
-7. fix gui zooming-with-mousewheel
+6. fix gui zooming-with-mousewheel

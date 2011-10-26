@@ -86,10 +86,12 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             }
         }
         double quality = 0;
-        double mtf50 = compute_mtf(centroids[k], scanset, quality);
+        Point rgrad;
+        double mtf50 = compute_mtf(centroids[k], scanset, quality, rgrad);
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             current_block_it->set_mtf50_value(k, mtf50, quality);
+            current_block_it->set_normal(k, rgrad);
         }
     }
     
@@ -129,7 +131,8 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     return rrect.valid;
 }
 
-double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, double& quality) {
+double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset,
+    double& quality, Point& rgrad) {
     quality = 1.0; // assume this is a good edge
     
     Point cent(in_cent);
@@ -235,6 +238,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     
     mean_grad.x = cos(best_angle);
     mean_grad.y = sin(best_angle);
+    rgrad = mean_grad;
     
     if (ordered.size() < 10) {
         quality = 0; // this edge is not usable in any way
