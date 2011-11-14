@@ -37,7 +37,10 @@ using std::map;
 class Block {
   public:
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
-    
+
+    Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), centroid(0,0) {
+    }
+
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), quality(4, 0.0), centroid(0,0) {
     
         size_t top_edge_idx = 0;
