@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define SVG_PAGE_GRID_H
 
 #include "svg_page.h"
+#include "include/mtf50_edge_quality_rating.h"
 
 class Svg_page_grid : public Svg_page {
   public:
@@ -38,7 +39,7 @@ class Svg_page_grid : public Svg_page {
     
     void render(void) {
         double bsize=0.04; // block size ....
-        grid(0.1, 0.1, bsize, bsize, 11*sqrt(2.0), 11);
+        grid(0.08, 0.075, bsize, bsize, 17, 11);
         //grid(0.05, 0.05*sqrt(2), bsize/2, bsize/2, 2*11*sqrt(2), 2*11);
     }
     
@@ -51,9 +52,16 @@ class Svg_page_grid : public Svg_page {
         return iPoint(int(x), int(y));
     }
 
+    double quant_angle(double x) {
+        double quad1 = fabs(fmod(x, M_PI/2.0));
+        if (quad1 > M_PI/4.0) {
+            quad1 = M_PI/2.0 - quad1;
+        }
+        quad1 = quad1 / M_PI * 180;
+        return quad1;
+    }
+
     void grid(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols) {
-    
-        double allowed_angles[] = {-4,4,-6,6,-86,86,-94,94,-96,96,-84,84};
     
         dPoint centre(0.5, 0.5*sqrt(2.0));
         for (size_t ry=0; ry < nrows; ry++) {
@@ -64,18 +72,14 @@ class Svg_page_grid : public Svg_page {
                 
                 dPoint delta = dPoint(xpos, ypos) - centre;
                 
-                double eang = atan2(delta.y, delta.x) + M_PI/4.0 + 2.0/180.0*M_PI;
-                
-                
-                /*size_t m_idx = 0;
-                for (size_t q=1; q < 12; q++) {
-                    if ( fabs(allowed_angles[q]/180.0*M_PI - eang) < fabs(allowed_angles[m_idx]/180.0*M_PI - eang)) {
-                        m_idx = q;
-                        
-                    }
+                double eang = atan2(delta.y, delta.x) + M_PI/4.0;
+
+                if (fabs(eang) < 3.0/180*M_PI) {
+                    eang = eang < 0 ? -3.0/180*M_PI : 3.0/180*M_PI;
                 }
-                eang = (allowed_angles[m_idx] + 45)/180.0*M_PI;*/
-                
+                if (fabs(eang - M_PI/2) < 3/180*M_PI) {
+                    eang = eang < 0 ? -93.0/180*M_PI : 93.0/180*M_PI;
+                }
           
                 rotated_square(xpos, ypos, swidth*0.5, eang);
                 fprintf(fout, "\n");
