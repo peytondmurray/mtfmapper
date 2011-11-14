@@ -38,7 +38,8 @@ using std::vector;
 
 class Mtf_renderer_stats : public Mtf_renderer {
   public:
-    Mtf_renderer_stats(void)  {
+    Mtf_renderer_stats(bool lpmm_mode=false, double pixel_size=1.0)
+    : lpmm_mode(lpmm_mode), pixel_size(pixel_size)  {
       
     }
     
@@ -71,11 +72,11 @@ class Mtf_renderer_stats : public Mtf_renderer {
         
         printf("    Quantiles ->                   %4d%% %4d%% %4d%% %4d%% %4d%%\n", 5, 25, 50, 75, 95);
         printf("Statistics on all edges:           %5.2lf %5.2lf %5.2lf %5.2lf %5.2lf  (total=%u)\n", 
-            quantile(unfiltered, 0.05),
-            quantile(unfiltered, 0.25),
-            quantile(unfiltered, 0.5),
-            quantile(unfiltered, 0.75),
-            quantile(unfiltered, 0.95),
+            quantile(unfiltered, 0.05)*pixel_size,
+            quantile(unfiltered, 0.25)*pixel_size,
+            quantile(unfiltered, 0.5)*pixel_size,
+            quantile(unfiltered, 0.75)*pixel_size,
+            quantile(unfiltered, 0.95)*pixel_size,
             (unsigned int)unfiltered.size()
         );
         
@@ -84,11 +85,11 @@ class Mtf_renderer_stats : public Mtf_renderer {
         }
         
         printf("Statistics on all filtered edges : %5.2lf %5.2lf %5.2lf %5.2lf %5.2lf  (total=%u)\n", 
-            quantile(filtered, 0.05),
-            quantile(filtered, 0.25),
-            quantile(filtered, 0.5),
-            quantile(filtered, 0.75),
-            quantile(filtered, 0.95),
+            quantile(filtered, 0.05)*pixel_size,
+            quantile(filtered, 0.25)*pixel_size,
+            quantile(filtered, 0.5)*pixel_size,
+            quantile(filtered, 0.75)*pixel_size,
+            quantile(filtered, 0.95)*pixel_size,
             (unsigned int)filtered.size()
         );
     }
@@ -98,6 +99,9 @@ class Mtf_renderer_stats : public Mtf_renderer {
         size_t idx = (int)floor(d.size()*q);
         return d[idx];
     }
+
+    bool    lpmm_mode;
+    double  pixel_size;
 };
 
 #endif

@@ -37,6 +37,8 @@ using std::endl;
 
 const QString setting_threshold = "setting_threshold";
 const QString setting_threshold_default = "0.75";
+const QString setting_pixsize = "setting_pixelsize";
+const QString setting_pixsize_default = "4.78";
 const QString setting_linear_gamma = "setting_gamma";
 const Qt::CheckState setting_linear_gamma_default = Qt::Unchecked;
 const QString setting_annotation = "setting_annotation";
@@ -45,6 +47,8 @@ const QString setting_profile = "setting_profile";
 const Qt::CheckState setting_profile_default = Qt::Checked;
 const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
+const QString setting_lpmm = "setting_lpmm";
+const Qt::CheckState setting_lpmm_default = Qt::Unchecked;
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
@@ -65,6 +69,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     arguments_line  = new QLineEdit;
     threshold_label = new QLabel(tr("Threshold:"));
     threshold_line  = new QLineEdit;
+    pixsize_label   = new QLabel(tr("Pixel size:"));
+    pixsize_line    = new QLineEdit;
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"));
     gnuplot_line   = new QLineEdit;
@@ -87,8 +93,10 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_annotation   = new QCheckBox("Annotation");
     cb_profile      = new QCheckBox("Profile");
     cb_grid         = new QCheckBox("Grid");
+    cb_lpmm         = new QCheckBox("Line pairs/mm units");
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
+    pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
     cb_linear_gamma->setCheckState(
         (Qt::CheckState)settings.value(setting_linear_gamma, setting_linear_gamma_default).toInt()
     );
@@ -100,6 +108,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
     cb_grid->setCheckState(
         (Qt::CheckState)settings.value(setting_grid, setting_grid_default).toInt()
+    );
+    cb_lpmm->setCheckState(
+        (Qt::CheckState)settings.value(setting_lpmm, setting_lpmm_default).toInt()
     );
 
     #ifdef _WIN32
@@ -118,6 +129,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_annotation);
     cb_layout->addWidget(cb_profile);
     cb_layout->addWidget(cb_grid);
+    cb_layout->addWidget(cb_lpmm);
     v2GroupBox->setLayout(cb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"));
@@ -137,8 +149,10 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     QGridLayout* adv_layout = new QGridLayout;
     adv_layout->addWidget(threshold_label, 0, 0);
     adv_layout->addWidget(threshold_line, 0, 1);
-    adv_layout->addWidget(arguments_label, 1, 0);
-    adv_layout->addWidget(arguments_line, 1, 1);
+    adv_layout->addWidget(pixsize_label, 1, 0);
+    adv_layout->addWidget(pixsize_line, 1, 1);
+    adv_layout->addWidget(arguments_label, 2, 0);
+    adv_layout->addWidget(arguments_line, 2, 1);
     advanced->setLayout(adv_layout);
 
     
@@ -182,6 +196,10 @@ void Settings_dialog::send_argument_string(void) {
     if (cb_grid->checkState()) {
         args = args + QString(" -s");
     }
+
+    if (cb_lpmm->checkState()) {
+        args = args + QString(" --pixelsize " + pixsize_line->text());
+    }
     
     emit argument_string(args);
 }
@@ -190,9 +208,11 @@ void Settings_dialog::save_and_close() {
     check_gnuplot_binary();
     check_exiv2_binary();
     settings.setValue(setting_threshold, threshold_line->text());
+    settings.setValue(setting_pixsize, pixsize_line->text());
     settings.setValue(setting_linear_gamma, cb_linear_gamma->checkState());
     settings.setValue(setting_annotation, cb_annotation->checkState());
     settings.setValue(setting_profile, cb_profile->checkState());
+    settings.setValue(setting_lpmm, cb_lpmm->checkState());
     settings.setValue(setting_grid, cb_grid->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());

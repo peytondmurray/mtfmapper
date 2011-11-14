@@ -36,9 +36,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Mtf_renderer_grid : public Mtf_renderer {
   public:
     Mtf_renderer_grid(const std::string& wdir, const std::string& in_fname, 
-        const std::string& gnuplot_binary, const cv::Mat& img)
+        const std::string& gnuplot_binary, const cv::Mat& img,
+        bool lpmm_mode, double pixel_size)
       :  wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
          img_y(img.rows), img_x(img.cols), img(img), 
+         lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true) {
 
         const int base_grid_size = 200;
@@ -85,13 +87,21 @@ class Mtf_renderer_grid : public Mtf_renderer {
         FILE* file = fopen((wdir+fname).c_str(), "wt");
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
-                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y), grid_mer.at<float>(y,x));
+                fprintf(file, "%lf %lf %.3lf\n", 
+                    x*img.cols/grid_x/pixel_size, 
+                    y*img.rows/grid_y/pixel_size, 
+                    grid_mer.at<float>(y,x)*pixel_size
+                );
             }
             fprintf(file, "\n");
         }
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
-                fprintf(file, "%d %d %.3lf\n", int(x*img.cols/grid_x), int(y*img.rows/grid_y + img.rows), grid_sag.at<float>(y,x));
+                fprintf(file, "%lf %lf %.3lf\n", 
+                    x*img.cols/grid_x/pixel_size, 
+                    (y*img.rows/grid_y + img.rows)/pixel_size, 
+                    grid_sag.at<float>(y,x)*pixel_size
+                );
             }
             fprintf(file, "\n");
         }
@@ -104,19 +114,27 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set yrange [] reverse\n");
         fprintf(gpf, "set palette defined (0 1 1 1, 1 0 0 1, 3 1 1 0, 4 1 0 0, 6 0 1 0)\n");
         fprintf(gpf, "set pm3d at bs depthorder interpolate 2,2\n");
-        fprintf(gpf, "set cbrange [%lf:%lf]\n", m_lower, m_upper);
-        fprintf(gpf, "set xlab \"column (pixels)\"\n");
-        fprintf(gpf, "set ylab \"row (pixels)\"\n");
+        fprintf(gpf, "set cbrange [%lf:%lf]\n", m_lower*pixel_size, m_upper*pixel_size);
+        fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
+        fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set term png size %d, %d\n", width_in_pixels, (int)lrint(width_in_pixels*2*grid_mer.rows/double(grid_mer.cols)));
         fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
         fprintf(gpf, "set multiplot\n");
         fprintf(gpf, "set size 1,0.5\n");   
         fprintf(gpf, "set origin 0.0,0.5\n");
         fprintf(gpf, "set title \"Meridional\"\n");
-        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows-1, (wdir+fname).c_str());
+        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" t \"MTF50 (%s)\" w image\n", 
+                (img.cols)/pixel_size, (img.rows-1)/pixel_size, (wdir+fname).c_str(),
+                lpmm_mode ? "lp/mm" : "c/p"
+        );
         fprintf(gpf, "set origin 0.0,0.0\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
-        fprintf(gpf, "plot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, (wdir+fname).c_str(),img.rows);
+        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" u 1:($2-%lf):3 t \"MTF50 (%s)\" w image\n", 
+                img.cols/pixel_size, img.rows/pixel_size, 
+                (wdir+fname).c_str(),
+                img.rows/pixel_size,
+                lpmm_mode ? "lp/mm" : "c/p"
+        );
         fprintf(gpf, "unset multiplot\n");
         fprintf(gpf, "set term png size %d, %d font \"arial,9\"\n", width_in_pixels_3d, height_in_pixels_3d);
         fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
@@ -128,11 +146,20 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set title \"Meridional\"\n");
         fprintf(gpf, "set size 1,0.5\n");   
         fprintf(gpf, "set origin 0.0,0.5\n");
-        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str());
+        fprintf(gpf, "splot [0:%lf][0:%lf] \"%s\" w d notitle\n", 
+                img.cols/pixel_size, 
+                (img.rows-1)/pixel_size, 
+                (wdir+fname).c_str()
+        );
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
         fprintf(gpf, "set origin 0.0,0.0\n");
-        fprintf(gpf, "splot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str(), img.rows);
+        fprintf(gpf, "splot [0:%lf][0:%lf] \"%s\" u 1:($2-%lf):3 w d notitle\n", 
+                img.cols/pixel_size, 
+                (img.rows-1)/pixel_size, 
+                (wdir+fname).c_str(), 
+                img.rows/pixel_size
+        );
         fprintf(gpf, "unset multiplot\n");
         fclose(gpf);
         
@@ -339,6 +366,9 @@ class Mtf_renderer_grid : public Mtf_renderer {
     double img_y;
     double img_x;
     const cv::Mat& img;
+
+    bool    lpmm_mode;
+    double  pixel_size;
     
     bool gnuplot_failure;
     bool gnuplot_warning;
