@@ -33,8 +33,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/block.h"
 #include "include/rectangle.h"
 
+#include <map>
+using std::map;
+
 #include "tbb/tbb.h"
-#include "tbb/concurrent_vector.h"
 using namespace tbb;
 
 typedef vector<Block> block_vector;
@@ -86,10 +88,10 @@ class Mtf_core {
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
         if (detected_blocks.size() == 0) {
-            for (concurrent_vector<Block>::const_iterator it=shared_blocks.begin(); 
-                 it != shared_blocks.end(); it++) {
+            for (map<int,Block>::const_iterator it=shared_blocks_map.begin();
+                 it != shared_blocks_map.end(); it++) {
 
-                detected_blocks.push_back(*it);
+                detected_blocks.push_back(it->second);
             }
         }
         return detected_blocks;
@@ -104,7 +106,7 @@ class Mtf_core {
     vector<int> valid_obj;
     
     vector<Block> detected_blocks;  
-    concurrent_vector<Block> shared_blocks;
+    map<int, Block> shared_blocks_map;
 };
 
 #endif
