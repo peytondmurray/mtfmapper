@@ -111,10 +111,10 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
         fprintf(gpf, "set multiplot\n");
         fprintf(gpf, "set size 1,0.5\n");   
-        fprintf(gpf, "set origin 0.0,0.0\n");
+        fprintf(gpf, "set origin 0.0,0.5\n");
         fprintf(gpf, "set title \"Meridional\"\n");
         fprintf(gpf, "plot [0:%d][0:%d] \"%s\" t \"MTF50 (c/p)\" w image\n", img.cols, img.rows-1, (wdir+fname).c_str());
-        fprintf(gpf, "set origin 0.0,0.5\n");
+        fprintf(gpf, "set origin 0.0,0.0\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
         fprintf(gpf, "plot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 t \"MTF50 (c/p)\" w image\n", img.cols, img.rows, (wdir+fname).c_str(),img.rows);
         fprintf(gpf, "unset multiplot\n");
@@ -127,11 +127,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Meridional\"\n");
         fprintf(gpf, "set size 1,0.5\n");   
-        fprintf(gpf, "set origin 0.0,0.0\n");
+        fprintf(gpf, "set origin 0.0,0.5\n");
         fprintf(gpf, "splot [0:%d][0:%d] \"%s\" w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str());
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
-        fprintf(gpf, "set origin 0.0,0.5\n");
+        fprintf(gpf, "set origin 0.0,0.0\n");
         fprintf(gpf, "splot [0:%d][0:%d] \"%s\" u 1:($2-%d):3 w d notitle\n", img.cols, img.rows-1, (wdir+fname).c_str(), img.rows);
         fprintf(gpf, "unset multiplot\n");
         fclose(gpf);
@@ -231,9 +231,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
         cv::Mat distmat;
         cv::distanceTransform(grid_binary, distmat, grid_labels, CV_DIST_L2, 5);
 
-        //grid_labels.convertTo(grid, CV_32FC1);
-        //return;
-
         cv::Mat flood_labels;
         grid_labels.convertTo(flood_labels, CV_32FC1);
 
@@ -264,8 +261,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
             }
         }
 
-        //return;
-
         cv::Mat grid2(grid_y, grid_x, CV_32FC1, 0.0);
         cv::Mat grid3(grid_y, grid_x, CV_32FC1, 0.0);
         cv::boxFilter(grid, grid3, grid.type(), cv::Size(7,7));
@@ -280,12 +275,14 @@ class Mtf_renderer_grid : public Mtf_renderer {
             }
         }
         far_fraction /= (grid_x*grid_y);
+        const double far_fraction_threshold = 0.3;
         printf("far fraction = %lf\n", far_fraction);
 
+        // todo: replace this loop with opencv masked copy?
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
                 if (distmat.at<float>(y,x) > dist_thresh) {
-                    if (far_fraction > 0.3) {
+                    if (far_fraction > far_fraction_threshold) {
                         grid.at<float>(y, x) = 0;
                     } else {
                         grid.at<float>(y, x) = grid3.at<float>(y, x);
@@ -296,6 +293,35 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     //}   
                 }
             }
+        }
+        
+        // perform another pass to smooth the edges of the
+        // surface to remove discontinuities (which render badly)
+        if (far_fraction > far_fraction_threshold) {
+            // edge pixels are to be replaced with Gaussian smoothed values
+            cv::Mat smoothed;
+            cv::GaussianBlur(grid, smoothed, cv::Size(7,7), 1.5, 1.5);
+
+            // find edge pixels through morphology
+            cv::Mat thresh(grid.rows, grid.cols, CV_8UC1);
+            for (size_t y=0; y < grid_y; y++) {
+                for (size_t x=0; x < grid_x; x++) {
+                    thresh.at<char>(y,x) = grid.at<float>(y,x) > 0 ? 255 : 0;
+                }
+            }
+            const int erosion_size = 3;
+            cv::Mat element = cv::getStructuringElement( 
+                cv::MORPH_ELLIPSE,
+                cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
+                cv::Point( erosion_size, erosion_size ) 
+            );
+            cv::Mat dilated;
+            cv::Mat eroded;
+            cv::dilate(thresh, dilated, element, cv::Point(-1,-1), 1);
+            cv::erode(thresh, eroded, element, cv::Point(-1,-1), 1);
+            thresh = dilated - eroded;
+
+            smoothed.copyTo(grid, thresh);
         }
         #endif
     }
