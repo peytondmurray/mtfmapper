@@ -38,10 +38,11 @@ class Mtf_renderer_profile : public Mtf_renderer {
   public:
     Mtf_renderer_profile(const std::string& wdir, const std::string& prof_fname, 
         const std::string& peak_fname, const std::string& gnuplot_binary,
-        const cv::Mat& img) 
+        const cv::Mat& img, bool lpmm_mode=false, double pixel_size=1.0) 
       :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
-         gnuplot_binary(gnuplot_binary), img(img), gnuplot_failure(false), 
-         gnuplot_warning(true) {
+         gnuplot_binary(gnuplot_binary), img(img), 
+         lpmm_mode(lpmm_mode), pixel_size(pixel_size),
+         gnuplot_failure(false), gnuplot_warning(true) {
       
     }
     
@@ -145,7 +146,11 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 max_med_filt = med_filt_mtf[i];
                 max_med_filt_coord = it->first;
             }
-            fprintf(prfile, "%d %lf %lf\n", it->first, it->second, med_filt_mtf[i++]);
+            fprintf(prfile, "%lf %lf %lf\n", 
+                it->first/pixel_size, 
+                it->second*pixel_size, 
+                med_filt_mtf[i++]*pixel_size
+            );
         }
         fclose(prfile);
 
@@ -194,7 +199,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
 
-        printf("peak_shift = %lf mtf_at_peak = %lf\n", peak_shift, mean_mtf50_at_ref_edge);
+        printf("peak_shift = %lf mtf_at_peak = %lf %s\n", 
+            peak_shift, mean_mtf50_at_ref_edge*pixel_size,
+            lpmm_mode ? "lp/mm" : "c/p"
+        );
         
         FILE* pffile = fopen((wdir+pfname).c_str(), "wt");
         double peak_mtf50 = blocks[largest_block].get_mtf50_value(peak_idx);
@@ -205,22 +213,24 @@ class Mtf_renderer_profile : public Mtf_renderer {
         }
         fprintf(pffile, "%lf %lf %lf\n", 
             transpose ? 
-                 blocks[largest_block].get_edge_centroid(peak_idx).x :
-                 blocks[largest_block].get_edge_centroid(peak_idx).y , 
-            peak_mtf50,
-            peak_mtf50*3
+                 blocks[largest_block].get_edge_centroid(peak_idx).x/pixel_size :
+                 blocks[largest_block].get_edge_centroid(peak_idx).y/pixel_size , 
+            peak_mtf50*pixel_size,
+            peak_mtf50*3*pixel_size
         );
         fclose(pffile);
 
 		       
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
-        fprintf(gpf, "set xlab \"column (pixels)\"\n");
-        fprintf(gpf, "set ylab \"MTF50 (cyc/pix)\"\n");
+        fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
+        fprintf(gpf, "set ylab \"MTF50 (%s)\"\n", lpmm_mode ? "line pairs per mm" : "cycles/pixel");
         fprintf(gpf, "set term png size 1024, 768\n");
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (c/p) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (c/p) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
-            effective_max,
-            (wdir+prname).c_str(), (wdir+prname).c_str(), (wdir+pfname).c_str(), peak_quality_good ? 3 : 1);
+        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (%s) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (%s) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
+            effective_max*pixel_size,
+            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
+            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
+            (wdir+pfname).c_str(), peak_quality_good ? 3 : 1);
         fclose(gpf);
         
         char* buffer = new char[1024];
@@ -360,6 +370,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
     std::string pfname;
     std::string gnuplot_binary;
     const cv::Mat& img;
+    bool    lpmm_mode;
+    double  pixel_size;
     bool gnuplot_failure;
     bool gnuplot_warning;
 };

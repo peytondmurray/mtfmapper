@@ -56,6 +56,8 @@ class Settings_dialog : public QDialog
     QLineEdit*  arguments_line;
     QLabel*     threshold_label;
     QLineEdit*  threshold_line;
+    QLabel*     pixsize_label;
+    QLineEdit*  pixsize_line;
     QPushButton* accept_button;
     QPushButton* cancel_button;
     
@@ -63,6 +65,7 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_annotation;
     QCheckBox*  cb_profile;
     QCheckBox*  cb_grid;
+    QCheckBox*  cb_lpmm;
 
     QLabel*     gnuplot_label;
     QLineEdit*  gnuplot_line;

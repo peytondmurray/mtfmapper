@@ -46,6 +46,7 @@ using std::stringstream;
 #include "include/mtf_renderer_grid.h"
 #include "include/mtf_renderer_print.h"
 #include "include/mtf_renderer_stats.h"
+#include "include/scanline.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -100,8 +101,18 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
+    TCLAP::ValueArg<double> tc_pixelsize("", "pixelsize", "Pixel size in microns. This also switches units to lp/mm", false, 1.0, "size", cmd);
     
     cmd.parse(argc, argv);
+
+    bool lpmm_mode = false;
+    double pixel_size = 1;
+    if (tc_pixelsize.isSet()) {
+        printf("Info: Pixel size has been specified, measurement will be reported in lp/mm, rather than c/p\n");
+        lpmm_mode = true;
+        pixel_size = 1000 / tc_pixelsize.getValue();
+        printf("working with=%lf pixels per mm\n", pixel_size);
+    }
 
     if (!tc_profile.getValue() && !tc_annotate.getValue() && !tc_surface.getValue() && !tc_print.getValue() ) {
         printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s]\n");
@@ -158,6 +169,45 @@ int main(int argc, char** argv) {
     printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 8000);
+
+    #if 0
+    // blank out the largest block
+    cv::Mat outimg = cvimg.clone();
+    Boundarylist bl = cl.get_boundaries();
+    for (Boundarylist::const_iterator it=bl.begin(); it != bl.end(); it++) {
+        if (it->second.size() > 3000) {
+            Point cent = centroid(it->second);
+            printf("found a big one: %d (%lf,%lf)\n", (int)it->second.size(), cent.x, cent.y); 
+
+            map<int, scanline> scanset;
+            for (size_t i=0; i < it->second.size(); i++) {
+                Point p = it->second[i];
+                int iy = lrint(p.y);
+                int ix = lrint(p.x);
+                if (iy > 0 && iy < cvimg.rows && ix > 0 && ix < cvimg.cols) {
+                    map<int, scanline>::iterator it2 = scanset.find(iy);
+                    if (it2 == scanset.end()) {
+                        scanline sl(ix,ix);
+                        scanset.insert(make_pair(iy, sl));
+                    }
+                    if (ix < scanset[iy].start) {
+                        scanset[iy].start = ix;
+                    }
+                    if (ix > scanset[iy].end) {
+                        scanset[iy].end = ix;
+                    }
+                }
+            }
+            for (map<int,scanline>::const_iterator it3=scanset.begin(); it3 != scanset.end(); it3++) {
+                printf("line %d, from %d to %d\n", it3->first, scanset[it3->first].start, scanset[it3->first].end);
+                for (int col=scanset[it3->first].start+1; col < scanset[it3->first].end; col++) {
+                    outimg.at<uint16_t>(it3->first, col) = 0;
+                }
+            }
+        }
+    }
+    imwrite(string("out.tiff"), outimg);
+    #endif
     
     if (cl.get_boundaries().size() == 0) {
         printf("No black objects found. Try a lower threshold value with the -t option.\n");
@@ -177,7 +227,7 @@ int main(int argc, char** argv) {
     
     // now render the computed MTF values
     if (tc_annotate.getValue()){
-        Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"));
+        Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"), lpmm_mode, pixel_size);
         annotate.render(mtf_core.get_blocks());
     }
     
@@ -194,7 +244,9 @@ int main(int argc, char** argv) {
                 string("profile.txt"),
                 string("profile_peak.txt"),
                 tc_gnuplot.getValue(),
-                cvimg
+                cvimg,
+                lpmm_mode,
+                pixel_size
             );
             profile.render(mtf_core.get_blocks());
             gnuplot_warning = !profile.gnuplot_failed();
@@ -211,7 +263,9 @@ int main(int argc, char** argv) {
                 wdir, 
                 string("grid.txt"),
                 tc_gnuplot.getValue(),
-                cvimg
+                cvimg,
+                lpmm_mode,
+                pixel_size
             );
             grid.set_gnuplot_warning(gnuplot_warning);
             grid.render(mtf_core.get_blocks());
@@ -219,11 +273,17 @@ int main(int argc, char** argv) {
     }
     
     if (tc_print.getValue()) {
-        Mtf_renderer_print printer(wdir + string("raw_mtf_values.txt"), tc_angle.getValue() != 1000, tc_angle.getValue()/180.0*M_PI);
+        Mtf_renderer_print printer(
+            wdir + string("raw_mtf_values.txt"), 
+            tc_angle.isSet(), 
+            tc_angle.getValue()/180.0*M_PI,
+            lpmm_mode,
+            pixel_size
+        );
         printer.render(mtf_core.get_blocks());
     }
     
-    Mtf_renderer_stats stats;
+    Mtf_renderer_stats stats(lpmm_mode, pixel_size);
     stats.render(mtf_core.get_blocks());
     
     return 0;

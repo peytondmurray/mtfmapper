@@ -33,8 +33,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_print : public Mtf_renderer {
   public:
-    Mtf_renderer_print(const std::string& fname, bool filter=false, double angle=0) 
-      :  ofname(fname), filter(filter), angle(angle) {
+    Mtf_renderer_print(const std::string& fname, 
+      bool filter=false, double angle=0,
+      bool lpmm_mode=false, double pixel_size=1.0) 
+      :  ofname(fname), filter(filter), angle(angle),
+         lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
     }
     
@@ -61,6 +64,8 @@ class Mtf_renderer_print : public Mtf_renderer {
     string ofname;
     bool filter;
     double angle;
+    bool    lpmm_mode;
+    double  pixel_size;
 };
 
 #endif

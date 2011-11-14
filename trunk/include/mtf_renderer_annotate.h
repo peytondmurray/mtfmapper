@@ -33,8 +33,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_annotate : public Mtf_renderer {
   public:
-    Mtf_renderer_annotate(const cv::Mat& in_img, const std::string& fname) 
-      : img(in_img), ofname(fname) {
+    Mtf_renderer_annotate(const cv::Mat& in_img, const std::string& fname,
+      bool lpmm_mode, double pixel_size) 
+      : img(in_img), ofname(fname), lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
           unsigned int max_val = 0;
           for (int r=0; r < img.rows; r++) {
@@ -126,6 +127,8 @@ class Mtf_renderer_annotate : public Mtf_renderer {
     const cv::Mat& img;
     cv::Mat out_img;
     string ofname;
+    bool    lpmm_mode;
+    double  pixel_size;
 };
 
 #endif
