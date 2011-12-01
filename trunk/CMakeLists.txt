@@ -73,8 +73,17 @@ if (UNIX)
   if(NOT MANDIR)
       set(MANDIR "/usr/man")
   endif(NOT MANDIR)
+  set(HTML_HELP_DIR ${DOCDIR})
   add_subdirectory(manpages)
 endif(UNIX)
+
+if (MSVC)
+  if (NOT DOCDIR)
+      set(HTML_HELP_DIR "./")
+  else(NOT DOCDIR)
+      set(HTML_HELP_DIR ${DOCDIR})
+  endif(NOT DOCDIR)  
+endif (MSVC)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
@@ -86,6 +95,7 @@ configure_file (
 add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
 add_subdirectory(bin)
 
-
+# copy across the html documentation
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/html DESTINATION ${HTML_HELP_DIR})
 
 

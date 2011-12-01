@@ -160,6 +160,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     worker_thread = new QThread;
     
     settings = new Settings_dialog(this);
+    about    = new About_dialog(this);
+    help     = new Help_dialog(this);
     
     create_actions();
     
@@ -170,9 +172,14 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     settings_menu = new QMenu(tr("&Settings"), this);
     settings_menu->addAction(prefs_act);
+
+    help_menu = new QMenu(tr("&Help"), this);
+    help_menu->addAction(help_act);
+    help_menu->addAction(about_act);
     
     menuBar()->addMenu(file_menu);
     menuBar()->addMenu(settings_menu);
+    menuBar()->addMenu(help_menu);
     
     connect(datasets, SIGNAL(clicked(const QModelIndex&)), this, SLOT(dataset_selected(const QModelIndex&)));
     connect(datasets->selectionModel(), SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)), this, SLOT(dataset_selected_changed(const QModelIndex&, const QModelIndex&)));
@@ -237,6 +244,13 @@ void mtfmapper_app::create_actions(void) {
     prefs_act = new QAction(tr("&Preferences"), this);
     prefs_act->setShortcut(tr("Ctrl-P"));
     connect(prefs_act, SIGNAL(triggered()), settings, SLOT( open() ));
+
+    help_act = new QAction(tr("&Help"), this);
+    help_act->setShortcut(tr("Ctrl-H"));
+    connect(help_act, SIGNAL(triggered()), help, SLOT( open() ));
+
+    about_act = new QAction(tr("&About"), this);
+    connect(about_act, SIGNAL(triggered()), about, SLOT( open() ));
 }
 
 void mtfmapper_app::view_image(const QString& fname) {
