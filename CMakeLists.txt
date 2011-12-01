@@ -100,6 +100,9 @@ add_definitions(-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
 add_subdirectory(bin)
 
 # copy across the html documentation
+if (HTML_HELP_DIR)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/html DESTINATION ${HTML_HELP_DIR})
+endif(HTML_HELP_DIR)
+
 
 
