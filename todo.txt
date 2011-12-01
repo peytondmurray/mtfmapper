@@ -5,7 +5,13 @@ correctly)
 3. improve handling of very small rectangles, especially when roi buffers
 overlap
 4. make profiles more robust, i.e., resolve reference block orientation
-issues
+issues (have not seen problems here in a while ...)
 5. fix gui zooming-with-mousewheel
 6. Perspective chart can be optimized to keep blocks more aligned with the
-meridional direction
+meridional direction (this should not really affect overall focus 
+position, though)
+7. can improve robustness to background objects by measuring the intensity
+variance within each block, e.g, comparing to half variance to bottom half
+variance and so on. this will weed out non-uniform blocks. (low priority,
+unless people really have a lot of background clutter)
+8. help screen, link to documentation, etc.

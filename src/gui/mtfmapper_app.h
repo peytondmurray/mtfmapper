@@ -36,6 +36,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "worker_thread.h"
 #include "img_frame.h"
 #include "exiv2_property.h"
+#include "about_dialog.h"
+#include "help_dialog.h"
 
 class QPushButton;
 class QLabel;
@@ -67,9 +69,12 @@ class mtfmapper_app : public QMainWindow
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
+    QMenu*          help_menu;
     QAction*        open_act;
     QAction*        exit_act;
     QAction*        prefs_act;
+    QAction*        about_act;
+    QAction*        help_act;
     
     QTreeView*      datasets;
     
@@ -94,6 +99,8 @@ class mtfmapper_app : public QMainWindow
     QGraphicsPixmapItem* qgpi;
     
     Settings_dialog*    settings;
+    About_dialog*       about;
+    Help_dialog*        help;
     
     QStringList     input_files;
     QStringList     dataset_files;

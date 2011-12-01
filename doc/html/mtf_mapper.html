@@ -1,0 +1,1361 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2008 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>MTF Mapper user documentation</TITLE>
+<META NAME="description" CONTENT="MTF Mapper user documentation">
+<META NAME="keywords" CONTENT="mtf_mapper">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2008">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="mtf_mapper.css">
+
+</HEAD>
+
+<BODY >
+<H1 ALIGN="CENTER">MTF Mapper user documentation</H1><DIV>
+
+<P ALIGN="CENTER"><STRONG>F. van den Bergh (fvdbergh#at#gmail#dot#com)</STRONG></P>
+</DIV>
+
+<P>
+<BR>
+
+<H2><A NAME="SECTION00010000000000000000">
+Contents</A>
+</H2>
+<!--Table of Contents-->
+
+<UL>
+<LI><A NAME="tex2html40"
+  HREF="mtf_mapper.html#SECTION00020000000000000000">Overview</A>
+<LI><A NAME="tex2html41"
+  HREF="mtf_mapper.html#SECTION00030000000000000000">Getting started with the GUI</A>
+<LI><A NAME="tex2html42"
+  HREF="mtf_mapper.html#SECTION00040000000000000000">Modes</A>
+<UL>
+<LI><A NAME="tex2html43"
+  HREF="mtf_mapper.html#SECTION00041000000000000000">Annotation mode (-a or -annotate flag)</A>
+<LI><A NAME="tex2html44"
+  HREF="mtf_mapper.html#SECTION00042000000000000000">Profile mode (-p or -profile flag)</A>
+<LI><A NAME="tex2html45"
+  HREF="mtf_mapper.html#SECTION00043000000000000000">MTF Surface mode (-s or -surface flag)</A>
+</UL><BR>
+<LI><A NAME="tex2html46"
+  HREF="mtf_mapper.html#SECTION00050000000000000000">Autofocus fine-tuning</A>
+<UL>
+<LI><A NAME="tex2html47"
+  HREF="mtf_mapper.html#SECTION00051000000000000000">Caveats and disclaimers</A>
+</UL><BR>
+<LI><A NAME="tex2html48"
+  HREF="mtf_mapper.html#SECTION00060000000000000000">Other MTF mapper utilities</A>
+<UL>
+<LI><A NAME="tex2html49"
+  HREF="mtf_mapper.html#SECTION00061000000000000000">Rectangle generator</A>
+<LI><A NAME="tex2html50"
+  HREF="mtf_mapper.html#SECTION00062000000000000000">Test chart generator</A>
+</UL><BR>
+<LI><A NAME="tex2html51"
+  HREF="mtf_mapper.html#SECTION00070000000000000000">Frequently Asked Questions</A>
+<LI><A NAME="tex2html52"
+  HREF="mtf_mapper.html#SECTION00080000000000000000">Tips for printing the test charts</A>
+<LI><A NAME="tex2html53"
+  HREF="mtf_mapper.html#SECTION00090000000000000000">Flat 45<IMG
+ WIDTH="12" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.png"
+ ALT="$^\circ $"> test charts <I>vs.</I> perpendicular charts</A>
+<LI><A NAME="tex2html54"
+  HREF="mtf_mapper.html#SECTION000100000000000000000">Internal workings</A>
+<LI><A NAME="tex2html55"
+  HREF="mtf_mapper.html#SECTION000110000000000000000">Accuracy</A>
+<LI><A NAME="tex2html56"
+  HREF="mtf_mapper.html#SECTION000120000000000000000">Bibliography</A>
+</UL>
+<!--End of Table of Contents-->
+<P>
+
+<P>
+
+<H1><A NAME="SECTION00020000000000000000">
+Overview</A>
+</H1>
+The MTF mapper package offers a collection of tools to measure Modulation
+Transfer Function (MTF) values across edges in images. 
+It does this by computing the edge spread function of a step edge in an
+image, using the method described by Khom [<A
+ HREF="mtf_mapper.html#khom">1</A>]
+(Section&nbsp;<A HREF="#sec:description">C</A> provides a brief overview).
+MTF50 values correspond to perceived sharpness of edges; this means that the
+MTF mapper tools can be used to evaluate camera lens sharpness, as well as
+autofocus behaviour.
+
+<P>
+MTF mapper offers fully automated operation, producing the following
+outputs:
+
+<OL>
+<LI>Annotated images, where the MTF50 value of an edge is printed on top
+of the edge itself;
+</LI>
+<LI>Profile data sets, where the MTF50 values are represented in a
+one-dimensional projection of the image. This is the tool you want if you
+are interested in objectively adjusting your DSLR autofocus fine-tuning (see
+Section&nbsp;<A HREF="#sec:autofocus">4</A> for details of the method).
+</LI>
+<LI>MTF surface images, where you can visualise the MTF50 values
+across the focal plane, to see the image centre MTF50 relative to edge MTF50,
+for example.
+</LI>
+</OL>
+
+<P>
+MTF mapper expects images containing dark rectangular objects on light
+backgrounds; the objects can be slightly out-of-square, e.g., trapezoids or
+parallelograms, provided the interior angles are at least reasonably close
+to 90<IMG
+ WIDTH="12" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.png"
+ ALT="$^\circ $">.
+
+<P>
+Special test charts are required for Profile mode.
+Section&nbsp;<A HREF="#sec:profile_mode">3.2</A> describes them in more detail.
+
+<P>
+Special test charts are also required for MTF surface mode.
+Section&nbsp;<A HREF="#sec:surface_mode">3.3</A> describes them in more detail.
+
+<P>
+The two main programs of the MTF mapper package are called <code>mtf_mapper</code>
+and <code>mtf_mapper_gui</code>. The GUI is just a front-end to the command line
+tool.
+
+<P>
+
+<H1><A NAME="SECTION00030000000000000000">
+Getting started with the GUI</A>
+</H1>
+After launching the GUI, you will be faced with a screen that looks like the
+one portrayed in Figure&nbsp;<A HREF="#fig:sshot1">1</A>.
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:sshot1"></A><A NAME="78"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 1:</STRONG>
+Screen shot of the MTF mapper gui</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="920" HEIGHT="627" ALIGN="BOTTOM" BORDER="0"
+ SRC="./sshot1.png"
+ ALT="Image sshot1">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+The right panel (called ``selection'') will contain a list of available
+views once some files have been processed. Selecting a view from this list
+will cause the relevant image to be displayed in the left panel. First off,
+though, you will have to choose some files to process.
+
+<P>
+This is accomplished by selecting File/Open from the menu. You can select
+multiple files to be processed; these files can be in a variety of image formats,
+including <TT>.png, .jpg, .pgm</TT>, or any raw format supported by <code>dcraw</code>,
+including <TT>.nef, .cr2, .pef</TT>, and <TT>.arw</TT>. Note that all
+previous outputs will be cleared from the ``selection'' panel when new files are 
+selected. The implication of this is that all files must reside in the same
+directory.
+
+<P>
+Once the selection panel has been populated, you can click on any of the
+items to view the relevant data. Clicking on the image filename will display
+the original image in the output window; its children will be the outputs
+generated by the various modes. The checkboxes in the selection panel can be
+used to enable/disable the various output image types. This is useful when
+using the keyboard to move up or down the list; disabled output types will
+be skipped. 
+
+<P>
+You can drag the image in the output window to pan, or you may choose to use
+the scroll bars (if present). The <code>+</code>, <code>-</code>, and <code>=</code> keys may
+be used to zoom in, zoom out, or zoom to 100%, but you may have to click on
+the image first to set focus.
+
+<P>
+That concludes the very brief overview of the MTF mapper GUI. The rest of
+this document will describe what the various modes and output types can be
+used for.
+
+<P>
+
+<H1><A NAME="SECTION00040000000000000000">
+Modes</A>
+</H1>
+The main tool in the package is called <TT>mtf_mapper</TT>; you could simply
+invoke it as 
+<PRE> mtf_mapper &lt;image&gt; &lt;working_dir&gt; [-p|-r|-s|-a]
+</PRE>
+where <TT>&lt;image&gt;</TT> can be in a variety of image formats, including 
+PNG, JPG, TIFF, PNM, and more. A working directory, and the desired
+combination of modes, must also be specified.
+After successful extraction of MTF50 values from the edges found in 
+the image, the information is made available in several forms, called 
+``modes'', detailed next.
+
+<P>
+
+<H2><A NAME="SECTION00041000000000000000"></A>
+<A NAME="sec:annotation_mode"></A><BR>
+Annotation mode (<TT>-a</TT> or <TT>-annotate</TT> flag)
+</H2>
+No explanation required, really. Input images are searched for rectangular
+objects. Once found, the MTF50 value will be computed across each edge of
+all the rectangular objects. The resulting value is drawn on top of each
+edge, and the result saved as  annotated.png by default.
+
+<P>
+
+<H2><A NAME="SECTION00042000000000000000"></A>
+<A NAME="sec:profile_mode"></A><BR>
+Profile mode (<TT>-p</TT> or <TT>-profile</TT> flag)
+</H2>
+Using a special test chart illustrated in Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>, 
+the program will construct a profile such as the one shown in 
+Figure&nbsp;<A HREF="#fig:sample_profile">4</A>, which was derived from the original image
+shown downsampled in Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>(b). The chart should
+be photographed at a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angle.
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:profile_test_chart"></A><A NAME="308"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 2:</STRONG>
+An illustration of the type of test chart used in <I>profile</I>
+mode.</CAPTION>
+<TR><TD><DIV ALIGN="CENTER">[Perspective chart]
+  <IMG
+  WIDTH="395" HEIGHT="558" ALIGN="BOTTOM" BORDER="0"
+ SRC="./mtf_profile_test_chart.png"
+ ALT="Image mtf_profile_test_chart">
+
+[A photo of this type of chart at <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $">]
+  <IMG
+  WIDTH="800" HEIGHT="530" ALIGN="BOTTOM" BORDER="0"
+ SRC="./perspective_sample_photo.jpg"
+ ALT="Image perspective_sample_photo">
+
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:profile_construction"></A><A NAME="107"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 3:</STRONG>
+How the profile is constructed: MTF50 values are collapsed
+horizontally onto the <IMG
+ WIDTH="13" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.png"
+ ALT="$y$">-axis to form the profile.</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="397" HEIGHT="248" ALIGN="BOTTOM" BORDER="0"
+ SRC="./profile_construction.png"
+ ALT="Image profile_construction">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:sample_profile"></A><A NAME="309"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 4:</STRONG>
+Example of profile generated by MTF mapper. Derived from the image
+shown in Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>(b).</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="550" HEIGHT="314" ALIGN="BOTTOM" BORDER="0"
+ SRC="./sample_profile.png"
+ ALT="Image sample_profile">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+The large central block in the chart (Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>) 
+is called the reference block, and the edge of this block closest to the
+centre of the chart (the bottom edge in Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>)
+is called the <I>reference edge</I>.
+The MTF50 values computed across the edges of all the blocks in the image
+are projected onto the <IMG
+ WIDTH="13" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.png"
+ ALT="$y$">-axis<A NAME="tex2html5"
+  HREF="footnode.html#foot118"><SUP>1</SUP></A> of the image, thus forming a new set of data
+points of the form (<IMG
+ WIDTH="13" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.png"
+ ALT="$y$">-value, MTF50 value). This process is illustrated in
+Figure&nbsp;<A HREF="#fig:profile_construction">3</A>. The idea is that about half of the
+chart will be in front of the plane of focus, and the other half behind. If
+the depth of field is sufficiently shallow, then the closest and furthest of
+the small blocks will be noticeably blurry. By projecting the measured
+sharpness value (MTF50) of each block along horizontal lines
+(Figure&nbsp;<A HREF="#fig:profile_construction">3</A>), we obtain a roughly bell-shaped
+profile as shown in green on the left. The peak of this curve corresponds to the plane
+of focus, and blocks that are further or closer than this plane are out of
+focus to some degree. The blue line indicates the position of the
+<I>reference edge</I>.
+
+<P>
+A complete profile in its usual orientation is shown in 
+Figure&nbsp;<A HREF="#fig:sample_profile">4</A>. The red dots represent individual MTF50
+measurements, and the green curve is merely a smoothed representation of the
+same data.
+
+<P>
+Generally, <I>Profile</I> mode is only intended to be used to calibrate or
+evaluate the autofocus sensor of a DSLR; the details of this process are
+described in Section&nbsp;<A HREF="#sec:autofocus">4</A>. The objective is to adjust the
+camera so that the blue line (reference edge, or focus position) lines up
+with the peak of the green curve / red point cloud. If the blue line is far
+from the peak, then you are experiencing either front- or back-focus. If
+your chart was positioned at a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angle so that the bottom edge 
+was closer to you, then front focus would mean that the blue line appears to
+the left of the peak in the green curve. This depends on the orientation of
+the camera, though, so you may want to take a look at the annotated image
+(see Section&nbsp;<A HREF="#sec:annotation_mode">3.1</A>) to orient yourself. The trick is to
+remember that the peak in the green curve (or red point cloud) corresponds
+to the <I>actual</I> plane of focus, whereas the blue line corresponds to
+where MTF Mapper <I>assumes</I> you have placed the autofocus sensor when you
+framed the shot.
+
+<P>
+
+<H2><A NAME="SECTION00043000000000000000"></A>
+<A NAME="sec:surface_mode"></A><BR>
+MTF Surface mode (<TT>-s</TT> or <TT>-surface</TT> flag)
+</H2>
+
+<DIV ALIGN="CENTER"><A NAME="fig:surface_test_chart"></A><A NAME="133"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 5:</STRONG>
+Example of an MTF surface mode test chart</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="394" HEIGHT="279" ALIGN="BOTTOM" BORDER="0"
+ SRC="./mtf_surface_test_chart.png"
+ ALT="Image mtf_surface_test_chart">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+Using any test chart with a regular grid of rectangles (as illustrated in
+Figure&nbsp;<A HREF="#fig:surface_test_chart">5</A>), you can measure the acuity of your
+lens/camera system as it varies across the focal plane. Just shoot the chart
+at a reasonable distance, making sure that it covers the entire viewfinder.
+For optimal accuracy, the orientation of the blocks in the chart should be
+approximately <IMG
+ WIDTH="19" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img5.png"
+ ALT="$5^\circ$">-<IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img6.png"
+ ALT="$15^\circ$"> with respect to the pixel rows or columns.
+The charts produced by the <TT>generate_test_chart</TT> program included
+with MTF Mapper already take care of this, so you should try to capture the
+chart as straight as possible. Do note that this becomes more critical at
+higher sharpness settings, i.e., if you have a really sharp lens and you are
+sharpening your images excessively, then you have to observe the orientation
+of the chart carefully. For typical lenses and unsharpened images, 
+chart alignment is not critical.
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:sample_grid_image"></A><A NAME="140"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 6:</STRONG>
+Example of MTF50 image generated by MTF mapper</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="600" HEIGHT="792" ALIGN="BOTTOM" BORDER="0"
+ SRC="./sample_grid_image.png"
+ ALT="Image sample_grid_image">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:sample_grid_surface"></A><A NAME="145"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 7:</STRONG>
+Example of MTF50 surface generated by MTF mapper</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="900" HEIGHT="1200" ALIGN="BOTTOM" BORDER="0"
+ SRC="./sample_grid_surface.png"
+ ALT="Image sample_grid_surface">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+Surface mode produces two images: one representing a 2D
+representation of MTF50 values across your image, and another showing the
+same data rendered as a 3D surface. Examples of both can be seen in
+Figures&nbsp;<A HREF="#fig:sample_grid_image">6</A> and <A HREF="#fig:sample_grid_surface">7</A>. These
+MTF maps show that this particular lens (a Nikon Nikkor 35 mm F1.8 prime
+lens, stopped down to F2.8) is fairly sharp, but appears to have some
+strange asymmetrical defect -- not that you can tell by looking at photos
+taken with this lens, though.
+
+<P>
+
+<P>
+
+<H1><A NAME="SECTION00050000000000000000"></A>
+<A NAME="sec:autofocus"></A><BR>
+Autofocus fine-tuning
+</H1>
+
+<DIV ALIGN="CENTER"><A NAME="fig:af_setup"></A><A NAME="154"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 8:</STRONG>
+Illustration showing the top view of the autofocus calibration
+set-up</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="481" HEIGHT="304" ALIGN="BOTTOM" BORDER="0"
+ SRC="./af_setup.png"
+ ALT="Image af_setup">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<DIV ALIGN="CENTER"><A NAME="fig:af_sensor_placement"></A><A NAME="159"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 9:</STRONG>
+Where to place your autofocus sensor</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="394" HEIGHT="279" ALIGN="BOTTOM" BORDER="0"
+ SRC="./af_sensor_placement.png"
+ ALT="Image af_sensor_placement">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+The following steps can be used to calibrate the autofocus fine-tuning of a
+DSLR:
+
+<OL>
+<LI>Figure&nbsp;<A HREF="#fig:af_setup">8</A> illustrates the basic set-up. The
+distance <IMG
+ WIDTH="13" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img7.png"
+ ALT="$d$"> is the ``distance to chart'', and the angle <IMG
+ WIDTH="12" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img8.png"
+ ALT="$\theta$"> is the
+``angle with respect to the test chart''.
+</LI>
+<LI>Print out the test chart at a large enough scale. Ideally, your
+test chart must be large enough so that you can use it at a distance of
+<IMG
+ WIDTH="33" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.png"
+ ALT="$30\times$"> the focal length of your lens. Appendix&nbsp;<A HREF="#sec:tips">A</A> offers
+some advice on printing your test charts.
+
+<P>
+Position your camera so that you see the chart from an angle of at least <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> -- the idea is that you
+want some of the small blocks to be in front of the plane of focus, and some
+of the blocks behind the plane of focus; this is easier to achieve at angles
+of <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> and smaller. The reference edge (Section&nbsp;<A HREF="#sec:profile_mode">3.2</A>) should be
+exactly at the plane of focus, but since you are reading this, I take it you
+are still trying to adjust the autofocus fine-tuning to achieve this.
+
+<P>
+</LI>
+<LI>You must use a tripod, and it is recommended that you use a remote
+shutter release or a timed shutter release to minimise vibrations.
+
+<P>
+</LI>
+<LI>You should have enough
+light for an exposure value of 10-11 (for example, ISO 100 F/1.8 at 1/320
+s), which translates into about 2500-5000 lux. This amount of light is 
+required to achieve consistent performance from
+the AF sensor. I use indirect sunlight to reach these levels.
+
+<P>
+</LI>
+<LI>Set your camera to AF-S (single-servo AF). Select a single AF
+point -- the centre AF sensor is recommended. This is critical, as any
+other AF mode / sensor selection will not produce the desired results.
+On Nikon bodies, I like
+to use the AF-ON mode so that the camera only focuses when I ask it to. For
+adjusting your AF fine tuning settings, you should use a single AF
+operation, i.e., press and hold the AF-ON button until focus lock is
+achieved, then release the button. Do not focus a second time.
+
+<P>
+</LI>
+<LI>Aim the AF sensor reticule so that it straddles the reference edge
+(see Figure&nbsp;<A HREF="#fig:af_sensor_placement">9</A>). Take care that the autofocus sensor
+is sufficiently far away from other edges (e.g., the horizontal edges of the
+reference block in Figure&nbsp;<A HREF="#fig:af_sensor_placement">9</A>, or any of the small
+blocks). Keep in mind that the actual sensing area of the autofocus sensor
+is typically larger than the reticule you see in the viewfinder, so leave
+some padding.
+
+<P>
+</LI>
+<LI>Manually set the focus of your lens to the near limit, or to
+infinity.
+
+<P>
+</LI>
+<LI>Initiate one AF operation.
+
+<P>
+</LI>
+<LI>Capture a shot of the test chart. Lower ISO values are better, since MTF
+measurements are sensitive to noise.
+
+<P>
+</LI>
+<LI>Feed the captured image through MTF mapper to produce a profile
+(such as illustrated in Figure&nbsp;<A HREF="#fig:sample_profile">4</A>. The vertical blue
+line denotes the position of the autofocus reference edge (at least, the one
+you should have been using to focus ...). The green curve (or red
+points) records the MTF50 values measured along the long axis of the image.
+Since the test chart was at a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angle with respect to the lens
+axis, the long axis of the image is a measure of the distance from the
+camera. MTF50 values measured at different <IMG
+ WIDTH="13" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img10.png"
+ ALT="$x$">-values (in the
+Figure&nbsp;<A HREF="#fig:sample_profile">4</A>) thus indicate the
+sharpness, or degree of focus, at that specific distance from the camera.
+The peak of the green curve represents the plane of focus -- the objective
+is to line up the peak of the green curve with the blue vertical line.
+
+<P>
+</LI>
+<LI>This procedure (steps 7-10) should now be repeated at various autofocus
+fine-tuning settings on your camera. You should be able to see the peak of
+the green curve shift left or right as you adjust this value. I recommend
+capturing your images in batches, first stepping your autofocus fine-tuning
+through the range in large steps, running the images through MTF mapper, and
+then repeating this in the optimal range with smaller steps until you are
+satisfied that you have calibrated your autofocus fine-tuning to the desired
+level of accuracy.
+</LI>
+</OL>
+
+<P>
+
+<H2><A NAME="SECTION00051000000000000000">
+Caveats and disclaimers</A>
+</H2>
+Please note that this procedure of calibrating autofocus fine-tuning on your
+DSLR is based on some of my own assumptions, which have not been tested
+rigorously before the release of this software. Here follows some
+background; you are most welcome to skip this section.
+
+<P>
+Phase-detection autofocus in DSLR cameras works by collecting light from
+opposite sides of the lens (the aperture, really), if the article on
+Wikipedia is
+accurate<A NAME="tex2html11"
+  HREF="footnode.html#foot311"><SUP>2</SUP></A>. These two
+beams of light are steered to two independent linear sensors -- I suspect
+that they are simply small strip-like CMOS sensors nowadays. Using
+cross-correlation, the AF module then measures the phase shift between the
+data collected from the two linear sensors; this phase shift will directly
+correspond to the degree of defocus. With this information, the AF module
+can then drive the AF motor by approximately the correct amount to
+eliminate the phase difference between the signal received by the two
+linear sensors, which should bring the object under the relevant AF sensor
+into focus.
+
+<P>
+So the real question is: what algorithms do the AF modules really use to
+measure the phase shift? Well, I currently do not know. If you design AF
+modules, please fill me in, and I can update my test charts to agree more
+closely with what the AF modules expect to see. Many AF test charts on are
+available on the Internet, however, most of them use thick line (bar-shaped)
+target to draw the AF sensor's attention. Someone on the Internet (now,
+there is a reference you can count on) pointed out that bar targets are a
+poor choice, because they may be too thin for the AF sensor to detect. I
+found this argument appealing, because the AF sensor must have limited
+resolution. There is an additional problem with a bar target: which edge of
+the bar target is the AF module going to focus on? And this process led me
+to the design of my own test charts. Rather than using a bar as an AF
+target, why not use a step edge? If the AF module really does use
+cross-correlation to measure the phase difference, then a step edge would
+produce the best possible results. There would also be not ambiguity as to
+where the sensor is focusing, since the step edge only has one feature to
+focus on.
+
+<P>
+Well, it seems to work. The results presented in
+Appendix&nbsp;<A HREF="#sec:perpendicular">B</A> seem to support this. At least for my
+camera bodies and lenses.
+
+<P>
+I also found it annoying to have to use visual inspection to determine
+whether I have set the autofocus fine-tuning optimally. Visual
+inspection certainly is a quick way to evaluate the results in the field, but I want to see some
+objective data. I want to <I>know</I> that I have calibrated my lenses
+perfectly. Anyhow, if you have made it this far, you probably understand.
+MTF50 is certainly not the final word on image acuity (read the excellent
+Zeiss papers for a start), but it does provide a reasonable relative measure
+for the autofocus calibration problem. The MTF50 estimates extracted by MTF
+Mapper are reasonably accurate (see Appendix&nbsp;<A HREF="#sec:accuracy">D</A>), at least as
+far as internal consistency goes with my own edge image generator. You
+should be able to obtain repeatable results within a 5% relative margin.
+
+<P>
+Lastly, you should know one very important thing about autofocus systems:
+they are not perfect. The tolerances of the AF system (AF module, lens
+drive accuracy, etc.) are such that they strike a balance between speed and
+accuracy. In other words, the AF system only takes one stab at the problem:
+one phase difference measurement results in one focus motor action. The
+implication of this is that the AF system will only adjust focus so that it 
+is ``good enough'', that is, until the circle of confusion drops below the 
+specified limit. For a Nikon D7000, the circle of
+confusion limit is 0.02&nbsp;mm, which translates into an MTF50 value of around
+36&nbsp;lp/mm. The focus plane may therefore be set to any position within the
+range of distances that yield a sharpness of at least 36&nbsp;lp/mm.
+
+<P>
+With MTF mapper, you can empirically observe this effect:
+manually set focus to infinity, switch to AF, capture image. Now select near
+focus (manually), switch to AF, capture image. Comparing the profile plots
+of produce by MTF mapper you should be able to see which image was captured
+from which direction, and the distance between the peaks in the profiles
+should roughly correspond to this ``zone of acceptable focus'' for that
+subject distance and magnification.
+
+<P>
+
+<H1><A NAME="SECTION00060000000000000000">
+Other MTF mapper utilities</A>
+</H1>
+Two additional utilities are included in the MTF mapper package.
+
+<H2><A NAME="SECTION00061000000000000000"></A>
+<A NAME="sec:rectangle_generator"></A><BR>
+Rectangle generator
+</H2>
+The <TT>generate_rectangle</TT> utility will create a synthetic image of a
+rectangle, sampled with a specified Gaussian point spread function. The
+rectangle images generated with this utility therefore have a known MTF50
+value, which was calculated analytically.
+
+<P>
+In the current implementation, the Gaussian noise that is optionally added
+to the image is not taken into consideration in the analytical calculation
+of the expected MTF50 value. This noise certainly makes it more challenging
+for software tools to compute the MTF50 values from the generated images,
+but it should not bias the result in any way. 
+
+<P>
+Either way, the <TT>generate_rectangle</TT> utility is useful during
+testing, and can be used to cross-calibrate the <TT>mtf_mapper</TT> utility
+with other packages available for computing MTF50 values. (If you have
+access to Imatest, please send me some results. Your feedback will help to
+improve MTF Mapper).
+
+<P>
+
+<H2><A NAME="SECTION00062000000000000000">
+Test chart generator</A>
+</H2>
+The <TT>generate_test_chart</TT> utility can be used to generate SVG files
+containing various test charts. Currently, it can generate ``perspective''
+charts that are suitable for DSLR autofocus calibration, as well as
+empirical measurements of the depth of field of your equipment. It can also
+generate ``grid'' charts that contain squares arranged in a regular grid,
+which can be used to measure the flatness of field of your
+equipment.
+
+<P>
+Currently, the MTF mapper utilities do not separate MTF50 values into
+sagittal and meridional orientations, although such an option would be
+relatively straightforward to add, and is planned for a future version.
+
+<P>
+
+<H1><A NAME="SECTION00070000000000000000">
+Frequently Asked Questions</A>
+</H1>
+A bit of a misnomer, since I have yet to receive actual questions :)
+
+<OL>
+<LI>Your program gave me a value of <IMG
+ WIDTH="13" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img10.png"
+ ALT="$x$"> cycles per pixel. Is this any
+good? <I>Answer</I>: According to Norman Koren
+(<TT><A NAME="tex2html13"
+  HREF="http://www.imatest.com/guides/modules/sfr">http://www.imatest.com/guides/modules/sfr</A></TT>), a value of 0.33 cycles
+per pixel is pretty good <I>for unsharpened raw images</I> (emphasis mine).
+This is somewhat misleading, though, since expressing MTF50 as c/p is not
+independent of the sensor resolution, and Norman may have been referring to
+an 8 MP sensor. Take, for example, a sample of the
+Nikkor 35 mm f/1.8 prime lens on a D40 body. This combination achieves MTF50
+values of around 0.28 c/p. The same lens on a D7000 body achieves around
+0.22 c/p. If these values are expressed as line pairs per millimetre
+(lp/mm), we actually see 36 lp/mm on the D40, and 46 lp/mm on the D7000. In
+this case, it means that the lens is actually able to resolve more detail
+than what the D40 could capture. This also explains why I suddenly thought
+the lens looked softer on the D7000 -- the per-pixel sharpness was
+definitely lower, even though the effective sharpness was higher.
+
+<P>
+So while c/p units are convenient because they do not require knowledge of the
+pixel (or sensor) size, they are not portable to other sensors for the very
+same reason. 
+I prefer to use lp/mm when comparing lenses, but c/p are more natural for
+synthetic images. Keep in mind that a Bayer colour filter sensor camera
+will never be able to give you ``perfect'' MTF50 values of 0.5 c/p, and that
+anything above 0.25 c/p is actually pretty good (before sharpening), 
+all things considered.
+</LI>
+<LI>Cycles per pixel? I wanted lw/ph or lp/mm! <I>Answer</I>: Support
+has been added for lp/mm by specifying a pixel size with the
+<code>--pixelsize</code> option.
+You can also convert manually using the
+following relationship:
+    <BR>
+<DIV ALIGN="CENTER">
+
+<!-- MATH
+ \begin{eqnarray}
+\mathrm{MTF50}_{\mathrm{lp/mm}} = 
+	  \frac{\mathrm{MTF50}_{\mathrm{c/p}} \times h_{\mathrm{pixels}}}{h_{\mathrm{mm}}} \\
+        \mathrm{MTF50}_{\mathrm{lw/ph}} = 2 \times \mathrm{MTF50}_{\mathrm{c/p}} \times h_{\mathrm{pixels}}
+\end{eqnarray}
+ -->
+<TABLE ALIGN="CENTER" CELLPADDING="0" WIDTH="100%">
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><IMG
+ WIDTH="254" HEIGHT="54" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.png"
+ ALT="$\displaystyle \mathrm{MTF50}_{\mathrm{lp/mm}} =
+\frac{\mathrm{MTF50}_{\mathrm{c/p}} \times h_{\mathrm{pixels}}}{h_{\mathrm{mm}}}$"></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(1)</TD></TR>
+<TR VALIGN="MIDDLE"><TD NOWRAP ALIGN="RIGHT"><IMG
+ WIDTH="273" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img12.png"
+ ALT="$\displaystyle \mathrm{MTF50}_{\mathrm{lw/ph}} = 2 \times \mathrm{MTF50}_{\mathrm{c/p}} \times h_{\mathrm{pixels}}$"></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD WIDTH=10 ALIGN="RIGHT">
+(2)</TD></TR>
+</TABLE></DIV><BR CLEAR="ALL"><P></P>
+where <!-- MATH
+ $h_{\mathrm{mm}}$
+ -->
+<IMG
+ WIDTH="35" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img13.png"
+ ALT="$h_{\mathrm{mm}}$"> is the image height in mm, and <!-- MATH
+ $h_{\mathrm{pixels}}$
+ -->
+<IMG
+ WIDTH="46" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.png"
+ ALT="$h_{\mathrm{pixels}}$">
+is the image height in pixels.
+</LI>
+</OL>
+
+<P>
+
+<P>
+
+<H1><A NAME="SECTION00080000000000000000"></A>
+<A NAME="sec:tips"></A><BR>
+Tips for printing the test charts
+</H1>
+I have printed the MTF Mapper test charts using a variety of printers, and
+have the following advice to offer:
+
+<UL>
+<LI>If you are printing on paper, you should aim to use the thickest
+  paper available. Something like 120 g/m<IMG
+ WIDTH="11" HEIGHT="18" ALIGN="BOTTOM" BORDER="0"
+ SRC="img15.png"
+ ALT="$^2$"> is probably the bare minimum.
+  All my charts printed on standard 80 g/m<IMG
+ WIDTH="11" HEIGHT="18" ALIGN="BOTTOM" BORDER="0"
+ SRC="img15.png"
+ ALT="$^2$"> paper warped horrendously
+  with changes in humidity.
+</LI>
+<LI>The test charts work best when they are quite flat. I have worked
+  with an A0 print of the perspective chart that was simply taped to a
+  plastered wall, and everything seemed to be fine. If, on the other hand,
+  you are using the grid chart to look for MTF variations in the focal plane
+  (i.e., Surface mode), then it is critical to keep the chart perfectly
+  flat. I have found that foam board works very well, especially if you use
+  a spray glue to fix the printed chart to the foam board.
+</LI>
+<LI>Even spray glue combined with a foam board is not good enough to
+  prevent thin paper from warping due to changes in humidity. If you plan on
+  using a chart more than once, you <I>must</I> use thick paper.
+</LI>
+<LI>I have yet to try this myself, but a local printer can print on a
+  self-adhesive vinyl sheet. This should be immune to humidity, but
+  obviously this will be much more expensive than printing on plain paper.
+</LI>
+<LI>Print quality is probably not critical when using the perspective
+  charts -- I have used badly printed (streaky, not quite solid) charts,
+  and that seemed to be OK on an A0 scale.
+</LI>
+<LI>Print the largest chart you possibly can for a given focal length.
+  In practice, I have found that the A0-size charts work very well for
+  lenses shorter than 50 mm, since they allow me to keep the chart at a 
+  realistic distance. I have yet to perform extensive tests on A4 charts, 
+  but I suspect they are only safe to  use with longer focal lengths 
+  (e.g., 200 mm or longer). Furthermore, at greater distances, you can get
+  away with lower quality prints -- 300 DPI prints are fine on an A0 chart,
+  but my become a problem on A4 charts.
+</LI>
+<LI>One last tip: If you want the chart to be perfectly aligned at
+  <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> degrees, you can use a small mirror mounted on a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> block
+  (like the one illustrated in Figure&nbsp;<A HREF="#fig:perpendicular_target">10</A>). Line
+  up your tripod so that you see straight down the barrel of your lens in
+  the mirror. This level of precision is probably not necessary, and simply
+  measuring out a right-angled triangle to place your tripod is good enough
+  for most users.
+</LI>
+</UL>
+
+<P>
+
+<H1><A NAME="SECTION00090000000000000000"></A>
+<A NAME="sec:perpendicular"></A><BR>
+Flat 45<IMG
+ WIDTH="12" HEIGHT="16" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.png"
+ ALT="$^\circ $"> test charts <I>vs.</I> perpendicular charts
+</H1>
+Many DIY test charts on the web are of the <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> degree type, i.e., you
+simply print out the chart with whatever printer you have, and you shoot the
+chart at a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angle. These charts have been criticized severely in
+the online fora, sometimes with reason. The main argument is that these
+charts often have a line (thick or thin) in the centre of the chart that is
+to be used as the target for the autofocus sensor. Thin lines can be too
+thin for the limited resolution of the AF sensor to detect reliably. Thick
+lines can (probably) be detected more reliably, but they actually present
+the AF sensor with two edges: a near and a far edge. Which edge did the AF
+sensor lock onto?
+
+<P>
+This brings us to the design of the test charts used in MTF mapper (see
+Figure&nbsp;<A HREF="#fig:profile_test_chart">2</A>). These charts have a solid block in the
+centre, with the centremost edge of this block acting as the AF target. The block is
+tall enough that the AF sensor sees an unbroken step edge along the height
+of the AF sensor (assuming, of course, that the chart is being photographed in a
+landscape orientation). The step edge resolves the potential ambiguity that
+may occur in other charts using thick lines as target. If the AF sensor is
+using a correlation algorithm to determine the phase shift (my best
+guess), then the step edge will provide an ideal target. But does this work
+in real life? To answer this question, I built an additional prop out of
+polystyrene. The objective was to build an AF target that was perpendicular
+to the camera axis, similar to the chart that had been in use on LensTip
+(<TT><A NAME="tex2html14"
+  HREF="http://www.lenstip.com">http://www.lenstip.com</A></TT>) before they switched to using one of the
+LensAlign tools. Figure&nbsp;<A HREF="#fig:perpendicular_target">10</A> shows a crop of the
+resulting test chart shot.
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:perpendicular_target"></A><A NAME="219"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 10:</STRONG>
+Crop of test chart, showing the perpendicular AF target attached
+to the flat chart. The checkerboard pattern fixed to the polystyrene block
+is at a <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angle with respect to the chart behind it.</CAPTION>
+<TR><TD><DIV ALIGN="CENTER">  <IMG
+  WIDTH="600" HEIGHT="600" ALIGN="BOTTOM" BORDER="0"
+ SRC="./perpendicular_target.jpg"
+ ALT="Image perpendicular_target">
+  </DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+Using this modified chart it becomes possible to test whether the plain MTF
+Mapper test chart at <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> produces different AF results than using a
+perpendicular AF target. Firstly, I should mention that the perpendicular AF
+target was significantly larger than the AF reticule in the viewfinder (even
+though this is unlikely to matter, since the entire perpendicular AF target
+is as the same distance). The following method was used to acquire the
+<I>perpendicular</I> data set:
+
+<P>
+
+<OL>
+<LI>Rotate the camera (mounted on a 3-way tripod head) so that the AF
+reticule is nicely centred on the checkerboard section of the perpendicular
+target.
+</LI>
+<LI>Manually turn the lens to focus at infinity.
+</LI>
+<LI>Press and hold the AF-ON button (i.e., engage AF) until focus lock
+  is achieved. Release AF-ON button. Only one continuous AF operation is used.
+</LI>
+<LI>Now rotate the camera so that the AF reticule is centered on the
+  reference edge of the chart behind the perpendicular target. This is done
+  to ensure that spatially variable lens properties (MTF, distortion) are
+  comparable to the alternative set of images (described below).
+</LI>
+<LI>Using mirror lock-up, capture a shot, and repeat from step 1.
+</LI>
+</OL>
+
+<P>
+The <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> degree (alternative) data set is collected as follows:
+
+<OL>
+<LI>Point the central AF sensor at the reference edge of the chart.
+</LI>
+<LI>Manually turn the lens to focus at infinity.
+</LI>
+<LI>Perform one AF operation.
+</LI>
+<LI>Capture the shot using mirror lock-up, and repeat from step 2.
+</LI>
+</OL>
+
+<P>
+The same camera settings were used for both data sets. This includes setting
+the camera to AF-S mode (Nikon jargon for single-servo AF) using only the 
+centre AF sensor (definitely a cross-type sensor on the D7000). A critically
+important detail is that sufficient light was available throughout the
+experiment. I have yet to repeat the experiment to find a tight
+lower bound on the required amount of available light, but for this experiment I was
+able to use about 10-11 EV (ISO 100 F/1.8 at 1/320 s). I can
+also state that 7 EV (ISO 100 F/1.8 at 1/40 s) is definitely not enough light for the
+D7000 -- the photos look fine, of course, but the AF performance was
+definitely unreliable (not repeatable).
+Note that this is a lot of light -- definitely not
+representative of the typical shots that I take indoors with available
+light. The Nikon AF sensors are usually rated to work from <IMG
+ WIDTH="29" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.png"
+ ALT="$\approx1$"> EV up to
+<IMG
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img17.png"
+ ALT="$19$"> EV, but I guess that does not mean the accuracy or repeability is
+constant over that range.
+
+<P>
+Next, the images from the <I>perpendicular</I> data set were processed
+(automatically) to mask out the entire perpendicular target, effectively
+producing a set of images that look just like the images in the <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $">
+degree data set. Now we have two similar data sets that can be processed 
+by MTF Mapper -- the only systematic difference between the two data sets
+is the way in which the AF lock was achieved. The MTF profiles of 10 shots
+from each data set are shown in Figure&nbsp;<A HREF="#fig:perpendicular_profiles">11</A>.
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:perpendicular_profiles"></A><A NAME="322"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 11:</STRONG>
+MTF50 profiles of 10 shots using <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> AF on reference edge
+  (red),  and 10 shots using the perpendicular AF target of
+  Figure&nbsp;<A HREF="#fig:perpendicular_target">10</A> (green).</CAPTION>
+<TR><TD><DIV ALIGN="CENTER">  <IMG
+  WIDTH="550" HEIGHT="314" ALIGN="BOTTOM" BORDER="0"
+ SRC="./perpendicular_profiles.png"
+ ALT="Image perpendicular_profiles">
+  </DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+Visually, it is clear that both AF targets produced similar results, even
+though quite a bit of variability in focus position is evident. The actual
+range of the variability in the focus plane distance was about 45&nbsp;mm at a
+subject  distance of 1.8&nbsp;m.
+MTF Mapper computes a value known as the <I>peak shift</I>, which denotes the
+difference (in pixels) between the position of sharpest focus (the peak of
+the green curve on normal profile plots such as
+Figure&nbsp;<A HREF="#fig:sample_profile">4</A>) and the position of the reference edge (the
+assumed point of focus). The <I>peak shift</I> values were computed for both
+data sets, and compared using Wilcoxon's non-parametric test to determine
+whether the means of the <I>peak shift</I> of the two AF methods are
+statistically equally. For this data set, the p-value of the Wilcoxon test
+(with N=10 for each AF method) was 0.393, meaning that we cannot reject the
+null-hypothesis that the means are equal. In other words, the two AF methods
+do not produce different results, <I>which means that the solid block reference
+edge AF target used in the MTF Mapper perspective test chart works perfectly
+well.</I>
+
+<P>
+
+<H1><A NAME="SECTION000100000000000000000"></A>
+<A NAME="sec:description"></A><BR>
+Internal workings
+</H1>
+Here is a brief outline of how MTF Mapper works:
+
+<OL>
+<LI>The input image is read in, and converted to grayscale (using
+OpenCV's default colour matrix). If the input image is an 8-bit image, the
+pixel intensities are scaled up to 16 bits; the default is to assume that
+8-bit images are sRGB gamma corrected, so the values are linearised while
+being scaled to 16 bits. If the input image has a pixel bit depth of 16
+bits, no gamma conversion or scaling is applied.
+</LI>
+<LI>The image is thresholded using Bradley's adaptive thresholding 
+algorithm [<A
+ HREF="mtf_mapper.html#bradley">2</A>]. This is done to identify all the dark objects in
+the image.
+</LI>
+<LI>The thresholded image is then scanned to extract all the connected
+components using the method of Chang <I>et al.</I>[<A
+ HREF="mtf_mapper.html#chang">3</A>]. This step
+gathers the boundary lists of all the dark objects in the image.
+</LI>
+<LI>The image gradient is computed on the original input image. This
+is combined with the object boundary lists to identify all
+roughly-rectangular objects (called blocks in the sequel).
+</LI>
+<LI>For each edge of each detected block, the MTF50 value is computed
+as follows (roughly the method of Khom [<A
+ HREF="mtf_mapper.html#khom">1</A>]):
+	
+<OL>
+<LI>Define a rectangular buffer region that is aligned with and
+centered over each edge. The width of this buffer is 32 pixels.
+</LI>
+<LI>Compute a reasonable estimate of the orientation of the edge
+(using the image gradient information).
+</LI>
+<LI>Extract the intensity values of each pixel within the
+rectangular buffer, and project the coordinates of this pixel onto the
+direction normal to the edge.
+</LI>
+<LI>Systematically refine the edge normal to minimise the
+difference between sequential projected values; this effectively optimises
+the edge normal estimate.
+</LI>
+<LI>For each pixel in the buffer, record a pair of values
+(<I>distance</I>, <I>intensity</I>), where <I>distance</I> denotes the
+length of the pixel coordinates projected onto the edge normal, and
+<I>intensity</I> represents the actual pixel intensity value. Note that
+the distance values are unevenly sampled. These values are a representation
+of the edge spread function (ESF).
+</LI>
+<LI>Perform LOESS fitting using a linear model to resample the 
+(<I>distance</I>, <I>intensity</I>) values to a regular grid. The
+resampled points are generated at a spacing of 1/32 pixels, i.e., the
+profile is oversampled at a factor of 32. In addition, the derivative of the
+ESF is not computed with discrete differentiation; instead, the slope of the
+local linear fit is used to construct the line spread function (LSF) directly.
+</LI>
+<LI>Apodization is performed by windowing the resampled LSF with
+a Hamming window.
+</LI>
+<LI>An FFT is computed on the resampled points, and the
+normalised FFT magnitude sequence is calculated.
+</LI>
+<LI>The frequency at which the FFT magnitude sequence reaches a
+value of 0.5 is computed using linear interpolation, yielding the MTF50
+value.
+</LI>
+<LI>A 9th-order polynomial is used to correct any remaining
+systematic bias. Pathologically poor edge orientations are identified, and
+suppressed; these are around <IMG
+ WIDTH="27" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img18.png"
+ ALT="$22^\circ$"> and <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> degrees with respect
+to either the vertical or horizontal image directions.
+	
+</LI>
+</OL>
+</LI>
+<LI>The computed MTF50 values are then rendered in various ways,
+depending on which output options are selected.
+</LI>
+</OL>
+
+<P>
+
+<H1><A NAME="SECTION000110000000000000000"></A>
+<A NAME="sec:accuracy"></A><BR>
+Accuracy
+</H1>
+The accuracy of the MTF50 estimates produced by MTF Mapper depends on the
+following factors:
+
+<OL>
+<LI>Image resolution, and resulting edge length
+</LI>
+<LI>Image noise levels
+</LI>
+<LI>Image edge contrast (combined with noise levels, expressed as
+  Signal-to-Noise Ratio, SNR)
+</LI>
+<LI>Edge orientation relative to horizontal or vertical directions
+</LI>
+<LI>Edge MTF50 value -- the sharper the edge, the more critical the
+  above factors become
+</LI>
+</OL>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:mtf_accuracy_a10_snr90"></A><A NAME="261"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 12:</STRONG>
+Error in MTF50 estimate for <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img4.png"
+ ALT="$10^\circ $"> edges, SNR=90</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="787" HEIGHT="473" ALIGN="BOTTOM" BORDER="0"
+ SRC="./accuracy_plot_a10_90.png"
+ ALT="Image accuracy_plot_a10_90">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:mtf_accuracy_a10_snr57"></A><A NAME="266"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 13:</STRONG>
+Error in MTF50 estimate for <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img4.png"
+ ALT="$10^\circ $"> edges, SNR=57</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="787" HEIGHT="473" ALIGN="BOTTOM" BORDER="0"
+ SRC="./accuracy_plot_a10_57.png"
+ ALT="Image accuracy_plot_a10_57">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:mtf_accuracy_snr90"></A><A NAME="271"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 14:</STRONG>
+95% confidence interval for MTF50 estimate at SNR=90</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="787" HEIGHT="473" ALIGN="BOTTOM" BORDER="0"
+ SRC="./accuracy_plot_90.png"
+ ALT="Image accuracy_plot_90">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:mtf_accuracy_snr57"></A><A NAME="276"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 15:</STRONG>
+95% confidence interval for MTF50 estimate at SNR=57</CAPTION>
+<TR><TD><DIV ALIGN="CENTER"><IMG
+  WIDTH="787" HEIGHT="473" ALIGN="BOTTOM" BORDER="0"
+ SRC="./accuracy_plot_57.png"
+ ALT="Image accuracy_plot_57">
+</DIV></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+Figures&nbsp;<A HREF="#fig:mtf_accuracy_a10_snr90">12</A>-<A HREF="#fig:mtf_accuracy_a10_snr57">13</A> present an indication of the error in MTF50
+estimates. The following parameters applied:
+
+<OL>
+<LI>Edge length was fixed at 75 pixels.
+</LI>
+<LI>Two noise levels were investigated: edge contrast at 0.9 times
+dynamic range, with noise standard deviation at 0.01 times dynamic range, for an SNR of 90, and
+edge contrast at 0.67 with noise at 0.012, for an SNR of 57. The latter case
+approximates closely the real world conditions observed with a DSLR camera.
+</LI>
+<LI>Edge MTF50 values over the range [0.06,0.7) were sampled.
+</LI>
+<LI>Edge orientations of <IMG
+ WIDTH="19" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img19.png"
+ ALT="$2^\circ$"> to <IMG
+ WIDTH="27" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img20.png"
+ ALT="$44^\circ$"> were
+explored.
+</LI>
+<LI>A total 200 data points were collected for each MTF50/angle
+combination.
+</LI>
+</OL>
+Figures&nbsp;<A HREF="#fig:mtf_accuracy_a10_snr90">12</A>-<A HREF="#fig:mtf_accuracy_a10_snr57">13</A>
+clearly illustrate how the error increases
+with higher edge acuity, especially at slant angles that are further from
+ideal. The boxplots are interpreted as follows: the ``whiskers'' indicate the
+extreme values observed, although outliers may be excluded and shown
+separately as circles; the solid black line in the centre of each box is the
+median of the 200 data points, with the red box bounding the 50%
+middle-most values. If this data is expressed as a relative value, i.e., MTF50 error over MTF50
+value, then the standard deviation of the relative error is roughly below
+1%, with the extremes hovering around 5%, up to the Nyquist limit at 0.5
+c/p, for the SNR=57 case. The 95% confidence interval width on the absolute errors are given in
+Figures&nbsp;<A HREF="#fig:mtf_accuracy_snr90">14</A> and <A HREF="#fig:mtf_accuracy_snr57">15</A>.
+
+<P>
+Sharp lenses should produce values in the range of (0.2,0.35) cycles per
+pixel using unsharpened raw images.  Overall, both absolute accuracy (bias)
+and uncertainty (variance) remain fairly well controlled up to the Nyquist
+frequency of 0.5 cycles per pixel, but some effort should be expended to
+keep the SNR high (i.e., limit image noise) if high accuracy is desired.
+
+<P>
+<B>Warning:</B> The slanted edge method does not work at all if the edge
+acuity is very high (MTF50 of 0.5 and higher) if your edges
+are perfectly aligned with the rows or columns of the image. That is why it
+is called the <I>slanted edge</I> method .... Anyway, MTF mapper does not
+currently protect you from this case, and will happily try to measure the
+MTF50 across any edge you throw at it. If the MTF50 value exceeds 1.0 c/p,
+the program will silently ignore that edge, but poorly oriented edges may
+produce very high MTF50 values that are still below 1.0, i.e., a sharp edge at an
+angle of <IMG
+ WIDTH="32" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img21.png"
+ ALT="$0.5^\circ$"> may very well produce an MTF50 value of 0.86. It is
+recommended that you ensure that your edges are between <IMG
+ WIDTH="19" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img5.png"
+ ALT="$5^\circ$"> and
+<IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img6.png"
+ ALT="$15^\circ$"> degrees with respect to the horizontal or vertical directions.
+Some intermediate angles may produce very inaccurate results, e.g.,
+<IMG
+ WIDTH="40" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img22.png"
+ ALT="$22.5^\circ$"> and <IMG
+ WIDTH="27" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.png"
+ ALT="$45^\circ $"> angles are to be avoided at all costs. Future
+versions of MTF Mapper may include options to filter out these cases
+automatically, but currently you are responsible for keeping edge orientations
+reasonable.
+
+<P>
+ 
+<H2><A NAME="SECTION000120000000000000000">
+Bibliography</A>
+</H2><DL COMPACT><DD><P></P><DT><A NAME="khom">1</A>
+<DD> Kohm, K., <BR>Modulation transfer function measurement
+method and results for the Orbview-3 high resolution imaging
+satellite, <BR>Congress International Society for Photogrammetry and Remote
+Sensing, 20:12-23, 2004.
+<P></P><DT><A NAME="bradley">2</A>
+<DD> Bradley, D. and Roth, G.,
+<BR>Adaptive thresholding using the integral image,
+<BR><I>Journal of Graphics, GPU, &amp; Game Tools</I>, <B>12(2)</B>:13-21,
+2007.
+<P></P><DT><A NAME="chang">3</A>
+<DD> Chang, F., Chen, C.J., Lu, C.J.,
+<BR>A linear-time component-labeling algorithm using contour tracing
+technique,
+<BR><I>Computer Vision and Image Understanding</I>, <B>93(2)</B>:206-220,
+2004
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION000130000000000000000">
+About this document ...</A>
+</H1>
+ <STRONG>MTF Mapper user documentation</STRONG><P>
+This document was generated using the
+<A HREF="http://www.latex2html.org/"><STRONG>LaTeX</STRONG>2<tt>HTML</tt></A> translator Version 2008 (1.71)
+<P>
+Copyright &#169; 1993, 1994, 1995, 1996,
+<A HREF="http://cbl.leeds.ac.uk/nikos/personal.html">Nikos Drakos</A>, 
+Computer Based Learning Unit, University of Leeds.
+<BR>Copyright &#169; 1997, 1998, 1999,
+<A HREF="http://www.maths.mq.edu.au/~ross/">Ross Moore</A>, 
+Mathematics Department, Macquarie University, Sydney.
+<P>
+The command line arguments were: <BR>
+ <STRONG>latex2html</STRONG> <TT>-split 1 -nonavigation mtf_mapper.tex</TT>
+<P>
+The translation was initiated by users on 2011-12-01<BR><HR>
+<ADDRESS>
+users
+2011-12-01
+</ADDRESS>
+</BODY>
+</HTML>
