@@ -42,6 +42,10 @@ endif(CMAKE_CXX_COMPILER MATCHES "icpc")
 #  add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
 #endif(CMAKE_GENERATOR MATCHES "Visual Studio")
 
+if (MSVC)
+    add_definitions(/arch:SSE2)
+endif(MSVC)
+
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
 
 # external libs
