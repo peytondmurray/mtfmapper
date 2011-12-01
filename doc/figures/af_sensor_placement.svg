@@ -8,12 +8,12 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.0"
-   width="1052.4247"
-   height="744.15698"
-   viewBox="0 0 29701.763 21001.764"
+   width="354.28973"
+   height="250.52371"
+   viewBox="0 0 9998.8435 7070.336"
    id="svg5116"
-   inkscape:version="0.48.0 r9654"
-   sodipodi:docname="chart.svg">
+   inkscape:version="0.48.2 r9819"
+   sodipodi:docname="af_sensor_placement.svg">
   <metadata
      id="metadata5708">
     <rdf:RDF>
@@ -22,7 +22,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -45,1491 +45,1491 @@
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
-     inkscape:zoom="1.1440928"
-     inkscape:cx="554.78373"
-     inkscape:cy="391.39208"
+     inkscape:zoom="3.471898"
+     inkscape:cx="177.14492"
+     inkscape:cy="125.27688"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg5116" />
   <rect
-     x="-21001.764"
-     y="4119.5181"
-     width="21000"
-     height="21411.488"
+     x="-7070.3359"
+     y="1386.0897"
+     width="7069.8394"
+     height="7208.6631"
      style="fill:#ffffff;stroke:none"
      id="rect5118"
      transform="matrix(0,-1,1,0,0,0)" />
   <rect
-     x="-20997.764"
-     y="3.9998608"
-     width="20996"
-     height="29696"
+     x="-7068.9902"
+     y="0.50726247"
+     width="7068.4927"
+     height="9997.832"
      style="fill:none;stroke:#000000;stroke-width:1"
      id="rect5120"
      transform="matrix(0,-1,1,0,0,0)" />
   <polygon
-     points="2363,28995 2421,28286 2866,28379 2808,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2421,28286 2866,28379 2808,29089 2363,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5122"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2924,28101 2982,27391 3427,27485 3369,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2982,27391 3427,27485 3369,28194 2924,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5124"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3485,28995 3543,28286 3988,28379 3930,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3543,28286 3988,28379 3930,29089 3485,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5126"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4046,28101 4104,27391 4549,27485 4491,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4104,27391 4549,27485 4491,28194 4046,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5128"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4607,28995 4665,28286 5110,28379 5052,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4665,28286 5110,28379 5052,29089 4607,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5130"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5168,28101 5226,27391 5671,27485 5613,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5226,27391 5671,27485 5613,28194 5168,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5132"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5729,28995 5787,28286 6232,28379 6174,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5787,28286 6232,28379 6174,29089 5729,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5134"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6290,28101 6348,27391 6793,27485 6735,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6348,27391 6793,27485 6735,28194 6290,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5136"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6851,28995 6909,28286 7354,28379 7296,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6909,28286 7354,28379 7296,29089 6851,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5138"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7412,28101 7470,27391 7915,27485 7857,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7470,27391 7915,27485 7857,28194 7412,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5140"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2362,27206 2420,26497 2865,26590 2807,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2420,26497 2865,26590 2807,27300 2362,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5142"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2922,26311 2980,25602 3425,25695 3367,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2980,25602 3425,25695 3367,26405 2922,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5144"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3484,27206 3542,26497 3987,26590 3929,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3542,26497 3987,26590 3929,27300 3484,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5146"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4044,26311 4103,25602 4548,25695 4489,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4103,25602 4548,25695 4489,26405 4044,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5148"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4606,27206 4664,26497 5109,26590 5051,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4664,26497 5109,26590 5051,27300 4606,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5150"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5167,26311 5225,25602 5670,25695 5612,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5225,25602 5670,25695 5612,26405 5167,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5152"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5728,27206 5786,26497 6231,26590 6173,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5786,26497 6231,26590 6173,27300 5728,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5154"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6289,26311 6347,25602 6792,25695 6734,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6347,25602 6792,25695 6734,26405 6289,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5156"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6850,27206 6909,26497 7354,26590 7295,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6909,26497 7354,26590 7295,27300 6850,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5158"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7411,26311 7469,25602 7914,25695 7856,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7469,25602 7914,25695 7856,26405 7411,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5160"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2360,25417 2418,24707 2864,24800 2805,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2418,24707 2864,24800 2805,25510 2360,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5162"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2921,24521 2979,23811 3424,23905 3366,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2979,23811 3424,23905 3366,24615 2921,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5164"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3483,25417 3541,24707 3986,24800 3928,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3541,24707 3986,24800 3928,25510 3483,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5166"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4043,24521 4101,23811 4547,23905 4488,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4101,23811 4547,23905 4488,24615 4043,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5168"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4605,25417 4663,24707 5108,24800 5050,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4663,24707 5108,24800 5050,25510 4605,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5170"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5166,24521 5224,23811 5669,23905 5611,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5224,23811 5669,23905 5611,24615 5166,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5172"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5727,25417 5786,24707 6231,24800 6172,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5786,24707 6231,24800 6172,25510 5727,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5174"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6288,24521 6346,23811 6792,23905 6733,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6346,23811 6792,23905 6733,24615 6288,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5176"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6850,25417 6908,24707 7353,24800 7295,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6908,24707 7353,24800 7295,25510 6850,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5178"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7410,24521 7469,23811 7914,23905 7856,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7469,23811 7914,23905 7856,24615 7410,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5180"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2359,23626 2417,22916 2862,23009 2804,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2417,22916 2862,23009 2804,23720 2359,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5182"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2919,22731 2978,22020 3423,22114 3365,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2978,22020 3423,22114 3365,22824 2919,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5184"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3481,23626 3539,22916 3985,23009 3927,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3539,22916 3985,23009 3927,23720 3481,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5186"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4042,22731 4100,22020 4545,22114 4487,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4100,22020 4545,22114 4487,22824 4042,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5188"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4604,23626 4662,22916 5107,23009 5049,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4662,22916 5107,23009 5049,23720 4604,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5190"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5165,22731 5223,22020 5668,22114 5610,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5223,22020 5668,22114 5610,22824 5165,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5192"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5726,23626 5785,22916 6230,23009 6172,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5785,22916 6230,23009 6172,23720 5726,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5194"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6287,22731 6346,22020 6791,22114 6732,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6346,22020 6791,22114 6732,22824 6287,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5196"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6849,23626 6907,22916 7352,23009 7294,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6907,22916 7352,23009 7294,23720 6849,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5198"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7410,22731 7468,22020 7914,22114 7855,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7468,22020 7914,22114 7855,22824 7410,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5200"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2357,21835 2415,21124 2861,21218 2803,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2415,21124 2861,21218 2803,21928 2357,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5202"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2918,20939 2976,20228 3422,20322 3363,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2976,20228 3422,20322 3363,21033 2918,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5204"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3480,21835 3538,21124 3984,21218 3925,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3538,21124 3984,21218 3925,21928 3480,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5206"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4041,20939 4099,20228 4544,20322 4486,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4099,20228 4544,20322 4486,21033 4041,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5208"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4603,21835 4661,21124 5106,21218 5048,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4661,21124 5106,21218 5048,21928 4603,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5210"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5164,20939 5222,20228 5667,20322 5609,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5222,20228 5667,20322 5609,21033 5164,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5212"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5726,21835 5784,21124 6229,21218 6171,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5784,21124 6229,21218 6171,21928 5726,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5214"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6286,20939 6345,20228 6790,20322 6732,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6345,20228 6790,20322 6732,21033 6286,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5216"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6848,21835 6907,21124 7352,21218 7293,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6907,21124 7352,21218 7293,21928 6848,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5218"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7409,20939 7468,20228 7913,20322 7855,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7468,20228 7913,20322 7855,21033 7409,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5220"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2356,20043 2414,19332 2859,19426 2801,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2414,19332 2859,19426 2801,20137 2356,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5222"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2917,19147 2975,18436 3420,18530 3362,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2975,18436 3420,18530 3362,19241 2917,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5224"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3479,20043 3537,19332 3982,19426 3924,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3537,19332 3982,19426 3924,20137 3479,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5226"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4040,19147 4098,18436 4543,18530 4485,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4098,18436 4543,18530 4485,19241 4040,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5228"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4602,20043 4660,19332 5105,19426 5047,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4660,19332 5105,19426 5047,20137 4602,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5230"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5163,19147 5221,18436 5666,18530 5608,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5221,18436 5666,18530 5608,19241 5163,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5232"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5725,20043 5783,19332 6228,19426 6170,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5783,19332 6228,19426 6170,20137 5725,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5234"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6286,19147 6344,18436 6789,18530 6731,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6344,18436 6789,18530 6731,19241 6286,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5236"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6848,20043 6906,19332 7351,19426 7293,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6906,19332 7351,19426 7293,20137 6848,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5238"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7409,19147 7467,18436 7913,18530 7854,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7467,18436 7913,18530 7854,19241 7409,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5240"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2354,18251 2413,17540 2858,17633 2800,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2413,17540 2858,17633 2800,18344 2354,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5242"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2915,17354 2973,16643 3419,16737 3361,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2973,16643 3419,16737 3361,17448 2915,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5244"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3478,18251 3536,17540 3981,17633 3923,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3536,17540 3981,17633 3923,18344 3478,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5246"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4039,17354 4097,16643 4542,16737 4484,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4097,16643 4542,16737 4484,17448 4039,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5248"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4601,18251 4659,17540 5104,17633 5046,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4659,17540 5104,17633 5046,18344 4601,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5250"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5162,17354 5220,16643 5666,16737 5607,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5220,16643 5666,16737 5607,17448 5162,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5252"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5724,18251 5782,17540 6228,17633 6169,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5782,17540 6228,17633 6169,18344 5724,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5254"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6285,17354 6343,16643 6789,16737 6730,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6343,16643 6789,16737 6730,17448 6285,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5256"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6847,18251 6905,17540 7351,17633 7292,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6905,17540 7351,17633 7292,18344 6847,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5258"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7408,17354 7467,16643 7912,16737 7854,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7467,16643 7912,16737 7854,17448 7408,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5260"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2353,16458 2411,15746 2857,15840 2799,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2411,15746 2857,15840 2799,16551 2353,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5262"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2914,15561 2972,14849 3418,14943 3360,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2972,14849 3418,14943 3360,15655 2914,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5264"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3476,16458 3534,15746 3980,15840 3922,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3534,15746 3980,15840 3922,16551 3476,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5266"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4037,15561 4096,14850 4541,14943 4483,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4096,14850 4541,14943 4483,15655 4037,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5268"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4600,16458 4658,15746 5103,15840 5045,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4658,15746 5103,15840 5045,16551 4600,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5270"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5161,15561 5219,14850 5665,14943 5606,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5219,14850 5665,14943 5606,15655 5161,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5272"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5723,16458 5781,15746 6227,15840 6168,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5781,15746 6227,15840 6168,16551 5723,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5274"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6284,15561 6343,14849 6788,14943 6730,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6343,14849 6788,14943 6730,15655 6284,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5276"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6846,16458 6905,15746 7350,15840 7292,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6905,15746 7350,15840 7292,16551 6846,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5278"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7408,15561 7466,14850 7912,14943 7853,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7466,14850 7912,14943 7853,15655 7408,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5280"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2351,14664 2410,13952 2855,14046 2797,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2410,13952 2855,14046 2797,14758 2351,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5282"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2913,13767 2971,13055 3416,13149 3358,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2971,13055 3416,13149 3358,13861 2913,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5284"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3475,14664 3533,13952 3979,14046 3921,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3533,13952 3979,14046 3921,14758 3475,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5286"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4036,13767 4094,13055 4540,13149 4482,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4094,13055 4540,13149 4482,13861 4036,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5288"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4599,14664 4657,13952 5102,14046 5044,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4657,13952 5102,14046 5044,14758 4599,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5290"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5160,13767 5218,13055 5664,13149 5605,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5218,13055 5664,13149 5605,13861 5160,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5292"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5722,14664 5780,13952 6226,14046 6168,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5780,13952 6226,14046 6168,14758 5722,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5294"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6283,13767 6342,13055 6787,13149 6729,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6342,13055 6787,13149 6729,13861 6283,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5296"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6846,14664 6904,13952 7350,14046 7291,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6904,13952 7350,14046 7291,14758 6846,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5298"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7407,13767 7465,13055 7911,13149 7853,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7465,13055 7911,13149 7853,13861 7407,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5300"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2350,12870 2408,12158 2854,12252 2796,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2408,12158 2854,12252 2796,12963 2350,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5302"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2911,11972 2969,11260 3415,11354 3357,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2969,11260 3415,11354 3357,12066 2911,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5304"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3474,12870 3532,12158 3978,12252 3919,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3532,12158 3978,12252 3919,12963 3474,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5306"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4035,11972 4093,11260 4539,11354 4481,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4093,11260 4539,11354 4481,12066 4035,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5308"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4597,12870 4656,12158 5101,12252 5043,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4656,12158 5101,12252 5043,12963 4597,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5310"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5159,11972 5217,11260 5663,11354 5605,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5217,11260 5663,11354 5605,12066 5159,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5312"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5721,12870 5780,12158 6225,12252 6167,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5780,12158 6225,12252 6167,12963 5721,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5314"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6283,11972 6341,11260 6787,11354 6728,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6341,11260 6787,11354 6728,12066 6283,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5316"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6845,12870 6903,12158 7349,12252 7291,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6903,12158 7349,12252 7291,12963 6845,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5318"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7406,11972 7465,11260 7911,11354 7852,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7465,11260 7911,11354 7852,12066 7406,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5320"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2349,11075 2407,10363 2852,10456 2794,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2407,10363 2852,10456 2794,11168 2349,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5322"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2910,10177 2968,9465 3414,9558 3356,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2968,9465 3414,9558 3356,10271 2910,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5324"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3472,11075 3531,10363 3976,10456 3918,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3531,10363 3976,10456 3918,11168 3472,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5326"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4034,10177 4092,9465 4538,9558 4480,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4092,9465 4538,9558 4480,10271 4034,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5328"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4596,11075 4655,10363 5100,10456 5042,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4655,10363 5100,10456 5042,11168 4596,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5330"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5158,10177 5216,9465 5662,9558 5604,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5216,9465 5662,9558 5604,10271 5158,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5332"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5720,11075 5779,10363 6224,10456 6166,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5779,10363 6224,10456 6166,11168 5720,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5334"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6282,10177 6340,9465 6786,9558 6728,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6340,9465 6786,9558 6728,10271 6282,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5336"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6844,11075 6903,10363 7348,10456 7290,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6903,10363 7348,10456 7290,11168 6844,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5338"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7406,10177 7464,9465 7910,9558 7852,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7464,9465 7910,9558 7852,10271 7406,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5340"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2347,9279 2405,8567 2851,8660 2793,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2405,8567 2851,8660 2793,9373 2347,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5342"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2908,8381 2967,7668 3413,7762 3354,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2967,7668 3413,7762 3354,8475 2908,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5344"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3471,9279 3529,8567 3975,8660 3917,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3529,8567 3975,8660 3917,9373 3471,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5346"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4033,8381 4091,7668 4537,7762 4479,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4091,7668 4537,7762 4479,8475 4033,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5348"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4595,9279 4654,8567 5099,8660 5041,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4654,8567 5099,8660 5041,9373 4595,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5350"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5157,8381 5215,7668 5661,7762 5603,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5215,7668 5661,7762 5603,8475 5157,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5352"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5719,9279 5778,8567 6224,8660 6165,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5778,8567 6224,8660 6165,9373 5719,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5354"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6281,8381 6340,7668 6785,7762 6727,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6340,7668 6785,7762 6727,8475 6281,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5356"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6844,9279 6902,8567 7348,8660 7289,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6902,8567 7348,8660 7289,9373 6844,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5358"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7405,8381 7464,7668 7910,7762 7851,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7464,7668 7910,7762 7851,8475 7405,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5360"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2346,7483 2404,6770 2850,6864 2792,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2404,6770 2850,6864 2792,7576 2346,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5362"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2907,6584 2965,5871 3411,5965 3353,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2965,5871 3411,5965 3353,6678 2907,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5364"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3470,7483 3528,6770 3974,6864 3916,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3528,6770 3974,6864 3916,7576 3470,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5366"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4031,6584 4090,5871 4536,5965 4477,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4090,5871 4536,5965 4477,6678 4031,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5368"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4594,7483 4653,6770 5098,6864 5040,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4653,6770 5098,6864 5040,7576 4594,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5370"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5156,6584 5214,5871 5660,5965 5602,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5214,5871 5660,5965 5602,6678 5156,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5372"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5719,7483 5777,6770 6223,6864 6165,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5777,6770 6223,6864 6165,7576 5719,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5374"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6280,6584 6339,5871 6785,5965 6726,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6339,5871 6785,5965 6726,6678 6280,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5376"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6843,7483 6901,6770 7347,6864 7289,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6901,6770 7347,6864 7289,7576 6843,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5378"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7405,6584 7463,5871 7909,5965 7851,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7463,5871 7909,5965 7851,6678 7405,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5380"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2344,5686 2402,4973 2848,5067 2790,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2402,4973 2848,5067 2790,5779 2344,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5382"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2906,4787 2964,4074 3410,4168 3352,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2964,4074 3410,4168 3352,4881 2906,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5384"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3469,5686 3527,4973 3973,5067 3915,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3527,4973 3973,5067 3915,5779 3469,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5386"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4030,4787 4089,4074 4535,4168 4476,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4089,4074 4535,4168 4476,4881 4030,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5388"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4593,5686 4651,4973 5098,5067 5039,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4651,4973 5098,5067 5039,5779 4593,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5390"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5155,4787 5213,4074 5659,4168 5601,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5213,4074 5659,4168 5601,4881 5155,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5392"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5718,5686 5776,4973 6222,5067 6164,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5776,4973 6222,5067 6164,5779 5718,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5394"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6280,4787 6338,4074 6784,4168 6726,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6338,4074 6784,4168 6726,4881 6280,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5396"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6842,5686 6901,4973 7347,5067 7288,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6901,4973 7347,5067 7288,5779 6842,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5398"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="7404,4787 7463,4074 7909,4168 7850,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="7463,4074 7909,4168 7850,4881 7404,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5400"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="2343,3888 2401,3175 2847,3269 2789,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="2401,3175 2847,3269 2789,3982 2343,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5402"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="3467,3888 3526,3175 3972,3269 3913,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="3526,3175 3972,3269 3913,3982 3467,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5404"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="4592,3888 4650,3175 5097,3269 5038,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="4650,3175 5097,3269 5038,3982 4592,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5406"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="5717,3888 5775,3175 6221,3269 6163,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="5775,3175 6221,3269 6163,3982 5717,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5408"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="6842,3888 6900,3175 7346,3269 7288,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="6900,3175 7346,3269 7288,3982 6842,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5410"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18636,28995 18578,28286 18133,28379 18191,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18578,28286 18133,28379 18191,29089 18636,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5412"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18075,28101 18017,27391 17572,27485 17630,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18017,27391 17572,27485 17630,28194 18075,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5414"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17514,28995 17456,28286 17011,28379 17069,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17456,28286 17011,28379 17069,29089 17514,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5416"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16953,28101 16895,27391 16450,27485 16508,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16895,27391 16450,27485 16508,28194 16953,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5418"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16392,28995 16334,28286 15889,28379 15947,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16334,28286 15889,28379 15947,29089 16392,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5420"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15831,28101 15773,27391 15328,27485 15386,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15773,27391 15328,27485 15386,28194 15831,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5422"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15270,28995 15212,28286 14767,28379 14825,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15212,28286 14767,28379 14825,29089 15270,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5424"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14709,28101 14651,27391 14206,27485 14264,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14651,27391 14206,27485 14264,28194 14709,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5426"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14148,28995 14090,28286 13645,28379 13703,29089 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14090,28286 13645,28379 13703,29089 14148,28995 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5428"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13587,28101 13529,27391 13084,27485 13142,28194 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13529,27391 13084,27485 13142,28194 13587,28101 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5430"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18637,27206 18579,26497 18134,26590 18192,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18579,26497 18134,26590 18192,27300 18637,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5432"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18077,26311 18019,25602 17574,25695 17632,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18019,25602 17574,25695 17632,26405 18077,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5434"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17515,27206 17457,26497 17012,26590 17070,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17457,26497 17012,26590 17070,27300 17515,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5436"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16955,26311 16896,25602 16451,25695 16510,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16896,25602 16451,25695 16510,26405 16955,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5438"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16393,27206 16335,26497 15890,26590 15948,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16335,26497 15890,26590 15948,27300 16393,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5440"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15832,26311 15774,25602 15329,25695 15387,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15774,25602 15329,25695 15387,26405 15832,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5442"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15271,27206 15213,26497 14768,26590 14826,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15213,26497 14768,26590 14826,27300 15271,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5444"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14710,26311 14652,25602 14207,25695 14265,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14652,25602 14207,25695 14265,26405 14710,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5446"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14149,27206 14090,26497 13645,26590 13704,27300 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14090,26497 13645,26590 13704,27300 14149,27206 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5448"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13588,26311 13530,25602 13085,25695 13143,26405 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13530,25602 13085,25695 13143,26405 13588,26311 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5450"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18639,25417 18581,24707 18135,24800 18194,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18581,24707 18135,24800 18194,25510 18639,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5452"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18078,24521 18020,23811 17575,23905 17633,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18020,23811 17575,23905 17633,24615 18078,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5454"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17516,25417 17458,24707 17013,24800 17071,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17458,24707 17013,24800 17071,25510 17516,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5456"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16956,24521 16898,23811 16452,23905 16511,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16898,23811 16452,23905 16511,24615 16956,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5458"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16394,25417 16336,24707 15891,24800 15949,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16336,24707 15891,24800 15949,25510 16394,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5460"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15833,24521 15775,23811 15330,23905 15388,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15775,23811 15330,23905 15388,24615 15833,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5462"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15272,25417 15213,24707 14768,24800 14827,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15213,24707 14768,24800 14827,25510 15272,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5464"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14711,24521 14653,23811 14207,23905 14266,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14653,23811 14207,23905 14266,24615 14711,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5466"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14149,25417 14091,24707 13646,24800 13704,25510 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14091,24707 13646,24800 13704,25510 14149,25417 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5468"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13589,24521 13530,23811 13085,23905 13143,24615 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13530,23811 13085,23905 13143,24615 13589,24521 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5470"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18640,23626 18582,22916 18137,23009 18195,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18582,22916 18137,23009 18195,23720 18640,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5472"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18080,22731 18021,22020 17576,22114 17634,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18021,22020 17576,22114 17634,22824 18080,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5474"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17518,23626 17460,22916 17014,23009 17072,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17460,22916 17014,23009 17072,23720 17518,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5476"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16957,22731 16899,22020 16454,22114 16512,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16899,22020 16454,22114 16512,22824 16957,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5478"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16395,23626 16337,22916 15892,23009 15950,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16337,22916 15892,23009 15950,23720 16395,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5480"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15834,22731 15776,22020 15331,22114 15389,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15776,22020 15331,22114 15389,22824 15834,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5482"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15273,23626 15214,22916 14769,23009 14827,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15214,22916 14769,23009 14827,23720 15273,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5484"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14712,22731 14653,22020 14208,22114 14267,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14653,22020 14208,22114 14267,22824 14712,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5486"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14150,23626 14092,22916 13647,23009 13705,23720 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14092,22916 13647,23009 13705,23720 14150,23626 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5488"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13589,22731 13531,22020 13085,22114 13144,22824 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13531,22020 13085,22114 13144,22824 13589,22731 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5490"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18642,21835 18584,21124 18138,21218 18196,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18584,21124 18138,21218 18196,21928 18642,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5492"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18081,20939 18023,20228 17577,20322 17636,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18023,20228 17577,20322 17636,21033 18081,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5494"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17519,21835 17461,21124 17015,21218 17074,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17461,21124 17015,21218 17074,21928 17519,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5496"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16958,20939 16900,20228 16455,20322 16513,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16900,20228 16455,20322 16513,21033 16958,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5498"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16396,21835 16338,21124 15893,21218 15951,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16338,21124 15893,21218 15951,21928 16396,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5500"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15835,20939 15777,20228 15332,20322 15390,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15777,20228 15332,20322 15390,21033 15835,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5502"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15273,21835 15215,21124 14770,21218 14828,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15215,21124 14770,21218 14828,21928 15273,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5504"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14713,20939 14654,20228 14209,20322 14267,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14654,20228 14209,20322 14267,21033 14713,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5506"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14151,21835 14092,21124 13647,21218 13706,21928 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14092,21124 13647,21218 13706,21928 14151,21835 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5508"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13590,20939 13531,20228 13086,20322 13144,21033 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13531,20228 13086,20322 13144,21033 13590,20939 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5510"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18643,20043 18585,19332 18140,19426 18198,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18585,19332 18140,19426 18198,20137 18643,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5512"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18082,19147 18024,18436 17579,18530 17637,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18024,18436 17579,18530 17637,19241 18082,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5514"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17520,20043 17462,19332 17017,19426 17075,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17462,19332 17017,19426 17075,20137 17520,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5516"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16959,19147 16901,18436 16456,18530 16514,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16901,18436 16456,18530 16514,19241 16959,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5518"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16397,20043 16339,19332 15894,19426 15952,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16339,19332 15894,19426 15952,20137 16397,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5520"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15836,19147 15778,18436 15333,18530 15391,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15778,18436 15333,18530 15391,19241 15836,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5522"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15274,20043 15216,19332 14771,19426 14829,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15216,19332 14771,19426 14829,20137 15274,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5524"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14713,19147 14655,18436 14210,18530 14268,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14655,18436 14210,18530 14268,19241 14713,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5526"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14151,20043 14093,19332 13648,19426 13706,20137 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14093,19332 13648,19426 13706,20137 14151,20043 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5528"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13590,19147 13532,18436 13086,18530 13145,19241 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13532,18436 13086,18530 13145,19241 13590,19147 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5530"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18645,18251 18586,17540 18141,17633 18199,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18586,17540 18141,17633 18199,18344 18645,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5532"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18084,17354 18026,16643 17580,16737 17638,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18026,16643 17580,16737 17638,17448 18084,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5534"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17521,18251 17463,17540 17018,17633 17076,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17463,17540 17018,17633 17076,18344 17521,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5536"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16960,17354 16902,16643 16457,16737 16515,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16902,16643 16457,16737 16515,17448 16960,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5538"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16398,18251 16340,17540 15895,17633 15953,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16340,17540 15895,17633 15953,18344 16398,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5540"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15837,17354 15779,16643 15333,16737 15392,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15779,16643 15333,16737 15392,17448 15837,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5542"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15275,18251 15217,17540 14771,17633 14830,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15217,17540 14771,17633 14830,18344 15275,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5544"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14714,17354 14656,16643 14210,16737 14269,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14656,16643 14210,16737 14269,17448 14714,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5546"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14152,18251 14094,17540 13648,17633 13707,18344 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14094,17540 13648,17633 13707,18344 14152,18251 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5548"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13591,17354 13532,16643 13087,16737 13145,17448 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13532,16643 13087,16737 13145,17448 13591,17354 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5550"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18646,16458 18588,15746 18142,15840 18200,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18588,15746 18142,15840 18200,16551 18646,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5552"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18085,15561 18027,14849 17581,14943 17639,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18027,14849 17581,14943 17639,15655 18085,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5554"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17523,16458 17465,15746 17019,15840 17077,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17465,15746 17019,15840 17077,16551 17523,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5556"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16962,15561 16903,14850 16458,14943 16516,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16903,14850 16458,14943 16516,15655 16962,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5558"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16399,16458 16341,15746 15896,15840 15954,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16341,15746 15896,15840 15954,16551 16399,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5560"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15838,15561 15780,14850 15334,14943 15393,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15780,14850 15334,14943 15393,15655 15838,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5562"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15276,16458 15218,15746 14772,15840 14831,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15218,15746 14772,15840 14831,16551 15276,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5564"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14715,15561 14656,14849 14211,14943 14269,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14656,14849 14211,14943 14269,15655 14715,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5566"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14153,16458 14094,15746 13649,15840 13707,16551 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14094,15746 13649,15840 13707,16551 14153,16458 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5568"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13591,15561 13533,14850 13087,14943 13146,15655 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13533,14850 13087,14943 13146,15655 13591,15561 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5570"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18648,14664 18589,13952 18144,14046 18202,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18589,13952 18144,14046 18202,14758 18648,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5572"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18086,13767 18028,13055 17583,13149 17641,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18028,13055 17583,13149 17641,13861 18086,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5574"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17524,14664 17466,13952 17020,14046 17078,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17466,13952 17020,14046 17078,14758 17524,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5576"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16963,13767 16905,13055 16459,13149 16517,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16905,13055 16459,13149 16517,13861 16963,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5578"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16400,14664 16342,13952 15897,14046 15955,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16342,13952 15897,14046 15955,14758 16400,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5580"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15839,13767 15781,13055 15335,13149 15394,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15781,13055 15335,13149 15394,13861 15839,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5582"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15277,14664 15219,13952 14773,14046 14831,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15219,13952 14773,14046 14831,14758 15277,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5584"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14716,13767 14657,13055 14212,13149 14270,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14657,13055 14212,13149 14270,13861 14716,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5586"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14153,14664 14095,13952 13649,14046 13708,14758 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14095,13952 13649,14046 13708,14758 14153,14664 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5588"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13592,13767 13534,13055 13088,13149 13146,13861 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13534,13055 13088,13149 13146,13861 13592,13767 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5590"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18649,12870 18591,12158 18145,12252 18203,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18591,12158 18145,12252 18203,12963 18649,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5592"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18088,11972 18030,11260 17584,11354 17642,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18030,11260 17584,11354 17642,12066 18088,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5594"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17525,12870 17467,12158 17021,12252 17080,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17467,12158 17021,12252 17080,12963 17525,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5596"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16964,11972 16906,11260 16460,11354 16518,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16906,11260 16460,11354 16518,12066 16964,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5598"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16402,12870 16343,12158 15898,12252 15956,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16343,12158 15898,12252 15956,12963 16402,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5600"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15840,11972 15782,11260 15336,11354 15394,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15782,11260 15336,11354 15394,12066 15840,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5602"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15278,12870 15219,12158 14774,12252 14832,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15219,12158 14774,12252 14832,12963 15278,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5604"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14716,11972 14658,11260 14212,11354 14271,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14658,11260 14212,11354 14271,12066 14716,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5606"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14154,12870 14096,12158 13650,12252 13708,12963 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14096,12158 13650,12252 13708,12963 14154,12870 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5608"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13593,11972 13534,11260 13088,11354 13147,12066 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13534,11260 13088,11354 13147,12066 13593,11972 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5610"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18650,11075 18592,10363 18147,10456 18205,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18592,10363 18147,10456 18205,11168 18650,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5612"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18089,10177 18031,9465 17585,9558 17643,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18031,9465 17585,9558 17643,10271 18089,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5614"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17527,11075 17468,10363 17023,10456 17081,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17468,10363 17023,10456 17081,11168 17527,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5616"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16965,10177 16907,9465 16461,9558 16519,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16907,9465 16461,9558 16519,10271 16965,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5618"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16403,11075 16344,10363 15899,10456 15957,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16344,10363 15899,10456 15957,11168 16403,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5620"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15841,10177 15783,9465 15337,9558 15395,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15783,9465 15337,9558 15395,10271 15841,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5622"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15279,11075 15220,10363 14775,10456 14833,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15220,10363 14775,10456 14833,11168 15279,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5624"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14717,10177 14659,9465 14213,9558 14271,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14659,9465 14213,9558 14271,10271 14717,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5626"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14155,11075 14096,10363 13651,10456 13709,11168 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14096,10363 13651,10456 13709,11168 14155,11075 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5628"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13593,10177 13535,9465 13089,9558 13147,10271 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13535,9465 13089,9558 13147,10271 13593,10177 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5630"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18652,9279 18594,8567 18148,8660 18206,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18594,8567 18148,8660 18206,9373 18652,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5632"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18091,8381 18032,7668 17586,7762 17645,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18032,7668 17586,7762 17645,8475 18091,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5634"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17528,9279 17470,8567 17024,8660 17082,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17470,8567 17024,8660 17082,9373 17528,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5636"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16966,8381 16908,7668 16462,7762 16520,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16908,7668 16462,7762 16520,8475 16966,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5638"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16404,9279 16345,8567 15900,8660 15958,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16345,8567 15900,8660 15958,9373 16404,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5640"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15842,8381 15784,7668 15338,7762 15396,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15784,7668 15338,7762 15396,8475 15842,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5642"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15280,9279 15221,8567 14775,8660 14834,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15221,8567 14775,8660 14834,9373 15280,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5644"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14718,8381 14659,7668 14214,7762 14272,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14659,7668 14214,7762 14272,8475 14718,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5646"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14155,9279 14097,8567 13651,8660 13710,9373 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14097,8567 13651,8660 13710,9373 14155,9279 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5648"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13594,8381 13535,7668 13089,7762 13148,8475 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13535,7668 13089,7762 13148,8475 13594,8381 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5650"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18653,7483 18595,6770 18149,6864 18207,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18595,6770 18149,6864 18207,7576 18653,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5652"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18092,6584 18034,5871 17588,5965 17646,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18034,5871 17588,5965 17646,6678 18092,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5654"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17529,7483 17471,6770 17025,6864 17083,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17471,6770 17025,6864 17083,7576 17529,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5656"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16968,6584 16909,5871 16463,5965 16522,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16909,5871 16463,5965 16522,6678 16968,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5658"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16405,7483 16346,6770 15901,6864 15959,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16346,6770 15901,6864 15959,7576 16405,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5660"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15843,6584 15785,5871 15339,5965 15397,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15785,5871 15339,5965 15397,6678 15843,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5662"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15280,7483 15222,6770 14776,6864 14834,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15222,6770 14776,6864 14834,7576 15280,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5664"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14719,6584 14660,5871 14214,5965 14273,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14660,5871 14214,5965 14273,6678 14719,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5666"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14156,7483 14098,6770 13652,6864 13710,7576 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14098,6770 13652,6864 13710,7576 14156,7483 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5668"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13594,6584 13536,5871 13090,5965 13148,6678 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13536,5871 13090,5965 13148,6678 13594,6584 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5670"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18655,5686 18597,4973 18151,5067 18209,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18597,4973 18151,5067 18209,5779 18655,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5672"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18093,4787 18035,4074 17589,4168 17647,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18035,4074 17589,4168 17647,4881 18093,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5674"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17530,5686 17472,4973 17026,5067 17084,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17472,4973 17026,5067 17084,5779 17530,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5676"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16969,4787 16910,4074 16464,4168 16523,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16910,4074 16464,4168 16523,4881 16969,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5678"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16406,5686 16348,4973 15901,5067 15960,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16348,4973 15901,5067 15960,5779 16406,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5680"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15844,4787 15786,4074 15340,4168 15398,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15786,4074 15340,4168 15398,4881 15844,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5682"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15281,5686 15223,4973 14777,5067 14835,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15223,4973 14777,5067 14835,5779 15281,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5684"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14719,4787 14661,4074 14215,4168 14273,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14661,4074 14215,4168 14273,4881 14719,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5686"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14157,5686 14098,4973 13652,5067 13711,5779 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14098,4973 13652,5067 13711,5779 14157,5686 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5688"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="13595,4787 13536,4074 13090,4168 13149,4881 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="13536,4074 13090,4168 13149,4881 13595,4787 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5690"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="18656,3888 18598,3175 18152,3269 18210,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="18598,3175 18152,3269 18210,3982 18656,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5692"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="17532,3888 17473,3175 17027,3269 17086,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="17473,3175 17027,3269 17086,3982 17532,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5694"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="16407,3888 16349,3175 15902,3269 15961,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="16349,3175 15902,3269 15961,3982 16407,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5696"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="15282,3888 15224,3175 14778,3269 14836,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="15224,3175 14778,3269 14836,3982 15282,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5698"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="14157,3888 14099,3175 13653,3269 13711,3982 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="14099,3175 13653,3269 13711,3982 14157,3888 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5700"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <polygon
-     points="8473,14848 8397,4360 12601,4176 12672,14665 "
-     style="fill:#000000;stroke:#000000;stroke-width:1.17775452"
+     points="8397,4360 12601,4176 12672,14665 8473,14848 "
+     style="fill:#000000;stroke:#000000;stroke-width:3.49828935"
      id="polygon5702"
-     transform="matrix(0,-1,0.72092554,0,4119.5181,21001.764)" />
+     transform="matrix(0,-0.33665901,0.24271593,0,1386.0898,7070.3365)" />
   <rect
-     style="fill:none;stroke:#ff3a0f;stroke-width:141.11111295;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+     style="fill:none;stroke:#ff3a0f;stroke-width:141.1111145;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
      id="rect5710"
-     width="3404.1533"
-     height="2368.106"
-     x="13049.253"
-     y="9259.9033"
-     rx="708.66144"
-     ry="708.66144" />
+     width="1146.0854"
+     height="797.2442"
+     x="4392.4873"
+     y="3117.334"
+     rx="150.347"
+     ry="146.63042" />
 </svg>
