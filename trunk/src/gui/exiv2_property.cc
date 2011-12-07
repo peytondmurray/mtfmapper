@@ -75,12 +75,21 @@ char*   Exiv2_property::eat_whitespace(char* cp) {
 
 QString Exiv2_property::extract_property(QString propname) {
     char* buffer = new char[4096];
+    #ifdef _WIN32
     sprintf(buffer, "\"\"%s\" \"%s\" -g %s > %s\"",
 		exiv2_binary.toLocal8Bit().constData(),
         ifname.toLocal8Bit().constData(),
         propname.toLocal8Bit().constData(),
         tfname.toLocal8Bit().constData()
     );
+    #else
+    sprintf(buffer, "\"%s\" \"%s\" -g %s > %s",
+		exiv2_binary.toLocal8Bit().constData(),
+        ifname.toLocal8Bit().constData(),
+        propname.toLocal8Bit().constData(),
+        tfname.toLocal8Bit().constData()
+    );
+    #endif
 
     int rval2 = system(buffer);
 

@@ -69,11 +69,19 @@ void Worker_thread::run(void) {
             tempdir.toLocal8Bit().constData();
             input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
 
+            #ifdef _WIN32
             sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
                 dcraw_binary.toLocal8Bit().constData(),
                 input_files.at(i).toLocal8Bit().constData(),
                 input_file.toLocal8Bit().constData()
             );
+            #else
+            sprintf(buffer, "\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"", 
+                dcraw_binary.toLocal8Bit().constData(),
+                input_files.at(i).toLocal8Bit().constData(),
+                input_file.toLocal8Bit().constData()
+            );
+            #endif
 
             int dc_rval = system(buffer);
             if (dc_rval < 0) {
@@ -84,7 +92,7 @@ void Worker_thread::run(void) {
         }
 
 
-
+        #ifdef _WIN32
         sprintf(buffer, "\"\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s\"", 
             QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
             gnuplot_binary.toLocal8Bit().constData(),
@@ -92,6 +100,15 @@ void Worker_thread::run(void) {
             tempdir.toLocal8Bit().constData(),
             arguments.toLocal8Bit().constData()
         );
+        #else
+        sprintf(buffer, "\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s", 
+            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
+            gnuplot_binary.toLocal8Bit().constData(),
+            input_file.toLocal8Bit().constData(),
+            tempdir.toLocal8Bit().constData(),
+            arguments.toLocal8Bit().constData()
+        );
+        #endif
         cout << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
              << arguments.toLocal8Bit().constData() << endl;
         printf("actual command = [%s]\n", buffer);
