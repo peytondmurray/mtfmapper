@@ -164,7 +164,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
+        #ifdef _WIN32
         sprintf(buffer, "\"\"%s\" \"%sgrid.gnuplot\"\"", gnuplot_binary.c_str(), wdir.c_str());
+        #else
+        sprintf(buffer, "\"%s\" \"%sgrid.gnuplot\"", gnuplot_binary.c_str(), wdir.c_str());
+        #endif
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
