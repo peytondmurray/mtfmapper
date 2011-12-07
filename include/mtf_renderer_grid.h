@@ -164,11 +164,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         fclose(gpf);
         
         char* buffer = new char[1024];
-        sprintf(buffer, "%s %sgrid.gnuplot", gnuplot_binary.c_str(), wdir.c_str());
+        sprintf(buffer, "\"\"%s\" \"%sgrid.gnuplot\"\"", gnuplot_binary.c_str(), wdir.c_str());
         int rval = system(buffer);
         if (rval != 0) {
             printf("Failed to execute gnuplot (error code %d)\n", rval);
-            printf("You can try to execute \"%s\" to render the plots manually\n", buffer);
+            printf("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
             printf("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");

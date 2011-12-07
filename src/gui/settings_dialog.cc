@@ -114,9 +114,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
 
     #ifdef _WIN32
-    setting_gnuplot_default = QCoreApplication::applicationDirPath() + QString("\\gnuplot\\gnuplot.exe");
-    setting_exiv_default = QCoreApplication::applicationDirPath() + QString("\\exiv2\\exiv2.exe");
-    setting_dcraw_default = QCoreApplication::applicationDirPath() + QString("\\dcraw\\dcraw.exe");
+    setting_gnuplot_default = QCoreApplication::applicationDirPath() + QString("/gnuplot/gnuplot.exe");
+    setting_exiv_default = QCoreApplication::applicationDirPath() + QString("/exiv2/exiv2.exe");
+    setting_dcraw_default = QCoreApplication::applicationDirPath() + QString("/dcraw/dcraw.exe");
     #endif
 
     gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
