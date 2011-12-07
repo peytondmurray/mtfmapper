@@ -69,7 +69,7 @@ void Worker_thread::run(void) {
             tempdir.toLocal8Bit().constData();
             input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
 
-            sprintf(buffer, "%s -w -4 -T -q 3 -c %s > %s", 
+            sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
                 dcraw_binary.toLocal8Bit().constData(),
                 input_files.at(i).toLocal8Bit().constData(),
                 input_file.toLocal8Bit().constData()
@@ -85,7 +85,7 @@ void Worker_thread::run(void) {
 
 
 
-        sprintf(buffer, "%s/mtf_mapper --gnuplot-executable %s %s %s %s", 
+        sprintf(buffer, "\"\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s\"", 
             QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
             gnuplot_binary.toLocal8Bit().constData(),
             input_file.toLocal8Bit().constData(),
