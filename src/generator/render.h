@@ -54,12 +54,10 @@ class Render_rectangle : public Render_target {
 
         // rotate corners
         for (size_t i=0; i < 4; i++) {
-            printf("before [%d] : %lf %lf -> ", i, bases[i][0], bases[i][1]);
             double ox = bases[i][0];
             double oy = bases[i][1];
             bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
             bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
-            printf("%lf %lf \n", bases[i][0], bases[i][1]);
         }
               
         normals[0] = (bases[2] - bases[1]); 
