@@ -175,6 +175,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
     TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 300, "dimension", cmd);
+    TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [0,1]", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [0,1]", false, 0, "pixels", cmd);
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
     
@@ -220,8 +222,15 @@ int main(int argc, char** argv) {
     
     const double rwidth = width / 4;
     const double rheight = height / 3;
-    
-    Render_rectangle rect(width*0.5 - 0.5*rwidth, height*0.5 - 0.5*rheight, rwidth, rheight, theta, sigma);
+
+    Render_rectangle rect(
+        width*0.5 + tc_xoff.getValue(), 
+        height*0.5 + tc_yoff.getValue(),
+        rwidth,
+        rheight,
+        M_PI/2 - theta,
+        sigma
+    );
     
     cv::Mat img;
     if (use_16bit) {

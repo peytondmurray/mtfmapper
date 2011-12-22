@@ -46,11 +46,21 @@ class Render_target {
 //==============================================================================
 class Render_rectangle : public Render_target {
   public:
-    Render_rectangle(double tlx, double tly, double width, double height, double angle, double in_sigma=6.0) : sigma(in_sigma) {
-        bases[0] = cv::Vec2d(tlx, tly);
-        bases[1] = cv::Vec2d(tlx + cos(angle)*width, tly - sin(angle)*width);
-        bases[2] = cv::Vec2d(tlx + cos(angle)*width + sin(angle)*height, tly - sin(angle)*width + cos(angle)*height);
-        bases[3] = cv::Vec2d(tlx + sin(angle)*height, tly + cos(angle)*height);
+    Render_rectangle(double cx, double cy, double width, double height, double angle, double in_sigma=6.0) : sigma(in_sigma) {
+        bases[0] = cv::Vec2d(width/2, height/2);
+        bases[1] = cv::Vec2d(-width/2, height/2);
+        bases[2] = cv::Vec2d(-width/2, -height/2);
+        bases[3] = cv::Vec2d(width/2, -height/2);
+
+        // rotate corners
+        for (size_t i=0; i < 4; i++) {
+            printf("before [%d] : %lf %lf -> ", i, bases[i][0], bases[i][1]);
+            double ox = bases[i][0];
+            double oy = bases[i][1];
+            bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
+            bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
+            printf("%lf %lf \n", bases[i][0], bases[i][1]);
+        }
               
         normals[0] = (bases[2] - bases[1]); 
         normals[1] = (bases[3] - bases[2]); 
