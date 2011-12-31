@@ -51,9 +51,9 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     double span = std::max(ordered[end_idx-1].first - mid, mid - ordered[start_idx].first);
     vector<double> sig(n,1.0);
     for (int i=0; i < n; i++) {
-        double d = fabs((ordered[i + start_idx].first - mid)/span) * 1.2;
+        double d = fabs((ordered[i + start_idx].first - mid)/span) / 1.2;
         if (d > 1.0) {
-            sig[i] = 2;
+            sig[i] = 20;
         } else {
             sig[i] = 1.0 / ( (1 - d*d)*(1 - d*d)*(1 - d*d) + 1);
         }
@@ -99,6 +99,7 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
     size_t end_idx = 0;
     
     int fft_idx = 0;
+    fft_in_buffer[0] = 0;
     for (double step_base = lower; step_base < upper; step_base += step) {
     
         double mid = step_base + 0.5*step;
@@ -107,8 +108,8 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
         Point sol;
         
         // try symmetric solution
-        start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.25) - ordered.begin();
-        end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.25) - ordered.begin();
+        start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.35) - ordered.begin();
+        end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.35) - ordered.begin();
 
         bool end_capped = false;
         bool start_capped = false;
@@ -130,21 +131,54 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
         // so this would be a good place to raise a warning
         
         rsq = loess_core(ordered, start_idx, end_idx, mid, sol);
+        bool missing = false;
+        if (fabs(sol.y) > 65535) {
+            sol.y = sol.y < 0 ? -65535 : 65535;
+            missing = true;
+        }
+        if (sol.y*mid + sol.x < 0 || sol.y*mid + sol.x > 65535) {
+            sol.x = -sol.y*mid;
+            missing = true;
+        }
               
         double w = 0.54 + 0.46*cos(2*M_PI*(fft_idx - fft_size/2)/double(fft_size-1));  // Hamming window function
         fft_idx++;
         if (deriv) {
             fft_in_buffer[fft_idx-1] = sol.y * w ; // derivative
+            //fft_in_buffer[fft_idx-1] = sol.x + mid*sol.y;
         } else {
             fft_in_buffer[fft_idx-1] = sol.x + mid*sol.y;
-        }      
+        }
+        if (missing && fft_idx > 1) {
+            fft_in_buffer[fft_idx-1] = fft_in_buffer[fft_idx-2];
+        }
+        //if (!missing) fprintf(stderr, "%lf\n", sol.x + mid*sol.y);
+        //fprintf(stderr, "%lf\n", fft_in_buffer[fft_idx-1]);
     }
     if (deriv) {
-        for (size_t i=0; i < 3; i++) {
+        //for (size_t i=fft_idx-1; i > 0; i--) {
+        //    fft_in_buffer[i] -= fft_in_buffer[i-1];
+        //}
+        for (size_t i=0; i < 5; i++) {
             fft_in_buffer[i] = 0;
             fft_in_buffer[fft_idx-1-i] = 0;
         }
+        double old_x = fft_in_buffer[84];
+        const double alpha = 2.0/(80);
+        for (size_t i=83; i > 0; i--) {
+            old_x = old_x * (1-alpha) + fft_in_buffer[i] * alpha;
+            if (i < 64) {
+                fft_in_buffer[i] = old_x;
+            }
+        }
+        for (size_t i=0; i < 64; i++) {
+            old_x = old_x * (1-alpha) + fft_in_buffer[fft_idx - 1 - i] * alpha;
+            fft_in_buffer[fft_idx - 1 - i] = old_x;
+        }
     }
+    //for (size_t i=0; i < fft_idx; i++) {
+    //    fprintf(stderr, "%lf\n", fft_in_buffer[i]);
+    //}
 }
 
 

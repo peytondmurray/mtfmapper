@@ -14,8 +14,7 @@ position, though)
 variance within each block, e.g, comparing to half variance to bottom half
 variance and so on. this will weed out non-uniform blocks. (low priority,
 unless people really have a lot of background clutter)
-8. help screen, link to documentation, etc.
-9. Moving the install directory under Windows (after running GUI a first
+8. Moving the install directory under Windows (after running GUI a first
 time) results in incorrect paths to the helper utilities. Maybe we can store
 an explicit flag for each helper -- if the user has specified a path, use
 that, otherwise assume the helpers are under the mtf mapper path?
