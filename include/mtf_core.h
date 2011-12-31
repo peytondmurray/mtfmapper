@@ -32,6 +32,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/gradient.h"
 #include "include/block.h"
 #include "include/rectangle.h"
+#include "include/edge_record.h"
+#include "include/loess_fit.h"
 
 #include <map>
 using std::map;
@@ -83,7 +85,9 @@ class Mtf_core {
     
     void search_borders(const Point& cent, int label);
     bool extract_rectangle(const Point& cent, int label, Mrectangle& rect);
-    double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, double& poor, Point& rgrad);
+    double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, 
+                       Edge_record& er,
+                       double& poor, Point& rgrad, vector<double>& sfr);
     
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
@@ -107,6 +111,68 @@ class Mtf_core {
     
     vector<Block> detected_blocks;  
     map<int, Block> shared_blocks_map;
+
+  private:
+    void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
+        const map<int, scanline>& scanset, const Point& cent,
+        double& edge_length) {
+
+        double max_along_edge = -1e50;
+        double min_along_edge = 1e50;
+
+        Point mean_grad(cos(ea), sin(ea));
+        Point edge_direction(sin(ea), cos(ea));
+    
+        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+            int y = it->first;
+            for (int x=it->second.start; x <= it->second.end; x++) {
+                Point d((x) - cent.x, (y) - cent.y);
+                double dot = d.ddot(mean_grad); 
+                double dist_along_edge = d.ddot(edge_direction);
+                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                    local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                    max_along_edge = std::max(max_along_edge, dist_along_edge);
+                    min_along_edge = std::min(min_along_edge, dist_along_edge);
+                }
+            }
+        }
+
+        edge_length = max_along_edge - min_along_edge;
+    }
+
+    inline double bin_at_angle(double ea, const map<int, scanline>& scanset, const Point& cent,
+        vector<double>& sum_a, vector<double>& sum_q, vector<int>& count) {
+
+        Point mean_grad(cos(ea), sin(ea));
+        Point edge_direction(sin(ea), cos(ea));
+
+        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+            int y = it->first;
+            for (int x=it->second.start; x <= it->second.end; x++) {
+                Point d((x) - cent.x, (y) - cent.y);
+                double dot = d.ddot(mean_grad); 
+                double dist_along_edge = d.ddot(edge_direction);
+                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                    int idot = lrint(dot*4 + 16*4);
+                    double data = img.at<uint16_t>(y,x)/256.0;
+                    count[idot]++;
+                    double old_sum_a = sum_a[idot];
+                    sum_a[idot] += (data - sum_a[idot])/double(count[idot]);
+                    sum_q[idot] += (data - old_sum_a)*(data - sum_a[idot]);
+                }
+            }
+        }
+        double varsum = 0;
+        int used = 0;
+        for (size_t k=0; k < count.size(); k++) {
+            if (count[k] > 2) {
+                used++;
+                varsum += sum_q[k] / double(count[k]-1);
+            }
+        }
+        varsum *= sum_a.size() / double(used);
+        return varsum;
+    }
 };
 
 #endif

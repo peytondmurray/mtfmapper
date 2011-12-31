@@ -243,7 +243,7 @@ int main(int argc, char** argv) {
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 1.0/(sigma*sigma);
-    printf("MTF curve:  exp(%lg*x*x)\n", -2*M_PI*M_PI/a);
+    printf("MTF curve:  exp(%.8lg*x*x)\n", -2*M_PI*M_PI/a);
     printf("PSF : exp(-x*x/%lg)\n", 2*sigma*sigma);
     printf("MTF50 = %lf\n", mtf);    
 

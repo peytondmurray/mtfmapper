@@ -32,8 +32,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/peak_detector.h"
 
 #include "include/point_helpers.h"
-#include "include/mtf50_correction_polynomials.h"
 #include "include/mtf50_edge_quality_rating.h"
+#include "include/sfr_table.h"
+
 
 // global lock to prevent race conditions on detected_blocks
 static tbb::mutex global_mutex;
@@ -57,6 +58,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     }
     
     vector<Point>& centroids = rrect.centroids;
+    vector<Edge_record> edge_record(4);
     for (size_t k=0; k < 4; k++) {
         Point mid_dir = average_dir(g, int(centroids[k].x), int(centroids[k].y));
         
@@ -72,6 +74,9 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     int iy = lrint(y);
                     int ix = lrint(x);
                     if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+
+                        edge_record[k].add_point(ix, iy, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+
                         map<int, scanline>::iterator it = scanset.find(iy);
                         if (it == scanset.end()) {
                             scanline sl(ix,ix);
@@ -87,14 +92,19 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                 }
             }
         }
+
+        edge_record[k].reduce();
+        
         double quality = 0;
         Point rgrad;
-        double mtf50 = compute_mtf(centroids[k], scanset, quality, rgrad);
+        vector <double> sfr(SAMPLES_PER_PIXEL, 0);
+        double mtf50 = compute_mtf(centroids[k], scanset, edge_record[k], quality, rgrad, sfr);
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
             shared_blocks_map[label].set_mtf50_value(k, mtf50, quality);
             shared_blocks_map[label].set_normal(k, rgrad);
+            shared_blocks_map[label].set_sfr(k, sfr);
         }
     }
     
@@ -134,110 +144,60 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     return rrect.valid;
 }
 
+static double angle_reduce(double x) {
+    double quad1 = fabs(fmod(x, M_PI/2.0));
+    if (quad1 > M_PI/4.0) {
+        quad1 = M_PI/2.0 - quad1;
+    }
+    quad1 = quad1 / M_PI * 180;
+    return quad1;
+}
+
 double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset,
-    double& quality, Point& rgrad) {
+    Edge_record& er, double& quality, Point& rgrad, vector<double>& sfr) {
     quality = 1.0; // assume this is a good edge
     
     Point cent(in_cent);
     
     Point mean_grad(0,0);
-    double wsum = 0;
-    int count = 0;
-    // compute direction onto which points will be projected
-    Point ncent(0.0, 0.0);
-    for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
-        int y = it->first;
-        for (int x=it->second.start; x <= it->second.end; x++) {
-            double gm = g.grad_magnitude(x,y);
-            mean_grad.x += g.grad_x(x,y) * gm;
-            mean_grad.y += g.grad_y(x,y) * gm;
-            ncent.x += x * gm;
-            ncent.y += y * gm;
-            wsum += gm;
-            count++;
-        }
-    }
-    if (fabs(wsum) < 1e-6) {
-        return 0;
-    }
-    mean_grad.x /= wsum;
-    mean_grad.y /= wsum;
-    ncent.x /= wsum;
-    ncent.y /= wsum;
-    mean_grad = normalize(mean_grad);
-    
-    Point old_grad = mean_grad;
-    mean_grad = Point(0.0,0.0);
-    wsum = 0;
-    count = 0;
-    
-    // the exact location of the edge is probably not critical (except for the influence on apodization?)
-    // TODO: investigate this
-    cent = Point((cent.x + ncent.x)/2.0, (cent.y + ncent.y)/2.0);
-    
-    // recompute direction onto which points will be projected
-    for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
-        int y = it->first;
-        for (int x=it->second.start; x <= it->second.end; x++) {
-            Point d(x - cent.x, y - cent.y);
-            double dot = d.ddot(old_grad);
-            if (fabs(dot) < max_dot) {
-                double gm = g.grad_magnitude(x,y);
-                gm *= exp(-dot*dot/16.0);
-                mean_grad.x += g.grad_x(x,y) * gm;
-                mean_grad.y += g.grad_y(x,y) * gm;
-                wsum += gm;
-                count++;
-            }
-        }
-    }
-    mean_grad.x /= wsum;
-    mean_grad.y /= wsum;
-    mean_grad = normalize(mean_grad);
-    
-    
-    // orientation estimates remain weak. do something about it
-    double angle = atan2(mean_grad.y, mean_grad.x);
-    
+   
+
+    double angle = er.angle;
+    mean_grad.x = cos(angle);
+    mean_grad.y = sin(angle);
+
+    //printf("original angle estimate: %lf %lf\n", angle/M_PI*180, angle_reduce(angle));
+
     vector<Ordered_point> ordered;
     double min_sum = 1e50;
-    double best_angle = 0;
-    double min_along_edge = 1e50;
-    double max_along_edge = -1e50;
-    for (double ea=angle-2.0/180.0*M_PI; ea < angle + 2.0/180.0; ea += 0.1/180.0*M_PI) {
-        
-        mean_grad.x = cos(ea);
-        mean_grad.y = sin(ea);
-        
-        Point edge_direction(sin(ea), cos(ea));
+    double best_angle = angle;
+    double edge_length = 0;
+
+    // if there appears to be significant noise, refine the edge orientation estimate
+    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5) { 
+
+        vector<double> sum_x(32*4+1, 0);
+        vector<double> sum_xx(32*4+1, 0);
+        vector<int>    count(32*4+1, 0);
     
-        vector<Ordered_point> local_ordered;
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
-            int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; x++) {
-                Point d((x) - cent.x, (y) - cent.y);
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
-                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                    local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
-                    max_along_edge = std::max(max_along_edge, dist_along_edge);
-                    min_along_edge = std::min(min_along_edge, dist_along_edge);
-                }
+        for (double ea=angle-1.0/180.0*M_PI; ea < angle + 1.0/180.0*M_PI; ea += 0.1/180.0*M_PI) {
+            for (size_t k=0; k < sum_x.size(); k++) {
+                sum_x[k]  = 0;
+                sum_xx[k] = 0;
+                count[k]  = 0;
+            }
+            double varsum = bin_at_angle(ea, scanset, cent, sum_x, sum_xx, count);
+            if (varsum < min_sum || (varsum == min_sum && fabs(ea-angle) < fabs(best_angle-angle)) ) {
+                min_sum = varsum;
+                best_angle = ea;
             }
         }
-        // measure variance of adjacent points
-        sort(local_ordered.begin(), local_ordered.end());
-        double sum = 0;
-        for (size_t i=1; i < local_ordered.size(); i++) {
-            sum += SQR(fabs(local_ordered[i-1].second - local_ordered[i].second));
-        }
-        if (sum < min_sum) {
-            min_sum = sum;
-            ordered = local_ordered;
-            best_angle = ea;
-        }
     }
-    double edge_length = max_along_edge - min_along_edge;
+
+    
+    //printf("optimized angle estimate: %lf %lf\n", best_angle/M_PI*180, angle_reduce(best_angle));
+    sample_at_angle(best_angle, ordered, scanset, cent, edge_length);
+    sort(ordered.begin(), ordered.end());
     
     mean_grad.x = cos(best_angle);
     mean_grad.y = sin(best_angle);
@@ -257,16 +217,57 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
+
+    double quad = angle_reduce(best_angle);
+    size_t best_angle_idx = 0;
     
+    double ba_closest_dist = 90;
+    for (size_t i=0; i < 90; i++) {
+        if (fabs(sfr_correction_table[i][1] - quad) < 
+            fabs(sfr_correction_table[best_angle_idx][1] - quad)) {
+        
+            best_angle_idx = i;
+            ba_closest_dist = fabs(sfr_correction_table[i][1] - quad);
+        }
+    }
+    //best_angle_idx = 0;
+    //printf("best angle idx = %d, angle = %lf\n", best_angle_idx, sfr_correction_table[best_angle_idx][0]);
+
     double n0 = sqrt(SQR(fft_out_buffer[0][0]) + SQR(fft_out_buffer[0][1]));
+    vector<double> magnitude(SAMPLES_PER_PIXEL);
+    for (int i=0; i < SAMPLES_PER_PIXEL; i++) {
+        magnitude[i] = sqrt(SQR(fft_out_buffer[i][0]) + SQR(fft_out_buffer[i][1])) / n0;
+    }
+    double mtf_area = 0.0;
+    for (int i=0; i < SAMPLES_PER_PIXEL/2; i++) {
+        mtf_area += magnitude[i];
+    }
+
+    // find closest area value
+    int mtf_area_idx = 0;
+    double min_dist = 1e50;
+    for (int i=0; i < 26; i++) {
+       double dist = fabs(mtf_area - sfr_correction_table[i*90][0]);
+       if (dist < min_dist) {
+           min_dist = dist;
+           mtf_area_idx = i;
+       }
+    }
+    //printf("min mtf idx = %d, actual area = %lf, table = %lf\n",
+    //       mtf_area_idx, mtf_area, sfr_correction_table[mtf_area_idx*90][0]
+    //       );
+
+    const double* base_mtf = sfr_correction_table[best_angle_idx + mtf_area_idx*90] + 2;
+    
     double prev_freq = 0;
     double prev_val  = n0;
     
     double mtf50 = 0;
 
     bool done = false;
-    for (size_t i=0; i < FFT_SIZE/2 && !done; i++) {
-        double mag = sqrt(SQR(fft_out_buffer[i][0]) + SQR(fft_out_buffer[i][1])) / n0;
+    for (int i=0; i < SAMPLES_PER_PIXEL && !done; i++) {
+        double mag = magnitude[i];
+        mag /= base_mtf[i];
         if (prev_val > 0.5 && mag <= 0.5) {
             // interpolate
             double m = -(mag - prev_val)*(FFT_SIZE);
@@ -276,62 +277,32 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         prev_val = mag;
         prev_freq = i / double(FFT_SIZE);
     }
+    if (!done) {
+        mtf50 = 1.0/SAMPLES_PER_PIXEL;
+    }
     
     mtf50 *= SAMPLES_PER_PIXEL; 
-    
-    #if 1
-    // find closest angle
-    double quad1 = fabs(fmod(best_angle, M_PI/2.0));
-    if (quad1 > M_PI/4.0) {
-        quad1 = M_PI/2.0 - quad1;
+
+    for (size_t i=0; i < size_t(SAMPLES_PER_PIXEL);  i++) {
+        sfr[i] = magnitude[i] / base_mtf[i];
     }
-    quad1 = quad1 / M_PI * 180;
-    size_t angle_idx = 0;
-    
-    double closest_dist = 90;
-    for (size_t i=0; i < mtf50_corrections_num_angles; i++) {
-        if (fabs(mtf_correction_coeffs[i][0] - quad1) < 
-            fabs(mtf_correction_coeffs[angle_idx][0] - quad1)) {
-        
-            angle_idx = i;
-            closest_dist = fabs(mtf_correction_coeffs[i][0] - quad1);
-        }
-        
-        
+
+    // derate the quality of the known poor angles
+    if (quad <= 1) {
+        quality = poor_quality;
     }
-    
-    size_t qa_idx = 0;
-    for (size_t i=0; i < 46; i++) {
-        if (fabs(edge_quality_map[i][0] - quad1) < 
-            fabs(edge_quality_map[qa_idx][0] - quad1)) {    
-            
-            qa_idx = i;
-        }
+
+    if (fabs(quad - 26) < 1.5) {
+        quality = poor_quality;
     }
-    quality = edge_quality_map[qa_idx][1];
+
+    if (quad >= 44) {
+        quality = poor_quality;
+    }
     
     if (edge_length < 25) {  // derate short edges
         quality *= poor_quality;
     }
-    
-    double s = mtf_correction_coeffs[angle_idx][1];
-    double xp = mtf50;
-    for (int i=2; i < 13; i++) {
-        s += xp * mtf_correction_coeffs[angle_idx][i];
-        xp *= mtf50;
-    }
-    if (mtf50 <= 1.1) {
-        if (quality > very_poor_quality) {  // do not correct mtf50 when the correction polynomial itself is questionable?
-            mtf50 = s;
-            if (mtf50 < 0) {                // if the correction pushes the value below zero, discard it
-                mtf50 = 0;
-                quality = very_poor_quality;
-            }
-        }
-    } else {
-        quality = unusable_quality;
-    }
-    #endif
     
     fftw_free(fft_out_buffer);
     fftw_free(fft_in_buffer);        

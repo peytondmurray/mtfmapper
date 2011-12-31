@@ -46,6 +46,7 @@ using std::stringstream;
 #include "include/mtf_renderer_grid.h"
 #include "include/mtf_renderer_print.h"
 #include "include/mtf_renderer_stats.h"
+#include "include/mtf_renderer_sfr.h"
 #include "include/scanline.h"
 #include "config.h"
 
@@ -98,6 +99,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, false);
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
+    TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
@@ -114,8 +116,8 @@ int main(int argc, char** argv) {
         printf("working with=%lf pixels per mm\n", pixel_size);
     }
 
-    if (!tc_profile.getValue() && !tc_annotate.getValue() && !tc_surface.getValue() && !tc_print.getValue() ) {
-        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s]\n");
+    if (!tc_profile.getValue() && !tc_annotate.getValue() && !tc_surface.getValue() && !tc_print.getValue() && !tc_sfr.getValue()) {
+        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f]\n");
     }
 
     cv::Mat cvimg = cv::imread(tc_in_name.getValue(),-1);
@@ -281,6 +283,15 @@ int main(int argc, char** argv) {
             pixel_size
         );
         printer.render(mtf_core.get_blocks());
+    }
+
+    if (tc_sfr.getValue()) {
+        Mtf_renderer_sfr sfr_writer(
+            wdir + string("raw_sfr_values.txt"), 
+            lpmm_mode,
+            pixel_size
+        );
+        sfr_writer.render(mtf_core.get_blocks());
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);
