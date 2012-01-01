@@ -213,7 +213,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
+    //loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
+    bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
@@ -230,7 +231,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
             ba_closest_dist = fabs(sfr_correction_table[i][1] - quad);
         }
     }
-    //best_angle_idx = 0;
+    best_angle_idx = 0;
     //printf("best angle idx = %d, angle = %lf\n", best_angle_idx, sfr_correction_table[best_angle_idx][0]);
 
     double n0 = sqrt(SQR(fft_out_buffer[0][0]) + SQR(fft_out_buffer[0][1]));
@@ -257,7 +258,11 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     //       mtf_area_idx, mtf_area, sfr_correction_table[mtf_area_idx*90][0]
     //       );
 
-    const double* base_mtf = sfr_correction_table[best_angle_idx + mtf_area_idx*90] + 2;
+    //const double* base_mtf = sfr_correction_table[best_angle_idx + mtf_area_idx*90] + 2;
+
+    const double base_mtf[64] = {
+        1,0.999984486866557,0.999936700753812,0.999856901758387,0.999745860494588,0.999602856469437,0.999428689355937,0.999221662400338,0.998982616027967,0.998710907296687,0.998407450694172,0.998071686034368,0.997702586563836,0.997301752799086,0.99686726211316,0.996398805838579,0.99589774256414,0.995362939956322,0.99479389996896,0.994190792626164,0.993553417359351,0.992881206394793,0.99217322712681,0.991430392056121,0.990652214795646,0.989836768283707,0.988985175310973,0.988097190693832,0.987172313789717,0.986208625669173,0.985207467111431,0.984167657360914,0.983089006548719,0.981969944744486,0.980812427046191,0.979613377043908,0.978373304498,0.977092693659347,0.975769406161666,0.974403836942393,0.972993725889167,0.971542204338157,0.970044320125214,0.968503390887393,0.96691588934413,0.965282591291464,0.963601532467787,0.961873845827568,0.96009790159014,0.95827221579671,0.95639708489526,0.954471521572099,0.952494812629752,0.950466568192422,0.948385048193354,0.94625057028364,0.944060345451452,0.941815519979535,0.939514108197148,0.93715450255377,0.93473749841564,0.932260559235891,0.929723608450891,0.927125128100689
+    };
     
     double prev_freq = 0;
     double prev_val  = n0;
@@ -278,10 +283,10 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         prev_freq = i / double(FFT_SIZE);
     }
     if (!done) {
-        mtf50 = 1.0/SAMPLES_PER_PIXEL;
+        mtf50 = 2.0/SAMPLES_PER_PIXEL;
     }
     
-    mtf50 *= SAMPLES_PER_PIXEL; 
+    mtf50 *= max_dot*2; 
 
     for (size_t i=0; i < size_t(SAMPLES_PER_PIXEL);  i++) {
         sfr[i] = magnitude[i] / base_mtf[i];

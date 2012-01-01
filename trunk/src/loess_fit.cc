@@ -181,4 +181,88 @@ void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const i
     //}
 }
 
+void bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv) {
 
+    const double missing = -1e7;
+
+    size_t start_idx = 0;
+    size_t end_idx = 0;
+
+    for (int fft_idx=0; fft_idx < fft_size; fft_idx++) {
+        const double scale = 2;
+        double mid = fft_idx*scale*(upper-lower)/double(fft_size) + scale*lower;
+        start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.25/2.0) - ordered.begin();
+        end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.25/2.0) - ordered.begin();
+
+        if (end_idx - start_idx > 2) {
+            vector<double> vals;
+            for (size_t k=start_idx; k < end_idx; k++) {
+                vals.push_back(ordered[k].second);
+            }
+            sort(vals.begin(), vals.end());
+            double sum = 0;
+            int count = 0;
+            if (vals.size() > 5) {
+                for (int j=int(vals.size()*0.1);  j < int(vals.size()*0.9); j++) {
+                    sum += vals[j];
+                    count++;
+                }
+            } else {
+                for (int j=0;  j < int(vals.size()); j++) {
+                    sum += vals[j];
+                    count++;
+                }
+            }
+            fft_in_buffer[fft_idx] = sum / double(count);
+        } else {
+            fft_in_buffer[fft_idx] = missing;
+        }
+    }
+    if (fft_in_buffer[0] == missing) { // first value is missing
+        int j = 0;
+        while (j < fft_size && fft_in_buffer[j] == missing) {
+            j++;
+        }
+        fft_in_buffer[0] = fft_in_buffer[j];
+    }
+    for (int fft_idx=1; fft_idx < fft_size; fft_idx++) {
+        if (fft_in_buffer[fft_idx] == missing) {
+            fft_in_buffer[fft_idx] = fft_in_buffer[fft_idx - 1];
+        }
+        //fprintf(stderr, "%lf\n", fft_in_buffer[fft_idx]);
+    }
+    double old = fft_in_buffer[0];
+    for (int fft_idx=1; fft_idx < fft_size-1; fft_idx++) {
+        double w = 0.54 + 0.46*cos(2*2*M_PI*(fft_idx - fft_size/2)/double(fft_size-1));  // Hamming window function
+        fft_in_buffer[fft_idx] = (fft_in_buffer[fft_idx+1] - fft_in_buffer[fft_idx]) * w * 0.5;
+        double temp = fft_in_buffer[fft_idx];
+        //fft_in_buffer[fft_idx] = (fft_in_buffer[fft_idx+1] - old) * w;
+        old = temp;
+    }
+
+    // suppress the endpoints
+    for (size_t i=0; i < 5; i++) {
+        fft_in_buffer[i] = 0;
+        fft_in_buffer[fft_size-1-i] = 0;
+    }
+    #if 0
+    // now perform additional smoothing around ends
+    const int sstart = 83;
+    double old_x = fft_in_buffer[sstart+1];
+    const double alpha = 2.0/(80);
+    for (size_t i=sstart; i > 0; i--) {
+        old_x = old_x * (1-alpha) + fft_in_buffer[i] * alpha;
+        if (i < sstart-20) {
+            fft_in_buffer[i] = old_x;
+        }
+    }
+    for (size_t i=0; i < sstart-20; i++) {
+        old_x = old_x * (1-alpha) + fft_in_buffer[fft_size - 1 - i] * alpha;
+        fft_in_buffer[fft_size - 1 - i] = old_x;
+    }
+    #endif
+
+    for (int fft_idx=1; fft_idx < fft_size-1; fft_idx++) {
+        //fprintf(stderr, "%lf\n", fft_in_buffer[fft_idx]);
+    }
+}
