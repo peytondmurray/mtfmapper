@@ -36,7 +36,72 @@ class Edge_record {
     Edge_record(void) {
     }
 
+    // constructor for merging two data sets
+    Edge_record(const Edge_record& a, const Edge_record& b) {
+        double cx = a.centroid.x;
+        double cy = a.centroid.y;
+        if (a.orientation == HORIZONTAL) {
+            double temp = cx;
+            cx = cy;
+            cy = temp;
+        }
+        for (size_t i=0; i < a.points.size(); i++) {
+            points.push_back(
+                make_pair<double,double>(
+                    a.points[i].first - cx, 
+                    a.points[i].second - cy
+                )
+            );
+            weights.push_back(a.weights[i]);
+        }
+
+        cx = b.centroid.x;
+        cy = b.centroid.y;
+        if (b.orientation == HORIZONTAL) {
+            double temp = cx;
+            cx = cy;
+            cy = temp;
+        }
+        for (size_t i=0; i < b.points.size(); i++) {
+            points.push_back(
+                make_pair<double,double>(
+                    b.points[i].first - cx, 
+                    b.points[i].second - cy
+                )
+            );
+            weights.push_back(b.weights[i]);
+        }
+
+        rsq = lsq_fit(points, weights, slope, offset);
+        //printf("got %d points in merged sample, rsq=%lf\n", (int)points.size(), rsq);
+
+        const double il_thresh = rsq*1.1;
+        int omitted = 0;
+        for (size_t i=0; i < points.size(); i++) {
+            double ey = fabs(offset + slope*points[i].first - points[i].second);
+            if (ey > il_thresh) {
+                weights[i] = 0;
+                omitted++;
+            }
+        }
+        if (omitted < 0.6*points.size()) {
+            rsq = lsq_fit(points, weights, slope, offset);
+        }
+
+        //printf("slope=%lf, offset=%lf\n", slope, offset);
+        //printf("*got %d points in merged sample, rsq=%lf\n", (int)points.size() - omitted, rsq);
+    }
+
     typedef enum {HORIZONTAL, VERTICAL} orientation_t;
+
+    bool compatible(const Edge_record& b) {
+        //Z = (b1-b2) / (se12+se22)1/2
+        double Z = (slope - b.slope)/(rms*rms + b.rms*b.rms);
+        //printf("slopes = (%lf, %lf), rms = (%lf, %lf)\n", slope, b.slope, rms, b.rms);
+        //printf("Z is %lf\n", fabs(Z));
+
+        return fabs(Z) < 1;
+    }
 
     void add_point(int x, int y, double gx, double gy) {
         if (col_mean.find(x) == col_mean.end()) {
@@ -104,7 +169,7 @@ class Edge_record {
         }
 
         double ratio = double(mean->size())/double(other_mean->size());
-        if (ratio < 1.4) {
+        if (ratio < 1.6) {
             for (map<int, double>::const_iterator it=other_weight->begin(); it != other_weight->end(); it++) {
                 if (it->second >= weight_thresh) {
                     points.push_back(make_pair<double, double>((*other_mean)[it->first] / it->second, it->first));
@@ -113,39 +178,64 @@ class Edge_record {
             }
         }
 
-        //printf("got %d points after filtering\n", (int)weights.size());
         
         rsq = lsq_fit(points, weights, slope, offset);
-        //printf("slope=%lf, offset=%lf\n", slope, offset);
 
         const double il_thresh = 2;
+        centroid = Point(0,0);
+        int c_count = 0;
+        rms = 0;
         for (size_t i=0; i < points.size(); i++) {
             double ey = fabs(offset + slope*points[i].first - points[i].second);
             if (ey > il_thresh) {
                 weights[i] /= 100000;
+            } else {
+                rms += ey*ey;
+                centroid.x += points[i].first;
+                centroid.y += points[i].second;
+                c_count++;
             }
         }
+        rms = sqrt(rms/double(c_count-1));
         rsq = lsq_fit(points, weights, slope, offset);
-        printf("slope=%lf, offset=%lf, rsq=%lf\n", slope, offset, rsq);
+        //printf("n=%d, slope=%lf, offset=%lf, rsq=%lf\n", (int)points.size(), slope, offset, rsq);
+        centroid.x /= double(c_count);
+        centroid.y /= double(c_count);
 
-
-        double dx = points[0].first - points[points.size()-1].first;
-        double dy = points[0].second - points[points.size()-1].second;
-        double angle_offset = 0;
+        dx = points[0].first - points[points.size()-1].first;
+        dy = points[0].second - points[points.size()-1].second;
 
         if (orientation == VERTICAL) {
-            dx = points[0].second - points[points.size()-1].second;
-            dy = points[0].first - points[points.size()-1].first;
+            double temp = dx;
+            dx = dy;
+            dy = temp;
+        } else {
+            double temp = centroid.x;
+            centroid.x = centroid.y;
+            centroid.y = temp;
+        }
+
+        set_angle_from_slope(slope);
+        
+        //printf("slope estimate is %lf, %lf degrees, rsq = %lf, offset=%lf\n", slope, angle/M_PI*180, rsq, offset);
+    }
+
+    inline orientation_t get_orientation(void) const {
+        return orientation;
+    }
+
+    inline void set_angle_from_slope(double slope) {
+        if (orientation == VERTICAL) {
             slope = 1.0/slope;
         }
 
         if (dx > 0) {
-            angle = -atan(slope) + angle_offset;
+            angle = -atan(slope);
         } else {
             if (dy >= 0) {
-                angle = -atan(slope) + M_PI + angle_offset;
+                angle = -atan(slope) + M_PI;
             } else {
-                angle = -atan(slope) - M_PI + angle_offset;
+                angle = -atan(slope) - M_PI;
             }
         }
         if (angle < -M_PI) {
@@ -154,14 +244,13 @@ class Edge_record {
         if (angle > M_PI) {
             angle -= M_PI;
         }
-
-        //printf("slope estimate is %lf, %lf degrees, rsq = %lf, offset=%lf\n", slope, angle/M_PI*180, rsq, offset);
     }
 
     double slope;
     double offset;
     double angle;
     double rsq;
+    Point  centroid;
 
   private:
 
@@ -198,7 +287,7 @@ class Edge_record {
         slope = b;
         for (int i=0; i < n; i++) {
             double r = (points[i].first*slope + offset) - points[i].second;
-            rsq += fabs(r); // m-estimate of goodness-of-fit 
+            rsq += fabs(r); // m-estimate of goodness-of-fit
         }
         return rsq/double(n);
     }
@@ -213,6 +302,9 @@ class Edge_record {
     map<int, double> col_mean;
     map<int, double> col_weight;
 
+    double rms;
+    double dx;
+    double dy;
 };
 
 #endif 

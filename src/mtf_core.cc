@@ -59,13 +59,12 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     
     vector<Point>& centroids = rrect.centroids;
     vector<Edge_record> edge_record(4);
+    vector< map<int, scanline> > scansets(4); 
     for (size_t k=0; k < 4; k++) {
         Point mid_dir = average_dir(g, int(centroids[k].x), int(centroids[k].y));
         
         // now construct buffer around centroid, aligned with direction, of width max_dot
         Mrectangle nr(rrect, k, max_dot);
-        
-        map<int, scanline> scanset;
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                 Point p(x,y);
@@ -77,16 +76,16 @@ void Mtf_core::search_borders(const Point& cent, int label) {
 
                         edge_record[k].add_point(ix, iy, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
 
-                        map<int, scanline>::iterator it = scanset.find(iy);
-                        if (it == scanset.end()) {
+                        map<int, scanline>::iterator it = scansets[k].find(iy);
+                        if (it == scansets[k].end()) {
                             scanline sl(ix,ix);
-                            scanset.insert(make_pair(iy, sl));
+                            scansets[k].insert(make_pair(iy, sl));
                         }
-                        if (ix < scanset[iy].start) {
-                            scanset[iy].start = ix;
+                        if (ix < scansets[k][iy].start) {
+                            scansets[k][iy].start = ix;
                         }
-                        if (ix > scanset[iy].end) {
-                            scanset[iy].end = ix;
+                        if (ix > scansets[k][iy].end) {
+                            scansets[k][iy].end = ix;
                         }
                     }
                 }
@@ -94,11 +93,45 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         }
 
         edge_record[k].reduce();
-        
+    }
+
+    size_t first_edge = 0;
+    vector<int> orientation_a;
+    vector<int> orientation_b;
+    for (size_t k=1; k < 4; k++) {
+        if (edge_record[k].get_orientation() == edge_record[first_edge].get_orientation()) {
+            orientation_a.push_back(first_edge);
+            orientation_a.push_back(k);
+        } else {
+            orientation_b.push_back(k);
+        }
+    }
+    // if we have two clear pairs of matched edges, attempt to merge them
+    if (orientation_a.size() == 2 && orientation_b.size() == 2) {
+        printf("edge %d and %d have same orientation\n", orientation_a[0], orientation_a[1]);
+        printf("edge %d and %d have same orientation\n", orientation_b[0], orientation_b[1]);
+        if (edge_record[orientation_a[0]].compatible(edge_record[orientation_a[1]])) {
+            // merge
+            Edge_record merged(edge_record[orientation_a[0]], edge_record[orientation_a[1]]);
+            printf("new slope is %lf, %lf\n", merged.slope, atan(merged.slope)/M_PI*180.0);
+            edge_record[orientation_a[0]].set_angle_from_slope(merged.slope);
+            edge_record[orientation_a[1]].set_angle_from_slope(merged.slope);
+        }
+        // do same for other pair
+        if (edge_record[orientation_b[0]].compatible(edge_record[orientation_b[1]])) {
+            // merge
+            Edge_record merged(edge_record[orientation_b[0]], edge_record[orientation_b[1]]);
+            printf("new slope is %lf, %lf\n", merged.slope, atan(merged.slope)/M_PI*180.0);
+            edge_record[orientation_b[0]].set_angle_from_slope(merged.slope);
+            edge_record[orientation_b[1]].set_angle_from_slope(merged.slope);
+        }
+    }
+    
+    for (size_t k=0; k < 4; k++) {
         double quality = 0;
         Point rgrad;
-        vector <double> sfr(SAMPLES_PER_PIXEL, 0);
-        double mtf50 = compute_mtf(centroids[k], scanset, edge_record[k], quality, rgrad, sfr);
+        vector <double> sfr(NYQUIST_FREQ*2, 0);
+        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, rgrad, sfr);
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
@@ -174,7 +207,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     double edge_length = 0;
 
     // if there appears to be significant noise, refine the edge orientation estimate
-    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5) { 
+    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5 && angle_reduce(angle) < 44.2) { 
 
         vector<double> sum_x(32*4+1, 0);
         vector<double> sum_xx(32*4+1, 0);
@@ -205,7 +238,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     
     if (ordered.size() < 10) {
         quality = 0; // this edge is not usable in any way
-        return 1000;
+        return 0;
     }
     
     double* fft_in_buffer = (double*)fftw_malloc(sizeof(double)*2*(FFT_SIZE+2));
@@ -213,64 +246,30 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    //loess_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
 
     double quad = angle_reduce(best_angle);
-    size_t best_angle_idx = 0;
     
-    double ba_closest_dist = 90;
-    for (size_t i=0; i < 90; i++) {
-        if (fabs(sfr_correction_table[i][1] - quad) < 
-            fabs(sfr_correction_table[best_angle_idx][1] - quad)) {
-        
-            best_angle_idx = i;
-            ba_closest_dist = fabs(sfr_correction_table[i][1] - quad);
-        }
-    }
-    best_angle_idx = 0;
-    //printf("best angle idx = %d, angle = %lf\n", best_angle_idx, sfr_correction_table[best_angle_idx][0]);
-
     double n0 = sqrt(SQR(fft_out_buffer[0][0]) + SQR(fft_out_buffer[0][1]));
-    vector<double> magnitude(SAMPLES_PER_PIXEL);
-    for (int i=0; i < SAMPLES_PER_PIXEL; i++) {
+    vector<double> magnitude(NYQUIST_FREQ*2);
+    for (int i=0; i < NYQUIST_FREQ*2; i++) {
         magnitude[i] = sqrt(SQR(fft_out_buffer[i][0]) + SQR(fft_out_buffer[i][1])) / n0;
     }
-    double mtf_area = 0.0;
-    for (int i=0; i < SAMPLES_PER_PIXEL/2; i++) {
-        mtf_area += magnitude[i];
-    }
-
-    // find closest area value
-    int mtf_area_idx = 0;
-    double min_dist = 1e50;
-    for (int i=0; i < 26; i++) {
-       double dist = fabs(mtf_area - sfr_correction_table[i*90][0]);
-       if (dist < min_dist) {
-           min_dist = dist;
-           mtf_area_idx = i;
-       }
-    }
-    //printf("min mtf idx = %d, actual area = %lf, table = %lf\n",
-    //       mtf_area_idx, mtf_area, sfr_correction_table[mtf_area_idx*90][0]
-    //       );
-
-    //const double* base_mtf = sfr_correction_table[best_angle_idx + mtf_area_idx*90] + 2;
 
     const double base_mtf[64] = {
-        1,0.999984486866557,0.999936700753812,0.999856901758387,0.999745860494588,0.999602856469437,0.999428689355937,0.999221662400338,0.998982616027967,0.998710907296687,0.998407450694172,0.998071686034368,0.997702586563836,0.997301752799086,0.99686726211316,0.996398805838579,0.99589774256414,0.995362939956322,0.99479389996896,0.994190792626164,0.993553417359351,0.992881206394793,0.99217322712681,0.991430392056121,0.990652214795646,0.989836768283707,0.988985175310973,0.988097190693832,0.987172313789717,0.986208625669173,0.985207467111431,0.984167657360914,0.983089006548719,0.981969944744486,0.980812427046191,0.979613377043908,0.978373304498,0.977092693659347,0.975769406161666,0.974403836942393,0.972993725889167,0.971542204338157,0.970044320125214,0.968503390887393,0.96691588934413,0.965282591291464,0.963601532467787,0.961873845827568,0.96009790159014,0.95827221579671,0.95639708489526,0.954471521572099,0.952494812629752,0.950466568192422,0.948385048193354,0.94625057028364,0.944060345451452,0.941815519979535,0.939514108197148,0.93715450255377,0.93473749841564,0.932260559235891,0.929723608450891,0.927125128100689
+        1,0.999964789300865,0.999860489010527,0.999687097944971,0.999443282500348,0.999130399787044,0.998747495237838,0.99829534455489,0.997773452972923,0.99718108025329,0.996520354946192,0.995789138261454,0.99498823858955,0.994118398912742,0.993178225618095,0.992168431133941,0.99108982073007,0.989941178325613,0.988722533010392,0.987435288009766,0.98607785873731,0.984651274286756,0.983155943494419,0.981591692959158,0.97995780496198,0.978255469493292,0.976484333435216,0.97464495384955,0.972737690006564,0.970762772298933,0.968721687365404,0.966612038891156,0.964436790205335,0.962195158179021,0.959889401738285,0.957517993682757,0.955082681120542,0.952582887647076,0.950021704263295,0.947398492614267,0.944714984181006,0.941972325429144,0.93917107028734,0.936312909844165,0.933397300740368,0.930428570926375,0.927407196364358,0.924333180324247,0.921212023665987,0.91804115891783,0.914825716819208,0.911564435795198,0.908264445880375,0.904926333334846,0.901550257125549,0.898140840218535,0.894702778863765,0.89123549767392,0.887743174151532,0.884232711615754,0.880702353830746,0.877161424899008,0.873610125957552,0.870054151307973
     };
-    
+
     double prev_freq = 0;
     double prev_val  = n0;
     
     double mtf50 = 0;
 
     bool done = false;
-    for (int i=0; i < SAMPLES_PER_PIXEL && !done; i++) {
+    for (int i=0; i < NYQUIST_FREQ*2 && !done; i++) {
         double mag = magnitude[i];
         mag /= base_mtf[i];
         if (prev_val > 0.5 && mag <= 0.5) {
@@ -283,12 +282,11 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         prev_freq = i / double(FFT_SIZE);
     }
     if (!done) {
-        mtf50 = 2.0/SAMPLES_PER_PIXEL;
+        mtf50 = 0.125;
     }
-    
-    mtf50 *= max_dot*2; 
+    mtf50 *= 8;
 
-    for (size_t i=0; i < size_t(SAMPLES_PER_PIXEL);  i++) {
+    for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
         sfr[i] = magnitude[i] / base_mtf[i];
     }
 
