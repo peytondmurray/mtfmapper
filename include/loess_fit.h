@@ -48,6 +48,7 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     double mid,  Point& sol);
     
 void loess_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv=true);
+void bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, const int fft_size, double lower, double upper, bool deriv=true);
 
 #ifndef SQR
 #define SQR(x) ((x)*(x))
