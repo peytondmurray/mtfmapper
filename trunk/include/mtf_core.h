@@ -175,69 +175,6 @@ class Mtf_core {
         return varsum;
     }
 
-    inline void bin_sample_at_angle(double ea, const map<int, scanline>& scanset, const Point& cent,
-        double* sampled, int fft_size) {
-
-        Point mean_grad(cos(ea), sin(ea));
-        Point edge_direction(sin(ea), cos(ea));
-
-        const int ox_factor = 4;
-        vector<int> count(max_dot*2*ox_factor, 0);
-
-
-        int offset = fft_size/2 - count.size()/2;
-
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
-            int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; x++) {
-                Point d((x) - cent.x, (y) - cent.y);
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
-                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                    int idot = lrint(dot*ox_factor + max_dot*ox_factor);
-                    double data = img.at<uint16_t>(y,x);
-                    count[idot]++;
-                    sampled[idot+offset] += data;
-                }
-            }
-        }
-
-        int first_nonzero = 0;
-        while (count[first_nonzero] == 0 && first_nonzero < (int)count.size()) {
-            first_nonzero++;
-        }
-
-        int last_nonzero = count.size() - 1;
-        while (count[last_nonzero] == 0 && last_nonzero > 0) {
-            last_nonzero--;
-        }
-
-        // now compute average for each nonzero bin
-        // zero bins are set to their left neighbour
-        for (int i=first_nonzero; i < last_nonzero; i++) {
-            if (count[i] > 0) {
-                sampled[i+offset] /= double(count[i]);
-            } else {
-                sampled[i+offset] = sampled[i+offset-1];
-            }
-        }
-
-        const double scale = 2.0;
-        double old = sampled[first_nonzero+offset];
-        for (int idx=first_nonzero + offset+2; idx < last_nonzero+offset; idx++) {
-            double w = 0.54 + 0.46*cos(scale*2*M_PI*(idx - fft_size/2)/double(fft_size-1));  // Hamming window function
-            double temp = sampled[idx];
-            sampled[idx] = (sampled[idx+1] - old) * w * 0.5;
-            old = temp;
-        }
-
-        for (int i=first_nonzero-2; i < first_nonzero+3; i++) {
-            sampled[i+offset] = 0;
-        }
-        for (int i=last_nonzero-2; i < last_nonzero+2; i++) {
-            sampled[i+offset] = 0;
-        }
-    }
 };
 
 #endif
