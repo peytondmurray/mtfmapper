@@ -108,22 +108,15 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     }
     // if we have two clear pairs of matched edges, attempt to merge them
     if (orientation_a.size() == 2 && orientation_b.size() == 2) {
-        printf("edge %d and %d have same orientation\n", orientation_a[0], orientation_a[1]);
-        printf("edge %d and %d have same orientation\n", orientation_b[0], orientation_b[1]);
         if (edge_record[orientation_a[0]].compatible(edge_record[orientation_a[1]])) {
-            // merge
             Edge_record merged(edge_record[orientation_a[0]], edge_record[orientation_a[1]]);
-            printf("new slope is %lf, %lf\n", merged.slope, atan(merged.slope)/M_PI*180.0);
-            edge_record[orientation_a[0]].set_angle_from_slope(merged.slope);
-            edge_record[orientation_a[1]].set_angle_from_slope(merged.slope);
+            edge_record[orientation_a[0]].set_angle_from_slope(merged.slope, true);
+            edge_record[orientation_a[1]].set_angle_from_slope(merged.slope, true);
         }
-        // do same for other pair
         if (edge_record[orientation_b[0]].compatible(edge_record[orientation_b[1]])) {
-            // merge
             Edge_record merged(edge_record[orientation_b[0]], edge_record[orientation_b[1]]);
-            printf("new slope is %lf, %lf\n", merged.slope, atan(merged.slope)/M_PI*180.0);
-            edge_record[orientation_b[0]].set_angle_from_slope(merged.slope);
-            edge_record[orientation_b[1]].set_angle_from_slope(merged.slope);
+            edge_record[orientation_b[0]].set_angle_from_slope(merged.slope, true);
+            edge_record[orientation_b[1]].set_angle_from_slope(merged.slope, true);
         }
     }
     
@@ -212,8 +205,16 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         vector<double> sum_x(32*4+1, 0);
         vector<double> sum_xx(32*4+1, 0);
         vector<int>    count(32*4+1, 0);
+
+        double span = 1.0/180.0*M_PI;
+        double step = 0.1/180.0*M_PI;
+
+        if (er.is_pooled()) {
+            span /= 3;
+            step /= 3;
+        }
     
-        for (double ea=angle-1.0/180.0*M_PI; ea < angle + 1.0/180.0*M_PI; ea += 0.1/180.0*M_PI) {
+        for (double ea=angle-span; ea < angle + span; ea += step) {
             for (size_t k=0; k < sum_x.size(); k++) {
                 sum_x[k]  = 0;
                 sum_xx[k] = 0;
@@ -226,7 +227,6 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
             }
         }
     }
-
     
     //printf("optimized angle estimate: %lf %lf\n", best_angle/M_PI*180, angle_reduce(best_angle));
     sample_at_angle(best_angle, ordered, scanset, cent, edge_length);

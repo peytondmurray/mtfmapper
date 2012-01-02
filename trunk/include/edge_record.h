@@ -33,7 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Edge_record {
   public:
-    Edge_record(void) {
+    Edge_record(void) : pooled(false) {
     }
 
     // constructor for merging two data sets
@@ -95,12 +95,9 @@ class Edge_record {
     typedef enum {HORIZONTAL, VERTICAL} orientation_t;
 
     bool compatible(const Edge_record& b) {
-        //Z = (b1-b2) / (se12+se22)1/2
-        double Z = (slope - b.slope)/(rms*rms + b.rms*b.rms);
-        //printf("slopes = (%lf, %lf), rms = (%lf, %lf)\n", slope, b.slope, rms, b.rms);
-        //printf("Z is %lf\n", fabs(Z));
+        double Z = (slope - b.slope)/sqrt(sB*sB + b.sB*b.sB);
 
-        return fabs(Z) < 1;
+        return fabs(Z) < 1.66; // ~90% confidence interval on t-distribution with ~80 dof
     }
 
     void add_point(int x, int y, double gx, double gy) {
@@ -184,23 +181,33 @@ class Edge_record {
         const double il_thresh = 2;
         centroid = Point(0,0);
         int c_count = 0;
-        rms = 0;
         for (size_t i=0; i < points.size(); i++) {
             double ey = fabs(offset + slope*points[i].first - points[i].second);
             if (ey > il_thresh) {
                 weights[i] /= 100000;
             } else {
-                rms += ey*ey;
                 centroid.x += points[i].first;
                 centroid.y += points[i].second;
                 c_count++;
             }
         }
-        rms = sqrt(rms/double(c_count-1));
         rsq = lsq_fit(points, weights, slope, offset);
         //printf("n=%d, slope=%lf, offset=%lf, rsq=%lf\n", (int)points.size(), slope, offset, rsq);
         centroid.x /= double(c_count);
         centroid.y /= double(c_count);
+        mse = 0;
+        double ss_x = 0;
+        int e_count = 0;
+        for (size_t i=0; i < points.size(); i++) {
+            double ey = fabs(offset + slope*points[i].first - points[i].second);
+            if (ey <= il_thresh) {
+                mse += ey*ey;
+                ss_x += (points[i].first - centroid.x)*(points[i].first - centroid.x);
+                e_count++;
+            }
+        }
+        mse /= e_count - 2;
+        sB = sqrt(mse/ss_x);
 
         dx = points[0].first - points[points.size()-1].first;
         dy = points[0].second - points[points.size()-1].second;
@@ -224,7 +231,11 @@ class Edge_record {
         return orientation;
     }
 
-    inline void set_angle_from_slope(double slope) {
+    inline bool is_pooled(void) {
+        return pooled;
+    }
+
+    inline void set_angle_from_slope(double slope, bool is_pooled=false) {
         if (orientation == VERTICAL) {
             slope = 1.0/slope;
         }
@@ -244,6 +255,8 @@ class Edge_record {
         if (angle > M_PI) {
             angle -= M_PI;
         }
+
+        pooled = is_pooled;
     }
 
     double slope;
@@ -302,9 +315,13 @@ class Edge_record {
     map<int, double> col_mean;
     map<int, double> col_weight;
 
-    double rms;
+    double mse;
+    double sB; // standard error in slope estimate
+
     double dx;
     double dy;
+
+    bool pooled;
 };
 
 #endif 
