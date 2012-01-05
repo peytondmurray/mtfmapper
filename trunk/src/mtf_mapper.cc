@@ -100,6 +100,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
     TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
+    TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
@@ -137,6 +138,18 @@ int main(int argc, char** argv) {
     }
    
     assert(cvimg.type() == CV_16UC1);
+
+
+    if (tc_border.getValue()) {
+        printf("The -b option has been specified, adding a 20-pixel border to the image\n");
+        double max_val = 0;
+        double min_val = 0;
+        cv::minMaxLoc(cvimg, &min_val, &max_val);
+        cv::Mat border;
+        cv::copyMakeBorder(cvimg, border, 20, 20, 20, 20, cv::BORDER_CONSTANT, cv::Scalar((int)max_val));
+        cvimg = border;
+    }
+    
     
     // process working directory
     std::string wdir(tc_wdir.getValue());
