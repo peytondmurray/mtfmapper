@@ -68,8 +68,10 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
     }
 
     // perform thresholding
-    for (i=0; i < out.cols; i++) {
-        for (j=0; j < out.rows; j++) {
+    cv::MatConstIterator_<uint16_t> it = cvimg.begin<uint16_t>(); 
+    for (j=0; j < out.rows; j++) {
+        const uint16_t* cptr = cvimg.ptr<uint16_t>(j);
+        for (i=0; i < out.cols; i++) {
             index = j*out.cols+i;
 
             // set the SxS region
@@ -90,11 +92,12 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
                   integralImg[y2*out.cols+x1] +
                   integralImg[y1*out.cols+x1];
 
-            if (((int64_t)(cvimg.at<uint16_t>(j, i))*count) < (int64_t)(sum*(1.0-threshold))) {
+            if (((int64_t)(*it)*count) < (int64_t)(sum*(1.0-threshold))) {
                 out.data[index] = 0;
             } else {
                 out.data[index] = 255;
             }
+            ++it;
         }
     }
 
