@@ -31,7 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common_types.h"
 #include "peak_detector.h"
 
-const double rect_il_thresh = 2.0;
+const double rect_il_thresh = 3.75;
 const double adjust = 0.15;
 
 class Mrectangle {
@@ -48,8 +48,7 @@ class Mrectangle {
         assert(k < b.centroids.size());
         assert(b.corners.size() == 4);
         assert(b.corner_map[k].size() == 2);
-        
-        
+
         const Point& n  = b.normals[k];
         Point c1 = b.corners[b.corner_map[k][0]];
         Point c2 = b.corners[b.corner_map[k][1]];
@@ -57,7 +56,9 @@ class Mrectangle {
         Point diff1 = Point(c1.x - c2.x, c1.y - c2.y);
         double len = sqrt(diff1.ddot(diff1));
         Point pn(-n.y, n.x);
-        Point delta(-pn.x*len*adjust, -pn.y*len*adjust);
+        double e_adj = std::min(len*adjust, 4.0)/len;
+        e_adj = std::max(e_adj, 0.05);
+        Point delta(-pn.x*len*e_adj, -pn.y*len*e_adj);
         
         if (ndiff(avg(c1,c2), c1).ddot(pn) > 0) {
             delta.x = -delta.x;
@@ -68,13 +69,12 @@ class Mrectangle {
         c1.y += delta.y;
         c2.x -= delta.x;
         c2.y -= delta.y;
-        
-        
+
         corners[0] = Point(c1.x + width*n.x, c1.y + width*n.y);
         corners[1] = Point(c1.x - width*n.x, c1.y - width*n.y);
         corners[2] = Point(c2.x + width*n.x, c2.y + width*n.y);
         corners[3] = Point(c2.x - width*n.x, c2.y - width*n.y);
-        
+
         normals[3] = ndiff(corners[2], corners[0]);
         normals[2] = ndiff(corners[1], corners[3]);
         normals[0] = ndiff(corners[0], corners[1]);
