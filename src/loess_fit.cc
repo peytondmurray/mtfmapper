@@ -91,7 +91,7 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
 }
 
 
-void bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft_size, double lower, double upper) {
+double bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft_size, double lower, double upper) {
 
     const double missing = -1e7;
 
@@ -143,6 +143,28 @@ void bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft_s
             sampled[idx] = sampled[idx-1];
         }
     }
+    vector<double> med;
+    for (int idx=fft_size/4+1; idx < fft_size/2-32; idx++) {
+        med.push_back(fabs(sampled[idx] - sampled[idx-1]));
+    }
+    for (int idx=fft_size/2+32; idx < 3*fft_size/4; idx++) {
+        med.push_back(fabs(sampled[idx] - sampled[idx-1]));
+    }
+    sort(med.begin(), med.end());
+    vector<double> lmed;
+    for (int idx=fft_size/4+1; idx < fft_size/4+1+3*8; idx++) {
+        lmed.push_back(sampled[idx]);
+    }
+    sort(lmed.begin(), lmed.end());
+    double left_median = lmed[lmed.size()/2];
+    vector<double> rmed;
+    for (int idx=3*fft_size/4 - (1+3*8); idx < 3*fft_size/4; idx++) {
+        rmed.push_back(sampled[idx]);
+    }
+    sort(rmed.begin(), rmed.end());
+    double right_median = rmed[rmed.size()/2];
+
+    double noise_est = std::max(1.0,med[9*med.size()/10]);
 
     double old = sampled[0];
     for (int idx=fft_size/4; idx <= 3*fft_size/4; idx++) {
@@ -159,4 +181,6 @@ void bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft_s
     for (int idx=3*fft_size/4-8; idx < fft_size; idx++) {
         sampled[idx] = 0;
     }
+
+    return fabs(right_median - left_median)/noise_est;
 }

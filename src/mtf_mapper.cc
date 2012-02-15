@@ -105,6 +105,15 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
     TCLAP::ValueArg<double> tc_pixelsize("", "pixelsize", "Pixel size in microns. This also switches units to lp/mm", false, 1.0, "size", cmd);
+
+    vector<string> allowed_bayer_subsets;
+    allowed_bayer_subsets.push_back("red");
+    allowed_bayer_subsets.push_back("green");
+    allowed_bayer_subsets.push_back("blue");
+    allowed_bayer_subsets.push_back("none");
+    TCLAP::ValuesConstraint<string> bayer_constraints(allowed_bayer_subsets);
+    TCLAP::ValueArg<std::string> tc_bayer("", "bayer", "Select Bayer subset", false, "none", &bayer_constraints );
+    cmd.add(tc_bayer);
     
     cmd.parse(argc, argv);
 
@@ -232,7 +241,7 @@ int main(int argc, char** argv) {
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
     
-    Mtf_core mtf_core(cl, gradient, cvimg);
+    Mtf_core mtf_core(cl, gradient, cvimg, tc_bayer.getValue());
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     

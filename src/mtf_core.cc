@@ -200,7 +200,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     double edge_length = 0;
 
     // if there appears to be significant noise, refine the edge orientation estimate
-    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5 && angle_reduce(angle) < 44.2) { 
+    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5 && angle_reduce(angle) < 44.2 && bayer == NONE) { 
 
         vector<double> sum_x(32*4+1, 0);
         vector<double> sum_xx(32*4+1, 0);
@@ -246,7 +246,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
+    double SNR = bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
@@ -275,6 +275,10 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         }
     }
     base_mtf = sfr_correction_table[min_idx] + 2;
+
+    // critical angles: 14.036 and 26.565 -> these are 0.25 and 0.5 respectively, so they result in 
+    // severe quantization of the ESF, leading to underestimates of the MTF 
+    // should we detect and correct for this?
 
     double prev_freq = 0;
     double prev_val  = n0;

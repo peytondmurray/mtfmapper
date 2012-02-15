@@ -51,13 +51,34 @@ const double max_dot = 16;
 const int SAMPLES_PER_PIXEL = 32;
 const size_t FFT_SIZE = int(max_dot)*SAMPLES_PER_PIXEL;
 const int NYQUIST_FREQ = FFT_SIZE/16;
-const double max_edge_length = 100;
+const double max_edge_length = 200;
 
 class Mtf_core {
   public:
-    Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, const cv::Mat& in_img)
+    typedef enum {
+        NONE,
+        RED,
+        GREEN,
+        BLUE
+    } bayer_t;
+
+    Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
+             const cv::Mat& in_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img) {
-      
+
+        if (bayer_subset.compare("none") == 0) {
+            bayer = NONE;
+        }
+        if (bayer_subset.compare("red") == 0) {
+            bayer = RED;
+        }
+        if (bayer_subset.compare("blue") == 0) {
+            bayer = BLUE;
+        }
+        if (bayer_subset.compare("green") == 0) {
+            bayer = GREEN;
+        }
+        printf("bayer subset is %d\n", bayer);
       
         // set up FFTW plan
         double *fft_in;
@@ -105,6 +126,7 @@ class Mtf_core {
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
+    bayer_t bayer;
     
     // global plan for fourier transform
     fftw_plan plan_forward;
@@ -122,23 +144,56 @@ class Mtf_core {
         double min_along_edge = 1e50;
 
         Point mean_grad(cos(ea), sin(ea));
-        Point edge_direction(sin(ea), cos(ea));
-    
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
-            int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; x++) {
-                Point d((x) - cent.x, (y) - cent.y);
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
-                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                    local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
-                    max_along_edge = std::max(max_along_edge, dist_along_edge);
-                    min_along_edge = std::min(min_along_edge, dist_along_edge);
+        Point edge_direction(-sin(ea), cos(ea));
+
+        if (bayer == NONE) {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+                int y = it->first;
+                for (int x=it->second.start; x <= it->second.end; x++) {
+
+                    Point d((x) - cent.x, (y) - cent.y);
+                    double dot = d.ddot(mean_grad); 
+                    double dist_along_edge = d.ddot(edge_direction);
+                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                        max_along_edge = std::max(max_along_edge, dist_along_edge);
+                        min_along_edge = std::min(min_along_edge, dist_along_edge);
+                    }
+                }
+            }
+        } else {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+                int y = it->first;
+                int rowcode = (y & 1) << 1;
+                for (int x=it->second.start; x <= it->second.end; x++) {
+                    int code = rowcode | (x & 1);
+
+                    // skip the appropriate sites if we are operating only on a subset
+                    if (bayer == RED && code != 0) {
+                        continue;
+                    } 
+                    if (bayer == BLUE && code != 3) {
+                        continue;
+                    } 
+                    if (bayer == GREEN && (code == 0 || code == 3)) {
+                        continue;
+                    }
+
+                    Point d((x) - cent.x, (y) - cent.y);
+                    double dot = d.ddot(mean_grad); 
+                    double dist_along_edge = d.ddot(edge_direction);
+                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                        max_along_edge = std::max(max_along_edge, dist_along_edge);
+                        min_along_edge = std::min(min_along_edge, dist_along_edge);
+                    }
                 }
             }
         }
-
+    
+        
         edge_length = max_along_edge - min_along_edge;
+        //printf("edge length = %lf\n", edge_length);
     }
 
     inline double bin_at_angle(double ea, const map<int, scanline>& scanset, const Point& cent,
