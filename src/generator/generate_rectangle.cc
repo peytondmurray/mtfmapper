@@ -53,6 +53,8 @@ using std::endl;
 
 #define SQR(x) ((x)*(x))
 
+const int border = 30;
+
 
 inline unsigned char reverse_gamma(double x) {
     const double C_linear = 0.0031308;
@@ -95,14 +97,35 @@ double rand_norm(double m, double s) {
 class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.05, 
-        double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false)
+        double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
+        int buffer_border=30)
      : img(in_img), rect(in_r), noise(img.rows*img.cols, 0.0), 
        gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
-       use_16bit(use_16bit) {
+       use_16bit(use_16bit), buffer_border(buffer_border) {
      
         double gc_noise_sigma = noise_sigma;
         for (size_t i=0; i < size_t(img.rows*img.cols); i++) {
             noise[i] = rand_norm(0, gc_noise_sigma);
+        }
+    }
+
+    inline void putpixel(int row, int col, double value) const {
+
+        if (value < 0.0) {
+            value = 0.0;
+        }
+        if (value > 1.0) {
+            value = 1.0;
+        }
+
+        if (use_16bit) {
+            img.at<uint16_t>(row, col) = lrint(value*65535);
+        } else {
+            if (gamma_correct) {
+                img.at<uchar>(row, col) = reverse_gamma(value);
+            } else {
+                img.at<uchar>(row, col) = lrint(value*255);
+            }
         }
     }
      
@@ -110,34 +133,31 @@ class Render_rows {
         // assume a dynamic range of 5% to 95% of full scale
         double object_value = contrast_reduction / 2.0;
         double background_value = 1 - object_value;
+
         for (size_t row=r.begin(); row != r.end(); ++row) {
-        
-            for (int col = 0; col < img.cols; col++) {
-                int index = row * img.cols + col;
-                
-                double rval = 0;
-                rval = rect.evaluate(col, row, object_value, background_value);
-                
-                rval += noise[index];
-                
-                if (rval < 0.0) {
-                    rval = 0.0;
+
+            if (int(row) < buffer_border || int(row) > img.rows - buffer_border) {
+                for (int col = 0; col < img.cols; col++) {
+                    putpixel(row, col, background_value + noise[row * img.cols + col]);
                 }
-                if (rval > 1.0) {
-                    rval = 1.0;
+            } else {
+                for (int col = 0; col < buffer_border; col++) {
+                    putpixel(row, col, background_value + noise[row * img.cols + col]);
                 }
-                
-                if (use_16bit) {
-                    img.at<uint16_t>(row, col) = lrint(rval*65535);
-                } else {
-                    if (gamma_correct) {
-                        img.at<uchar>(row, col) = reverse_gamma(rval);
-                    } else {
-                        img.at<uchar>(row, col) = lrint(rval*255);
-                    }
+                for (int col = img.cols - buffer_border; col < img.cols; col++) {
+                    putpixel(row, col, background_value + noise[row * img.cols + col]);
+    
                 }
-                
-                
+                for (int col = buffer_border; col < img.cols-buffer_border; col++) {
+                    int index = row * img.cols + col;
+                    
+                    double rval = 0;
+                    rval = rect.evaluate(col, row, object_value, background_value);
+                    
+                    rval += noise[index];
+    
+                    putpixel(row, col, rval);
+                }
             }
         }
     } 
@@ -148,6 +168,7 @@ class Render_rows {
     bool gamma_correct;
     double contrast_reduction;
     bool use_16bit;
+    int buffer_border;
 };
 
 
@@ -171,10 +192,10 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "angle (degrees)", cmd);
     TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "seed", cmd);
     TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "std. dev", cmd);
-    TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.3, "std. dev", cmd);
+    TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.374781, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
-    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 300, "dimension", cmd);
+    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, "dimension", cmd);
     TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [0,1]", false, 0, "pixels", cmd);
     TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [0,1]", false, 0, "pixels", cmd);
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
@@ -187,7 +208,15 @@ int main(int argc, char** argv) {
     
     theta = tc_theta.getValue() / 180.0 * M_PI;
     
-    width = height = lrint(tc_dim.getValue());
+    double rwidth = 0;
+    double rheight = 0;
+
+    rwidth = tc_dim.getValue();
+    rheight = rwidth*3/4;
+
+    double diag = sqrt(rwidth*rwidth + rheight*rheight);
+    width = lrint(diag + 32) + 2*border;
+    height = width += width % 2;
     
     if (tc_mtf.isSet() && tc_blur.isSet()) {
         printf("Warning: you can not specify both blur and mtf50 values; choosing mtf50 value, and proceeding ...\n");
@@ -219,9 +248,9 @@ int main(int argc, char** argv) {
     printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
         use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
+
     
-    const double rwidth = width / 4;
-    const double rheight = height / 3;
+
 
     Render_rectangle rect(
         width*0.5 + tc_xoff.getValue(), 
@@ -239,7 +268,7 @@ int main(int argc, char** argv) {
         img = cv::Mat(height, width, CV_8UC1);
     }
     
-    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), use_gamma, use_16bit);
+    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), use_gamma, use_16bit, border);
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 1.0/(sigma*sigma);
