@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <math.h>
 #include <stdlib.h>
 #include "render.h"
+#include "noise_source.h"
 
 #include "cv.h"
 #include "highgui.h"
@@ -83,33 +84,24 @@ inline double gamma(double x) { // x in [0,1]
 }
 
 
-double randdu(void) {
-    return double(rand())/double(RAND_MAX);
-}
-
-double rand_norm(double m, double s) {
-    double x = normal_sampler::Moro_norm_inv(randdu());
-    return( m + x * s );
-}
-                                                                                                                                                                                                            
 
 // functor for tbb
 class Render_rows {
   public:
-    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, double noise_sigma=0.05, 
+    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, Noise_source& noise_source, 
         double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
         int buffer_border=30)
-     : img(in_img), rect(in_r), noise(img.rows*img.cols, 0.0), 
+     : img(in_img), rect(in_r), noise_source(noise_source),
        gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
        use_16bit(use_16bit), buffer_border(buffer_border) {
      
-        double gc_noise_sigma = noise_sigma;
-        for (size_t i=0; i < size_t(img.rows*img.cols); i++) {
-            noise[i] = rand_norm(0, gc_noise_sigma);
-        }
+        
     }
 
+
     inline void putpixel(int row, int col, double value) const {
+
+        value = noise_source.sample(value, row*img.cols + col);
 
         if (value < 0.0) {
             value = 0.0;
@@ -138,24 +130,21 @@ class Render_rows {
 
             if (int(row) < buffer_border || int(row) > img.rows - buffer_border) {
                 for (int col = 0; col < img.cols; col++) {
-                    putpixel(row, col, background_value + noise[row * img.cols + col]);
+                    putpixel(row, col, background_value);
                 }
             } else {
                 for (int col = 0; col < buffer_border; col++) {
-                    putpixel(row, col, background_value + noise[row * img.cols + col]);
+                    putpixel(row, col, background_value);
                 }
                 for (int col = img.cols - buffer_border; col < img.cols; col++) {
-                    putpixel(row, col, background_value + noise[row * img.cols + col]);
+                    putpixel(row, col, background_value);
     
                 }
                 for (int col = buffer_border; col < img.cols-buffer_border; col++) {
-                    int index = row * img.cols + col;
                     
                     double rval = 0;
                     rval = rect.evaluate(col, row, object_value, background_value);
                     
-                    rval += noise[index];
-    
                     putpixel(row, col, rval);
                 }
             }
@@ -164,7 +153,7 @@ class Render_rows {
      
     cv::Mat& img;
     const Render_rectangle& rect;
-    vector<double> noise;
+    Noise_source& noise_source;
     bool gamma_correct;
     double contrast_reduction;
     bool use_16bit;
@@ -198,6 +187,11 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, "dimension", cmd);
     TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [0,1]", false, 0, "pixels", cmd);
     TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [0,1]", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<double> tc_read_noise("", "read-noise", "Read noise magnitude (linear standard deviation, in electrons, range [0,+inf))", false, 3.0, "std. dev", cmd);
+    TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear percentage of signal, range [0,1])", false, 0.02, "percentage", cmd);
+    TCLAP::ValueArg<double> tc_adc_gain("", "adc-gain", "ADC gain (linear electrons-per-DN, range (0,+inf))", false, 1.5, "electrons", cmd);
+    TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
+
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
     
@@ -241,15 +235,34 @@ int main(int argc, char** argv) {
         printf("Setting both gamma and 16-bit output not supported. Choosing to disable gamma, and enable 16-bit output\n");
         use_gamma = false;
     }
-    
-    printf("output filename = %s, sigma = %lf (or mtf50 = %lf), theta = %lf degrees, seed = %d, noise = %lf\n", 
-        tc_out_name.getValue().c_str(), sigma, mtf, theta/M_PI*180, rseed, tc_noise.getValue()
+
+    bool use_sensor_model = false;
+    if (tc_read_noise.isSet() || tc_pattern_noise.isSet() ||
+        tc_adc_depth.isSet()  || tc_adc_depth.isSet() ) {
+        use_sensor_model = true;
+    }
+
+    if (tc_noise.isSet() && use_sensor_model) {
+        printf("Noise sigma set, but full sensor noise model parameters also specified.\n"
+               "Ignoring noise sigma, and going with full sensor model instead.\n");
+    }
+
+    printf("output filename = %s, sigma = %lf (or mtf50 = %lf), theta = %lf degrees, seed = %d, ", 
+        tc_out_name.getValue().c_str(), sigma, mtf, theta/M_PI*180, rseed
     );
+    if (use_sensor_model) {
+        printf("\n\t full sensor noise model, with read noise = %.1lf electrons, fixed pattern noise fraction = %.3lf,\n"
+               "\t adc gain = %.2lf e/DN, adc depth = %d bits\n",
+               tc_read_noise.getValue(), tc_pattern_noise.getValue(), 
+               tc_adc_gain.getValue(), tc_adc_depth.getValue()
+        );
+    } else {
+        printf("\n\t additive Gaussian noise with sigma = %lf\n", tc_noise.getValue());
+    }
+    
     printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
         use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
-
-    
 
 
     Render_rectangle rect(
@@ -267,8 +280,23 @@ int main(int argc, char** argv) {
     } else {
         img = cv::Mat(height, width, CV_8UC1);
     }
+
     
-    Render_rows rr(img, rect, tc_noise.getValue(), tc_cr.getValue(), use_gamma, use_16bit, border);
+    Noise_source* ns = 0;
+
+    if (use_sensor_model) {
+        ns = new Sensor_model_noise(
+            img.rows*img.cols,
+            tc_read_noise.getValue(),
+            tc_pattern_noise.getValue(),
+            tc_adc_gain.getValue(),
+            tc_adc_depth.getValue()
+        );
+    } else {
+        ns = new Additive_gaussian_noise(img.rows*img.cols, tc_noise.getValue());
+    }
+
+    Render_rows rr(img, rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 1.0/(sigma*sigma);
@@ -277,6 +305,8 @@ int main(int argc, char** argv) {
     printf("MTF50 = %lf\n", mtf);    
 
     imwrite(tc_out_name.getValue(), img);
+
+    delete ns;
     
     return 0;
 }
