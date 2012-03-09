@@ -64,7 +64,7 @@ class Mtf_core {
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
              const cv::Mat& in_img, std::string bayer_subset)
-      : cl(in_cl), g(in_g), img(in_img) {
+      : cl(in_cl), g(in_g), img(in_img), absolute_sfr(false) {
 
         if (bayer_subset.compare("none") == 0) {
             bayer = NONE;
@@ -123,6 +123,10 @@ class Mtf_core {
         return detected_blocks;
     }
     
+    void set_absolute_sfr(bool val) {
+        absolute_sfr = val;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -136,6 +140,8 @@ class Mtf_core {
     map<int, Block> shared_blocks_map;
 
   private:
+    bool absolute_sfr;
+  
     void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
         const map<int, scanline>& scanset, const Point& cent,
         double& edge_length) {
