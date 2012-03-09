@@ -303,8 +303,14 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
     mtf50 *= 8;
 
-    for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
-        sfr[i] = magnitude[i] / base_mtf[i];
+    if (absolute_sfr) {
+        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+            sfr[i] = (n0*magnitude[i] / base_mtf[i])/(65536*2);
+        }
+    } else {
+        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+            sfr[i] = magnitude[i] / base_mtf[i];
+        }
     }
 
     // derate the quality of the known poor angles
