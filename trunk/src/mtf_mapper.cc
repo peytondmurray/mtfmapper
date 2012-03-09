@@ -309,7 +309,7 @@ int main(int argc, char** argv) {
         printer.render(mtf_core.get_blocks());
     }
 
-    if (tc_sfr.getValue()) {
+    if (tc_sfr.getValue() || tc_absolute.getValue()) {
         Mtf_renderer_sfr sfr_writer(
             wdir + string("raw_sfr_values.txt"), 
             lpmm_mode,
