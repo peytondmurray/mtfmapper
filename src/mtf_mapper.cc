@@ -47,6 +47,7 @@ using std::stringstream;
 #include "include/mtf_renderer_print.h"
 #include "include/mtf_renderer_stats.h"
 #include "include/mtf_renderer_sfr.h"
+#include "include/mtf_renderer_esf.h"
 #include "include/scanline.h"
 #include "config.h"
 
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
     TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
+    TCLAP::SwitchArg tc_esf("e","esf","Store raw ESF and PSF curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 1000, "angle", cmd);
@@ -316,6 +318,14 @@ int main(int argc, char** argv) {
             pixel_size
         );
         sfr_writer.render(mtf_core.get_blocks());
+    }
+    
+    if (tc_esf.getValue()) {
+        Mtf_renderer_esf esf_writer(
+            wdir + string("raw_esf_values.txt"), 
+            wdir + string("raw_psf_values.txt")
+        );
+        esf_writer.render(mtf_core.get_blocks());
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);

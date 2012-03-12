@@ -91,7 +91,8 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
 }
 
 
-double bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft_size, double lower, double upper) {
+double bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
+    const int fft_size, double lower, double upper, vector<double>& esf) {
 
     const double missing = -1e7;
 
@@ -138,11 +139,17 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled, const int fft
         }
         sampled[fft_size/4] = sampled[j];
     }
-    for (int idx=fft_size/4+1; idx <= 3*fft_size/4; idx++) {
+    for (int idx=fft_size/4+1; idx <= 3*fft_size/4+4; idx++) {
         if (sampled[idx] == missing) {
             sampled[idx] = sampled[idx-1];
         }
     }
+    
+    int lidx = 0;
+    for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
+        esf[lidx++] = sampled[idx+3];
+    }
+    
     vector<double> med;
     for (int idx=fft_size/4+1; idx < fft_size/2-32; idx++) {
         med.push_back(fabs(sampled[idx] - sampled[idx-1]));

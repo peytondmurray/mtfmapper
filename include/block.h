@@ -39,11 +39,11 @@ class Block {
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
-        sfr(4, vector<double>(32,0)), centroid(0,0) {
+        sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), centroid(0,0) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
-        quality(4, 0.0), sfr(4, vector<double>(32,0)), centroid(0,0) {
+        quality(4, 0.0), sfr(4, vector<double>(32,0)), esf(4, vector<double>(2, 0)), centroid(0,0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -94,9 +94,17 @@ class Block {
     void set_sfr(size_t edge_number, const vector<double>& in_sfr) {
         sfr[edge_number] = in_sfr;
     }
-
+    
     const vector<double>& get_sfr(size_t edge_number) const {
         return sfr[edge_number];
+    }
+    
+    void set_esf(size_t edge_number, const vector<double>& in_esf) {
+        esf[edge_number] = in_esf;
+    }
+
+    const vector<double>& get_esf(size_t edge_number) const {
+        return esf[edge_number];
     }
 
     void set_normal(size_t edge_number, const Point& rgrad) {
@@ -166,6 +174,7 @@ class Block {
     vector<double> mtf50;
     vector<double> quality;
     vector< vector<double> > sfr;
+    vector< vector<double> > esf;
     map<edge_position, size_t> edge_lut;
     Point centroid;
     double area;
