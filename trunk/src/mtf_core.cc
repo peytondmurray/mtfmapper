@@ -124,13 +124,15 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         double quality = 0;
         Point rgrad;
         vector <double> sfr(NYQUIST_FREQ*2, 0);
-        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, rgrad, sfr);
+        vector <double> esf(FFT_SIZE/2, 0);
+        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, rgrad, sfr, esf);
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
             shared_blocks_map[label].set_mtf50_value(k, mtf50, quality);
             shared_blocks_map[label].set_normal(k, rgrad);
             shared_blocks_map[label].set_sfr(k, sfr);
+            shared_blocks_map[label].set_esf(k, esf);
         }
     }
     
@@ -180,7 +182,9 @@ static double angle_reduce(double x) {
 }
 
 double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset,
-    Edge_record& er, double& quality, Point& rgrad, vector<double>& sfr) {
+    Edge_record& er, double& quality, Point& rgrad, 
+    vector<double>& sfr, vector<double>& esf) {
+    
     quality = 1.0; // assume this is a good edge
     
     Point cent(in_cent);
@@ -246,7 +250,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         fft_in_buffer[i] = 0.0;
     }
 
-    double SNR = bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot); // loess_fit computes the ESF derivative as part of the fitting procedure
+    double SNR = bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
     
     fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
     fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);

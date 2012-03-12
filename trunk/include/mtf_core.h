@@ -109,7 +109,8 @@ class Mtf_core {
     bool extract_rectangle(const Point& cent, int label, Mrectangle& rect);
     double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, 
                        Edge_record& er,
-                       double& poor, Point& rgrad, vector<double>& sfr);
+                       double& poor, Point& rgrad, 
+                       vector<double>& sfr, vector<double>& esf);
     
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary

@@ -25,33 +25,51 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
+#ifndef MTF_RENDERER_ESF_H
+#define MTF_RENDERER_ESF_H
 
-#include <vector>
-using std::vector;
+#include "mtf_renderer.h"
+#include "common_types.h"
 
-#include "include/common_types.h"
-
-class Ordered_point {
-public:
-    Ordered_point(double in_first=0, double in_second=0) : first(in_first), second(in_second) {}
-    bool operator< (const Ordered_point& b) const {
-        return first < b.first;
+class Mtf_renderer_esf : public Mtf_renderer {
+  public:
+    Mtf_renderer_esf(const std::string& fname_esf, const std::string& fname_psf)
+      :  ofname_esf(fname_esf), ofname_psf(fname_psf) {
+      
     }
     
-    double first;
-    double second;
+    void render(const vector<Block>& blocks) {
+        FILE* fout_esf = fopen(ofname_esf.c_str(), "wt");
+        FILE* fout_psf = fopen(ofname_psf.c_str(), "wt");
+        for (size_t i=0; i < blocks.size(); i++) {
+            for (size_t k=0; k < 4; k++) {
+                const vector<double>& esf = blocks[i].get_esf(k);
+                
+                for (size_t j=0; j < esf.size(); j++) {
+                    fprintf(fout_esf, "%lf ", esf[j]);
+                }
+                fprintf(fout_esf, "\n");
+                
+                double sum = 0;
+                for (size_t j=1; j < esf.size()-1; j++) {
+                    sum += (esf[j+1] - esf[j-1])*0.5;
+                }
+                
+                double sign = sum < 0 ? -1 : 1;
+                fprintf(fout_psf, "%lf ", 0.0);
+                for (size_t j=1; j < esf.size()-1; j++) {
+                    fprintf(fout_psf, "%lf ", sign*(esf[j+1] - esf[j-1])*0.5);
+                }
+                fprintf(fout_psf, " %lf\n", 0.0);
+            }
+        }    
+        fclose(fout_esf);
+        fclose(fout_psf);
+    }
+    
+    string ofname_esf;
+    string ofname_psf;
+
 };
 
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point& sol);
-    
-double bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf);
-
-#ifndef SQR
-#define SQR(x) ((x)*(x))
 #endif
-
-#endif // LOESS_FIT_H
