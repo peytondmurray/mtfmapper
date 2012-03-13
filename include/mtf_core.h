@@ -64,7 +64,8 @@ class Mtf_core {
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
              const cv::Mat& in_img, std::string bayer_subset)
-      : cl(in_cl), g(in_g), img(in_img), absolute_sfr(false) {
+      : cl(in_cl), g(in_g), img(in_img), absolute_sfr(false),
+        snap_to(false), snap_to_angle(0) {
 
         if (bayer_subset.compare("none") == 0) {
             bayer = NONE;
@@ -128,6 +129,11 @@ class Mtf_core {
         absolute_sfr = val;
     }
     
+    void set_snap_angle(double angle) {
+        snap_to = true;
+        snap_to_angle = angle;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -142,6 +148,8 @@ class Mtf_core {
 
   private:
     bool absolute_sfr;
+    bool snap_to;
+    double snap_to_angle;
   
     void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
         const map<int, scanline>& scanset, const Point& cent,
@@ -149,6 +157,29 @@ class Mtf_core {
 
         double max_along_edge = -1e50;
         double min_along_edge = 1e50;
+        
+        if (snap_to) {
+            
+            double max_dot_angle = snap_to_angle;
+            double max_dot = 0;
+            
+            double dot = 0;
+            
+            double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
+            
+            for (int k=0; k < 4; k++) {
+            
+                double sa = angles[k];
+                
+                dot = cos(ea)*cos(sa) + sin(ea)*sin(sa);
+                if (dot > max_dot) {
+                    max_dot = dot;
+                    max_dot_angle = sa;
+                }
+            }
+            
+            ea = max_dot_angle;
+        }
 
         Point mean_grad(cos(ea), sin(ea));
         Point edge_direction(-sin(ea), cos(ea));
