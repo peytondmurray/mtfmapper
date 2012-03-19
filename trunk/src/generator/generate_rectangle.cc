@@ -184,11 +184,12 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.374781, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
     TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
-    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, "dimension", cmd);
+    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, "pixels", cmd);
     TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [0,1]", false, 0, "pixels", cmd);
     TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [0,1]", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<double> tc_ar("r", "aspect-ratio", "Aspect ratio of rectangle [0,1]", false, 1.0, "ratio", cmd);
     TCLAP::ValueArg<double> tc_read_noise("", "read-noise", "Read noise magnitude (linear standard deviation, in electrons, range [0,+inf))", false, 3.0, "std. dev", cmd);
-    TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear percentage of signal, range [0,1])", false, 0.02, "percentage", cmd);
+    TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear fraction of signal, range [0,1])", false, 0.02, "fraction", cmd);
     TCLAP::ValueArg<double> tc_adc_gain("", "adc-gain", "ADC gain (linear electrons-per-DN, range (0,+inf))", false, 1.5, "electrons", cmd);
     TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
 
@@ -204,9 +205,28 @@ int main(int argc, char** argv) {
     
     double rwidth = 0;
     double rheight = 0;
-
+    
     rwidth = tc_dim.getValue();
-    rheight = rwidth*3/4;
+    if (rwidth < 35) {
+        fprintf(stderr, "Warning: longest rectangle edge less than 35 pixels --- this may"
+                        " produce inaccurate results when used with MTF Mapper\n");
+    }
+    
+    double ar = tc_ar.getValue();
+    if (rwidth*ar < 1) {
+        fprintf(stderr, "Warning: specified aspect ratio too small, fixing rectangle at 1 pixel wide\n");
+        ar = 1.0/rwidth;
+    }
+    if (rwidth*ar < 25) {
+        fprintf(stderr, "Warning: specified aspect ratio will produce a thin rectangle (< 25 pixels wide).\n"
+                        "This rectangle may produce inaccurate results when used with MTF Mapper.\n");
+    }
+    if (ar > 1) {
+        fprintf(stderr, "Warning: aspect ratio > 1 specified, clipping to 1.0\n");
+        ar = 1.0;
+    }
+    
+    rheight = rwidth*ar;
 
     double diag = sqrt(rwidth*rwidth + rheight*rheight);
     width = lrint(diag + 32) + 2*border;
