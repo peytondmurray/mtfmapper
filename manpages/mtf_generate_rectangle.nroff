@@ -8,7 +8,21 @@ mtf_generate_rectangle \- generate images containing edges with known MTF50 valu
 .B mtf_generate_rectangle
 .B [--b16] [-l] [-c 
 .I <factor>
-.B ][-b 
+.B ] [--adc-depth
+.I <bits>
+.B ] [--adc-gain
+.I <electrons>
+.B ] [--pattern-noise
+.I <fraction>
+.B ] [--read-noise
+.I <std. dev>
+.B ] [-x
+.I <pixels>
+.B ] [-y
+.I <pixels>
+.B ] [-d
+.I <pixels>
+.B ] [-b 
 .I <std. dev>
 .B ] [-m 
 .I <mtf50>
@@ -16,6 +30,8 @@ mtf_generate_rectangle \- generate images containing edges with known MTF50 valu
 .I <std. dev>
 .B ] [-s 
 .I <seed>
+.B ] [-r
+.I <ratio>
 .B ] [-a 
 .I <angle (degrees)>
 .B ] [-o 
@@ -38,6 +54,25 @@ Render output image as a 16-bit grayscale image (default is 8 bits gamma
 corrected)
 .IP "-l"
 Render output image as a linear grayscale image (default is sRGB gamma)
+.IP "--adc-depth <bits>"
+Number of bits used in full noise model ADC. This parameter effectively
+scales photon shot noise. Recommended value is 12.
+.IP "--adc-gain <electrons>"
+Number of electrons per DN, i.e., the ADC gain of the full noise model. 
+Recommended value is 2.64.
+.IP "--pattern-noise <fraction>"
+Magnitude of Pixel Response Non-Uniformity (PRNU) component of full noise model.
+Recommended value is 0.0085.
+.IP "--read-noise <std. dev>"
+Standard deviation of read noise component of full noise model, in electrons.
+Recommended value is 3.7.
+.IP "-d <pixels>"
+Dimension of the long edge of the rectangle, in pixels. Please note that MTF Mapper
+may produce inaccurate results if this parameter is below 35 pixels.
+.IP "-x <pixels>"
+Sub-pixel offset applied to rendered rectangle, x-axis direction.
+.IP "-y <pixels>"
+Sub-pixel offset applied to rendered rectangle, y-axis direction.
 .IP "-c <factor>"
 Reduce edge contrast by <factor>, i.e., if <factor> is 0.3, then the edge
 contrast is 1 - 0.3 = 0.7.
@@ -49,20 +84,75 @@ resulting MTF50 value of the edges. Mutually exclusive with
 .IP "-m <mtf50>"
 Directly specify the desired MTF50 value. This indirectly controls the
 Gaussian PSF standard deviation. Mutually exclusive with 
-.B -b
+.B -b.
 .IP "-n <std. dev>"
 Specify the noise standard deviation [0-1) of the Gaussian noise that is
-added to the image.
+added to the image. This invokes the simplified noise model, which produces
+noise that is independent of signal level. A more accurate sensor noise model
+can be obtained with the full sensor noise model. See examples below.
 .IP "-s <seed"
 Specify the random seed for the RNG used to generate the additive Gaussian
 noise.
-.IP "-a <angle"
-Specify the angle at which the rectangle is generated. Useful for
+.IP "-a <angle>"
+Specify the angle (in degrees) at which the rectangle is generated. Useful for
 characterising MTF measurement accuracy as a function of edge orientation
+.IP "-r <ratio>"
+Specify the aspect ratio of the rectangle in the range [0,1]. Ratios above 1.0 are clipped.
+The aspect ratio is adjusted so that the rectange is at least one pixel wide. Very thin 
+rectangles (< 25 pixels wide) are not ideal for use with MTF Mapper.
 .IP "-o <filename>"
 Specify the name of the output file
 .IP -h
 Displays usage information
+.SH EXAMPLES AND NOTES
+This utility supports both a simple Gaussian noise model, and a signal-dependent noise model
+that models sensor noise more accurately. If you just need 
+.I some
+noise, then the simple model (specified with the 
+.B -n
+parameter) will be sufficient. This method can also be used to generate noise-free images.
+.IP "Noise free images"
+mtf_generate_rectangle -n 0 ...
+.IP "Simple noise model"
+mtf_generate_rectangle -n 0.01 ...
+.fi
+#Additive Gaussian white noise with a standard deviation of 1%. This is the default option.
+.IP "Full noise model"
+mtf_generate_rectangle --pattern-noise 0.0085 --read-noise 3.7 --adc-gain 2.64  --adc-depth 12 -c 0.2
+.fi 
+#Realistic simulation of Nikon D7000 noise.
+.br
+.IP "Dynamic range and headroom"
+The default 
+.B -c
+parameter setting (0.1) will cause the edge to span the range [0.05, 0.95], leaving some dynamic range
+for subsequent processing steps. For example, the additive noise will be clipped if there is no headroom
+for the outer tails of the noise distribution. The headroom is also criticial for other types of image
+processing, e.g., sharpening or resizing. When in doubt, rather specify some extra headroom (
+.B -c
+0.2), especially if you push the noise levels higher. 
+.IP "Linear vs. Gamma corrected values"
+By default, mtf_generate_rectangle will generate output files with linear intensities only when 16-bit
+output is specified (
+.B --b16
+). This implies that if no parameters are specified, then 
+.I mtf_generate_rectangle will generate 8-bit files in the SRGB space, i.e., intensities will be gamma corrected.
+You can override this behaviour with the 
+.B -l
+switch, which will force linear 8-bit values. It is crucial that you keep track of whether you are dealing
+with gamma-corrected intensities or not. For example, 
+.B mtf_mapper
+will not measure correct MTF values if there is a gamma mismatch (i.e., generated with linear 8-bit intensities
+but processed as if images were gamma corrected). Please use the 
+.B -l
+switch with 
+.B mtf_mapper
+if you generated your test images with the 
+.B -l
+switch of
+.B mtf_generate_rectangle.
+.br
+Better yet, always use 16-bit images, since all the MTF Mapper tools assume they are linear.
 .SH BUGS
 Currently, the image is generated by brute-force sampling of the PSF. For a
 strict Gaussian, it would probably be more efficient to compute the definite

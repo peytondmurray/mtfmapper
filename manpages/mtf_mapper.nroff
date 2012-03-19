@@ -13,7 +13,13 @@ mtf_mapper \- compute MTF50 edge sharpness measure in images
 .I <threshold>
 .B ] [-g
 .I <angle>
-.B ] [-r] [-l] [-s] [-a] [-p]
+.B ] [--snap-angle
+.I <angle>
+.B ] [--absolute-sfr] [--bayer
+.I <red|green|blue|none>
+.B ] [--pixelsize
+.I <size>
+.B ] [-b] [-r] [-l] [-s] [-a] [-f] [-e] [-p]
 .SH DESCRIPTION
 .B mtf_mapper
 computes the edge acuity (sharpness) of slanted edges in images. 
@@ -36,6 +42,23 @@ background, e.g., gray rectangles rather than black rectangles.
 .IP "-g <angle>"
 Only report MTF50 values on edges with an orientation of <angle> degrees in
 raw output mode (-r)
+.IP "--snap-angle <angle>
+Snap all edge angles to
+.I angle.
+Angles are snapped to the closest value modulo 90 degrees, i.e., specifying an
+angle of 4 degrees will force edge orientations to one of the following: 
+4, -4, 86, or 94 degrees. This option should be used with care, and is only appropriate
+if you are using synthetic images with a known edge orientation.
+.IP "--bayer <red|green|blue|none>"
+Process only the specified Bayer sites. Currently, an RGGB Bayer pattern is assumed.
+This option can be used to bypass the effects of Bayer demosaicing interpolation when
+suitable raw images are used. Specifying this option when a demosaiced image is provided will
+not produce the expected result, i.e., you must provide a raw image for this option to
+work correctly. Keep in mind that Bayer red and blue each cover only 25% of the sensor, so
+your edges will have to be 4 times longer to maintain the same signal-to-noise ratio. Minimum
+recommended edge lengths are thus 35 pixels for gray or interpolated images, 70 pixels for green
+Bayer sites, and 140 pixels for red and blue Bayer sites. Aim for edges of at least 200 pixels for
+best results on red and blue sites.
 .IP "-r"
 Dump MTF50 values to a file called
 .I raw_mtf_values.txt
@@ -63,6 +86,30 @@ whether a camera is front- or back-focusing. A special test chart must be
 generated with
 .BR mtf_generate_test_chart
 for this mode to work correctly.
+.IP -e
+Produce edge spread function (ESF) outputs. Each edge will correspond to one row in an
+output file called
+.I raw_esf_values.txt.
+Each row will contain 256 samples, corresponding to a window of 32 pixels centered on the edge,
+oversampled by a factor of 8, i.e., consecutive samples are 1/8 pixel apart.
+There is currently no simple way to identify which edge in the input image ends up in
+a particular row. If your input image contains a single square, then you can pick any row.
+.IP -f
+Produce spatial frequency response (SFR) curve outputs. Each edge will correspond to one row
+in an output file called
+.I raw_sfr_values.txt.
+Each row starts with the edge orientation (in degrees), followed by 64 values corresponding to
+the contrast measured at a frequency resolution of 1/64 cycles per pixel. In other words, the 64 values
+span the frequency range 0-1 cycles per pixel. See
+.B -e
+for advice on matching rows to edges.
+.br
+By default, this is an SFR curve, i.e., the DC component is always normalized to 1.0. See 
+.B --absolute-sfr
+switch for producing true MTF curves.
+-IP --absolute-sfr
+Do not normalize SFR curve, i.e., DC component is not normalized to 1.0. This is useful when evaluating
+the MTF response of algorithms that may reduce overall edge contrast.
 .IP -h
 Displays usage information
 .SH BUGS
