@@ -71,11 +71,17 @@ void Gradient::_compute_gradients(const cv::Mat& smoothed_im) {
         for(int c=1; c < smoothed_im.cols - 1; c++){
             _gradient_x.at<float>(r,c) = smoothed_im.at<float>(r, c + 1) - smoothed_im.at<float>(r, c - 1);
         }
+        _gradient_x.at<float>(r, 0) = 0;
+        _gradient_x.at<float>(r, smoothed_im.cols-1) = 0;
     }
     for(int r=1; r < smoothed_im.rows - 1; r++){
         for(int c=0; c < smoothed_im.cols; c++){
             _gradient_y.at<float>(r,c) = smoothed_im.at<float>(r + 1, c) - smoothed_im.at<float>(r - 1, c);
         }
+    }
+    for (int c=0; c < smoothed_im.cols; c++) {
+        _gradient_y.at<float>(0, c) = 0;
+        _gradient_y.at<float>(smoothed_im.rows-1, c) = 0;
     }
 
 
