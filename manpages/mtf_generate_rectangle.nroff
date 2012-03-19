@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii foo.1
 .\"
-.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
+.TH mtf_generate_rectangle 1 "SEPT 2011" Linux "User Manuals"
 .SH NAME
 mtf_generate_rectangle \- generate images containing edges with known MTF50 values
 .SH SYNOPSIS
