@@ -8,6 +8,7 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage{subfigure}
+\usepackage{pdfpages}
 
 \usepackage{color}
 \definecolor{rltbrightred}{rgb}{1,0,0}
@@ -259,15 +260,7 @@ Using any test chart with a regular grid of rectangles (as illustrated in
 Figure~\ref{fig:surface_test_chart}), you can measure the acuity of your
 lens/camera system as it varies across the focal plane. Just shoot the chart
 at a reasonable distance, making sure that it covers the entire viewfinder.
-For optimal accuracy, the orientation of the blocks in the chart should be
-approximately $5^\circ$--$15^\circ$ with respect to the pixel rows or columns.
-The charts produced by the \texttt{generate\_test\_chart} program included
-with MTF Mapper already take care of this, so you should try to capture the
-chart as straight as possible. Do note that this becomes more critical at
-higher sharpness settings, i.e., if you have a really sharp lens and you are
-sharpening your images excessively, then you have to observe the orientation
-of the chart carefully. For typical lenses and unsharpened images, 
-chart alignment is not critical.
+For typical lenses and unsharpened images, chart alignment is not critical.
 
 \begin{figure}[hp!]
 \centering
@@ -439,8 +432,13 @@ MTF50 is certainly not the final word on image acuity (read the excellent
 Zeiss papers for a start), but it does provide a reasonable relative measure
 for the autofocus calibration problem. The MTF50 estimates extracted by MTF
 Mapper are reasonably accurate (see Appendix~\ref{sec:accuracy}), at least as
-far as internal consistency goes with my own edge image generator. You
-should be able to obtain repeatable results within a 5\% relative margin.
+far as internal consistency goes with my own edge image generator. You should 
+be able to obtain repeatable results within a 5\% relative margin.
+
+Testing against other implementations (Mitre SFR 1.4, sfrmat3) have shown
+very good agreement, with MTF Mapper delivering slightly more repeatable
+results than Mitre SFR (sfrmat4 not tested in bulk yet). The slanted edge
+plugin for ImageJ does not appear to be accurate.
 
 Lastly, you should know one very important thing about autofocus systems:
 they are not perfect. The tolerances of the AF system (AF module, lens
@@ -740,23 +738,19 @@ length of the pixel coordinates projected onto the edge normal, and
 \textsf{intensity} represents the actual pixel intensity value. Note that
 the distance values are unevenly sampled. These values are a representation
 of the edge spread function (ESF).
-	  \item Perform LOESS fitting using a linear model to resample the 
-(\textsf{distance}, \textsf{intensity}) values to a regular grid. The
-resampled points are generated at a spacing of 1/32 pixels, i.e., the
-profile is oversampled at a factor of 32. In addition, the derivative of the
-ESF is not computed with discrete differentiation; instead, the slope of the
-local linear fit is used to construct the line spread function (LSF) directly.
+	  \item Binning to resample the  (\textsf{distance}, \textsf{intensity}) values to a regular grid. The
+resampled points are generated at a spacing of 1/8 pixels, i.e., the
+profile is oversampled at a factor of 8. 
 	  \item Apodization is performed by windowing the resampled LSF with
 a Hamming window.
 	  \item An FFT is computed on the resampled points, and the
 normalised FFT magnitude sequence is calculated.
+          \item A systematic correction is applied to counter the distortion
+introduced by the finite-difference derivative operations used to compute
+the PSF.
 	  \item The frequency at which the FFT magnitude sequence reaches a
 value of 0.5 is computed using linear interpolation, yielding the MTF50
 value.
-	  \item A 9th-order polynomial is used to correct any remaining
-systematic bias. Pathologically poor edge orientations are identified, and
-suppressed; these are around $22^\circ$ and $45^\circ$ degrees with respect
-to either the vertical or horizontal image directions.
 	\end{enumerate}
     \item The computed MTF50 values are then rendered in various ways,
 depending on which output options are selected.
@@ -846,17 +840,25 @@ currently protect you from this case, and will happily try to measure the
 MTF50 across any edge you throw at it. If the MTF50 value exceeds 1.0 c/p,
 the program will silently ignore that edge, but poorly oriented edges may
 produce very high MTF50 values that are still below 1.0, i.e., a sharp edge at an
-angle of $0.5^\circ$ may very well produce an MTF50 value of 0.86. It is
-recommended that you ensure that your edges are between $5^\circ$ and
-$15^\circ$ degrees with respect to the horizontal or vertical directions.
+angle of $0.5^\circ$ may very well produce an MTF50 value of 0.86. 
+
+It is
+recommended that you ensure that your edges are between $2^\circ$ and
+$44^\circ$ degrees with respect to the horizontal or vertical directions.
 Some intermediate angles may produce very inaccurate results, e.g.,
-$22.5^\circ$ and $45^\circ$ angles are to be avoided at all costs. Future
-versions of MTF Mapper may include options to filter out these cases
+$26.56^\circ$ and $14^\circ$ angles are to be avoided at all costs (those
+two angles interfere with the binning algorithm, thus no oversampling is
+achieved). Future versions of MTF Mapper may include options to filter out these cases
 automatically, but currently you are responsible for keeping edge orientations
 reasonable.
 
-
-
+\section{Man pages}
+\begin{center}
+(Rest of this page left blank intentionally)
+\end{center}
+\includepdf[pages={1-2}]{figures/mtf_mapper_man.pdf}
+\includepdf[pages={1-3}]{figures/mtf_generate_rectangle_man.pdf}
+\includepdf[pages={1}]{figures/mtf_generate_test_chart_man.pdf}
 
 
 \begin{thebibliography}{9}
