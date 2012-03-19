@@ -1,7 +1,7 @@
 .\" Process this file with
 .\" groff -man -Tascii foo.1
 .\"
-.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
+.TH mtf_generate_test_chart 1 "SEPT 2011" Linux "User Manuals"
 .SH NAME
 mtf_generate_test_chart \- generate test charts for evaluating lens sharpness
 .SH SYNOPSIS
