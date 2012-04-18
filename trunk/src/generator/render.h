@@ -111,7 +111,7 @@ class Render_rectangle : public Render_target {
         return value;
     }
       
-  private:
+  protected:
     inline bool is_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < 4 && inside; i++) {

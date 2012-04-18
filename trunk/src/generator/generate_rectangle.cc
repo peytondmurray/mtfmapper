@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <math.h>
 #include <stdlib.h>
 #include "render.h"
+#include "render_integral.h"
 #include "noise_source.h"
 
 #include "cv.h"
@@ -195,6 +196,7 @@ int main(int argc, char** argv) {
 
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
+    TCLAP::SwitchArg tc_sampled("","psf-sampling","Use older PSF-sampling rendering algorithm (less accurate)", cmd, false);
     
     cmd.parse(argc, argv);
     
@@ -284,15 +286,26 @@ int main(int argc, char** argv) {
         use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
 
-
-    Render_rectangle rect(
-        width*0.5 + tc_xoff.getValue(), 
-        height*0.5 + tc_yoff.getValue(),
-        rwidth,
-        rheight,
-        M_PI/2 - theta,
-        sigma
-    );
+    Render_rectangle* rect=0;
+    if (tc_sampled.getValue()) {
+        rect = new Render_rectangle(
+            width*0.5 + tc_xoff.getValue(), 
+            height*0.5 + tc_yoff.getValue(),
+            rwidth,
+            rheight,
+            M_PI/2 - theta,
+            sigma
+        );
+    } else {
+        rect = new Render_rectangle_integral(
+            width*0.5 + tc_xoff.getValue(), 
+            height*0.5 + tc_yoff.getValue(),
+            rwidth,
+            rheight,
+            M_PI/2 - theta,
+            sigma
+        );
+    }
     
     cv::Mat img;
     if (use_16bit) {
@@ -316,7 +329,7 @@ int main(int argc, char** argv) {
         ns = new Additive_gaussian_noise(img.rows*img.cols, tc_noise.getValue());
     }
 
-    Render_rows rr(img, rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
+    Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
     parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
     
     double a = 1.0/(sigma*sigma);
@@ -327,6 +340,7 @@ int main(int argc, char** argv) {
     imwrite(tc_out_name.getValue(), img);
 
     delete ns;
+    delete rect;
     
     return 0;
 }
