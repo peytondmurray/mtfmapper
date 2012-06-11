@@ -134,7 +134,17 @@ int main(int argc, char** argv) {
         printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f]\n");
     }
 
-    cv::Mat cvimg = cv::imread(tc_in_name.getValue(),-1);
+    cv::Mat cvimg;
+	try {
+	    cvimg = cv::imread(tc_in_name.getValue(),-1);
+	} catch (cv::Exception ex) {
+		cout << ex.what() << endl;
+	}
+
+	if (!cvimg.data) {
+		printf("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
+		return -2;
+	}
     
     if (cvimg.type() == CV_8UC3 || cvimg.type() == CV_16UC3) {
         printf("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
