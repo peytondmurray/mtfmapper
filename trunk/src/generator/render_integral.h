@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/common_types.h"
 
 #include <cv.h>
+#include <math.h>
 #include "render.h"
 
 
@@ -88,7 +89,7 @@ class Render_rectangle_integral : public Render_rectangle {
                 accumulator += adaptive_simpson(yvals[2], yvals[3], eps, 30, x, y);
             }
         }
-        accumulator /= sqrt(2);
+        accumulator /= sqrt(2.0);
         
         return background_value*(1 - accumulator) + accumulator*object_value;
     }
@@ -145,8 +146,8 @@ class Render_rectangle_integral : public Render_rectangle {
         double right;
         
         find_intersections(y, left, right);
-        right = (right - px) / (sqrt(2)*sigma);
-        left  = (left - px) / (sqrt(2)*sigma);
+        right = (right - px) / (sqrt(2.0)*sigma);
+        left  = (left - px) / (sqrt(2.0)*sigma);
         
         return fy * (gaussian_integral(right) - gaussian_integral(left));
     }
