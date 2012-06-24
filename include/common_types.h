@@ -65,7 +65,19 @@ using std::make_pair;
 	typedef int int32_t;
 
 	#define M_PI 3.14159265358979
-	#define lrint(x) ( (x < 0) ? int(floor(x-0.5)) : int(floor(x+0.5)) )
+	
+	__inline int 
+	lrint (double flt) 	{	
+		int intgr;
+
+		_asm {
+			fld flt
+			fistp intgr
+		}
+			
+		return intgr;
+	} 
+
 #endif
 
 #include "include/scanline.h"
