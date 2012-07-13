@@ -192,6 +192,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_read_noise("", "read-noise", "Read noise magnitude (linear standard deviation, in electrons, range [0,+inf))", false, 3.0, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear fraction of signal, range [0,1])", false, 0.02, "fraction", cmd);
     TCLAP::ValueArg<double> tc_adc_gain("", "adc-gain", "ADC gain (linear electrons-per-DN, range (0,+inf))", false, 1.5, "electrons", cmd);
+    TCLAP::ValueArg<double> tc_psf_theta("", "psf-theta", "Angle between PSF major axis and horizontal", false, 0, "degrees", cmd);
+    TCLAP::ValueArg<double> tc_psf_ratio("", "psf-ratio", "PSF minor axis fraction of major axis", false, 1.0, "real", cmd);
     TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
 
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
@@ -204,6 +206,7 @@ int main(int argc, char** argv) {
     srand(rseed);
     
     theta = tc_theta.getValue() / 180.0 * M_PI;
+    double psf_theta = tc_psf_theta.getValue() / 180.0 * M_PI;
     
     double rwidth = 0;
     double rheight = 0;
@@ -294,7 +297,9 @@ int main(int argc, char** argv) {
             rwidth,
             rheight,
             M_PI/2 - theta,
-            sigma
+            sigma,
+            sigma*tc_psf_ratio.getValue(),
+            M_PI/2 - psf_theta
         );
     } else {
         rect = new Render_rectangle_integral(

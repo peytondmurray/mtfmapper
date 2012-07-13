@@ -42,12 +42,12 @@ class normal_sampler {
         return r * sigma;    
     }
     
-    void rnorm2d(double &x, double& y, double sigma=1.0) {
-        x = Moro_norm_inv(corput_base_b(2, seed));
-        y = Moro_norm_inv(corput_base_b(3, seed));
+    void rnorm2d(double &x, double& y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double lx = Moro_norm_inv(corput_base_b(2, seed)) * sigma;
+        double ly = Moro_norm_inv(corput_base_b(3, seed)) * sigma_minor;
         seed++;
-        x *= sigma;
-        y *= sigma;
+        x = lx*cos(theta) - ly*sin(theta);
+        y = lx*sin(theta) + ly*cos(theta);
     }
   
     static double corput_base_b(uint64_t b, uint64_t N) {
