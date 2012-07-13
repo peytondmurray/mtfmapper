@@ -46,12 +46,13 @@ class Render_target {
 //==============================================================================
 class Render_rectangle : public Render_target {
   public:
-    Render_rectangle(double cx, double cy, double width, double height, double angle, double in_sigma=6.0) : sigma(in_sigma) {
+    Render_rectangle(double cx, double cy, double width, double height, double angle, 
+        double in_sigma=6.0, double minor_sigma=6.0, double theta=0) : sigma(in_sigma) {
         bases[0] = cv::Vec2d(width/2, height/2);
         bases[1] = cv::Vec2d(-width/2, height/2);
         bases[2] = cv::Vec2d(-width/2, -height/2);
         bases[3] = cv::Vec2d(width/2, -height/2);
-
+        
         // rotate corners
         for (size_t i=0; i < 4; i++) {
             double ox = bases[i][0];
@@ -82,7 +83,7 @@ class Render_rectangle : public Render_target {
                 double ex = 0;
                 double ey = 0;
                     
-                sampler.rnorm2d(ex, ey, sigma);
+                sampler.rnorm2d(ex, ey, sigma, minor_sigma, theta);
                     
                 pos_x(ss_y+hs, ss_x+hs) = ex;
                 pos_y(ss_y+hs, ss_x+hs) = ey;
