@@ -49,6 +49,56 @@ class normal_sampler {
         x = lx*cos(theta) - ly*sin(theta);
         y = lx*sin(theta) + ly*cos(theta);
     }
+    
+    double pdf_norm2d(double x, double y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double rx = x*cos(-theta) - y*sin(-theta);
+        double ry = x*sin(-theta) + y*cos(-theta);
+        
+        return exp(-0.5*(rx*rx/(sigma*sigma) + ry*ry/(sigma_minor*sigma_minor)))/(2*M_PI*sigma*sigma_minor);
+    }
+    
+    void runif2d(double &x, double& y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double lx = (corput_base_b(2, seed) - 0.5) * 2 * sigma;
+        double ly = (corput_base_b(3, seed) - 0.5) * 2 * sigma_minor;
+        seed++;
+        x = lx*cos(theta) - ly*sin(theta);
+        y = lx*sin(theta) + ly*cos(theta);
+    }
+    
+    double pdf_unif2d(double x, double y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double rx = x*cos(-theta) - y*sin(-theta);
+        double ry = x*sin(-theta) + y*cos(-theta);
+        if (rx < -sigma || rx > sigma || ry < -sigma_minor || ry > sigma_minor) {
+            return 0;
+        }
+        return 1.0/(sigma * sigma_minor);
+    }
+    
+    inline double sign(double x) {
+        //if (x == 0) return 0;
+        if (x < 0) return -1;
+        return 1;
+    }
+    
+    inline double lap_inv(double p, double mu=0, double b=1) {
+        //return 0.5 * ( 1 + sign(x-mu)*(1 - exp(-fabs(x-mu)/b)) );
+        return mu - b * sign(p - 0.5) * log(1 - 2*fabs(p - 0.5));
+    }
+    
+    
+    void rlap2d(double &x, double& y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double lx = lap_inv(corput_base_b(2, seed), 0, sigma);
+        double ly = lap_inv(corput_base_b(3, seed), 0, sigma_minor);
+        seed++;
+        x = lx*cos(theta) - ly*sin(theta);
+        y = lx*sin(theta) + ly*cos(theta);
+    }
+    
+    double pdf_lap2d(double x, double y, double sigma=1.0, double sigma_minor=1.0, double theta=0) {
+        double rx = x*cos(-theta) - y*sin(-theta);
+        double ry = x*sin(-theta) + y*cos(-theta);
+        return exp(-fabs(rx)/sigma - fabs(ry)/sigma_minor)/(2*sigma*2*sigma_minor);
+    }
   
     static double corput_base_b(uint64_t b, uint64_t N) {
         double c = 0.0;

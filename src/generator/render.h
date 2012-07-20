@@ -47,7 +47,7 @@ class Render_target {
 class Render_rectangle : public Render_target {
   public:
     Render_rectangle(double cx, double cy, double width, double height, double angle, 
-        double in_sigma=6.0, double minor_sigma=6.0, double theta=0) : sigma(in_sigma) {
+        double in_sigma=6.0, double minor_sigma=6.0, double theta=0) : sigma(in_sigma), cx(cx), cy(cy) {
         bases[0] = cv::Vec2d(width/2, height/2);
         bases[1] = cv::Vec2d(-width/2, height/2);
         bases[2] = cv::Vec2d(-width/2, -height/2);
@@ -112,7 +112,7 @@ class Render_rectangle : public Render_target {
         return value;
     }
       
-  protected:
+  public:
     inline bool is_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < 4 && inside; i++) {
@@ -131,6 +131,8 @@ class Render_rectangle : public Render_target {
     cv::Vec2d bases[4];
     cv::Mat_<double> pos_x;
     cv::Mat_<double> pos_y;
+    double cx;
+    double cy;
 };
 
 #endif // RENDER_H

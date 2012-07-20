@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <stdlib.h>
 #include "render.h"
 #include "render_integral.h"
+#include "render_importance_sampling.h"
 #include "noise_source.h"
 
 #include "cv.h"
@@ -291,7 +292,7 @@ int main(int argc, char** argv) {
 
     Render_rectangle* rect=0;
     if (tc_sampled.getValue()) {
-        rect = new Render_rectangle(
+        rect = new Render_rectangle_is(
             width*0.5 + tc_xoff.getValue(), 
             height*0.5 + tc_yoff.getValue(),
             rwidth,
