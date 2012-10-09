@@ -37,8 +37,11 @@ using namespace cv;
 //==============================================================================
 class Render_rectangle_poly : public Render_rectangle {
   public:
-    Render_rectangle_poly(double cx, double cy, double width, double height, double angle, double value = 0, bool dump=false) 
-    : Render_rectangle(cx, cy, width, height, angle, value, dump) {
+    Render_rectangle_poly(double cx, double cy, double width, double height, double angle) 
+    : Render_rectangle(cx, cy, width, height, angle, false) {
+    }
+    
+    virtual ~Render_rectangle_poly(void) {
     }
     
     double evaluate_x(const Render_rectangle& b, double xoffset = 0, double yoffset = 0)  const {
@@ -87,8 +90,9 @@ class Render_rectangle_poly : public Render_rectangle {
     
     double compute_area(const vector<Vec2d>& points) const {
         double A = 0;
-        for (int i=0; i < int(points.size()); i++) {
-            int ni = (i+1) % points.size();
+        int N = (int)points.size();
+        for (int i=0; i < N; i++) {
+            int ni = (i+1) % N;
             A += points[i][0]*points[ni][1] - points[ni][0]*points[i][1];
         }
         return 0.5 * fabs(A);
