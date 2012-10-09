@@ -39,7 +39,7 @@ const double transparent = -1.0;
 class Render_target {
   public:
       Render_target(void) {}
-      virtual double evaluate(int x, int y, double oject_value, double background_value) const = 0;
+      virtual double evaluate(double x, double y, double oject_value, double background_value) const = 0;
 };
 
 
@@ -47,7 +47,7 @@ class Render_target {
 class Render_rectangle : public Render_target {
   public:
     Render_rectangle(double cx, double cy, double width, double height, double angle, 
-        double in_sigma=6.0, double minor_sigma=6.0, double theta=0) : sigma(in_sigma), cx(cx), cy(cy) {
+        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true) : sigma(in_sigma), cx(cx), cy(cy) {
         bases[0] = cv::Vec2d(width/2, height/2);
         bases[1] = cv::Vec2d(-width/2, height/2);
         bases[2] = cv::Vec2d(-width/2, -height/2);
@@ -69,29 +69,33 @@ class Render_rectangle : public Render_target {
             double n = norm(normals[i]);
             normals[i] = normals[i]*(1.0/n);
         }
+        
+        if (init) {
               
-        hs = 22; // seems like enough samples for up to sigma=6, at least
-              
-        int nsamples = hs*2 + 1;
-        pos_x   = cv::Mat_<double>(nsamples, nsamples);
-        pos_y   = cv::Mat_<double>(nsamples, nsamples);
-              
-        normal_sampler sampler;
-        for (int ss_x=-hs; ss_x <= hs; ss_x++) {
-            for (int ss_y=-hs; ss_y <= hs; ss_y++) {
-                  
-                double ex = 0;
-                double ey = 0;
+            hs = 22; // seems like enough samples for up to sigma=6, at least
+            int nsamples = hs*2 + 1;
+            pos_x   = cv::Mat_<double>(nsamples, nsamples);
+            pos_y   = cv::Mat_<double>(nsamples, nsamples);
+        
+            normal_sampler sampler;
+            for (int ss_x=-hs; ss_x <= hs; ss_x++) {
+                for (int ss_y=-hs; ss_y <= hs; ss_y++) {
+                      
+                    double ex = 0;
+                    double ey = 0;
+                    sampler.rnorm2d(ex, ey, sigma, minor_sigma, theta);
                     
-                sampler.rnorm2d(ex, ey, sigma, minor_sigma, theta);
-                    
-                pos_x(ss_y+hs, ss_x+hs) = ex;
-                pos_y(ss_y+hs, ss_x+hs) = ey;
-            }
-        } // supersamples
+                    pos_x(ss_y+hs, ss_x+hs) = ex;
+                    pos_y(ss_y+hs, ss_x+hs) = ey;
+                }
+            } // supersamples
+        }
     }
     
-    double evaluate(int x, int y, double object_value, double background_value) const {
+    virtual ~Render_rectangle(void) {
+    }
+    
+    double evaluate(double x, double y, double object_value, double background_value) const {
    
         double accumulator = 0;
         for (int ss_x=-hs; ss_x <= hs; ss_x++) {
