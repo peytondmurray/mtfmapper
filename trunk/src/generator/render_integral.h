@@ -86,34 +86,35 @@ class Render_rectangle_integral : public Render_rectangle {
         }
     }
     
-    double evaluate(int x, int y, double object_value, double background_value) const {
+    double evaluate(double x, double y, double object_value, double background_value) const {
    
         double accumulator = 0;
         
         const double eps = 1e-7;
+        const int max_depth = 30;
         if ( fabs(yvals[0] - yvals[1]) > 1e-6 ) {
             
             if (yvals[0] <= y && y <=yvals[1]) { //
-                accumulator += adaptive_simpson(yvals[0], y, eps, 30, x, y);
-                accumulator += adaptive_simpson(y, yvals[1], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[0], y, eps, max_depth, x, y);
+                accumulator += adaptive_simpson(y, yvals[1], eps, max_depth, x, y);
             } else {
-                accumulator += adaptive_simpson(yvals[0], yvals[1], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[0], yvals[1], eps, max_depth, x, y);
             }
         }
         if ( fabs(yvals[1] - yvals[2]) > 1e-6 ) {
             if (yvals[1] <= y && y <=yvals[2]) { //
-                accumulator += adaptive_simpson(yvals[1], y, eps, 30, x, y);
-                accumulator += adaptive_simpson(y, yvals[2], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[1], y, eps, max_depth, x, y);
+                accumulator += adaptive_simpson(y, yvals[2], eps, max_depth, x, y);
             } else {
-                accumulator += adaptive_simpson(yvals[1], yvals[2], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[1], yvals[2], eps, max_depth, x, y);
             }
         }
         if ( fabs(yvals[2] - yvals[3]) > 1e-6 ) {
             if (yvals[2] <= y && y <=yvals[3]) { //
-                accumulator += adaptive_simpson(yvals[2], y, eps, 30, x, y);
-                accumulator += adaptive_simpson(y, yvals[3], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[2], y, eps, max_depth, x, y);
+                accumulator += adaptive_simpson(y, yvals[3], eps, max_depth, x, y);
             } else {
-                accumulator += adaptive_simpson(yvals[2], yvals[3], eps, 30, x, y);
+                accumulator += adaptive_simpson(yvals[2], yvals[3], eps, max_depth, x, y);
             }
         }
         accumulator /= sqrt(2.0);
