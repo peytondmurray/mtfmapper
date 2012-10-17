@@ -172,6 +172,63 @@ class Render_rectangle_is : public Render_rectangle {
         double value = accumulator / (wsum);
         return value;
     }
+    
+    virtual string get_mtf_curve(void) const {
+        char buffer[1024];
+        double scale = (lambda/pitch) * aperture;
+        switch (render_type) {
+            case AIRY:
+                sprintf(buffer, "2.0/pi * (acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
+                    scale, scale, scale, scale
+                );
+                break;
+            case AIRY_PLUS_BOX:
+                sprintf(buffer, "2.0/pi*abs(sin(x*pi)/(x*pi))*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
+                    scale, scale, scale, scale
+                );
+                break;
+            case AIRY_PLUS_4DOT_OLPF:
+                sprintf(buffer, "2.0/pi*abs( 0.875*sin(1.75*x*pi)/(1.75*x*pi) + 0.125*sin(0.25*x*pi)/(0.25*x*pi) )*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
+                    scale, scale, scale, scale
+                );
+                break;
+            default:
+                sprintf(buffer, "not defined");
+                break;
+        }
+        
+        return string(buffer);
+    }
+    
+    virtual string get_psf_curve(void) const {
+        char buffer[1024];
+        double scale = 1 / ((lambda/pitch) * aperture);
+        switch (render_type) {
+            case AIRY:
+                sprintf(buffer, "(2*besj1((x*%lg))/(x*%lg))**2", scale, scale);
+                break;
+            default:
+                sprintf(buffer, "not implemented");
+                break;
+        }
+        return string(buffer);
+    }
+    
+    virtual double get_mtf50_value(void) const {
+        double scale = (lambda/pitch) * aperture;
+        double mtf50 = 0.4039728 / scale;
+        switch (render_type) {
+            case AIRY_PLUS_BOX:
+                mtf50 = bisect_airy(&airy_box_mtf);
+                break;
+            case AIRY_PLUS_4DOT_OLPF:
+                mtf50 = bisect_airy(&airy_olpf_mtf);
+                break;
+            default:
+                break;
+        }
+        return mtf50;
+    }
       
   protected:
     inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
@@ -202,6 +259,36 @@ class Render_rectangle_is : public Render_rectangle {
         }
                 
         return sample;
+    }
+    
+    double static airy_box_mtf(double x, double s)  {
+        return 2.0/M_PI*fabs(sin(x*M_PI)/(x*M_PI))*(acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
+    }
+    
+    double static airy_olpf_mtf(double x, double s)  {
+        return 2.0/M_PI * 
+          fabs( 0.875*sin(1.75*x*M_PI)/(1.75*x*M_PI) + 0.125*sin(0.25*x*M_PI)/(0.25*x*M_PI) ) * 
+          (acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
+    }
+    
+    double bisect_airy(double (*f)(double x, double s)) const {
+        const int nmax = 100;
+        const double tol = 1e-7;
+        double s = (lambda/pitch) * aperture;
+        double a = 1e-5;
+        double b = s * (1-1e-5);
+        for (int n=0; n < nmax; n++) {
+            double c = 0.5 * (a + b);
+            if (f(c, s) == 0 || (b - a) < tol) {
+                return c;
+            }
+            if (f(c, s)*f(a, s) >= 0) {
+                a = c;
+            } else {
+                b = c;
+            }
+        }
+        return a;
     }
   
     vector<double> weights;
