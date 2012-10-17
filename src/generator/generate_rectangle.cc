@@ -163,6 +163,52 @@ class Render_rows {
 };
 
 
+// functor for tbb
+class Render_esf {
+  public:
+    Render_esf(const Render_rectangle& in_r, vector< pair<double, double> >& esf, double length, double theta,
+        int oversampling_factor)
+     : rect(in_r), length(length), oversampling_factor(oversampling_factor),
+       p(rect.cx, rect.cy), sample_pos(oversampling_factor*length),
+       esf(esf) {
+        
+        Point_<double> cur(p);
+        Point_<double> d(cos(-theta)/oversampling_factor, sin(-theta)/oversampling_factor);
+        for (int i=0; i < int(length*oversampling_factor); i++) {
+            sample_pos[i] = cur;
+            cur = cur + d;
+        }
+        
+    }
+    
+    void write(const string& profile_fname) {
+        FILE* fout = fopen(profile_fname.c_str(), "wt");
+        for (size_t i=0; i < esf.size(); i++) {
+            fprintf(fout, "%.12le %.12le\n", esf[i].first, esf[i].second);
+        }
+        fclose(fout);
+    }
+
+
+    void operator()(const blocked_range<size_t>& r) const {
+    
+        for (size_t row=r.begin(); row != r.end(); ++row) {
+            double rval = 0;
+            rval = rect.evaluate(sample_pos[row].x, sample_pos[row].y, 0.05, 0.95);
+            esf[row].first = norm(sample_pos[row] - p) - length*0.5;
+            esf[row].second = rval;
+        }
+    } 
+     
+    const Render_rectangle& rect;
+    double length;
+    int    oversampling_factor;
+    Point_<double> p;
+    vector< Point_<double> > sample_pos;
+    vector< pair<double, double> >& esf;
+};
+
+
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
 
@@ -196,10 +242,23 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_psf_theta("", "psf-theta", "Angle between PSF major axis and horizontal", false, 0, "degrees", cmd);
     TCLAP::ValueArg<double> tc_psf_ratio("", "psf-ratio", "PSF minor axis fraction of major axis", false, 1.0, "real", cmd);
     TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
+    TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, "f", cmd);
+    TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
+    TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
+    
+    vector<string> psf_names;
+    psf_names.push_back("gaussian");
+    psf_names.push_back("gaussian-sampled");
+    psf_names.push_back("airy");
+    psf_names.push_back("airy-box");
+    psf_names.push_back("airy-4dot-olpf");
+    TCLAP::ValuesConstraint<string> psf_constraints(psf_names);
+    TCLAP::ValueArg<std::string> tc_psf("p", "psf-type", "Point Spread Function (PSF) type", false, "gaussian", &psf_constraints );
+    cmd.add(tc_psf);
 
     TCLAP::SwitchArg tc_linear("l","linear","Generate output image with linear intensities (default is sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_16("","b16","Generate linear 16-bit image", cmd, false);
-    TCLAP::SwitchArg tc_sampled("","psf-sampling","Use older PSF-sampling rendering algorithm (less accurate)", cmd, false);
+    TCLAP::SwitchArg tc_profile("","esf-only","Sample the ESF, rather than render an image (default filename \"profile.txt\")", cmd, false);
     
     cmd.parse(argc, argv);
     
@@ -208,6 +267,32 @@ int main(int argc, char** argv) {
     
     theta = tc_theta.getValue() / 180.0 * M_PI;
     double psf_theta = tc_psf_theta.getValue() / 180.0 * M_PI;
+    
+    Render_rectangle_is::Render_type psf_type;
+    if ( tc_psf.getValue().compare("gaussian") == 0) {
+        psf_type = Render_rectangle::GAUSSIAN;
+    }
+    if ( tc_psf.getValue().compare("gaussian-sampled") == 0) {
+        psf_type = Render_rectangle::GAUSSIAN_SAMPLED;
+    }
+    if ( tc_psf.getValue().compare("airy") == 0) {
+        psf_type = Render_rectangle::AIRY;
+    }
+    if ( tc_psf.getValue().compare("airy-box") == 0) {
+        psf_type = Render_rectangle::AIRY_PLUS_BOX;
+    }
+    if ( tc_psf.getValue().compare("airy-4dot-olpf") == 0) {
+        psf_type = Render_rectangle::AIRY_PLUS_4DOT_OLPF;
+    }
+    
+    // perform some sanity checking
+    if ( (tc_mtf.isSet() || tc_blur.isSet()) && 
+        !(psf_type == Render_rectangle_is::GAUSSIAN || psf_type == Render_rectangle_is::GAUSSIAN_SAMPLED) ) {
+        
+        printf("Conflicting options selected. You cannot specify \"-m\" or \"-b\" options if PSF type is non-Gaussian.");
+        printf("Aborting.\n");
+        return -1;
+    }
     
     double rwidth = 0;
     double rheight = 0;
@@ -286,31 +371,53 @@ int main(int argc, char** argv) {
         printf("\n\t additive Gaussian noise with sigma = %lf\n", tc_noise.getValue());
     }
     
-    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
-        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
+    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d, aperture=%lf\n",
+        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height, tc_aperture.getValue()
     );
 
+    // decide which PSF rendering algorithm to use
     Render_rectangle* rect=0;
-    if (tc_sampled.getValue()) {
-        rect = new Render_rectangle_is(
-            width*0.5 + tc_xoff.getValue(), 
-            height*0.5 + tc_yoff.getValue(),
-            rwidth,
-            rheight,
-            M_PI/2 - theta,
-            sigma,
-            sigma*tc_psf_ratio.getValue(),
-            M_PI/2 - psf_theta
-        );
-    } else {
-        rect = new Render_rectangle_integral(
-            width*0.5 + tc_xoff.getValue(), 
-            height*0.5 + tc_yoff.getValue(),
-            rwidth,
-            rheight,
-            M_PI/2 - theta,
-            sigma
-        );
+    switch (psf_type) {
+        case Render_rectangle::AIRY:
+        case Render_rectangle::AIRY_PLUS_BOX:
+        case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
+            rect = new Render_rectangle_is(
+                width*0.5 + tc_xoff.getValue(), 
+                height*0.5 + tc_yoff.getValue(),
+                rwidth,
+                rheight,
+                M_PI/2 - theta,
+                sigma,
+                sigma*tc_psf_ratio.getValue(),
+                M_PI/2 - psf_theta,
+                psf_type,
+                tc_aperture.getValue(),
+                tc_pitch.getValue(),
+                tc_lambda.getValue()
+            );
+            break;
+        case Render_rectangle::GAUSSIAN:
+            rect = new Render_rectangle_integral(
+                width*0.5 + tc_xoff.getValue(), 
+                height*0.5 + tc_yoff.getValue(),
+                rwidth,
+                rheight,
+                M_PI/2 - theta,
+                sigma
+            );
+            break;
+        case Render_rectangle::GAUSSIAN_SAMPLED:
+            rect = new Render_rectangle(
+                width*0.5 + tc_xoff.getValue(), 
+                height*0.5 + tc_yoff.getValue(),
+                rwidth,
+                rheight,
+                M_PI/2 - theta,
+                sigma,
+                sigma*tc_psf_ratio.getValue(),
+                M_PI/2 - psf_theta
+            );
+            break;
     }
     
     cv::Mat img;
@@ -334,16 +441,28 @@ int main(int argc, char** argv) {
     } else {
         ns = new Additive_gaussian_noise(img.rows*img.cols, tc_noise.getValue());
     }
-
-    Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
-    parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
+    
+    if (!tc_profile.getValue()) {
+        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
+        parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
+        imwrite(tc_out_name.getValue(), img);
+    } else {
+        string profile_fname("profile.txt");
+        if (tc_out_name.isSet()) {
+            profile_fname = tc_out_name.getValue();
+        }
+        // render call
+        const int oversample = 32;
+        vector< pair<double, double> > esf(int(rwidth*oversample));
+        Render_esf re(*rect, esf, rwidth, theta, oversample);
+        parallel_for(blocked_range<size_t>(size_t(0), esf.size()), re);
+        re.write(profile_fname);
+    }
     
     double a = 1.0/(sigma*sigma);
     printf("MTF curve:  exp(%.8lg*x*x)\n", -2*M_PI*M_PI/a);
     printf("PSF : exp(-x*x/%lg)\n", 2*sigma*sigma);
     printf("MTF50 = %lf\n", mtf);    
-
-    imwrite(tc_out_name.getValue(), img);
 
     delete ns;
     delete rect;

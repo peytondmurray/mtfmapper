@@ -46,6 +46,14 @@ class Render_target {
 //==============================================================================
 class Render_rectangle : public Render_target {
   public:
+    typedef enum {
+        GAUSSIAN,
+        GAUSSIAN_SAMPLED,
+        AIRY,
+        AIRY_PLUS_BOX,
+        AIRY_PLUS_4DOT_OLPF
+    } Render_type;
+  
     Render_rectangle(double cx, double cy, double width, double height, double angle, 
         double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true) : sigma(in_sigma), cx(cx), cy(cy) {
         bases[0] = cv::Vec2d(width/2, height/2);
@@ -73,22 +81,14 @@ class Render_rectangle : public Render_target {
         if (init) {
               
             hs = 22; // seems like enough samples for up to sigma=6, at least
-            int nsamples = hs*2 + 1;
-            pos_x   = cv::Mat_<double>(nsamples, nsamples);
-            pos_y   = cv::Mat_<double>(nsamples, nsamples);
+            int nsamples = SQR(hs*2 + 1);
+            pos_x   = vector<double>(nsamples);
+            pos_y   = vector<double>(nsamples);
         
             normal_sampler sampler;
-            for (int ss_x=-hs; ss_x <= hs; ss_x++) {
-                for (int ss_y=-hs; ss_y <= hs; ss_y++) {
-                      
-                    double ex = 0;
-                    double ey = 0;
-                    sampler.rnorm2d(ex, ey, sigma, minor_sigma, theta);
-                    
-                    pos_x(ss_y+hs, ss_x+hs) = ex;
-                    pos_y(ss_y+hs, ss_x+hs) = ey;
-                }
-            } // supersamples
+            for (int sidx=0; sidx < nsamples; sidx++) {
+                sampler.rnorm2d(pos_x[sidx], pos_y[sidx], sigma, minor_sigma, theta);
+            } 
         }
     }
     
@@ -98,18 +98,12 @@ class Render_rectangle : public Render_target {
     double evaluate(double x, double y, double object_value, double background_value) const {
    
         double accumulator = 0;
-        for (int ss_x=-hs; ss_x <= hs; ss_x++) {
-            for (int ss_y=-hs; ss_y <= hs; ss_y++) {
-            
-                double ex = pos_x(ss_y+hs, ss_x+hs);
-                double ey = pos_y(ss_y+hs, ss_x+hs);
-                
-                if ( is_inside(ex + x, ey + y) ) {
+        for (size_t sidx=0; sidx < pos_x.size(); sidx++) {
+                if ( is_inside(pos_x[sidx] + x, pos_y[sidx] + y) ) {
                     accumulator += object_value;
                 } else {
                     accumulator += background_value;
                 }
-            }
         } // supersamples
          
         double value = accumulator / ((2*hs+1)*(2*hs+1));
@@ -120,8 +114,8 @@ class Render_rectangle : public Render_target {
     inline bool is_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < 4 && inside; i++) {
-            cv::Vec2d dir(x - bases[i][0], y - bases[i][1]);
-            double dot = dir.dot(normals[i]);
+            double dot = normals[i][0]*(x - bases[i][0]) + 
+                         normals[i][1]*(y - bases[i][1]);
             if (dot < 0) {
                 inside = false;
             }
@@ -133,8 +127,8 @@ class Render_rectangle : public Render_target {
     int    hs;
     cv::Vec2d normals[4];
     cv::Vec2d bases[4];
-    cv::Mat_<double> pos_x;
-    cv::Mat_<double> pos_y;
+    vector<double> pos_x;
+    vector<double> pos_y;
     double cx;
     double cy;
 };
