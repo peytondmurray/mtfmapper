@@ -371,9 +371,16 @@ int main(int argc, char** argv) {
         printf("\n\t additive Gaussian noise with sigma = %lf\n", tc_noise.getValue());
     }
     
-    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d, aperture=%lf\n",
-        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height, tc_aperture.getValue()
+    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
+        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
+    
+    if (psf_type >= Render_rectangle::AIRY) {
+        printf("\t aperture = %.1lf, pixel pitch = %.3lf, lambda = %.3lf%s\n",
+             tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue(),
+             psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF ? ", OLPF split = 0.35 pixels" : ""
+        );
+    }
 
     // decide which PSF rendering algorithm to use
     Render_rectangle* rect=0;
@@ -459,10 +466,9 @@ int main(int argc, char** argv) {
         re.write(profile_fname);
     }
     
-    double a = 1.0/(sigma*sigma);
-    printf("MTF curve:  exp(%.8lg*x*x)\n", -2*M_PI*M_PI/a);
-    printf("PSF : exp(-x*x/%lg)\n", 2*sigma*sigma);
-    printf("MTF50 = %lf\n", mtf);    
+    printf("MTF curve:  %s\n", rect->get_mtf_curve().c_str());
+    printf("PSF : %s\n", rect->get_psf_curve().c_str());
+    printf("MTF50 = %lf\n", rect->get_mtf50_value());    
 
     delete ns;
     delete rect;

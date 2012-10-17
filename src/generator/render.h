@@ -34,6 +34,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 const double transparent = -1.0;
 
 #include "normal_sampler.h"
+#include <string>
+using std::string;
 
 //==============================================================================
 class Render_target {
@@ -108,6 +110,23 @@ class Render_rectangle : public Render_target {
          
         double value = accumulator / ((2*hs+1)*(2*hs+1));
         return value;
+    }
+    
+    virtual string get_mtf_curve(void) const {
+        char buffer[1024];
+        double a = 1.0/(sigma*sigma);
+        sprintf(buffer, "exp(%.8lg*x*x)", -2*M_PI*M_PI/a);
+        return string(buffer);
+    }
+    
+    virtual string get_psf_curve(void) const {
+        char buffer[1024];
+        sprintf(buffer, "exp(-x*x/%lg)", 2*sigma*sigma);
+        return string(buffer);
+    }
+    
+    virtual double get_mtf50_value(void) const {
+        return sqrt( log(0.5)/(-2*M_PI*M_PI*sigma*sigma) );
     }
       
   public:
