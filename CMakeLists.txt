@@ -47,6 +47,7 @@ if (MSVC)
 endif(MSVC)
 
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
+SET(OpenCV_BACKWARD_COMPA true)
 
 # external libs
 find_package(OpenCV REQUIRED)
