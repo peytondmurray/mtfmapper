@@ -357,10 +357,22 @@ int main(int argc, char** argv) {
         printf("Noise sigma set, but full sensor noise model parameters also specified.\n"
                "Ignoring noise sigma, and going with full sensor model instead.\n");
     }
-
-    printf("output filename = %s, sigma = %lf (or mtf50 = %lf), theta = %lf degrees, seed = %d, ", 
-        tc_out_name.getValue().c_str(), sigma, mtf, theta/M_PI*180, rseed
+    
+    printf("output filename = %s, theta = %lf degrees, seed = %d,\n ", 
+        tc_out_name.getValue().c_str(), theta/M_PI*180, rseed
     );
+    if (psf_type >= Render_rectangle::AIRY) {
+        printf("\t aperture = f/%.1lf, pixel pitch = %.3lf, lambda = %.3lf%s, ",
+             tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue(),
+             psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF ? ", OLPF split = 0.35 pixels" : ""
+        );
+    } else {
+        printf("\t sigma = %lf (or mtf50 = %lf), ", 
+            sigma, mtf
+        );
+    }
+
+    
     if (use_sensor_model) {
         printf("\n\t full sensor noise model, with read noise = %.1lf electrons, fixed pattern noise fraction = %.3lf,\n"
                "\t adc gain = %.2lf e/DN, adc depth = %d bits\n",
@@ -375,12 +387,7 @@ int main(int argc, char** argv) {
         use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
     );
     
-    if (psf_type >= Render_rectangle::AIRY) {
-        printf("\t aperture = %.1lf, pixel pitch = %.3lf, lambda = %.3lf%s\n",
-             tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue(),
-             psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF ? ", OLPF split = 0.35 pixels" : ""
-        );
-    }
+    
 
     // decide which PSF rendering algorithm to use
     Render_rectangle* rect=0;

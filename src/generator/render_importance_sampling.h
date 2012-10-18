@@ -117,7 +117,7 @@ class Render_rectangle_is : public Render_rectangle {
             swap(weights[i], weights[radius_list[i].second]);
         }
         
-        printf("using IS renderer : %d\n", nsamples*nsamples);
+        printf("using IS renderer with %d samples per pixel\n", nsamples);
     }
     
     virtual ~Render_rectangle_is(void) {
@@ -208,7 +208,7 @@ class Render_rectangle_is : public Render_rectangle {
                 sprintf(buffer, "(2*besj1((x*%lg))/(x*%lg))**2", scale, scale);
                 break;
             default:
-                sprintf(buffer, "not implemented");
+                sprintf(buffer, "not implemented (no simple analytical form)");
                 break;
         }
         return string(buffer);
@@ -270,27 +270,32 @@ class Render_rectangle_is : public Render_rectangle {
           fabs( 0.875*sin(1.75*x*M_PI)/(1.75*x*M_PI) + 0.125*sin(0.25*x*M_PI)/(0.25*x*M_PI) ) * 
           (acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
     }
-    
-    double bisect_airy(double (*f)(double x, double s)) const {
+
+    double bisect_airy(double (*f)(double x, double s)) const { // simple, but robust
         const int nmax = 100;
         const double tol = 1e-7;
         double s = (lambda/pitch) * aperture;
         double a = 1e-5;
-        double b = s * (1-1e-5);
+        double b = min((1-1e-5) / s, 1.0);
+        double fa = f(a, s);
+        double fb = f(b, s);
         for (int n=0; n < nmax; n++) {
             double c = 0.5 * (a + b);
-            if (f(c, s) == 0 || (b - a) < tol) {
+            double fc = f(c, s);
+            if (fc == 0 || (b - a) < tol) {
                 return c;
             }
-            if (f(c, s)*f(a, s) >= 0) {
+            if (fc*fa >= 0) {
                 a = c;
+                fa = fc;
             } else {
                 b = c;
+                fb = fc;
             }
         }
         return a;
     }
-  
+    
     vector<double> weights;
     
     double aperture;
