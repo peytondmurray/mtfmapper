@@ -46,80 +46,19 @@ using std::swap;
 
 //==============================================================================
 class Render_rectangle_is : public Render_rectangle {
-  public:
+  protected:
+    // we do not want this constructor to be called directly, but rather through
+    // the named constructor idiom (below)
     Render_rectangle_is(double cx, double cy, double width, double height, double angle, 
-        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, Render_type render_type=AIRY_PLUS_BOX,
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55) 
-        : Render_rectangle(cx, cy, width, height, angle, in_sigma, minor_sigma, theta, false),
-          poly(cx, cy, width, height, angle), sup(0, 0, 1, 1, 0), render_type(render_type) {
+        Render_type render_type=AIRY_PLUS_BOX,
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
+        : Render_rectangle(cx, cy, width, height, angle, 1.0, 1.0, 0.0, false),
+          aperture(in_aperture), pitch(in_pitch), lambda(in_lambda),
+          poly(cx, cy, width, height, angle), sup(0, 0, 1, 1, 0), render_type(render_type), hs(hs) {
 
-        
-        hs = 60;  // default for Airy pattern
-        
-        // reduce the number of samples if we can; this improves performance,
-        // and the wider PSFs (box or olpf) do just as well with fewer samples
-        // TODO: perhaps the number of samples should be scaled to keep the
-        // error constant across increasing f-numbers ?
-        switch (render_type) {
-            case AIRY: 
-                hs = 60;
-                break;
-            case AIRY_PLUS_BOX:
-                hs = 40;
-                break;
-            case AIRY_PLUS_4DOT_OLPF:
-                hs = 30;
-                break;
-            default:
-                printf("Warning! Trying to use an unsupported PSF type with Render_rectangle_is path!\n");
-                break;
-        }
-        
-        nsamples = SQR(hs*2 + 1);
-        pos_x   = vector<double>(nsamples);
-        pos_y   = vector<double>(nsamples);
-        weights = vector<double>(nsamples);
-        
-        aperture = in_aperture;
-        lambda = in_lambda;
-        pitch = in_pitch;
-        
-        normal_sampler sampler;
-        Airy_sampler airy(lambda, pitch, aperture);
-        
-        vector< pair<double, int> > radius_list;
-        
-        for (int sidx=0; sidx < nsamples; sidx++) {
-            double& ex = pos_x[sidx];
-            double& ey = pos_y[sidx];
-            
-            double sample_prob = airy.rairy2d(ex, ey, sampler);
-            double rad = sqrt(ex*ex + ey*ey);
-            
-            rad /= (lambda/pitch)*aperture;
-            
-            // collect the indices of the outermost points
-            // this ensures that the early stopping criterion works well
-            if (rad > Airy_sampler::diam*0.15) {
-                radius_list.push_back(make_pair<double, int>(fabs(rad - Airy_sampler::diam*0.8), sidx));
-            }
-            
-            double jinc_weight = 4*Airy_sampler::jinc(rad)*Airy_sampler::jinc(rad);
-            
-            weights[sidx] = jinc_weight/sample_prob;
-        } // supersamples
-        
-        // now swap out the outermost points with the first points
-        sort(radius_list.begin(), radius_list.end());
-        for (size_t i=0; i < radius_list.size(); i++) {
-            swap(pos_x[i], pos_x[radius_list[i].second]);
-            swap(pos_y[i], pos_y[radius_list[i].second]);
-            swap(weights[i], weights[radius_list[i].second]);
-        }
-        
-        printf("using IS renderer with %d samples per pixel\n", nsamples);
     }
-    
+
+  public:
     virtual ~Render_rectangle_is(void) {
     }
     
@@ -174,103 +113,64 @@ class Render_rectangle_is : public Render_rectangle {
     }
     
     virtual string get_mtf_curve(void) const {
-        char buffer[1024];
-        double scale = (lambda/pitch) * aperture;
-        switch (render_type) {
-            case AIRY:
-                sprintf(buffer, "2.0/pi * (acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
-                    scale, scale, scale, scale
-                );
-                break;
-            case AIRY_PLUS_BOX:
-                sprintf(buffer, "2.0/pi*abs(sin(x*pi)/(x*pi))*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
-                    scale, scale, scale, scale
-                );
-                break;
-            case AIRY_PLUS_4DOT_OLPF:
-                sprintf(buffer, "2.0/pi*abs( 0.875*sin(1.75*x*pi)/(1.75*x*pi) + 0.125*sin(0.25*x*pi)/(0.25*x*pi) )*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
-                    scale, scale, scale, scale
-                );
-                break;
-            default:
-                sprintf(buffer, "not defined");
-                break;
-        }
-        
-        return string(buffer);
+        return string("not defined");
     }
     
     virtual string get_psf_curve(void) const {
-        char buffer[1024];
-        double scale = 1 / ((lambda/pitch) * aperture);
-        switch (render_type) {
-            case AIRY:
-                sprintf(buffer, "(2*besj1((x*%lg))/(x*%lg))**2", scale, scale);
-                break;
-            default:
-                sprintf(buffer, "not implemented (no simple analytical form)");
-                break;
-        }
-        return string(buffer);
+        return string("not defined");
     }
     
     virtual double get_mtf50_value(void) const {
-        double scale = (lambda/pitch) * aperture;
-        double mtf50 = 0.4039728 / scale;
-        switch (render_type) {
-            case AIRY_PLUS_BOX:
-                mtf50 = bisect_airy(&airy_box_mtf);
-                break;
-            case AIRY_PLUS_4DOT_OLPF:
-                mtf50 = bisect_airy(&airy_olpf_mtf);
-                break;
-            default:
-                break;
-        }
-        return mtf50;
+        return 0;
     }
       
   protected:
-    inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
-        const double& object_value, const double& background_value) const {
+    void initialise(void) {
     
-        double sample = 0;
+        nsamples = SQR(hs*2 + 1);
+        pos_x   = vector<double>(nsamples);
+        pos_y   = vector<double>(nsamples);
+        weights = vector<double>(nsamples);
         
-        if (render_type == AIRY) {
-            if ( is_inside(ex + x, ey + y) ) {
-                sample = object_value;
-            } else {
-                sample = background_value;
+        normal_sampler sampler;
+        Airy_sampler airy(lambda, pitch, aperture);
+        
+        vector< pair<double, int> > radius_list;
+        
+        for (int sidx=0; sidx < nsamples; sidx++) {
+            double& ex = pos_x[sidx];
+            double& ey = pos_y[sidx];
+            
+            double sample_prob = airy.rairy2d(ex, ey, sampler);
+            double rad = sqrt(ex*ex + ey*ey);
+            
+            rad /= (lambda/pitch)*aperture;
+            
+            // collect the indices of the outermost points
+            // this ensures that the early stopping criterion works well
+            if (rad > Airy_sampler::diam*0.15) {
+                radius_list.push_back(make_pair<double, int>(fabs(rad - Airy_sampler::diam*0.8), sidx));
             }
-        } else {
-            if (render_type == AIRY_PLUS_BOX) {
-                double area = poly.evaluate_x(sup, ex + x, ey + y);
-                sample = object_value * area + 
-                         background_value * (1 - area);
-            } else {
-                // render_type == AIRY_PLUS_OLPF
-                const double olpf_x[4] = {-0.375, -0.375, 0.375, 0.375};
-                const double olpf_y[4] = {-0.375, 0.375, -0.375, 0.375};
-                for (int k=0; k < 4; k++) {
-                    double area = poly.evaluate_x(sup, ex + x + olpf_x[k], ey + y + olpf_y[k]);
-                    sample += 0.25*(object_value * area + background_value * (1 - area));
-                }
-            }
+            
+            double jinc_weight = 4*Airy_sampler::jinc(rad)*Airy_sampler::jinc(rad);
+            
+            weights[sidx] = jinc_weight/sample_prob;
+        } // supersamples
+        
+        // now swap out the outermost points with the first points
+        sort(radius_list.begin(), radius_list.end());
+        for (size_t i=0; i < radius_list.size(); i++) {
+            swap(pos_x[i], pos_x[radius_list[i].second]);
+            swap(pos_y[i], pos_y[radius_list[i].second]);
+            swap(weights[i], weights[radius_list[i].second]);
         }
-                
-        return sample;
+        
+        printf("using IS renderer with %d samples per pixel\n", nsamples);
     }
+  
+    virtual double sample_core(const double& ex, const double& ey, const double& x, const double& y,
+        const double& object_value, const double& background_value) const  = 0;
     
-    double static airy_box_mtf(double x, double s)  {
-        return 2.0/M_PI*fabs(sin(x*M_PI)/(x*M_PI))*(acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
-    }
-    
-    double static airy_olpf_mtf(double x, double s)  {
-        return 2.0/M_PI * 
-          fabs( 0.875*sin(1.75*x*M_PI)/(1.75*x*M_PI) + 0.125*sin(0.25*x*M_PI)/(0.25*x*M_PI) ) * 
-          (acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
-    }
-
     double bisect_airy(double (*f)(double x, double s)) const { // simple, but robust
         const int nmax = 100;
         const double tol = 1e-7;
@@ -308,6 +208,32 @@ class Render_rectangle_is : public Render_rectangle {
     int nsamples;
     
     Render_type render_type;
+    int hs;
 };
+
+
+#include "render_is_airy.h"
+#include "render_is_airybox.h"
+#include "render_is_airyolpf.h"
+
+Render_rectangle_is* build_psf(Render_rectangle::Render_type render_t, double cx, double cy, double width, double height, double angle,                  
+    double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55) {
+
+    switch (render_t) {
+        case Render_rectangle::AIRY: 
+            return new Render_rectangle_is_airy(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            break;
+        case Render_rectangle::AIRY_PLUS_BOX:
+            return new Render_rectangle_is_airybox(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            break;
+        case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
+            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            break;
+        default:
+            printf("Warning! Trying to use an unsupported PSF type with Render_rectangle_is path!\n");
+            break;
+    }
+    return 0;
+}
 
 #endif // RENDER_H

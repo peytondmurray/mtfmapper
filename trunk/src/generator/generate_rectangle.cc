@@ -395,16 +395,12 @@ int main(int argc, char** argv) {
         case Render_rectangle::AIRY:
         case Render_rectangle::AIRY_PLUS_BOX:
         case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
-            rect = new Render_rectangle_is(
+            rect = build_psf(psf_type, 
                 width*0.5 + tc_xoff.getValue(), 
                 height*0.5 + tc_yoff.getValue(),
                 rwidth,
                 rheight,
                 M_PI/2 - theta,
-                sigma,
-                sigma*tc_psf_ratio.getValue(),
-                M_PI/2 - psf_theta,
-                psf_type,
                 tc_aperture.getValue(),
                 tc_pitch.getValue(),
                 tc_lambda.getValue()
