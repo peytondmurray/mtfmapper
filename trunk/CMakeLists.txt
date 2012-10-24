@@ -49,8 +49,22 @@ endif(MSVC)
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
 SET(OpenCV_BACKWARD_COMPA true)
 
+# if we are not on windows, try the following for locating OpenCV
+# this works well on Ubuntu
+# and seems to work on Gentoo
+if (NOT MSVC)
+    if (EXISTS "/usr/share/OpenCV/OpenCVConfig.cmake")
+        include("/usr/share/OpenCV/OpenCVConfig.cmake")
+    elseif(EXIST "/usr/share/opencv/OpenCVConfig.cmake")
+        include("/usr/share/opencv/OpenCVConfig.cmake")
+    endif (EXISTS "/usr/share/OpenCV/OpenCVConfig.cmake")
+endif(NOT MSVC)
+
 # external libs
-find_package(OpenCV REQUIRED)
+if (NOT OpenCV_VERSION)
+    # if neither of the above worked, try the find script
+    find_package(OpenCV REQUIRED)
+endif (NOT OpenCV_VERSION)
 find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
 find_package(TCLAP REQUIRED)
