@@ -70,7 +70,6 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
     // perform thresholding
     cv::MatConstIterator_<uint16_t> it = cvimg.begin<uint16_t>(); 
     for (j=0; j < out.rows; j++) {
-        const uint16_t* cptr = cvimg.ptr<uint16_t>(j);
         for (i=0; i < out.cols; i++) {
             index = j*out.cols+i;
 
