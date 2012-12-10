@@ -169,7 +169,7 @@ class Render_esf {
     Render_esf(const Render_rectangle& in_r, vector< pair<double, double> >& esf, double length, double theta,
         int oversampling_factor)
      : rect(in_r), length(length), oversampling_factor(oversampling_factor),
-       p(rect.cx, rect.cy), sample_pos(oversampling_factor*length),
+       p(rect.cx, rect.cy), sample_pos(lrint(oversampling_factor*length)),
        esf(esf) {
         
         Point_<double> cur(p);
@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
     
     double theta = 4.0/180.0*M_PI;
     
-    int rseed = time(0);
+    int rseed = int(time(time_t(0)));
     
     stringstream ss;
     ss << genrectangle_VERSION_MAJOR << "." << genrectangle_VERSION_MINOR;
@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
     TCLAP::CmdLine cmd("Generate rectangles with known MTF50 values", ' ', ss.str());
     TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "filename", cmd);
     TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "angle (degrees)", cmd);
-    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, time(0), "seed", cmd);
+    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, int(time(time_t(0))), "seed", cmd);
     TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.374781, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);

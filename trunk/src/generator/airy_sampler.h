@@ -79,10 +79,10 @@ class Airy_sampler {
         if (fabs(x) == 0) {
             return 0.5;
         }
-        return j1(x*M_PI)/(x*M_PI);
+        return _j1(x*M_PI)/(x*M_PI);
     }
     
-    static const double diam = 45;
+    static const double diam;
     
     double lambda;
     double pitch;
@@ -93,6 +93,7 @@ class Airy_sampler {
     vector<double> y;
 };
 
+const double Airy_sampler::diam = 45.0;
 
 #endif
 
