@@ -72,7 +72,7 @@ class Render_rectangle_is : public Render_rectangle {
         double prev_sk = 0;
         double prev_mk = 0;
         
-        int samples_threshold = rint(sqrt(nsamples)*12);
+        int samples_threshold = lrint(sqrt((double)nsamples)*12);
         
         // take initial batch of samples, checking for convergence along the way
         for (size_t sidx=0; sidx < size_t(samples_threshold); sidx++) {
