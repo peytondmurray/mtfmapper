@@ -39,13 +39,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Render_rectangle_is_airyolpf : public Render_rectangle_is {
   public:
     Render_rectangle_is_airyolpf(double cx, double cy, double width, double height, double angle, 
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55) 
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375) 
         : Render_rectangle_is(
             cx, cy, width, height, angle, 
             AIRY_PLUS_4DOT_OLPF, in_aperture, in_pitch, in_lambda,
             30 // half-samples
-          )
-          {
+          ),
+		  olpf_split(olpf_split)
+		  {
           
           initialise();
     }
@@ -56,7 +57,9 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
     virtual string get_mtf_curve(void) const {
         char buffer[1024];
         double scale = (lambda/pitch) * aperture;
-        sprintf(buffer, "2.0/pi*abs( 0.875*sin(1.75*x*pi)/(1.75*x*pi) + 0.125*sin(0.25*x*pi)/(0.25*x*pi) )*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
+        sprintf(buffer, "2.0/pi*abs( %g*sin(%g*x*pi)/(%g*x*pi) + %g*sin(%g*x*pi)/(%g*x*pi) )*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
+			0.5 + olpf_split, 2.0*(0.5+olpf_split), 2.0*(0.5+olpf_split),
+			0.5 - olpf_split, 2.0*(0.5-olpf_split), 2.0*(0.5-olpf_split),
             scale, scale, scale, scale
         );
         return string(buffer);
@@ -71,13 +74,17 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
     }
       
   protected:
+
+	double olpf_split;
+	
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
     
         double sample = 0;
         
-        const double olpf_x[4] = {-0.375, -0.375, 0.375, 0.375};
-        const double olpf_y[4] = {-0.375, 0.375, -0.375, 0.375};
+		double olpf_x[4] = {-olpf_split, -olpf_split,  olpf_split, olpf_split};
+		double olpf_y[4] = {-olpf_split,  olpf_split, -olpf_split, olpf_split};
+		        
         for (int k=0; k < 4; k++) {
             double area = poly.evaluate_x(sup, ex + x + olpf_x[k], ey + y + olpf_y[k]);
             sample += 0.25*(object_value * area + background_value * (1 - area));
