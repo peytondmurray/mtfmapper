@@ -245,6 +245,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, "f", cmd);
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
+	TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -362,10 +363,12 @@ int main(int argc, char** argv) {
         tc_out_name.getValue().c_str(), theta/M_PI*180, rseed
     );
     if (psf_type >= Render_rectangle::AIRY) {
-        printf("\t aperture = f/%.1lf, pixel pitch = %.3lf, lambda = %.3lf%s, ",
-             tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue(),
-             psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF ? ", OLPF split = 0.35 pixels" : ""
-        );
+        printf("\t aperture = f/%.1lf, pixel pitch = %.3lf, lambda = %.3lf, ",
+             tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue()
+		);
+		if (psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF) {
+			printf("OLPF split = %.3f pixels", tc_olpf_split.getValue());
+		}
     } else {
         printf("\t sigma = %lf (or mtf50 = %lf), ", 
             sigma, mtf
@@ -403,7 +406,8 @@ int main(int argc, char** argv) {
                 M_PI/2 - theta,
                 tc_aperture.getValue(),
                 tc_pitch.getValue(),
-                tc_lambda.getValue()
+                tc_lambda.getValue(),
+				tc_olpf_split.getValue()
             );
             break;
         case Render_rectangle::GAUSSIAN:

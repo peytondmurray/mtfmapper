@@ -217,7 +217,7 @@ class Render_rectangle_is : public Render_rectangle {
 #include "render_is_airyolpf.h"
 
 Render_rectangle_is* build_psf(Render_rectangle::Render_type render_t, double cx, double cy, double width, double height, double angle,                  
-    double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55) {
+    double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375) {
 
     switch (render_t) {
         case Render_rectangle::AIRY: 
@@ -227,7 +227,7 @@ Render_rectangle_is* build_psf(Render_rectangle::Render_type render_t, double cx
             return new Render_rectangle_is_airybox(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
             break;
         case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
-            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda, olpf_split);
             break;
         default:
             printf("Warning! Trying to use an unsupported PSF type with Render_rectangle_is path!\n");
