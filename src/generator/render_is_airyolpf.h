@@ -39,11 +39,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Render_rectangle_is_airyolpf : public Render_rectangle_is {
   public:
     Render_rectangle_is_airyolpf(double cx, double cy, double width, double height, double angle, 
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375) 
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375, 
+        int hs=30) 
         : Render_rectangle_is(
             cx, cy, width, height, angle, 
             AIRY_PLUS_4DOT_OLPF, in_aperture, in_pitch, in_lambda,
-            30 // half-samples
+            hs // half-samples
           ),
 		  olpf_split(olpf_split)
 		  {

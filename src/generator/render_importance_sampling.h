@@ -217,17 +217,27 @@ class Render_rectangle_is : public Render_rectangle {
 #include "render_is_airyolpf.h"
 
 Render_rectangle_is* build_psf(Render_rectangle::Render_type render_t, double cx, double cy, double width, double height, double angle,                  
-    double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375) {
+    double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375,
+    int hs=0) {
 
     switch (render_t) {
         case Render_rectangle::AIRY: 
-            return new Render_rectangle_is_airy(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            return new Render_rectangle_is_airy(cx, cy, width, height, angle, 
+                    in_aperture, in_pitch, in_lambda,
+                    hs == 0 ? 60 : hs
+                );
             break;
         case Render_rectangle::AIRY_PLUS_BOX:
-            return new Render_rectangle_is_airybox(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda);
+            return new Render_rectangle_is_airybox(cx, cy, width, height, angle, 
+                    in_aperture, in_pitch, in_lambda,
+                    hs == 0 ? 40 : hs
+                );
             break;
         case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
-            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, in_aperture, in_pitch, in_lambda, olpf_split);
+            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, 
+                    in_aperture, in_pitch, in_lambda, 
+                    olpf_split, hs == 0 ? 30 : hs
+                );
             break;
         default:
             printf("Warning! Trying to use an unsupported PSF type with Render_rectangle_is path!\n");

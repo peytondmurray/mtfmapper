@@ -79,7 +79,7 @@ class Airy_sampler {
         if (fabs(x) == 0) {
             return 0.5;
         }
-        return _j1(x*M_PI)/(x*M_PI);
+        return j1(x*M_PI)/(x*M_PI);
     }
     
     static const double diam;

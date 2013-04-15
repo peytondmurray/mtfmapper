@@ -39,11 +39,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Render_rectangle_is_airy : public Render_rectangle_is {
   public:
     Render_rectangle_is_airy(double cx, double cy, double width, double height, double angle, 
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55) 
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
         : Render_rectangle_is(
             cx, cy, width, height, angle, 
             AIRY, in_aperture, in_pitch, in_lambda,
-            60 // hs=60 for Airy PSF
+            hs // hs=60 for Airy PSF
           )
           {
           

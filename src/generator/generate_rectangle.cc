@@ -246,6 +246,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
 	TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
+	TCLAP::ValueArg<double> tc_samples("", "airy-samples", "Number of samples per pixel for Airy PSFs [actually, sqrt(0.5(n-1))]", false, 30, "samples", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -407,7 +408,8 @@ int main(int argc, char** argv) {
                 tc_aperture.getValue(),
                 tc_pitch.getValue(),
                 tc_lambda.getValue(),
-				tc_olpf_split.getValue()
+				tc_olpf_split.getValue(),
+				tc_samples.isSet() ? tc_samples.getValue() : 0
             );
             break;
         case Render_rectangle::GAUSSIAN:
