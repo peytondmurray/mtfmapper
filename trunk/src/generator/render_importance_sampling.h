@@ -171,17 +171,17 @@ class Render_rectangle_is : public Render_rectangle {
     virtual double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const  = 0;
     
-    double bisect_airy(double (*f)(double x, double s)) const { // simple, but robust
+    double bisect_airy(double (*f)(double x, double s, double _p), double p = 0) const { // simple, but robust
         const int nmax = 100;
         const double tol = 1e-7;
         double s = (lambda/pitch) * aperture;
         double a = 1e-5;
         double b = min((1-1e-5) / s, 1.0);
-        double fa = f(a, s);
-        double fb = f(b, s);
+        double fa = f(a, s, p);
+        double fb = f(b, s, p);
         for (int n=0; n < nmax; n++) {
             double c = 0.5 * (a + b);
-            double fc = f(c, s);
+            double fc = f(c, s, p);
             if (fc == 0 || (b - a) < tol) {
                 return c;
             }

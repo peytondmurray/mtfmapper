@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
 	TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
-	TCLAP::ValueArg<double> tc_samples("", "airy-samples", "Number of samples per pixel for Airy PSFs [actually, sqrt(0.5(n-1))]", false, 30, "samples", cmd);
+	TCLAP::ValueArg<double> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -339,6 +339,27 @@ int main(int argc, char** argv) {
     
     if (sigma < 0.185) {
         printf("It does not make sense to set blur below 0.185; you are on your own ...\n");
+    }
+    
+    if (tc_samples.getValue() < 1) {
+        printf("Error. The argument to --airy-samples must be positive");
+        return -1;
+    }
+    if (tc_samples.getValue() > 100 && !tc_profile.getValue()) {
+        printf("Note: You have specified a large number of samples per pixel in 2D rendering mode.\n");
+        printf("      Rendering may be very slow, unless you have an amazingly fast machine.\n\n");
+    }
+    if (tc_samples.getValue() < 5) {
+        printf("Note: You have specified a very small number of samples per pixel (--airy-samples).\n");
+        printf("      Output is going to be very noisy. You have been warned ...\n\n");
+    }
+    if (tc_samples.isSet() && 
+        psf_type != Render_rectangle::AIRY &&
+        psf_type != Render_rectangle::AIRY_PLUS_BOX &&
+        psf_type != Render_rectangle::AIRY_PLUS_4DOT_OLPF ) {
+        
+        printf("Warning: You have specified the number of Airy samples (--airy-samples), but you\n");
+        printf("         are not rendering with an Airy-based PSF.\n");
     }
     
     bool use_gamma = !tc_linear.getValue();
