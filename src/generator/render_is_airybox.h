@@ -67,7 +67,7 @@ class Render_rectangle_is_airybox : public Render_rectangle_is {
     }
     
     virtual double get_mtf50_value(void) const {
-        return  bisect_airy(&airy_box_mtf);
+        return  bisect_airy(&airy_box_mtf, 0);
     }
       
   protected:
@@ -78,7 +78,7 @@ class Render_rectangle_is_airybox : public Render_rectangle_is {
         return object_value * area + background_value * (1 - area);
     }
     
-    double static airy_box_mtf(double x, double s)  {
+    double static airy_box_mtf(double x, double s, double p=0)  {
         return 2.0/M_PI*fabs(sin(x*M_PI)/(x*M_PI))*(acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
     }
 };

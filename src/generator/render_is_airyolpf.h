@@ -71,7 +71,7 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
     }
     
     virtual double get_mtf50_value(void) const {
-        return bisect_airy(&airy_olpf_mtf);
+        return bisect_airy(&airy_olpf_mtf, olpf_split);
     }
       
   protected:
@@ -94,10 +94,14 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
         return sample;
     }
     
-    double static airy_olpf_mtf(double x, double s)  {
+    double static airy_olpf_mtf(double x, double s, double p_olpf_split)  {
+        double wide = 0.5 + p_olpf_split;
+        double narrow = 0.5 - p_olpf_split;
         return 2.0/M_PI * 
-          fabs( 0.875*sin(1.75*x*M_PI)/(1.75*x*M_PI) + 0.125*sin(0.25*x*M_PI)/(0.25*x*M_PI) ) * 
-          (acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
+          fabs( wide*sin(2*wide*x*M_PI)/(2*wide*x*M_PI) + 
+                narrow*sin(2*narrow*x*M_PI)/(2*narrow*x*M_PI) ) * 
+                (acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))
+              ) - 0.5;
     }
 };
 
