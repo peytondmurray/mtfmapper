@@ -74,7 +74,7 @@ class Render_rectangle_is_airybox : public Render_rectangle_is {
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
     
-        double area = poly.evaluate_x(sup, ex + x, ey + y);
+        double area = poly.evaluate_x(sup, ex + x, ey + y) / sup.own_area;
         return object_value * area + background_value * (1 - area);
     }
     

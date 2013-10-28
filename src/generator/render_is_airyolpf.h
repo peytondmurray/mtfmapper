@@ -87,7 +87,7 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
 		double olpf_y[4] = {-olpf_split,  olpf_split, -olpf_split, olpf_split};
 		        
         for (int k=0; k < 4; k++) {
-            double area = poly.evaluate_x(sup, ex + x + olpf_x[k], ey + y + olpf_y[k]);
+            double area = poly.evaluate_x(sup, ex + x + olpf_x[k], ey + y + olpf_y[k]) / sup.own_area;
             sample += 0.25*(object_value * area + background_value * (1 - area));
         }
                 

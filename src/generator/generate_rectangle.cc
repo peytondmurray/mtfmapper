@@ -167,18 +167,23 @@ class Render_rows {
 class Render_esf {
   public:
     Render_esf(const Render_rectangle& in_r, vector< pair<double, double> >& esf, double length, double theta,
-        int oversampling_factor)
+        int oversampling_factor, double xoff=0, double yoff=0)
      : rect(in_r), length(length), oversampling_factor(oversampling_factor),
-       p(rect.cx, rect.cy), sample_pos(lrint(oversampling_factor*length)),
+       p(rect.cx+xoff, rect.cy+yoff), 
+       sample_pos(Render_esf::n_samples(length, oversampling_factor)),
        esf(esf) {
-        
         Point_<double> cur(p);
         Point_<double> d(cos(-theta)/oversampling_factor, sin(-theta)/oversampling_factor);
-        for (int i=0; i < int(length*oversampling_factor); i++) {
+        cur = cur + (0.25+0.125)*length*oversampling_factor*d;
+        for (int i=0; i < (int)sample_pos.size(); i++) {
             sample_pos[i] = cur;
             cur = cur + d;
         }
         
+    }
+    
+    static int n_samples(double length, int oversampling_factor) {
+        return floor(length*oversampling_factor*0.25);
     }
     
     void write(const string& profile_fname) {
@@ -490,8 +495,8 @@ int main(int argc, char** argv) {
         }
         // render call
         const int oversample = 32;
-        vector< pair<double, double> > esf(int(rwidth*oversample));
-        Render_esf re(*rect, esf, rwidth, theta, oversample);
+        vector< pair<double, double> > esf(Render_esf::n_samples(rwidth, oversample));
+        Render_esf re(*rect, esf, rwidth, theta, oversample, tc_xoff.getValue(), tc_yoff.getValue());
         parallel_for(blocked_range<size_t>(size_t(0), esf.size()), re);
         re.write(profile_fname);
     }
