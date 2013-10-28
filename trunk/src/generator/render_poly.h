@@ -37,11 +37,12 @@ using namespace cv;
 //==============================================================================
 class Render_rectangle_poly : public Render_rectangle {
   public:
-    static const int MAX_POINTS = 32; // max number of point in intersected polygon
+    static const int MAX_POINTS = 70; // max number of point in intersected polygon
   
-    Render_rectangle_poly(double cx, double cy, double width, double height, double angle) 
-    : Render_rectangle(cx, cy, width, height, angle, false) {
-    
+    Render_rectangle_poly(double cx, double cy, double width, double height, double angle, int nverts=4) 
+    : Render_rectangle(cx, cy, width, height, angle, 6.0, 6.0, 0.0, false, nverts),
+      own_area(compute_area()) {
+        printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
     }
     
     virtual ~Render_rectangle_poly(void) {
@@ -106,22 +107,31 @@ class Render_rectangle_poly : public Render_rectangle {
         return 0.5 * fabs(A);
     }
     
+    double compute_area(void) const {
+        double A = 0;
+        for (int i=0; i < nvertices; i++) {
+            int ni = (i+1) % nvertices;
+            A += bases[i][0]*bases[ni][1] - bases[ni][0]*bases[i][1];
+        }
+        return 0.5 * fabs(A);
+    }
+    
     void intersect(double* points_x, double* points_y, int& points_len, 
         const Render_rectangle& b, double xoffset = 0, double yoffset = 0) const {
         
-        for (int i=0; i < 4; i++) {
+        for (int i=0; i < b.nvertices; i++) { 
             points_x[i] = b.bases[i][0] + xoffset;
             points_y[i] = b.bases[i][1] + yoffset;
             points_len++;
         }
         
-        for (int e=0; e < 4; e++) {
-            intersect_core(points_x, points_y, points_len, e);
+        for (int e=0; e < nvertices; e++) {
+            intersect_core(points_x, points_y, points_len, e, nvertices);
         }
     }
     
-    void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e) const {
-        int ne = (e + 1) % 4;
+    void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges) const {
+        int ne = (e + 1) % nedges;
         
         double Px = bases[e][0];
         double Py = bases[e][1];
@@ -186,7 +196,7 @@ class Render_rectangle_poly : public Render_rectangle {
         memcpy(inpoints_y, outpoints_y, sizeof(double)*out_idx);
     }
     
-      
+    double own_area;  
 };
 
 #endif // RENDER_H

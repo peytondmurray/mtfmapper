@@ -37,6 +37,8 @@ const double transparent = -1.0;
 #include <string>
 using std::string;
 
+const int max_verts_per_poly = 70;
+
 //==============================================================================
 class Render_target {
   public:
@@ -57,27 +59,49 @@ class Render_rectangle : public Render_target {
     } Render_type;
   
     Render_rectangle(double cx, double cy, double width, double height, double angle, 
-        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true) : sigma(in_sigma), cx(cx), cy(cy) {
-        bases[0] = cv::Vec2d(width/2, height/2);
-        bases[1] = cv::Vec2d(-width/2, height/2);
-        bases[2] = cv::Vec2d(-width/2, -height/2);
-        bases[3] = cv::Vec2d(width/2, -height/2);
-        
-        // rotate corners
-        for (size_t i=0; i < 4; i++) {
-            double ox = bases[i][0];
-            double oy = bases[i][1];
-            bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
-            bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
-        }
-              
-        normals[0] = (bases[2] - bases[1]); 
-        normals[1] = (bases[3] - bases[2]); 
-        normals[2] = (bases[0] - bases[3]); 
-        normals[3] = (bases[1] - bases[0]); 
-        for (size_t i=0; i < 4; i++) {
-            double n = norm(normals[i]);
-            normals[i] = normals[i]*(1.0/n);
+        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true, int nverts=4) 
+        : sigma(in_sigma), cx(cx), cy(cy), nvertices(nverts) {
+        printf("nverts=%d, nvertices=%d\n", nverts, nvertices);
+        if (false /*nvertices == 4*/) {
+            printf("rendering a plain square\n");
+            // default is a square
+            bases[0] = cv::Vec2d(width/2, height/2);
+            bases[1] = cv::Vec2d(-width/2, height/2);
+            bases[2] = cv::Vec2d(-width/2, -height/2);
+            bases[3] = cv::Vec2d(width/2, -height/2);
+            
+            // rotate corners
+            for (size_t i=0; i < 4; i++) {
+                double ox = bases[i][0];
+                double oy = bases[i][1];
+                bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
+                bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
+            }
+                  
+            normals[0] = (bases[2] - bases[1]); 
+            normals[1] = (bases[3] - bases[2]); 
+            normals[2] = (bases[0] - bases[3]); 
+            normals[3] = (bases[1] - bases[0]); 
+            for (size_t i=0; i < 4; i++) {
+                double n = norm(normals[i]);
+                normals[i] = normals[i]*(1.0/n);
+            }
+            
+            for (int i=0; i < nvertices; i++) {
+                printf("** %lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
+            }
+        } else {
+            printf("rendering a polygon with %d sides\n", nvertices);
+            assert(nvertices >= 3);
+            for (int i=0; i < nvertices; i++) {
+                double phi = i*M_PI*2/double(nvertices);
+                bases[i][0] = width/2*cos(angle+phi - M_PI/4.0) + cx;
+                bases[i][1] = height/2*sin(angle+phi - M_PI/4.0) + cy;
+                normals[i][0] = cos(angle+phi);
+                normals[i][1] = -sin(angle+phi);
+                printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
+            }
+            printf("horizontal width: %lf\n", norm(bases[1] - bases[0]));
         }
         
         if (init) {
@@ -132,7 +156,7 @@ class Render_rectangle : public Render_target {
   public:
     inline bool is_inside(double x, double y) const {
         bool inside = true;
-        for (int i=0; i < 4 && inside; i++) {
+        for (int i=0; i < nvertices && inside; i++) {
             double dot = normals[i][0]*(x - bases[i][0]) + 
                          normals[i][1]*(y - bases[i][1]);
             if (dot < 0) {
@@ -144,12 +168,13 @@ class Render_rectangle : public Render_target {
       
     double sigma;
     int    hs;
-    cv::Vec2d normals[4];
-    cv::Vec2d bases[4];
+    cv::Vec2d normals[max_verts_per_poly];
+    cv::Vec2d bases[max_verts_per_poly];
     vector<double> pos_x;
     vector<double> pos_y;
     double cx;
     double cy;
+    int nvertices;
 };
 
 #endif // RENDER_H

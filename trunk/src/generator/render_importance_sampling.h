@@ -54,8 +54,13 @@ class Render_rectangle_is : public Render_rectangle {
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
         : Render_rectangle(cx, cy, width, height, angle, 1.0, 1.0, 0.0, false),
           aperture(in_aperture), pitch(in_pitch), lambda(in_lambda),
-          poly(cx, cy, width, height, angle), sup(0, 0, 1, 1, 0), render_type(render_type), hs(hs) {
-
+          //poly(cx, cy, width, height, angle, 4), 
+          poly(cx, cy, width*sqrt(2.0), height*sqrt(2.0), angle, 4), 
+          //sup(0, 0, 1.253314, 1.253314, 0, 4), // square with area of pi/4, i.e., same fill factor as circle
+          sup(0, 0, 1, 1, 0, 60), // TODO: how do we compensate for the lower effective fill factor?
+          //sup(0, 0, sqrt(2.0), sqrt(2.0), 0, 4), // normal 100% FF square pixels
+          //sup(0, 0, 1, 1, 0, 4), // normal 100% FF square pixels
+          render_type(render_type), hs(hs) {
     }
 
   public:
