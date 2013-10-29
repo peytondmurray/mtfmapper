@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "airy_sampler.h"
 #include "render.h"
-#include "render_poly.h"
+#include "polygon_geom.h"
 #include "render_importance_sampling.h"
 
 //==============================================================================

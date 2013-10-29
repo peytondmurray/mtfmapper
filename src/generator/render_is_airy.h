@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "airy_sampler.h"
 #include "render.h"
-#include "render_poly.h"
+#include "polygon_geom.h"
 #include "render_importance_sampling.h"
 
 //==============================================================================
@@ -78,7 +78,7 @@ class Render_rectangle_is_airy : public Render_rectangle_is {
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
         
-        return is_inside(ex + x, ey + y) ? object_value : background_value;
+        return t_geom.is_inside(ex + x, ey + y) ? object_value : background_value;
     }
 };
 

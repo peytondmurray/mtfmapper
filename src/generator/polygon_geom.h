@@ -25,33 +25,95 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef RENDER_POLY_H
-#define RENDER_POLY_H
+#ifndef POLYGON_GEOM_H
+#define POLYGON_GEOM_H
 
 
 #include <cv.h>
 using namespace cv;
 
-#include "render.h"
+//#include "render.h"
+
+
 
 //==============================================================================
-class Render_rectangle_poly : public Render_rectangle {
+class Polygon_geom  {
   public:
-    static const int MAX_POINTS = 70; // max number of point in intersected polygon
+    static const int max_verts_per_poly = 70; // max number of point in intersected polygon
   
-    Render_rectangle_poly(double cx, double cy, double width, double height, double angle, int nverts=4) 
-    : Render_rectangle(cx, cy, width, height, angle, 6.0, 6.0, 0.0, false, nverts),
-      own_area(compute_area()) {
+    Polygon_geom(double cx, double cy, double width, double height, double angle, int nverts=4) 
+    : cx(cx), cy(cy), nvertices(nverts) {
+      //Render_polygon(cx, cy, width, height, angle, 6.0, 6.0, 0.0, false, nverts),
+
+        construct_regular_polygon(width, height, angle);
+        own_area = compute_area();
         printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
     }
     
-    virtual ~Render_rectangle_poly(void) {
+    virtual ~Polygon_geom(void) {
+    }
+
+    void construct_regular_polygon(double width, double height, double angle) {
+        printf("nvertices=%d\n", nvertices);
+        if (false /*nvertices == 4*/) {
+            printf("rendering a plain square\n");
+            // default is a square
+            bases[0] = cv::Vec2d(width/2, height/2);
+            bases[1] = cv::Vec2d(-width/2, height/2);
+            bases[2] = cv::Vec2d(-width/2, -height/2);
+            bases[3] = cv::Vec2d(width/2, -height/2);
+            
+            // rotate corners
+            for (size_t i=0; i < 4; i++) {
+                double ox = bases[i][0];
+                double oy = bases[i][1];
+                bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
+                bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
+            }
+                  
+            normals[0] = (bases[2] - bases[1]); 
+            normals[1] = (bases[3] - bases[2]); 
+            normals[2] = (bases[0] - bases[3]); 
+            normals[3] = (bases[1] - bases[0]); 
+            for (size_t i=0; i < 4; i++) {
+                double n = norm(normals[i]);
+                normals[i] = normals[i]*(1.0/n);
+            }
+            
+            for (int i=0; i < nvertices; i++) {
+                printf("** %lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
+            }
+        } else {
+            printf("rendering a polygon with %d sides\n", nvertices);
+            assert(nvertices >= 3);
+            for (int i=0; i < nvertices; i++) {
+                double phi = i*M_PI*2/double(nvertices);
+                bases[i][0] = width/2*cos(angle+phi - M_PI/4.0) + cx;
+                bases[i][1] = height/2*sin(angle+phi - M_PI/4.0) + cy;
+                normals[i][0] = cos(angle+phi);
+                normals[i][1] = -sin(angle+phi);
+                printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
+            }
+            printf("horizontal width: %lf\n", norm(bases[1] - bases[0]));
+        }
+    }
+
+    inline bool is_inside(double x, double y) const {
+        bool inside = true;
+        for (int i=0; i < nvertices && inside; i++) {
+            double dot = normals[i][0]*(x - bases[i][0]) + 
+                         normals[i][1]*(y - bases[i][1]);
+            if (dot < 0) {
+                inside = false;
+            }
+        }
+        return inside;
     }
     
-    double evaluate_x(const Render_rectangle& b, double xoffset = 0, double yoffset = 0)  const {
+    double evaluate_x(const Polygon_geom& b, double xoffset = 0, double yoffset = 0)  const {
     
-        double points_x[MAX_POINTS];
-        double points_y[MAX_POINTS];
+        double points_x[max_verts_per_poly];
+        double points_y[max_verts_per_poly];
         int points_len = 0;
         
         intersect(points_x, points_y, points_len, b, xoffset, yoffset);
@@ -117,7 +179,7 @@ class Render_rectangle_poly : public Render_rectangle {
     }
     
     void intersect(double* points_x, double* points_y, int& points_len, 
-        const Render_rectangle& b, double xoffset = 0, double yoffset = 0) const {
+        const Polygon_geom& b, double xoffset = 0, double yoffset = 0) const {
         
         for (int i=0; i < b.nvertices; i++) { 
             points_x[i] = b.bases[i][0] + xoffset;
@@ -129,7 +191,13 @@ class Render_rectangle_poly : public Render_rectangle {
             intersect_core(points_x, points_y, points_len, e, nvertices);
         }
     }
-    
+
+    // this looks like the Sutherland-Hodgman algorithm
+    // the clipping polygon must be convex (req. by SH algo)
+    // will produce overlapping edges if a concave point exists
+    // outside of the clipping polygon (this wiil definitely happen
+    // if concave object polygon is presented). The solution is to
+    // decompose all input polygons into convex components ...
     void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges) const {
         int ne = (e + 1) % nedges;
         
@@ -142,8 +210,8 @@ class Render_rectangle_poly : public Render_rectangle {
         double Nx = -Dy;
         double Ny = Dx;
         
-        double outpoints_x[MAX_POINTS];
-        double outpoints_y[MAX_POINTS];
+        double outpoints_x[max_verts_per_poly];
+        double outpoints_y[max_verts_per_poly];
         int out_idx = 0;
         
         double Sx = inpoints_x[in_len - 1];
@@ -196,7 +264,14 @@ class Render_rectangle_poly : public Render_rectangle {
         memcpy(inpoints_y, outpoints_y, sizeof(double)*out_idx);
     }
     
-    double own_area;  
+    double own_area;
+
+    cv::Vec2d normals[max_verts_per_poly];
+    cv::Vec2d bases[max_verts_per_poly];
+
+    double cx;
+    double cy;
+    int nvertices;
 };
 
 #endif // RENDER_H
