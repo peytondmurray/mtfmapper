@@ -43,7 +43,6 @@ class Polygon_geom  {
   
     Polygon_geom(double cx, double cy, double width, double height, double angle, int nverts=4) 
     : cx(cx), cy(cy), nvertices(nverts) {
-      //Render_polygon(cx, cy, width, height, angle, 6.0, 6.0, 0.0, false, nverts),
 
         construct_regular_polygon(width, height, angle);
         own_area = compute_area();
@@ -96,6 +95,40 @@ class Polygon_geom  {
             }
             printf("horizontal width: %lf\n", norm(bases[1] - bases[0]));
         }
+
+        // compute a bounding box
+        bb_bases[0][1] = 1e12;
+        bb_bases[1][0] = -1e12;
+        bb_bases[2][1] = -1e12;
+        bb_bases[3][0] = 1e12;
+
+        for (int i=0; i < nvertices; i++) {
+            // bb_bases: 0=top, 1=right, 2=bottom, 3=left
+            bb_bases[0][1] = std::min(bases[i][1], bb_bases[0][1]);
+            bb_bases[1][0] = std::max(bases[i][0], bb_bases[1][0]);
+            bb_bases[2][1] = std::max(bases[i][1], bb_bases[2][1]);
+            bb_bases[3][0] = std::min(bases[i][0], bb_bases[3][0]);
+        }
+        bb_bases[0][0] = bb_bases[3][0];
+        bb_bases[1][1] = bb_bases[0][1];
+        bb_bases[2][0] = bb_bases[1][0];
+        bb_bases[3][1] = bb_bases[2][1];
+
+        bb_normals[0][0] = 0;
+        bb_normals[0][1] = -1;
+        bb_normals[1][0] = 1;
+        bb_normals[1][1] = 0;
+        bb_normals[2][0] = 0;
+        bb_normals[2][1] = 1;
+        bb_normals[3][0] = -1;
+        bb_normals[3][1] = 0;
+
+        bb_area = compute_bb_area();
+
+        for (int k=0; k < 4; k++) {
+            printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
+        }
+        
     }
 
     inline bool is_inside(double x, double y) const {
@@ -115,6 +148,23 @@ class Polygon_geom  {
         double points_x[max_verts_per_poly];
         double points_y[max_verts_per_poly];
         int points_len = 0;
+
+        if (b.nvertices >= 6) {
+            intersect(points_x, points_y, points_len, b, xoffset, yoffset, true);
+            double i_bb_area = compute_area(points_x, points_y, points_len);
+            
+            if (fabs(i_bb_area) < 1e-11) {
+                return 0;
+            } else {
+                if (fabs(i_bb_area - b.bb_area) < 1e-11) {
+                    return b.own_area;
+                } 
+            }
+
+            // partial intersection, so reset and perform 
+            // intersection again using full geometry
+            points_len = 0;
+        }
         
         intersect(points_x, points_y, points_len, b, xoffset, yoffset);
         return compute_area(points_x, points_y, points_len);
@@ -177,15 +227,33 @@ class Polygon_geom  {
         }
         return 0.5 * fabs(A);
     }
+
+    double compute_bb_area(void) const {
+        double A = 0;
+        for (int i=0; i < 4; i++) {
+            int ni = (i+1) % 4;
+            A += bb_bases[i][0]*bb_bases[ni][1] - bb_bases[ni][0]*bb_bases[i][1];
+        }
+        return 0.5 * fabs(A);
+    }
     
     void intersect(double* points_x, double* points_y, int& points_len, 
-        const Polygon_geom& b, double xoffset = 0, double yoffset = 0) const {
-        
-        for (int i=0; i < b.nvertices; i++) { 
-            points_x[i] = b.bases[i][0] + xoffset;
-            points_y[i] = b.bases[i][1] + yoffset;
-            points_len++;
+        const Polygon_geom& b, double xoffset = 0, double yoffset = 0, bool bounding_box=false) const {
+
+        if (bounding_box) {
+            for (int i=0; i < 4; i++) { 
+                points_x[i] = b.bb_bases[i][0] + xoffset;
+                points_y[i] = b.bb_bases[i][1] + yoffset;
+                points_len++;
+            }
+        } else {
+            for (int i=0; i < b.nvertices; i++) { 
+                points_x[i] = b.bases[i][0] + xoffset;
+                points_y[i] = b.bases[i][1] + yoffset;
+                points_len++;
+            }
         }
+
         
         for (int e=0; e < nvertices; e++) {
             intersect_core(points_x, points_y, points_len, e, nvertices);
@@ -269,9 +337,14 @@ class Polygon_geom  {
     cv::Vec2d normals[max_verts_per_poly];
     cv::Vec2d bases[max_verts_per_poly];
 
+    cv::Vec2d bb_normals[4];
+    cv::Vec2d bb_bases[4];
+
     double cx;
     double cy;
     int nvertices;
+
+    double bb_area;
 };
 
 #endif // RENDER_H
