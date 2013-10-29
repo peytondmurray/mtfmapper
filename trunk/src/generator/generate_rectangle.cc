@@ -90,7 +90,7 @@ inline double gamma(double x) { // x in [0,1]
 // functor for tbb
 class Render_rows {
   public:
-    Render_rows(cv::Mat& in_img, const Render_rectangle& in_r, Noise_source& noise_source, 
+    Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
         double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
         int buffer_border=30)
      : img(in_img), rect(in_r), noise_source(noise_source),
@@ -154,7 +154,7 @@ class Render_rows {
     } 
      
     cv::Mat& img;
-    const Render_rectangle& rect;
+    const Render_polygon& rect;
     Noise_source& noise_source;
     bool gamma_correct;
     double contrast_reduction;
@@ -166,10 +166,10 @@ class Render_rows {
 // functor for tbb
 class Render_esf {
   public:
-    Render_esf(const Render_rectangle& in_r, vector< pair<double, double> >& esf, double length, double theta,
+    Render_esf(const Render_polygon& in_r, vector< pair<double, double> >& esf, double length, double theta,
         int oversampling_factor, double xoff=0, double yoff=0)
      : rect(in_r), length(length), oversampling_factor(oversampling_factor),
-       p(rect.cx+xoff, rect.cy+yoff), 
+       p(rect.t_geom.cx+xoff, rect.t_geom.cy+yoff), 
        sample_pos(Render_esf::n_samples(length, oversampling_factor)),
        esf(esf) {
         Point_<double> cur(p);
@@ -205,7 +205,7 @@ class Render_esf {
         }
     } 
      
-    const Render_rectangle& rect;
+    const Render_polygon& rect;
     double length;
     int    oversampling_factor;
     Point_<double> p;
@@ -277,19 +277,19 @@ int main(int argc, char** argv) {
     
     Render_rectangle_is::Render_type psf_type;
     if ( tc_psf.getValue().compare("gaussian") == 0) {
-        psf_type = Render_rectangle::GAUSSIAN;
+        psf_type = Render_polygon::GAUSSIAN;
     }
     if ( tc_psf.getValue().compare("gaussian-sampled") == 0) {
-        psf_type = Render_rectangle::GAUSSIAN_SAMPLED;
+        psf_type = Render_polygon::GAUSSIAN_SAMPLED;
     }
     if ( tc_psf.getValue().compare("airy") == 0) {
-        psf_type = Render_rectangle::AIRY;
+        psf_type = Render_polygon::AIRY;
     }
     if ( tc_psf.getValue().compare("airy-box") == 0) {
-        psf_type = Render_rectangle::AIRY_PLUS_BOX;
+        psf_type = Render_polygon::AIRY_PLUS_BOX;
     }
     if ( tc_psf.getValue().compare("airy-4dot-olpf") == 0) {
-        psf_type = Render_rectangle::AIRY_PLUS_4DOT_OLPF;
+        psf_type = Render_polygon::AIRY_PLUS_4DOT_OLPF;
     }
     
     // perform some sanity checking
@@ -359,9 +359,9 @@ int main(int argc, char** argv) {
         printf("      Output is going to be very noisy. You have been warned ...\n\n");
     }
     if (tc_samples.isSet() && 
-        psf_type != Render_rectangle::AIRY &&
-        psf_type != Render_rectangle::AIRY_PLUS_BOX &&
-        psf_type != Render_rectangle::AIRY_PLUS_4DOT_OLPF ) {
+        psf_type != Render_polygon::AIRY &&
+        psf_type != Render_polygon::AIRY_PLUS_BOX &&
+        psf_type != Render_polygon::AIRY_PLUS_4DOT_OLPF ) {
         
         printf("Warning: You have specified the number of Airy samples (--airy-samples), but you\n");
         printf("         are not rendering with an Airy-based PSF.\n");
@@ -389,11 +389,11 @@ int main(int argc, char** argv) {
     printf("output filename = %s, theta = %lf degrees, seed = %d,\n ", 
         tc_out_name.getValue().c_str(), theta/M_PI*180, rseed
     );
-    if (psf_type >= Render_rectangle::AIRY) {
+    if (psf_type >= Render_polygon::AIRY) {
         printf("\t aperture = f/%.1lf, pixel pitch = %.3lf, lambda = %.3lf, ",
              tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue()
 		);
-		if (psf_type == Render_rectangle::AIRY_PLUS_4DOT_OLPF) {
+		if (psf_type == Render_polygon::AIRY_PLUS_4DOT_OLPF) {
 			printf("OLPF split = %.3f pixels", tc_olpf_split.getValue());
 		}
     } else {
@@ -420,11 +420,11 @@ int main(int argc, char** argv) {
     
 
     // decide which PSF rendering algorithm to use
-    Render_rectangle* rect=0;
+    Render_polygon* rect=0;
     switch (psf_type) {
-        case Render_rectangle::AIRY:
-        case Render_rectangle::AIRY_PLUS_BOX:
-        case Render_rectangle::AIRY_PLUS_4DOT_OLPF:
+        case Render_polygon::AIRY:
+        case Render_polygon::AIRY_PLUS_BOX:
+        case Render_polygon::AIRY_PLUS_4DOT_OLPF:
             rect = build_psf(psf_type, 
                 width*0.5 + tc_xoff.getValue(), 
                 height*0.5 + tc_yoff.getValue(),
@@ -438,7 +438,7 @@ int main(int argc, char** argv) {
 				tc_samples.isSet() ? tc_samples.getValue() : 0
             );
             break;
-        case Render_rectangle::GAUSSIAN:
+        case Render_polygon::GAUSSIAN:
             rect = new Render_rectangle_integral(
                 width*0.5 + tc_xoff.getValue(), 
                 height*0.5 + tc_yoff.getValue(),
@@ -448,8 +448,8 @@ int main(int argc, char** argv) {
                 sigma
             );
             break;
-        case Render_rectangle::GAUSSIAN_SAMPLED:
-            rect = new Render_rectangle(
+        case Render_polygon::GAUSSIAN_SAMPLED:
+            rect = new Render_polygon(
                 width*0.5 + tc_xoff.getValue(), 
                 height*0.5 + tc_yoff.getValue(),
                 rwidth,

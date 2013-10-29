@@ -63,13 +63,13 @@ double erf(double x) {
 
 
 //==============================================================================
-class Render_rectangle_integral : public Render_rectangle {
+class Render_rectangle_integral : public Render_polygon {
   public:
     Render_rectangle_integral(double cx, double cy, double width, double height, double angle, double in_sigma=6.0) : 
-        Render_rectangle(cx, cy, width, height, angle, in_sigma) {
+        Render_polygon(cx, cy, width, height, angle, in_sigma) {
         
         for (int k=0; k < 4; k++) {
-            yvals.push_back(bases[k][1]);
+            yvals.push_back(t_geom.bases[k][1]);
         }
         sort(yvals.begin(), yvals.end());
         
@@ -156,13 +156,13 @@ class Render_rectangle_integral : public Render_rectangle {
         double right = -1e50;
         for (int k=0; k < 4; k++) {
             int k1 = (k + 1) % 4;
-            cv::Vec2d dir = bases[k] - bases[k1];
-            double ydelta = y - bases[k1][1];
+            cv::Vec2d dir = t_geom.bases[k] - t_geom.bases[k1];
+            double ydelta = y - t_geom.bases[k1][1];
             double t = ydelta / (dir[1]);
             if (t >= 0 && t <= 1) {
-                cv::Vec2d p = dir*t + bases[k1];
-                if (p[0] < left) { left = p[0];  left_base = bases[k1];  left_dir = dir; }
-                if (p[0] > right){ right = p[0]; right_base = bases[k1]; right_dir = dir; }
+                cv::Vec2d p = dir*t + t_geom.bases[k1];
+                if (p[0] < left) { left = p[0];  left_base = t_geom.bases[k1];  left_dir = dir; }
+                if (p[0] > right){ right = p[0]; right_base = t_geom.bases[k1]; right_dir = dir; }
             }
         }
     }
