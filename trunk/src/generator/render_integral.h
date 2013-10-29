@@ -67,7 +67,12 @@ class Render_rectangle_integral : public Render_polygon {
   public:
     Render_rectangle_integral(double cx, double cy, double width, double height, double angle, double in_sigma=6.0) : 
         Render_polygon(cx, cy, width, height, angle, in_sigma) {
-        
+
+        assert(t_geom.nvertices == 4);
+
+        // TODO: Warning! This code assumes that the target polygon is a rectangle
+        // We should be able to accommodate arbitrary concave polygons
+        // if we perform proper scan conversion
         for (int k=0; k < 4; k++) {
             yvals.push_back(t_geom.bases[k][1]);
         }
@@ -77,7 +82,7 @@ class Render_rectangle_integral : public Render_polygon {
         left_dir  = vector<cv::Vec2d>(3);
         right_base = vector<cv::Vec2d>(3);
         right_dir  = vector<cv::Vec2d>(3);
-        
+
         for (int k=0; k < 3; k++) {
             find_intersection_vectors((yvals[k]+yvals[k+1])/2.0, 
                 left_base[k], left_dir[k], 
