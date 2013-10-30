@@ -36,13 +36,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "render_importance_sampling.h"
 
 //==============================================================================
-class Render_rectangle_is_airyolpf : public Render_rectangle_is {
+class Render_polygon_is_airyolpf : public Render_polygon_is {
   public:
-    Render_rectangle_is_airyolpf(double cx, double cy, double width, double height, double angle, 
+    Render_polygon_is_airyolpf(Geometry& target, Geometry& photosite, 
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375, 
         int hs=30) 
-        : Render_rectangle_is(
-            cx, cy, width, height, angle, 
+        : Render_polygon_is(
+            target, photosite, 
             AIRY_PLUS_4DOT_OLPF, in_aperture, in_pitch, in_lambda,
             hs // half-samples
           ),
@@ -52,7 +52,7 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
           initialise();
     }
 
-    virtual ~Render_rectangle_is_airyolpf(void) {
+    virtual ~Render_polygon_is_airyolpf(void) {
     }
     
     virtual string get_mtf_curve(void) const {
@@ -87,7 +87,7 @@ class Render_rectangle_is_airyolpf : public Render_rectangle_is {
 		double olpf_y[4] = {-olpf_split,  olpf_split, -olpf_split, olpf_split};
 		        
         for (int k=0; k < 4; k++) {
-            double area = poly.evaluate_x(sup, ex + x + olpf_x[k], ey + y + olpf_y[k]) / sup.own_area;
+            double area = target.intersection_area(photosite, ex + x + olpf_x[k], ey + y + olpf_y[k]) / photosite.own_area;
             sample += 0.25*(object_value * area + background_value * (1 - area));
         }
                 
