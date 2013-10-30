@@ -45,26 +45,27 @@ using std::swap;
 
 
 //==============================================================================
-class Render_rectangle_is : public Render_polygon {
+class Render_polygon_is : public Render_polygon {
   protected:
     // we do not want this constructor to be called directly, but rather through
     // the named constructor idiom (below)
-    Render_rectangle_is(double cx, double cy, double width, double height, double angle, 
+    Render_polygon_is(Geometry& target, Geometry& photosite,
         Render_type render_type=AIRY_PLUS_BOX,
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
-        : Render_polygon(cx, cy, width, height, angle, 1.0, 1.0, 0.0, false),
+        : Render_polygon(target, 1, 1, 0, false),
           aperture(in_aperture), pitch(in_pitch), lambda(in_lambda),
           //poly(cx, cy, width, height, angle, 4), 
-          poly(cx, cy, width*sqrt(2.0), height*sqrt(2.0), angle, 4), 
+          // ** poly(cx, cy, width*sqrt(2.0), height*sqrt(2.0), angle, 4), 
           //sup(0, 0, 1.253314, 1.253314, 0, 4), // square with area of pi/4, i.e., same fill factor as circle
-          sup(0, 0, 1, 1, 0, 60), // TODO: how do we compensate for the lower effective fill factor?
+          // **sup(0, 0, 1, 1, 0, 60), // TODO: how do we compensate for the lower effective fill factor?
           //sup(0, 0, sqrt(2.0), sqrt(2.0), 0, 4), // normal 100% FF square pixels
           //sup(0, 0, 1, 1, 0, 4), // normal 100% FF square pixels
+          target(target), photosite(photosite),
           render_type(render_type), hs(hs) {
     }
 
   public:
-    virtual ~Render_rectangle_is(void) {
+    virtual ~Render_polygon_is(void) {
     }
     
     double evaluate(double x, double y, double object_value, double background_value) const {
@@ -207,8 +208,8 @@ class Render_rectangle_is : public Render_polygon {
     double pitch;
     double lambda;
     
-    Polygon_geom poly;
-    Polygon_geom sup;
+    Geometry& target;
+    Geometry& photosite;
     
     int nsamples;
     
@@ -221,25 +222,25 @@ class Render_rectangle_is : public Render_polygon {
 #include "render_is_airybox.h"
 #include "render_is_airyolpf.h"
 
-Render_rectangle_is* build_psf(Render_polygon::Render_type render_t, double cx, double cy, double width, double height, double angle,                  
+Render_polygon_is* build_psf(Render_polygon::Render_type render_t, Geometry& target, Geometry& photosite,
     double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375,
     int hs=0) {
 
     switch (render_t) {
         case Render_polygon::AIRY: 
-            return new Render_rectangle_is_airy(cx, cy, width, height, angle, 
+            return new Render_polygon_is_airy(target, photosite, 
                     in_aperture, in_pitch, in_lambda,
                     hs == 0 ? 60 : hs
                 );
             break;
         case Render_polygon::AIRY_PLUS_BOX:
-            return new Render_rectangle_is_airybox(cx, cy, width, height, angle, 
+            return new Render_polygon_is_airybox(target, photosite, 
                     in_aperture, in_pitch, in_lambda,
                     hs == 0 ? 40 : hs
                 );
             break;
         case Render_polygon::AIRY_PLUS_4DOT_OLPF:
-            return new Render_rectangle_is_airyolpf(cx, cy, width, height, angle, 
+            return new Render_polygon_is_airyolpf(target, photosite,
                     in_aperture, in_pitch, in_lambda, 
                     olpf_split, hs == 0 ? 30 : hs
                 );

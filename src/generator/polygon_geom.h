@@ -32,27 +32,57 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <cv.h>
 using namespace cv;
 
-//#include "render.h"
+#include <vector>
+using std::vector;
 
+#include "geom.h"
 
+class Multipolygon_geom;
 
 //==============================================================================
-class Polygon_geom  {
+class Polygon_geom : public Geometry {
   public:
     static const int max_verts_per_poly = 70; // max number of point in intersected polygon
+
+    friend class Multipolygon_geom;
   
-    Polygon_geom(double cx, double cy, double width, double height, double angle, int nverts=4) 
-    : cx(cx), cy(cy), nvertices(nverts) {
+    Polygon_geom(double cx=0, double cy=0, double width=1, double height=1, double angle=0, int nverts=4) 
+    : Geometry(cx, cy, 0), nvertices(nverts) {
 
         construct_regular_polygon(width, height, angle);
         own_area = compute_area();
         printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
     }
-    
+
+    Polygon_geom(const vector<cv::Vec2d>& verts) {
+
+        nvertices = verts.size();
+
+        bases = verts;
+        normals = vector<cv::Vec2d>(nvertices);
+
+        // compute normals
+        int prev = nvertices - 1;
+        for (int i=0; i < nvertices; i++) {
+            cv::Vec2d d = bases[i] - bases[prev];
+            normals[i][0] = -d[1] / norm(d);
+            normals[i][1] = d[0] / norm(d);
+            prev = (prev + 1) % nvertices;
+        }
+
+        compute_bounding_box();
+        
+        own_area = compute_area();
+        printf("built polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+    }
+
     virtual ~Polygon_geom(void) {
     }
 
     void construct_regular_polygon(double width, double height, double angle) {
+        bases   = vector<cv::Vec2d>(nvertices);
+        normals = vector<cv::Vec2d>(nvertices);
+
         printf("nvertices=%d\n", nvertices);
         if (false /*nvertices == 4*/) {
             printf("rendering a plain square\n");
@@ -96,6 +126,11 @@ class Polygon_geom  {
             printf("horizontal width: %lf\n", norm(bases[1] - bases[0]));
         }
 
+        compute_bounding_box();
+        
+    }
+
+    void compute_bounding_box(void) {
         // compute a bounding box
         bb_bases[0][1] = 1e12;
         bb_bases[1][0] = -1e12;
@@ -128,10 +163,9 @@ class Polygon_geom  {
         for (int k=0; k < 4; k++) {
             printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
         }
-        
     }
 
-    inline bool is_inside(double x, double y) const {
+    bool is_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < nvertices && inside; i++) {
             double dot = normals[i][0]*(x - bases[i][0]) + 
@@ -143,11 +177,15 @@ class Polygon_geom  {
         return inside;
     }
     
-    double evaluate_x(const Polygon_geom& b, double xoffset = 0, double yoffset = 0)  const {
+    double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0)  const {
     
         double points_x[max_verts_per_poly];
         double points_y[max_verts_per_poly];
         int points_len = 0;
+
+        // TODO: this will probably throw an exception if you try to
+        // pass a multipolygon as the photosite geometry. Don't do it!
+        const Polygon_geom& b = dynamic_cast<const Polygon_geom&>(ib);
 
         if (b.nvertices >= 6) {
             intersect(points_x, points_y, points_len, b, xoffset, yoffset, true);
@@ -208,6 +246,12 @@ class Polygon_geom  {
         piy = v1y + u*d1y;
                    
         return true;               
+    }
+
+    void print(void) const {
+        for (int i=0; i < nvertices; i++) {
+            printf("\t%lf %lf\n", bases[i][0], bases[i][1]);
+        }
     }
     
     double compute_area(double* points_x, double* points_y, int points_len) const {
@@ -332,16 +376,17 @@ class Polygon_geom  {
         memcpy(inpoints_y, outpoints_y, sizeof(double)*out_idx);
     }
     
-    double own_area;
+    
 
-    cv::Vec2d normals[max_verts_per_poly];
-    cv::Vec2d bases[max_verts_per_poly];
+    //cv::Vec2d normals[max_verts_per_poly];
+    //cv::Vec2d bases[max_verts_per_poly];
+
+    vector<cv::Vec2d> normals;
+    vector<cv::Vec2d> bases;
 
     cv::Vec2d bb_normals[4];
     cv::Vec2d bb_bases[4];
-
-    double cx;
-    double cy;
+    
     int nvertices;
 
     double bb_area;

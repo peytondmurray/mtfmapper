@@ -36,12 +36,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 
 //==============================================================================
-class Render_rectangle_is_airybox : public Render_rectangle_is {
+class Render_polygon_is_airybox : public Render_polygon_is {
   public:
-    Render_rectangle_is_airybox(double cx, double cy, double width, double height, double angle, 
+    Render_polygon_is_airybox(Geometry& target, Geometry& photosite, 
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=40) 
-        : Render_rectangle_is(
-            cx, cy, width, height, angle, 
+        : Render_polygon_is(
+            target, photosite, 
             AIRY_PLUS_BOX, in_aperture, in_pitch, in_lambda,
             hs // #half-samples
           )
@@ -50,7 +50,7 @@ class Render_rectangle_is_airybox : public Render_rectangle_is {
           initialise();
     }
     
-    virtual ~Render_rectangle_is_airybox(void) {
+    virtual ~Render_polygon_is_airybox(void) {
     }
     
     virtual string get_mtf_curve(void) const {
@@ -74,7 +74,7 @@ class Render_rectangle_is_airybox : public Render_rectangle_is {
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
     
-        double area = poly.evaluate_x(sup, ex + x, ey + y) / sup.own_area;
+        double area = target.intersection_area(photosite, ex + x, ey + y) / photosite.own_area;
         return object_value * area + background_value * (1 - area);
     }
     

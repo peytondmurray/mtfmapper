@@ -36,12 +36,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "render_importance_sampling.h"
 
 //==============================================================================
-class Render_rectangle_is_airy : public Render_rectangle_is {
+class Render_polygon_is_airy : public Render_polygon_is {
   public:
-    Render_rectangle_is_airy(double cx, double cy, double width, double height, double angle, 
+    Render_polygon_is_airy(Geometry& target, Geometry& photosite,
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
-        : Render_rectangle_is(
-            cx, cy, width, height, angle, 
+        : Render_polygon_is(
+            target, photosite, 
             AIRY, in_aperture, in_pitch, in_lambda,
             hs // hs=60 for Airy PSF
           )
@@ -50,7 +50,7 @@ class Render_rectangle_is_airy : public Render_rectangle_is {
           initialise();
     }
     
-    virtual ~Render_rectangle_is_airy(void) {
+    virtual ~Render_polygon_is_airy(void) {
     }
     
     virtual string get_mtf_curve(void) const {

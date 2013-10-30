@@ -37,6 +37,7 @@ const double transparent = -1.0;
 #include <string>
 using std::string;
 
+#include "geom.h"
 #include "polygon_geom.h"
 
 //==============================================================================
@@ -58,10 +59,10 @@ class Render_polygon : public Render_target {
         AIRY_PLUS_4DOT_OLPF
     } Render_type;
   
-    Render_polygon(double cx, double cy, double width, double height, double angle, 
-        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true, int nverts=4) 
+    Render_polygon(Geometry& target, 
+        double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true) 
         : sigma(in_sigma), 
-          t_geom(cx, cy, width, height, angle, nverts) {
+          t_geom(target) {
         
         
         if (init) {
@@ -120,7 +121,7 @@ class Render_polygon : public Render_target {
     vector<double> pos_x;
     vector<double> pos_y;
 
-    Polygon_geom t_geom; // target geometry
+    Geometry& t_geom; // target geometry
 };
 
 #endif // RENDER_H

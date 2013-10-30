@@ -65,16 +65,16 @@ double erf(double x) {
 //==============================================================================
 class Render_rectangle_integral : public Render_polygon {
   public:
-    Render_rectangle_integral(double cx, double cy, double width, double height, double angle, double in_sigma=6.0) : 
-        Render_polygon(cx, cy, width, height, angle, in_sigma) {
+    Render_rectangle_integral(Polygon_geom& target, double in_sigma=6.0) : 
+        Render_polygon(target, in_sigma), l_geom(target) {
 
-        assert(t_geom.nvertices == 4);
+        assert(target.nvertices == 4);
 
         // TODO: Warning! This code assumes that the target polygon is a rectangle
         // We should be able to accommodate arbitrary concave polygons
         // if we perform proper scan conversion
         for (int k=0; k < 4; k++) {
-            yvals.push_back(t_geom.bases[k][1]);
+            yvals.push_back(target.bases[k][1]);
         }
         sort(yvals.begin(), yvals.end());
         
@@ -134,6 +134,8 @@ class Render_rectangle_integral : public Render_polygon {
     vector<cv::Vec2d> left_dir;
     vector<cv::Vec2d> right_dir;
     vector<double>    yvals;
+
+    Polygon_geom& l_geom;
   
     inline double gaussian_integral(double x) const {
         if (x >= 0) return (1 + erf(x))*0.5;
@@ -161,13 +163,13 @@ class Render_rectangle_integral : public Render_polygon {
         double right = -1e50;
         for (int k=0; k < 4; k++) {
             int k1 = (k + 1) % 4;
-            cv::Vec2d dir = t_geom.bases[k] - t_geom.bases[k1];
-            double ydelta = y - t_geom.bases[k1][1];
+            cv::Vec2d dir = l_geom.bases[k] - l_geom.bases[k1];
+            double ydelta = y - l_geom.bases[k1][1];
             double t = ydelta / (dir[1]);
             if (t >= 0 && t <= 1) {
-                cv::Vec2d p = dir*t + t_geom.bases[k1];
-                if (p[0] < left) { left = p[0];  left_base = t_geom.bases[k1];  left_dir = dir; }
-                if (p[0] > right){ right = p[0]; right_base = t_geom.bases[k1]; right_dir = dir; }
+                cv::Vec2d p = dir*t + l_geom.bases[k1];
+                if (p[0] < left) { left = p[0];  left_base = l_geom.bases[k1];  left_dir = dir; }
+                if (p[0] > right){ right = p[0]; right_base = l_geom.bases[k1]; right_dir = dir; }
             }
         }
     }
