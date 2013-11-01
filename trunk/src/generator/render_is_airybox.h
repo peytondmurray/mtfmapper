@@ -74,7 +74,7 @@ class Render_polygon_is_airybox : public Render_polygon_is {
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
     
-        double area = target.intersection_area(photosite, ex + x, ey + y) / photosite.own_area;
+        double area = photosite.intersection_area(target, ex + x, ey + y) / photosite.own_area;
         return object_value * area + background_value * (1 - area);
     }
     

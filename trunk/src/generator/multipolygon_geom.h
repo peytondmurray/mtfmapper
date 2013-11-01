@@ -126,13 +126,13 @@ class Multipolygon_geom : public Geometry {
 
         double bounds_area = 0;
         if (total_vertices > 6) {
-            bounds_area = bounding_box.intersection_area(b, xoffset, yoffset);
+            bounds_area = b.intersection_area(bounding_box, xoffset, yoffset);
         }
 
         double total_area = 0;
         if (bounds_area > 1e-11) {
             for (size_t p=0; p < parts.size(); p++) {
-                total_area += parts[p].intersection_area(b, xoffset, yoffset);
+                total_area += b.intersection_area(parts[p], xoffset, yoffset);
             }
         }
         
