@@ -203,28 +203,9 @@ class Polygon_geom : public Geometry {
             // intersection again using full geometry
             points_len = 0;
         }
-        
+
         intersect(points_x, points_y, points_len, b, xoffset, yoffset);
         return compute_area(points_x, points_y, points_len);
-    }
-    
-    Vec2d t_intersect(const Vec2d& v1, const Vec2d& d1, 
-                   const Vec2d& v2, const Vec2d& d2) const {
-                   
-        double denom = (d2[1]*d1[0] - d2[0]*d1[1]);
-        
-        if (fabs(denom) < 1e-11) {
-           printf("denom zero?\n");
-           printf("1: (%lf, %lf), (%lf, %lf)\n", v1[0], v1[1], d1[0], d1[1]);
-           printf("2: (%lf, %lf), (%lf, %lf)\n", v2[0], v2[1], d2[0], d2[1]);
-           return Vec2d(0.0, 0.0);
-        }
-        
-        double u = (d2[0]*(v1[1] - v2[1]) - d2[1]*(v1[0] - v2[0])) / denom;
-        
-        Vec2d pi = v1 + u*d1;
-                   
-        return pi;               
     }
     
     inline bool t_intersect(double& pix, double& piy, 
@@ -236,7 +217,9 @@ class Polygon_geom : public Geometry {
         double denom = (d2y*d1x - d2x*d1y);
         
         if (fabs(denom) < 1e-11) {
-           printf("denom zero?\n");
+           // this happens when the lines are parallel
+           // the caller handles this correctly by not
+           // adding an additional intersection point
            return false;
         }
         
@@ -286,38 +269,39 @@ class Polygon_geom : public Geometry {
 
         if (bounding_box) {
             for (int i=0; i < 4; i++) { 
-                points_x[i] = b.bb_bases[i][0] + xoffset;
-                points_y[i] = b.bb_bases[i][1] + yoffset;
+                points_x[i] = b.bb_bases[i][0];
+                points_y[i] = b.bb_bases[i][1];
                 points_len++;
             }
         } else {
             for (int i=0; i < b.nvertices; i++) { 
-                points_x[i] = b.bases[i][0] + xoffset;
-                points_y[i] = b.bases[i][1] + yoffset;
+                points_x[i] = b.bases[i][0];
+                points_y[i] = b.bases[i][1];
                 points_len++;
             }
         }
 
         
         for (int e=0; e < nvertices; e++) {
-            intersect_core(points_x, points_y, points_len, e, nvertices);
+            intersect_core(points_x, points_y, points_len, e, nvertices, xoffset, yoffset);
         }
     }
 
     // this looks like the Sutherland-Hodgman algorithm
     // the clipping polygon must be convex (req. by SH algo)
     // will produce overlapping edges if a concave point exists
-    // outside of the clipping polygon (this wiil definitely happen
-    // if concave object polygon is presented). The solution is to
-    // decompose all input polygons into convex components ...
-    void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges) const {
+    // outside of the clipping polygon. these overlapping
+    // edges cause no harm, because they have zero area (which
+    // seems to work out fine with compute_area())
+    void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges,
+                        double xoffset, double yoffset) const {
         int ne = (e + 1) % nedges;
         
-        double Px = bases[e][0];
-        double Py = bases[e][1];
+        double Px = bases[e][0] + xoffset;
+        double Py = bases[e][1] + yoffset;
         
-        double Dx = bases[ne][0] - Px;
-        double Dy = bases[ne][1] - Py;
+        double Dx = bases[ne][0] - bases[e][0];
+        double Dy = bases[ne][1] - bases[e][1];
          
         double Nx = -Dy;
         double Ny = Dx;
