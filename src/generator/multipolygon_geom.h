@@ -35,6 +35,9 @@ using namespace cv;
 #include <vector>
 using std::vector;
 
+#include <algorithm>
+using std::sort;
+
 #include "geom.h"
 #include "polygon_geom.h"
 
@@ -70,15 +73,19 @@ class Multipolygon_geom : public Geometry {
             }
         }
 
-        compute_bounding_box();
+	compute_bounding_box();
 
+        own_area = 1;
+    }
+    
+    Multipolygon_geom(void) {
         own_area = 1;
     }
     
     virtual ~Multipolygon_geom(void) {
     }
 
-    void compute_bounding_box() {
+    void compute_bounding_box(void) {
         // TODO: we can be smarter here by computing eigenvectors
         // and aligning the box with the object ...
 

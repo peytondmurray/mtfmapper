@@ -42,7 +42,7 @@ class Multipolygon_geom;
 //==============================================================================
 class Polygon_geom : public Geometry {
   public:
-    static const int max_verts_per_poly = 70; // max number of point in intersected polygon
+    static const int max_verts_per_poly = 200; // max number of point in intersected polygon
 
     friend class Multipolygon_geom;
   
@@ -79,51 +79,37 @@ class Polygon_geom : public Geometry {
     virtual ~Polygon_geom(void) {
     }
 
+    void rebuild(void) {
+	// compute normals
+        int prev = nvertices - 1;
+        for (int i=0; i < nvertices; i++) {
+            cv::Vec2d d = bases[i] - bases[prev];
+            normals[i][0] = -d[1] / norm(d);
+            normals[i][1] = d[0] / norm(d);
+            prev = (prev + 1) % nvertices;
+        }
+
+        compute_bounding_box();
+        
+        own_area = compute_area();
+        printf("rebuilt polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+    }
+
     void construct_regular_polygon(double width, double height, double angle) {
         bases   = vector<cv::Vec2d>(nvertices);
         normals = vector<cv::Vec2d>(nvertices);
 
         printf("nvertices=%d\n", nvertices);
-        if (false /*nvertices == 4*/) {
-            printf("rendering a plain square\n");
-            // default is a square
-            bases[0] = cv::Vec2d(width/2, height/2);
-            bases[1] = cv::Vec2d(-width/2, height/2);
-            bases[2] = cv::Vec2d(-width/2, -height/2);
-            bases[3] = cv::Vec2d(width/2, -height/2);
-            
-            // rotate corners
-            for (size_t i=0; i < 4; i++) {
-                double ox = bases[i][0];
-                double oy = bases[i][1];
-                bases[i][0] = cos(angle)*ox - sin(angle)*oy + cx;
-                bases[i][1] = sin(angle)*ox + cos(angle)*oy + cy;
-            }
-                  
-            normals[0] = (bases[2] - bases[1]); 
-            normals[1] = (bases[3] - bases[2]); 
-            normals[2] = (bases[0] - bases[3]); 
-            normals[3] = (bases[1] - bases[0]); 
-            for (size_t i=0; i < 4; i++) {
-                double n = norm(normals[i]);
-                normals[i] = normals[i]*(1.0/n);
-            }
-            
-            for (int i=0; i < nvertices; i++) {
-                printf("** %lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
-            }
-        } else {
-            printf("rendering a polygon with %d sides\n", nvertices);
-            assert(nvertices >= 3);
-            for (int i=0; i < nvertices; i++) {
-                double phi = i*M_PI*2/double(nvertices);
-                bases[i][0] = width/2*cos(angle+phi - M_PI/4.0) + cx;
-                bases[i][1] = height/2*sin(angle+phi - M_PI/4.0) + cy;
-                normals[i][0] = cos(angle+phi);
-                normals[i][1] = -sin(angle+phi);
-                printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
-            }
-            printf("horizontal width: %lf\n", norm(bases[1] - bases[0]));
+        printf("rendering a polygon with %d sides\n", nvertices);
+        assert(nvertices >= 3);
+        for (int i=0; i < nvertices; i++) {
+            double phi = i*M_PI*2/double(nvertices);
+            bases[i][0] = width/2*cos(angle+phi - M_PI/4.0) + cx;
+            bases[i][1] = height/2*sin(angle+phi - M_PI/4.0) + cy;
+            normals[i][0] = cos(angle+phi);
+            normals[i][1] = -sin(angle+phi);
+            //printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
+            if (nvertices > 4) fprintf(stderr, "%lf %lf\n", bases[i][0], bases[i][1]);
         }
 
         compute_bounding_box();
@@ -287,6 +273,50 @@ class Polygon_geom : public Geometry {
         }
     }
 
+    bool intersect(const Polygon_geom& b, Polygon_geom& s) const {
+
+        double points_x[2*max_verts_per_poly];
+	double points_y[2*max_verts_per_poly];
+	int points_len = 0;
+
+        for (int i=0; i < b.nvertices; i++) { 
+            points_x[i] = b.bases[i][0];
+            points_y[i] = b.bases[i][1];
+            points_len++;
+        }
+
+	/*
+	printf("@@Self: %d verts in intersection\n", nvertices);
+	for (int v=0; v < nvertices; v++) {
+	    printf("@\t%lf %lf\n", bases[v][0], bases[v][1]);
+        }
+
+	printf("@@Sending %d verts in intersection\n", points_len);
+	for (int v=0; v < points_len; v++) {
+	    printf("@\t%lf %lf\n", points_x[v], points_y[v]);
+	}*/
+
+        for (int e=0; e < nvertices; e++) {
+            intersect_core(points_x, points_y, points_len, e, nvertices, 0, 0);
+        }
+
+        if (points_len > 0) {
+            vector<cv::Vec2d> new_vertices(points_len);
+            //printf("**Got %d verts in intersection\n", points_len);
+            for (int v=0; v < points_len; v++) {
+                new_vertices[v][0] = points_x[v];
+                new_vertices[v][1] = points_y[v];
+                //printf("\t%lf %lf\n", points_x[v], points_y[v]);
+            }
+
+            s = Polygon_geom(new_vertices);
+            return s.compute_area() > 1e-11;
+        } else {
+            return false;
+        }
+        return true;
+    }
+
     // this looks like the Sutherland-Hodgman algorithm
     // the clipping polygon must be convex (req. by SH algo)
     // will produce overlapping edges if a concave point exists
@@ -305,6 +335,10 @@ class Polygon_geom : public Geometry {
          
         double Nx = -Dy;
         double Ny = Dx;
+
+		double Nl = sqrt(Nx*Nx + Ny*Ny);
+		Nx /= Nl;
+		Ny /= Nl;
         
         double outpoints_x[max_verts_per_poly];
         double outpoints_y[max_verts_per_poly];

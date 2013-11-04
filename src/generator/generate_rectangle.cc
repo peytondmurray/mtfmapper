@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "render_importance_sampling.h"
 #include "noise_source.h"
 #include "multipolygon_geom.h" // temporary?
+#include "quadtree.h"
 
 #include "cv.h"
 #include "highgui.h"
@@ -251,8 +252,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, "f", cmd);
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
-	TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
-	TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
+    TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
+    TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
     TCLAP::ValueArg<std::string> tc_target_name("", "target-poly", "Target polygon file name", false, "poly.txt", "filename", cmd);
     TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, "factor", cmd);
     
@@ -431,10 +432,10 @@ int main(int argc, char** argv) {
     Geometry* target_geom = new Polygon_geom(
         width*0.5 + tc_xoff.getValue(), 
         height*0.5 + tc_yoff.getValue(),
-        rwidth,
-        rheight,
+        rwidth*0.25,
+        rheight*0.25,
         M_PI/2 - theta,
-        4
+        32
     );
 
         
@@ -442,7 +443,8 @@ int main(int argc, char** argv) {
 
     if (tc_target_name.isSet()) {
         delete target_geom;
-        target_geom = new Multipolygon_geom(
+        //target_geom = new Multipolygon_geom (
+        target_geom = new Quadtree (
             width*0.5 + tc_xoff.getValue(), 
             height*0.5 + tc_yoff.getValue(), 
             tc_target_name.getValue()
@@ -496,8 +498,8 @@ int main(int argc, char** argv) {
                 tc_aperture.getValue(),
                 tc_pitch.getValue(),
                 tc_lambda.getValue(),
-				tc_olpf_split.getValue(),
-				tc_samples.isSet() ? tc_samples.getValue() : 0
+                tc_olpf_split.getValue(),
+		tc_samples.isSet() ? tc_samples.getValue() : 0
             );
             break;
         case Render_polygon::GAUSSIAN:
