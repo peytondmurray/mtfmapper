@@ -184,7 +184,7 @@ class Render_esf {
     }
     
     static int n_samples(double length, int oversampling_factor) {
-        return floor(length*oversampling_factor*0.25);
+        return (int)floor(length*oversampling_factor*0.25);
     }
     
     void write(const string& profile_fname) {
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
 	TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
-	TCLAP::ValueArg<double> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
+	TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
     TCLAP::ValueArg<std::string> tc_target_name("", "target-poly", "Target polygon file name", false, "poly.txt", "filename", cmd);
     TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, "factor", cmd);
     
@@ -434,7 +434,7 @@ int main(int argc, char** argv) {
         rwidth,
         rheight,
         M_PI/2 - theta,
-        8
+        4
     );
 
         

@@ -124,7 +124,7 @@ class Multipolygon_geom : public Geometry {
     
     double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0)  const {
 
-        double bounds_area = 0;
+        double bounds_area = 1;
         if (total_vertices > 6) {
             bounds_area = b.intersection_area(bounding_box, xoffset, yoffset);
         }
