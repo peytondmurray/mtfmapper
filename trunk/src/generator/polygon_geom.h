@@ -163,7 +163,85 @@ class Polygon_geom : public Geometry {
         return inside;
     }
     
-    double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0)  const {
+    bool remove_degeneracy(int pass=0) {
+        // This method is rather crude, and not tested for every possible case
+    
+        if (bases.size() < 3) return false;
+        
+        // first strip out doubles
+        int pe =   (int)bases.size() - 1;
+        vector<cv::Vec2d> fbases;
+        for (size_t e=0; e < bases.size(); e++) {
+            if ( norm(bases[pe] - bases[e]) > 1e-11 ) {
+                fbases.push_back(bases[e]);
+            }
+            pe = e;
+        }
+        if (fbases.size() < bases.size()) {
+            double old_area = own_area;
+            bases = fbases;
+            normals = fbases;
+            nvertices = bases.size();
+            rebuild();
+            printf("after squashing duplicate points, area diff=%lf\n", old_area - own_area);
+        }
+        
+        
+        pe =   (int)bases.size() - 1;
+        int pem1 = (int)bases.size() - 2;
+        
+        cv::Vec2d pd(bases[pe] - bases[pem1]);
+        
+        int collinear_count = 0;
+        bool some_marked = false;
+        vector<bool> marked(bases.size(), false);
+        for (int e=0; e < (int)bases.size(); e++) {
+            cv::Vec2d cd(bases[e] - bases[pe]);
+            if ( fabs(cd[0]*pd[1] - cd[1]*pd[0]) < 2e-10 ) { // area of triangle less than 1e-10
+                collinear_count++;
+                
+                
+                printf("$$ found colinear points %lf %lf %lf %lf (pass %d)\n",
+                    bases[e][0], bases[e][1],
+                    bases[pe][0], bases[pe][1],
+                    pass
+                );
+                for (size_t k=0; k < bases.size(); k++) {
+                    printf("%lf %lf, ", bases[k][0], bases[k][1]);
+                }
+                printf("\n");
+                // TODO: only remove a marked point if the area remains unaffected?
+                
+                printf("[%lf %lf] marked for removal\n", bases[pe][0], bases[pe][1]);
+                
+                marked[pe] = true;
+                some_marked = true;
+            } 
+            
+            pe = e;
+            pd = cd;
+        }
+        
+        if (some_marked) {
+            double old_area = own_area;
+            vector<cv::Vec2d> ncoords;
+            for (size_t i=0; i < bases.size(); i++) {
+                if (!marked[i]) {
+                    ncoords.push_back(bases[i]);
+                }
+            }
+            bases = ncoords;
+            normals = ncoords;
+            nvertices = bases.size();
+            rebuild();
+            printf("after nuking degenerate points, area diff=%lf\n", old_area - own_area);
+        }
+        
+        
+        return collinear_count == 0;
+    }
+    
+    double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
     
         double points_x[max_verts_per_poly];
         double points_y[max_verts_per_poly];
@@ -173,7 +251,7 @@ class Polygon_geom : public Geometry {
         // pass a multipolygon as the photosite geometry. Don't do it!
         const Polygon_geom& b = dynamic_cast<const Polygon_geom&>(ib);
 
-        if (b.nvertices >= 6) {
+        if (!skip_bounds && b.nvertices >= 6) {
             intersect(points_x, points_y, points_len, b, xoffset, yoffset, true);
             double i_bb_area = compute_area(points_x, points_y, points_len);
             
@@ -285,31 +363,20 @@ class Polygon_geom : public Geometry {
             points_len++;
         }
 
-	/*
-	printf("@@Self: %d verts in intersection\n", nvertices);
-	for (int v=0; v < nvertices; v++) {
-	    printf("@\t%lf %lf\n", bases[v][0], bases[v][1]);
-        }
-
-	printf("@@Sending %d verts in intersection\n", points_len);
-	for (int v=0; v < points_len; v++) {
-	    printf("@\t%lf %lf\n", points_x[v], points_y[v]);
-	}*/
-
         for (int e=0; e < nvertices; e++) {
             intersect_core(points_x, points_y, points_len, e, nvertices, 0, 0);
         }
 
         if (points_len > 0) {
             vector<cv::Vec2d> new_vertices(points_len);
-            //printf("**Got %d verts in intersection\n", points_len);
             for (int v=0; v < points_len; v++) {
                 new_vertices[v][0] = points_x[v];
                 new_vertices[v][1] = points_y[v];
-                //printf("\t%lf %lf\n", points_x[v], points_y[v]);
             }
 
             s = Polygon_geom(new_vertices);
+            s.remove_degeneracy(0);
+            //s.remove_degeneracy(1); // call it again, just to make sure. maybe something interesting is happening ?
             return s.compute_area() > 1e-11;
         } else {
             return false;
@@ -395,9 +462,6 @@ class Polygon_geom : public Geometry {
     }
     
     
-
-    //cv::Vec2d normals[max_verts_per_poly];
-    //cv::Vec2d bases[max_verts_per_poly];
 
     vector<cv::Vec2d> normals;
     vector<cv::Vec2d> bases;
