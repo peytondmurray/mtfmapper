@@ -37,7 +37,7 @@ class Geometry  {
       : cx(cx), cy(cy), own_area(own_area) {
       }
 
-      virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0) const {
+      virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0, bool skip_bounds=false) const {
           printf("\n\nnot defined\n\n");
           return xoffset + yoffset; // just to keep the warnings down
       }

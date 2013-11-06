@@ -42,21 +42,50 @@ class Quadtree : public Multipolygon_geom {
         partition_polygons(0);
     }
 
-    // constructor for children      
-    //Quadtree(const Polygon_geom& bounds, int level = 0) {
-    //    partition_polygons(level+1);
-    //}
-    
     Quadtree(const Polygon_geom& bounds) 
     : q_tl(0), q_tr(0), q_bl(0), q_br(0), leaf(false) {
         
-        for (size_t i=0; i < bounds.bases.size(); i++) {
-            fprintf(stderr, "%lf %lf\n", bounds.bases[i][0], bounds.bases[i][1]);
-        }
-        fprintf(stderr, "%lf %lf\n\n", bounds.bases[0][0], bounds.bases[0][1]);
-        
         bounding_box = bounds;
         total_vertices = 0;
+    }
+    
+    void print_bounds(int level=0) {
+        double maxx = -1e12;
+        double maxy = -1e12;
+        double minx = 1e12;
+        double miny = 1e12;
+        
+        for (size_t p=0; p < parts.size(); p++) {
+            for (size_t v=0; v < parts[p].bases.size(); v++) {
+                maxx = std::max(parts[p].bases[v][0], maxx);
+                maxy = std::max(parts[p].bases[v][1], maxy);
+                minx = std::min(parts[p].bases[v][0], minx);
+                miny = std::min(parts[p].bases[v][1], miny);
+            }
+        }
+        
+        if (parts.size() > 0) {
+            printf("## (%d) bounds deltas: %lf %lf %lf %lf (%d)\n",
+                level,
+                maxx - bounding_box.bases[1][0],
+                maxy - bounding_box.bases[2][1],
+                minx - bounding_box.bases[3][0],
+                miny - bounding_box.bases[0][1],
+                q_tl || q_tr || q_bl || q_br
+            );
+        } else {
+            printf("## (%d) no parts %d\n", level, q_tl || q_tr || q_bl || q_br);
+        }
+    
+        for (size_t i=0; i < bounding_box.bases.size(); i++) {
+            fprintf(stderr, "%d %lf %lf\n", level, bounding_box.bases[i][0], bounding_box.bases[i][1]);
+        }
+        fprintf(stderr, "%d %lf %lf\n\n", level, bounding_box.bases[0][0], bounding_box.bases[0][1]);
+        
+        if (q_tl) q_tl->print_bounds(level+1);
+        if (q_tr) q_tr->print_bounds(level+1);
+        if (q_bl) q_bl->print_bounds(level+1);
+        if (q_br) q_br->print_bounds(level+1);
     }
     
     void add_poly(const Polygon_geom& p) {
@@ -64,7 +93,7 @@ class Quadtree : public Multipolygon_geom {
         parts.push_back(p);
     }
 
-    virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0) const {
+    virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0, bool skip_bounds=false) const {
         // first, check this level's bounding box
         
         double bounds_area = 1;
@@ -78,7 +107,16 @@ class Quadtree : public Multipolygon_geom {
         // children
         double area = 0;
         for (size_t p=0; p < parts.size(); p++) {
-            area += b.intersection_area(parts[p], xoffset, yoffset);
+            // if the part's bounding box area is much smaller than the
+            // current quad's area, the use it, otherwise skip bounds
+            // check in this polygon
+            //printf("part[%d] bound area=%lf, quad bounding area=%lf\n",
+            //    p, parts[p].bb_area, bounding_box.own_area);
+            area += b.intersection_area(
+                parts[p], 
+                xoffset, yoffset,
+                parts[p].bb_area > 0.5*bounding_box.own_area
+            );
         }
         if (q_tl) area += q_tl->intersection_area(b, xoffset, yoffset);
         if (q_tr) area += q_tr->intersection_area(b, xoffset, yoffset);
@@ -129,7 +167,7 @@ class Quadtree : public Multipolygon_geom {
         size_t last = all_x.size() - 1;
 
         cv::Vec2d v_min(all_x[0], all_y[0]);
-        //cv::Vec2d v_mid(all_x[last/2] + 1e-6, all_y[last/2] + 1e-6);
+        //cv::Vec2d v_mid(all_x[last/2], all_y[last/2]);
         cv::Vec2d v_mid((all_x[last]+all_x[0])/2.0, (all_y[last]+all_y[0])/2.0 );
         cv::Vec2d v_max(all_x[last], all_y[last]);
 
@@ -165,7 +203,6 @@ class Quadtree : public Multipolygon_geom {
                     q_tl = new Quadtree(tl);
                 }
                 q_tl->add_poly(np);
-                printf("poly %d went to tl: %d\n", p, level);
             }
                 
             if (tr.intersect(parts[p], np)) {
@@ -173,7 +210,6 @@ class Quadtree : public Multipolygon_geom {
                     q_tr = new Quadtree(tr);
                 }
                 q_tr->add_poly(np);
-                printf("poly %d went to tr: %d\n", p, level);
             }
 
             if (bl.intersect(parts[p], np)) {
@@ -181,7 +217,6 @@ class Quadtree : public Multipolygon_geom {
                     q_bl = new Quadtree(bl);
                 }
                 q_bl->add_poly(np);
-                printf("poly %d went to bl: %d\n", p, level);
             }
 
             if (br.intersect(parts[p], np)) {
@@ -189,32 +224,33 @@ class Quadtree : public Multipolygon_geom {
                     q_br = new Quadtree(br);
                 }
                 q_br->add_poly(np);
-                printf("poly %d went to br: %d\n", p, level);
             }
         }
         
+        // recompute bounds
+        if (q_tl) { q_tl->compute_bounding_box(); }
+        if (q_tr) { q_tr->compute_bounding_box(); }
+        if (q_bl) { q_bl->compute_bounding_box(); }
+        if (q_br) { q_br->compute_bounding_box(); }
+        
+        
         printf("about to recurse into child QT nodes\n");
-        bool valid_children = false;
-        const int max_verts_per_quad = 30;
+        const int max_verts_per_quad = 40;
         const int maxdepth = 6;
         if (q_tl && q_tl->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_tl->partition_polygons(level+1);
-            valid_children = true;
         }
         
         if (q_tr && q_tr->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_tr->partition_polygons(level+1);
-            valid_children = true;
         }
         
         if (q_bl && q_bl->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_bl->partition_polygons(level+1);
-            valid_children = true;
         }
         
         if (q_br && q_br->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_br->partition_polygons(level+1);
-            valid_children = true;
         }
 
         parts.clear();

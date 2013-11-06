@@ -48,9 +48,6 @@ class Multipolygon_geom : public Geometry {
     Multipolygon_geom(double cx, double cy, const string& fname) 
     : Geometry(cx, cy, 0), bounding_box(0,0,1,1,0,4), total_vertices(0) {
 
-        // we should subtract the centroid from the input polys, so that
-        // cx,cy can point to the true centroid?
-
         FILE* fin = fopen(fname.c_str(), "rt");
         if (!fin) {
             fprintf(stderr, "Error. Could not open polygon geometry file %s. Aborting\n", fname.c_str());
@@ -86,8 +83,6 @@ class Multipolygon_geom : public Geometry {
     }
 
     void compute_bounding_box(void) {
-        // TODO: we can be smarter here by computing eigenvectors
-        // and aligning the box with the object ...
 
         // compute a bounding box
         bounding_box.bases[0][1] = 1e12;
@@ -129,10 +124,10 @@ class Multipolygon_geom : public Geometry {
         return inside;
     }
     
-    double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0)  const {
+    double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
 
         double bounds_area = 1;
-        if (total_vertices > 6) {
+        if (!skip_bounds && total_vertices > 6) {
             bounds_area = b.intersection_area(bounding_box, xoffset, yoffset);
         }
 
