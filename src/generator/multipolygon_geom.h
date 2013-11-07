@@ -59,6 +59,10 @@ class Multipolygon_geom : public Geometry {
             int nverts = 0;
             int nread = fscanf(fin, "%d", &nverts);
             if (nread == 1) {
+                if (nverts > Polygon_geom::max_verts_per_poly) {
+                    printf("Error! Polygon input file [%s] contains a polygon with %d vertices, which\n", fname.c_str(), nverts);
+                    printf("\t which exceeds the built-in limit of %d vertices\n", Polygon_geom::max_verts_per_poly);
+                }
                 vector<cv::Vec2d> verts(nverts);
                 for (int i=0; i < nverts; i++) {
                     nread = fscanf(fin, "%lf %lf", &verts[i][0], &verts[i][1]);

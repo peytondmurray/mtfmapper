@@ -130,7 +130,7 @@ class Quadtree : public Multipolygon_geom {
         return x + y; // just to keep the warnings down
     }
     
-    void partition_polygons(int level = 0) {
+    void partition_polygons(int level = 0, int cumulative_verts=0) {
         printf("entering partition at level %d with %d parts\n", level, (int)parts.size());
         
         vector<double> all_x;
@@ -194,36 +194,54 @@ class Quadtree : public Multipolygon_geom {
         br.bases[1] = cv::Vec2d(v_max[0]+eps, v_max[1]+eps);
         br.bases[0] = cv::Vec2d(v_max[0]+eps, v_mid[1]+eps);
         br.rebuild();
+        
+        int child_verts_sum = cumulative_verts;
+        int leaf_verts_sum = cumulative_verts;
+        int nchildren = 0;
 
         for (size_t p=0; p < parts.size(); p++) {
+            leaf_verts_sum += parts[p].bases.size();
+        
             Polygon_geom np;
             
             if (tl.intersect(parts[p], np)) {
                 if (!q_tl) {
                     q_tl = new Quadtree(tl);
+                    child_verts_sum += 4; // subtree bounds cost
+                    nchildren++;
                 }
                 q_tl->add_poly(np);
+                child_verts_sum += np.bases.size();
             }
                 
             if (tr.intersect(parts[p], np)) {
                 if (!q_tr) {
                     q_tr = new Quadtree(tr);
+                    child_verts_sum += 4; // subtree bounds cost
+                    nchildren++;
                 }
                 q_tr->add_poly(np);
+                child_verts_sum += np.bases.size();
             }
 
             if (bl.intersect(parts[p], np)) {
                 if (!q_bl) {
                     q_bl = new Quadtree(bl);
+                    child_verts_sum += 4; // subtree bounds cost
+                    nchildren++;
                 }
                 q_bl->add_poly(np);
+                child_verts_sum += np.bases.size();
             }
 
             if (br.intersect(parts[p], np)) {
                 if (!q_br) {
                     q_br = new Quadtree(br);
+                    child_verts_sum += 4; // subtree bounds cost
+                    nchildren++;
                 }
                 q_br->add_poly(np);
+                child_verts_sum += np.bases.size();
             }
         }
         
@@ -233,10 +251,39 @@ class Quadtree : public Multipolygon_geom {
         if (q_bl) { q_bl->compute_bounding_box(); }
         if (q_br) { q_br->compute_bounding_box(); }
         
+        // here we decide based on cumulative complexity
+        // child_verts_sum is the cost of intersection with all children (including their bounds)
+        // we only subdivide if we will gain anything
         
-        printf("about to recurse into child QT nodes\n");
-        const int max_verts_per_quad = 40;
+        // child_verts will be leaf+4 for polys that do not have to be cut by the child bounds
+        // worst case thus: (leaf-child) between 4 and 16
+        
+        // if we have to split a poly, then the cost per child is 4+verts_in_child
+        // best case: only one of the children will be traversed, so cost per child
+        // will be between 4+min_child and 4+max_child
+        
+        int vthresh = std::max(20, leaf_verts_sum/(nchildren+1));
+        printf("cost of performing test as leaf=%d vs cost with children=%d, vthresh=%d\n", leaf_verts_sum, child_verts_sum, vthresh);
+        printf("\ttl=%d, tr=%d, bl=%d, br=%d\n",
+            q_tl ? q_tl->total_vertices : 0,
+            q_tr ? q_tr->total_vertices : 0,
+            q_bl ? q_bl->total_vertices : 0,
+            q_br ? q_br->total_vertices : 0
+        );
+        
+        const int max_verts_per_quad = 20;
         const int maxdepth = 6;
+
+                
+        if (level+1 < maxdepth && double(child_verts_sum)/double(leaf_verts_sum) < 2) {
+            if (q_tl && q_tl->total_vertices > vthresh) q_tl->partition_polygons(level+1, cumulative_verts + 4);            
+            if (q_tr && q_tr->total_vertices > vthresh) q_tr->partition_polygons(level+1, cumulative_verts + 4);
+            if (q_bl && q_bl->total_vertices > vthresh) q_bl->partition_polygons(level+1, cumulative_verts + 4);
+            if (q_br && q_br->total_vertices > vthresh) q_br->partition_polygons(level+1, cumulative_verts + 4);
+        }
+        
+        /*
+        printf("about to recurse into child QT nodes\n");
         if (q_tl && q_tl->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_tl->partition_polygons(level+1);
         }
@@ -252,6 +299,7 @@ class Quadtree : public Multipolygon_geom {
         if (q_br && q_br->total_vertices > max_verts_per_quad && level < maxdepth) {
             q_br->partition_polygons(level+1);
         }
+        */
 
         parts.clear();
     }

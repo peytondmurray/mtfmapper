@@ -445,10 +445,12 @@ int main(int argc, char** argv) {
         delete target_geom;
         //target_geom = new Multipolygon_geom (
         target_geom = new Quadtree (
-            width*0.5 + tc_xoff.getValue(), 
-            height*0.5 + tc_yoff.getValue(), 
+            0,
+            0,
             tc_target_name.getValue()
         );
+        
+        //((Quadtree*)target_geom)->print_bounds(0);
     }
 
     Render_polygon default_target(
