@@ -130,7 +130,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 
                 verts[vs].next = verts[current].next;
                 verts[vs].prev = current;
-                verts[nsi].prev = vs;
+                verts[verts[current].next].prev = vs;
                 verts[current].next = vs;
                 printf("setting prev of %d to %d\n", nsi, vs);
                 
@@ -146,7 +146,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 
                 verts[vs+1].next = verts[current].next; 
                 verts[vs+1].prev = current;
-                verts[nci + poly0_size].prev = vs + 1;
+                verts[verts[current].next].prev = vs + 1;
                 verts[current].next = vs + 1;
                 printf("**setting prev of %d to %d\n", nci+poly0_size, vs+1);
                 
@@ -196,12 +196,14 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
                     if (verts[current].en) {
                         do {
                             current = verts[current].next;
+                            printf("en: visiting vertex %d\n", current);
                             vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
                             verts[current].next_poly = -2;
                         } while (!verts[current].isect);
                     } else {
                         do {
                             current = verts[current].prev;
+                            printf("ex: visiting vertex %d\n", current);
                             vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
                             verts[current].next_poly = -2;
                         } while(!verts[current].isect);
