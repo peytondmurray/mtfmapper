@@ -122,13 +122,13 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 
                 // find the node that points to nsi
                 int current = si;
-                while (verts[current].next != nsi ) { //&& // this test may be redundant
-                       //verts[vs].alpha > verts[current].alpha) {
+                while (verts[current].next != nsi && // this test may be redundant
+                       verts[vs].alpha > verts[current].alpha) {
+                    printf("si/nsi: alpha[%d] = %lf new vertex alpha = %lf\n", current, verts[current].alpha, verts[vs].alpha);
                     current = verts[current].next;
                 }
-                // current.next == nsi
                 
-                verts[vs].next = nsi;
+                verts[vs].next = verts[current].next;
                 verts[vs].prev = current;
                 verts[nsi].prev = vs;
                 verts[current].next = vs;
@@ -138,13 +138,13 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 
                 // find the node that points to nci
                 current = ci + poly0_size;
-                while (verts[current].next != (nci+poly0_size) ) { //&& // this test may be redundant
-                       //verts[vs+1].alpha > verts[current].alpha) { // why is this not working ?
+                while (verts[current].next != (nci+poly0_size) && // this test may be redundant
+                       verts[vs+1].alpha > verts[current].alpha) { // why is this not working ?
+                    printf("ci/nci: alpha[%d] = %lf new vertex alpha = %lf\n", current, verts[current].alpha, verts[vs+1].alpha);
                     current = verts[current].next;
                 }
-                // current.next == nci+poly0_size
                 
-                verts[vs+1].next = nci + poly0_size;
+                verts[vs+1].next = verts[current].next; 
                 verts[vs+1].prev = current;
                 verts[nci + poly0_size].prev = vs + 1;
                 verts[current].next = vs + 1;
