@@ -52,6 +52,7 @@ class Polygon_geom : public Geometry {
     : Geometry(cx, cy, 0), nvertices(nverts) {
 
         construct_regular_polygon(width, height, angle);
+        precompute_point_test();
         own_area = compute_area();
         printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
     }
@@ -71,6 +72,8 @@ class Polygon_geom : public Geometry {
             normals[i][1] = d[0] / norm(d);
             prev = (prev + 1) % nvertices;
         }
+        
+        precompute_point_test();
 
         compute_bounding_box();
         
@@ -90,6 +93,8 @@ class Polygon_geom : public Geometry {
             normals[i][1] = d[0] / norm(d);
             prev = (prev + 1) % nvertices;
         }
+        
+        precompute_point_test();
 
         compute_bounding_box();
         
@@ -152,8 +157,48 @@ class Polygon_geom : public Geometry {
             printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
         }
     }
+    
+    void precompute_point_test(void) {
+        constant = vector<double>(nvertices);
+        multiple = vector<double>(nvertices);
+        int j = (int)bases.size() - 1;
 
+        for(int i=0; i < (int)bases.size(); i++) {
+            if(bases[j][1] == bases[i][1]) {
+                constant[i] = bases[i][0];
+                multiple[i] = 0; 
+            } else {
+                constant[i] = bases[i][0] - (bases[i][1]*bases[j][0]) / (bases[j][1] - bases[i][1]) + 
+                        (bases[i][1]*bases[i][0]) / (bases[j][1] - bases[i][1]);
+
+                multiple[i] = (bases[j][0] - bases[i][0]) / (bases[j][1] - bases[i][1]); 
+            }
+            j = i; 
+        }
+    }
+
+    // NOTE: indeterminate result if point falls exactly on boundary
+    // TODO: since there is no "early out" option here, this is about
+    // half the speed of the older test (see below)
     bool is_inside(double x, double y) const {
+
+        int j = bases.size() - 1;
+        bool  oddNodes = false;
+
+        for (int i=0; i < (int)bases.size(); i++) {
+            if ( (bases[i][1] < y && bases[j][1] >= y) || 
+                 (bases[j][1] < y && bases[i][1] >= y) ) {
+
+                oddNodes ^= (y*multiple[i] + constant[i]) < x; 
+            }
+            j = i; 
+        }
+
+        return oddNodes; 
+    }
+
+    
+    bool xis_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < nvertices && inside; i++) {
             double dot = normals[i][0]*(x - bases[i][0]) + 
@@ -493,6 +538,20 @@ class Polygon_geom : public Geometry {
             printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly);
         }
         
+        printf("tracing poly 0\n");
+        int c=0;
+        do {
+            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha);    
+            c = verts[c].next;
+        } while (c != 0);
+        
+        printf("tracing poly 1\n");
+        c=poly1_start;
+        do {
+            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha);    
+            c = verts[c].next;
+        } while (c != poly1_start);
+        
         if (vs == vs_before_intersections) {
             // either *this is entirely inside b, or the other way round
             // check a single vertex of *this to decide
@@ -526,6 +585,9 @@ class Polygon_geom : public Geometry {
 
     cv::Vec2d bb_normals[4];
     cv::Vec2d bb_bases[4];
+
+    vector<double> constant;
+    vector<double> multiple;
     
     int nvertices;
 
