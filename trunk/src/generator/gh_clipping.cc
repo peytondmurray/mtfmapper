@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 namespace GH_clipping {
 
+
 static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
                         const gh_vertex& c0, const gh_vertex& c1,
                         gh_vertex& is, gh_vertex& ic) {
@@ -43,26 +44,18 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     double denom = (dc_y*ds_x - dc_x*ds_y);
                                                       
     if (fabs(denom) < 1e-11) {
-        printf("denom zero? lines are parallel?\n");
-        //printf("1: (%lf, %lf), (%lf, %lf)\n", v1[0], v1[1], d1[0], d1[1]);
-        //printf("2: (%lf, %lf), (%lf, %lf)\n", v2[0], v2[1], d2[0], d2[1]);
         return false;
     }
                                                                                                                           
     is.alpha = (dc_x*(s0.y - c0.y) - dc_y*(s0.x - c0.x)) / denom;
     ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) / denom;
     
-    printf("S: (%lf, %lf), d=(%lf, %lf)\n", s0.x, s0.y, ds_x, ds_y);
-    printf("C: (%lf, %lf), d=(%lf, %lf)\n", c0.x, c0.y, dc_x, dc_y);
-    
-    printf("is.alpha=%lf, ic.alpha=%lf\n", is.alpha, ic.alpha);
     
     // should we check that the alphas are in the range [0,1] ?
+    if (is.alpha < 0 || is.alpha >= 1 ||  
+        ic.alpha < 0 || ic.alpha >= 1) {
     
-    if (is.alpha < 0 || is.alpha > 1 ||
-        ic.alpha < 0 || ic.alpha > 1) {
-        
-        printf("intersection outside of end vertices, not reporting this as an intersection\n");
+        //printf("intersection outside of end vertices, not reporting this as an intersection\n");
         return false;
     }
     
@@ -74,14 +67,97 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     ic.y = c0.y + ic.alpha*dc_y;
     ic.isect = true;
     
+    
     return true;        
+}
+
+static double dist(gh_vertex& a, gh_vertex& b) {
+    return sqrt( (a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y)  );
+}
+
+static void insert_vertex(vector<gh_vertex>& verts, int v1, int next, int vs) {
+    int current = v1;
+        
+    if (verts[current].next != next) {
+        do { 
+            if (verts[vs].alpha > verts[verts[current].next].alpha) {
+                current = verts[current].next;
+            } else {
+                break;
+            }
+        } while (verts[vs].alpha > verts[verts[current].next].alpha);
+    }
+    
+    verts[vs].next = verts[current].next;
+    verts[vs].prev = current;
+    verts[verts[current].next].prev = vs;
+    verts[current].next = vs;
+    verts[vs].en = true;
+}
+
+static int check_degeneracy(vector<gh_vertex>& verts, int v1, int v2) {
+    /*
+    printf("checking (%lf, %lf) -> (%lf, %lf) / (%lf, %lf) -> (%lf, %lf)\n",
+        verts[v1].x, verts[v1].y,
+        verts[verts[v1].next].x, verts[verts[v1].next].y,
+        verts[v2].x, verts[v2].y,
+        verts[verts[v2].next].x, verts[verts[v2].next].y
+    );
+    */
+    bool isect = true;
+    if (dist(verts[v1], verts[v2]) < 1e-11) {
+        //printf("##1 identical vertex found in first poly: %lf %lf\n",verts[v1].x, verts[v1].y);
+        verts[v1].neighbour = v2;
+        verts[v2].neighbour = v1;
+        verts[v1].isect = true;
+        verts[v2].isect = true;
+        verts[v1].en = true;
+        verts[v2].en = true;
+        return isect = false; // TODO: should this return? orig code falls through (check others below too)
+    }
+    if (dist(verts[verts[v1].next], verts[v2]) < 1e-11) {
+        int& next = verts[v1].next;
+        //printf("##2 identical vertex found in first poly: %lf %lf\n",verts[v1].x, verts[v1].y);
+        verts[next].neighbour = v2;
+        verts[v2].neighbour = next;
+        verts[next].isect = true;
+        verts[v2].isect = true;
+        verts[next].en = true;
+        verts[v2].en = true;
+        return isect = false;
+    }
+    
+    if (dist(verts[v1], verts[verts[v2].next]) < 1e-11) {
+        int& next = verts[v2].next;
+        //printf("##3 identical vertex found in first poly: %lf %lf\n",verts[next].x, verts[next].y);
+        verts[v1].neighbour = next;
+        verts[next].neighbour =v1;
+        verts[v1].isect = true;
+        verts[next].isect = true;
+        verts[v1].en = true;
+        verts[next].en = true;
+        return isect = false;
+    }
+    if (dist(verts[verts[v1].next], verts[verts[v2].next]) < 1e-11) {
+        int& next = verts[v1].next;
+        int& nnext = verts[v2].next;
+        //printf("##4 identical vertex found in first poly: %lf %lf\n",verts[v1].x, verts[v1].y);
+        verts[next].neighbour = nnext;
+        verts[nnext].neighbour = next;
+        verts[next].isect = true;
+        verts[nnext].isect = true;
+        verts[next].en = true;
+        verts[nnext].en = true;
+        return isect = false;
+    }
+    return isect;
 }
 
 
 int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, int vs, int next_poly) {
     for (int v=0; v < (int)in_verts.size(); v++) {
-        verts[v+vs].x = in_verts[v][0];// + (v+vs+1)/1e5;
-        verts[v+vs].y = in_verts[v][1];// - (v+vs+1)/2e5;
+        verts[v+vs].x = in_verts[v][0];
+        verts[v+vs].y = in_verts[v][1];
         verts[v+vs].next = (v+1) % in_verts.size() + vs;
         verts[v+vs].prev = (v + in_verts.size() - 1) % in_verts.size() + vs;
         verts[v+vs].isect = false;  // this it not an intersection, so it is a vertex
@@ -89,11 +165,11 @@ int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, in
         verts[v+vs].neighbour = -1; // no matching vertex in neighbour yet
         verts[v+vs].next_poly = next_poly; // no next poly yet
         verts[v+vs].alpha = 10;     // any value > 1 indicates no intersection, which is the default
-        
-        printf("v=%d, v+vs=%d, next=%d, prev=%d\n", v, vs+v, verts[v+vs].next, verts[v+vs].prev);
     }
     return vs + in_verts.size(); // index of next free vertex entry
 }
+
+
 
 void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_size) {
     // phase one
@@ -102,7 +178,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
         for (int ci=0; ci < poly1_size; ci++) {
             int nci = (ci + 1) % poly1_size;
             
-            printf("testing %d from p0, %d from p1\n", si, ci);
+            //printf("testing %d from p0, %d from p1\n", si, ci);
             
             bool isect = t_intersect(
                 verts[si], verts[nsi], 
@@ -110,7 +186,69 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 verts[vs], verts[vs+1]
             );
             
-            printf("result: %d (%lf, %lf), (%lf, %lf)\n", isect, verts[vs].x, verts[vs].y, verts[vs+1].x, verts[vs+1].y);
+            if (isect && 
+                //(verts[vs].alpha < 1e-11 || verts[vs+1].alpha < 1e-11 ||
+                // (1-verts[vs].alpha) < 1e-11 || (1-verts[vs+1].alpha) < 1e-11) ) { // TODO: could modify intersection and treat alpha=1 here
+                (dist(verts[si], verts[vs]) < 1e-11 || dist(verts[ci+poly0_size], verts[vs]) < 1e-11 ||
+                 dist(verts[verts[si].next], verts[vs]) < 1e-11 || dist(verts[verts[ci+poly0_size].next], verts[vs]) < 1e-11
+                 ) ) {
+            
+                //printf("## new vertex identical to subject start (alpha1=%lf, alpha2=%lf) : %lf %lf\n", 
+                //    verts[vs].alpha, verts[vs+1].alpha, verts[vs].x, verts[vs].y);
+                
+                // if we simply skip adding this intersection, we appear
+                // to be fine (except for complete overlap)
+                
+                isect = check_degeneracy(verts, si, ci+poly0_size); 
+                if (!isect) {
+                    //printf("we found vertices in the S and C polygon that are identical, so we fudged the neighbour pointers accordingly\n");
+                } else {      
+                    //printf("intersection is close to one of the starting points, but the starting points are not the same...\n");
+                    
+                    // we should insert a single vertex into the relevant polygon
+                    // and link it up with the matching neighbour point
+                    
+                    if (dist(verts[si], verts[vs]) < 1e-11 || dist(verts[verts[si].next], verts[vs]) < 1e-11) {
+                        // the matching vertex was in the subject polygon
+                        //printf("inserting vertex %d between %d and %d in poly1\n", vs+1, ci+poly0_size, nci+poly0_size);
+                        insert_vertex(verts, ci+poly0_size, nci+poly0_size, vs+1);
+                        
+                        
+                        verts[vs+1].neighbour = (dist(verts[si], verts[vs]) < 1e-11) ? si : verts[si].next;
+                        verts[vs+1].next_poly = -1;
+                        verts[verts[vs+1].neighbour].neighbour = vs+1;
+                        verts[verts[vs+1].neighbour].isect = 1;
+                        
+                        verts[vs].next_poly = -5;
+                        verts[vs].isect = 0;
+                        
+                        vs += 2; // this wastes slot vs, but it is not linked to anything, so no harm done
+                        
+                    } else {
+                        // the matching vertex was in the clip polygon
+                        //printf("inserting vertex %d between %d and %d in poly0\n", vs, si, nsi);
+                        insert_vertex(verts, si, nsi, vs);
+                        
+                        verts[vs].neighbour = (dist(verts[ci+poly0_size], verts[vs]) < 1e-11) ? ci+poly0_size : verts[ci+poly0_size].next;
+                        verts[vs].next_poly = 1;
+                        verts[verts[vs].neighbour].neighbour = vs;
+                        verts[verts[vs].neighbour].isect = 1;
+                        
+                        verts[vs+1].next_poly = -5;
+                        verts[vs+1].isect = 0;
+                        
+                        vs += 2; // this wastes slot vs, but it is not linked to anything, so no harm done
+                    }
+                    
+                    isect = false; // 
+                }
+                
+                // 140, 90 lies on edge, but is not an intersection. why not?
+                
+            }
+            
+            
+            //printf("result: %d (%lf, %lf), (%lf, %lf)\n", isect, verts[vs].x, verts[vs].y, verts[vs+1].x, verts[vs+1].y);
                 
             if (isect) { 
                 verts[vs].neighbour = vs+1;
@@ -118,37 +256,8 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 verts[vs+1].neighbour = vs;
                 verts[vs+1].next_poly = -1;
                 
-                // insert si into chain for poly 0
-                
-                // find the node that points to nsi
-                int current = si;
-                while (verts[current].next != nsi && // this test may be redundant
-                       verts[vs].alpha > verts[current].alpha) {
-                    printf("si/nsi: alpha[%d] = %lf new vertex alpha = %lf\n", current, verts[current].alpha, verts[vs].alpha);
-                    current = verts[current].next;
-                }
-                
-                verts[vs].next = verts[current].next;
-                verts[vs].prev = current;
-                verts[verts[current].next].prev = vs;
-                verts[current].next = vs;
-                printf("setting prev of %d to %d\n", nsi, vs);
-                
-                // same for ci into poly 1
-                
-                // find the node that points to nci
-                current = ci + poly0_size;
-                while (verts[current].next != (nci+poly0_size) && // this test may be redundant
-                       verts[vs+1].alpha > verts[current].alpha) { // why is this not working ?
-                    printf("ci/nci: alpha[%d] = %lf new vertex alpha = %lf\n", current, verts[current].alpha, verts[vs+1].alpha);
-                    current = verts[current].next;
-                }
-                
-                verts[vs+1].next = verts[current].next; 
-                verts[vs+1].prev = current;
-                verts[verts[current].next].prev = vs + 1;
-                verts[current].next = vs + 1;
-                printf("**setting prev of %d to %d\n", nci+poly0_size, vs+1);
+                insert_vertex(verts, si, nsi, vs);
+                insert_vertex(verts, ci+poly0_size, nci+poly0_size, vs+1);
                 
                 vs += 2;
             }
@@ -156,10 +265,169 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
     }
 }
 
-void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index) {
-    bool status = !b.is_inside(verts[first_vert_index].x, verts[first_vert_index].y);
+void gh_phase_two_a(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index, int nverts) {
+    // If a vertex is "ON", we force it to inside?
+    for (int i=first_vert_index; i < (first_vert_index+nverts); i++) {
+        int status = b.classify(verts[i].x, verts[i].y);
+        verts[i].en = status == ON ? 1 : status;
+    }
     
-    printf("first vertex inside other poly: %d\n", status);
+}
+
+static void remove_intersection(vector<gh_vertex>& verts, int current) {
+    
+    // we do not actually remove the vertex
+    // but merely turn it into non-intersection vertex
+    
+    int neigh = verts[current].neighbour;
+    
+    verts[current].en = verts[verts[current].prev].en;  // copy predecessor's en flag
+    verts[neigh].en   = verts[verts[neigh].prev].en;    // same for neighbour
+    
+    verts[current].neighbour = -1;
+    verts[neigh].neighbour = -1;
+    
+    //verts[verts[current].prev].next = verts[current].next; 
+    //verts[verts[current].next].prev = verts[current].prev;
+    
+    // verts[current].next_poly = -3; // not really needed since we nuke the isect flag
+    
+    verts[current].isect = false;
+    verts[neigh].isect = false;
+}
+
+void update_en_flag(vector<gh_vertex>& verts, int current) {
+    //printf("intersection (%lf, %lf): en=%d (0=exit, 1=entry)\n", verts[current].x, verts[current].y, verts[current].en);
+    
+    int& next = verts[current].next;
+    int& prev = verts[current].prev;
+    int& neigh = verts[current].neighbour;
+    int& nprev = verts[neigh].prev;
+    int& nnext = verts[neigh].next;
+    
+    //printf("prev(%d): isect=%d, en=%d, next(%d): isect=%d, en=%d\n", 
+    //    prev,
+    //    verts[prev].isect, verts[prev].en,
+    //    next,
+    //    verts[next].isect, verts[next].en
+    //);
+    
+    // Intersections are counted as "ON", but individual vertices could also be "ON" ??
+    int sbits = 0;
+    sbits += verts[prev].isect ? ON : verts[prev].en;
+    sbits += (verts[next].isect ? ON : verts[next].en) * 3;
+    
+    int nsbits = 0;
+    nsbits += verts[nprev].isect ? ON : verts[nprev].en;
+    nsbits += (verts[nnext].isect ? ON : verts[nnext].en) * 3;
+    
+    bool polarity = false;
+    switch(sbits) {
+    case 0: // out/out
+        polarity = true;
+    case 4: // in/in
+        
+        switch(nsbits){
+        case 8: // on/on
+            remove_intersection(verts, current);
+            verts[neigh].en = polarity;
+            break;
+        case 0: // out/out
+        case 4: // in/in
+            remove_intersection(verts, current);
+            break;
+        default:
+            if (verts[nprev].en && !verts[nnext].en) {
+                verts[current].en = true;
+            } else {
+                verts[current].en = false;
+            }
+        };
+        break;
+        
+    case 8: // on/on  
+    
+        switch(nsbits) {
+        case 0: // out/out
+            remove_intersection(verts, current);
+            verts[current].en = true;
+            verts[neigh].en = false;
+            break;
+        case 4: // in/in
+            remove_intersection(verts, current);
+            verts[current].en = false;
+            verts[neigh].en = true;
+            break;
+        case 8: // on/on
+            remove_intersection(verts, current);
+            verts[current].en = true;
+            verts[neigh].en = true;
+            break;
+        case 2: // on/out
+            verts[current].en = false;
+            break;
+        case 5: // on/in
+            verts[current].en = true;
+            break;
+        case 6: // out/on
+            verts[current].en = false;
+            break;
+        case 3: // out/in
+            verts[current].en = false;
+            break;
+        case 7: // in/on
+            verts[current].en = true;
+            break;
+        case 1: // in/out
+            verts[current].en = true;
+            break;
+        };
+        
+        break;
+    case 1: // in/out
+    case 2: // on/out
+    case 7: // in/on
+        verts[current].en = false;
+        break;
+    
+    case 5: // on/in
+    case 3: // out/in
+    case 6: // out/on
+        verts[current].en = true;
+        break;
+    }
+    
+    //printf("(%d): sbits=%d, nsbits=%d, outflag=%d\n", current, sbits, nsbits, verts[current].en);
+}
+
+void gh_phase_two(vector<gh_vertex>& verts, int first_vert_index = 0) {
+    //printf("first vertex inside other poly: %d\n", verts[first_vert_index].en);
+    
+    int current = first_vert_index;
+    do {
+        //printf("current vert is %d, (n=%d, p=%d), isect=%d\n", current, verts[current].next, verts[current].prev, verts[current].isect);
+        if (verts[current].isect) {
+            
+            update_en_flag(verts, current);
+            if (verts[current].isect) { // if we did not remove current
+                update_en_flag(verts, verts[current].neighbour);
+                if (verts[current].en == verts[verts[current].neighbour].en) {
+                    remove_intersection(verts, current);
+                }
+            }
+            
+            //printf("*after: intersection(%d) (%lf, %lf): en=%d (0=exit, 1=entry)\n", current, verts[current].x, verts[current].y, verts[current].en);
+        }
+        
+        current = verts[current].next;
+    } while (current != first_vert_index); // let us hope the chain is not broken ...
+}
+
+
+void gh_phase_two_old(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index) {
+    bool status = b.classify(verts[first_vert_index].x, verts[first_vert_index].y) == INSIDE ? false : true;
+    
+    printf("first vertex status (i.e., first isect en flag): %d\n", status);
     
     // inside == true -> status == exit (true?)
     int current = first_vert_index;
@@ -175,6 +443,7 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
     } while (current != first_vert_index); // let us hope the chain is not broken ...
 }
 
+
 void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys) {
     // any vertex with a next_poly value of 1 is part of the subject polygon
     // we can set the next field to -2 when we have processed a node
@@ -185,7 +454,8 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
         done = true;
         for (int si=first_isect_index; si < vs; si++) {
             if (verts[si].next_poly == 1 && verts[si].isect) {
-                printf("found unprocessed intersection %d\n", si);
+                //printf("found unprocessed intersection %d\n", si);
+                verts[si].next_poly = -2; // make sure
                 done = false;
                 
                 // in the GH paper, the current vertex is added here
@@ -196,25 +466,26 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
                     if (verts[current].en) {
                         do {
                             current = verts[current].next;
-                            printf("en: visiting vertex %d\n", current);
+                            //printf("en: visiting vertex %d\n", current);
                             vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
                             verts[current].next_poly = -2;
                         } while (!verts[current].isect);
                     } else {
                         do {
                             current = verts[current].prev;
-                            printf("ex: visiting vertex %d\n", current);
+                            //printf("ex: visiting vertex %d\n", current);
                             vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
                             verts[current].next_poly = -2;
                         } while(!verts[current].isect);
                     }
+                    //printf("swapping from %d to neighbour %d\n", current, verts[current].neighbour);
                     current = verts[current].neighbour; // swap to the other poly
                 } while (current != si); // TODO: will this work if the last intersection was in clip poly?
                 if (vertices.size() > 0) {
-                    printf("adding a poly with %d vertices\n", (int)vertices.size());
-                    for (size_t k=0; k < vertices.size(); k++) {
-                        printf("\t%lf %lf\n", vertices[k][0], vertices[k][1]);
-                    }
+                    //printf("adding a poly with %d vertices\n", (int)vertices.size());
+                    //for (size_t k=0; k < vertices.size(); k++) {
+                    //    printf("\t%lf %lf\n", vertices[k][0], vertices[k][1]);
+                    //}
                     polys.push_back(Polygon_geom(vertices));
                     vertices.clear();
                 }

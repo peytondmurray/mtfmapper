@@ -40,6 +40,11 @@ using std::vector;
 
 class Multipolygon_geom;
 
+typedef enum {
+    INSIDE = 1,
+    OUTSIDE = 0,
+    ON = 2
+} Vertex_type;
 
 //==============================================================================
 class Polygon_geom : public Geometry {
@@ -47,6 +52,8 @@ class Polygon_geom : public Geometry {
     static const int max_verts_per_poly = 200; // max number of point in intersected polygon
 
     friend class Multipolygon_geom;
+    
+    
   
     Polygon_geom(double cx=0, double cy=0, double width=1, double height=1, double angle=0, int nverts=4) 
     : Geometry(cx, cy, 0), nvertices(nverts) {
@@ -210,6 +217,64 @@ class Polygon_geom : public Geometry {
         return inside;
     }
     
+    inline double det(int i, double x, double y, bool& edge) const {
+        int next = (i+1)%bases.size();
+        double d = (bases[i][0] - x) * (bases[next][1] - y) -
+                   (bases[next][0] - x) * (bases[i][1] - y);
+                   
+        if (d == 0) {
+            edge = true;
+        } else {
+            edge = false;
+        }
+        return d;
+    }
+    
+    #define crossing ( (bases[i][1] < y) != (bases[next][1] < y) )
+    #define right_crossing  (det(i, x, y, edge) > 0) == (bases[next][1] > bases[i][1])  
+    #define modify_w ( w += ((bases[next][1] > bases[i][1]) ? 2 : 0) - 1  )
+   
+    inline Vertex_type classify(double x, double y) const {
+        bool edge = false;
+        if (x == bases[0][0] && y == bases[0][1]) {
+            return ON; // on first vertex
+        }
+        int w = 0;
+        for (int i=0; i < (int)bases.size(); i++) {
+            int next = (i+1)%bases.size();
+            if (bases[next][1] == y) {
+                if (bases[next][0] == x) {
+                    return ON; // on a vertex
+                } else {
+                    if ( bases[i][1] == y && ((bases[next][0] > x) == (bases[i][0] < x)) ) {
+                        return ON; // on an edge
+                    }
+                }
+            }
+            if (crossing) {
+                if (bases[i][0] >= x) {
+                    if (bases[next][0] > x) {
+                        modify_w;
+                    } else {
+                        if (right_crossing) {
+                            modify_w;
+                        }
+                        if (edge) return ON; // non-horizontal edge?
+                    }
+                } else {
+                    if (bases[next][0] > x) {
+                        if (right_crossing) {
+                            modify_w;
+                        }
+                        if (edge) return ON; // non-horizontal edge
+                    }
+                }
+            }
+        }
+        return w == 0 ? OUTSIDE : INSIDE; 
+    }
+    
+    
     bool remove_degeneracy(int pass=0) {
         // This method is rather crude, and not tested for every possible case
     
@@ -365,6 +430,15 @@ class Polygon_geom : public Geometry {
         }
         return 0.5 * fabs(A);
     }
+    
+    bool compute_area_sign(void) const {
+        double A = 0;
+        for (int i=0; i < nvertices; i++) {
+            int ni = (i+1) % nvertices;
+            A += bases[i][0]*bases[ni][1] - bases[ni][0]*bases[i][1];
+        }
+        return A < 0;
+    }
 
     double compute_bb_area(void) const {
         double A = 0;
@@ -513,29 +587,36 @@ class Polygon_geom : public Geometry {
     // clipping, and it should also avoid creating degenerate parts
     vector<Polygon_geom> intersect_greiner_horman(const Polygon_geom& b) {
         vector<Polygon_geom> polys;
-    
+        
+        
+        // TODO: seems like we have another en/ex flag problem, more debugging of GH code required ...
+        
         vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
         vector<Polygon_geom> poly(2);
         poly[0] = *this;
         poly[1] = b;
         
+        printf("Input poly0 sign:%d, poly1 sign: %d\n", compute_area_sign(), b.compute_area_sign());
+        
         // populate the verts vector with the two polys
         int poly1_start = GH_clipping::init_gh_list(verts, bases, 0, 1);
-        printf("next!\n");
         int vs = GH_clipping::init_gh_list(verts, b.bases, poly1_start, -1);
         
+        /*
         printf("vs is now = %d\n", vs);
         for (int i=0; i < vs; i++) {
             printf("i=%d: (%lf %lf), p=%d, n=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next);
         }
+        */
         
         int vs_before_intersections = vs;
         GH_clipping::gh_phase_one(verts, vs, bases.size(), b.bases.size());
         
+        /*
         printf("after phase 1, vs is %d\n", vs);
         
         for (int i=0; i < vs; i++) {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly);
+            printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d, en=%d, neigh=%d, isect=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly, verts[i].en, verts[i].neighbour, verts[i].isect);
         }
         
         printf("tracing poly 0\n");
@@ -551,31 +632,97 @@ class Polygon_geom : public Geometry {
             printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha);    
             c = verts[c].next;
         } while (c != poly1_start);
+        */
         
         if (vs == vs_before_intersections) {
-            // either *this is entirely inside b, or the other way round
-            // check a single vertex of *this to decide
-            printf("** No intersections found ...\n");
+            //printf("** No intersections found ...\n");
             
-            if (b.is_inside(bases[0][0], bases[0][1])) {
+            bool all_on = true;
+            for (size_t p=0; p < bases.size(); p++) {
+                int cl = b.classify(bases[p][0], bases[p][1]);
+                if (cl == OUTSIDE) {
+                    all_on = false;
+                }
+            }
+            
+            if (all_on) {
                 // *this must be entirely within b, so return *this
+                printf("S inside C: returning S\n");
                 polys.push_back(*this);
                 return polys;
             } else {
+                // maybe b is entirely inside *this?
+                bool all_in = true;
+                for (size_t p=0; p < b.bases.size(); p++) {
+                    int cl = classify(b.bases[p][0], b.bases[p][1]);
+                    if (cl == OUTSIDE) {
+                        all_in = false;
+                    }
+                }
+                
+                if (all_in) {
+                    printf("C inside S: returning C\n");
+                    polys.push_back(b);
+                    return polys;
+                }
+            
                 // *this is entirely outside b, so return empty list
+                printf("no intersection\n");
                 return polys;
             }
         }
         
+        // label all original vertices as inside/outside
+        GH_clipping::gh_phase_two_a(verts, b, 0, bases.size());
+        GH_clipping::gh_phase_two_a(verts, *this, poly1_start, b.bases.size());
+        
+        
+        /*
+        printf("after phase 2a, vs is %d\n", vs);
+        
+        for (int i=0; i < vs; i++) {
+            printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d, en=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly, verts[i].en);
+        }
+        */
+        
         
         // phase 2 (of original gh algo)
-        printf("phase 2, poly0\n");
-        GH_clipping::gh_phase_two(verts, b, 0);
-        printf("phase 2, poly1\n");
-        GH_clipping::gh_phase_two(verts, *this, poly1_start);
+        
+        //printf("phase 2, poly0\n");
+        GH_clipping::gh_phase_two(verts, 0);
+        
+        //printf("phase 2, poly1\n");
+        GH_clipping::gh_phase_two(verts, poly1_start);
+        
+        
+        //printf("after phase 2b(S), vs is %d\n", vs);
+        
+        //GH_clipping::gh_phase_two_old(verts, b, 0);
+        //GH_clipping::gh_phase_two_old(verts, *this, poly1_start);
+        
+        /*printf("*tracing poly 0\n");
+        c=0;
+        do {
+            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf, np=%d, neigh=%d, en=%d, isect=%d\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha, verts[c].next_poly, verts[c].neighbour, verts[c].en, verts[c].isect);    
+            c = verts[c].next;
+        } while (c != 0);
+        
+        printf("*tracing poly 1\n");
+        c=poly1_start;
+        do {
+            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf, np=%d, neigh=%d, en=%d, isect=%d\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha, verts[c].next_poly, verts[c].neighbour, verts[c].en, verts[c].isect);
+            c = verts[c].next;
+        } while (c != poly1_start);
+        */
         
         // phase 3 ....
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
+        
+        
+        printf("poly %d\n", (int)k);
+        for (int j=0; j < polys[k].bases.size(); j++) {
+            printf("\t%lf %lf\n", polys[k].bases[j][0], polys[k].bases[j][1]);
+        }
         
         return polys;
     }
