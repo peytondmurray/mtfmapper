@@ -588,9 +588,6 @@ class Polygon_geom : public Geometry {
     vector<Polygon_geom> intersect_greiner_horman(const Polygon_geom& in_b) {
         vector<Polygon_geom> polys;
         
-        
-        
-        
         printf("Poly 0:\n");
         for (size_t v=0; v < bases.size(); v++) {
             printf("%lf %lf\n", bases[v][0], bases[v][1]);
@@ -609,37 +606,55 @@ class Polygon_geom : public Geometry {
         
         // now perturb all points of in_b that are classified as "ON",
         // forcing them to become "OUT"
+        bool perturbed = false;
         vector<cv::Vec2d> nverts;
+        double delta = 0;
         for (size_t v=0; v < in_b.bases.size(); v++) {
             double px = in_b.bases[v][0];
             double py = in_b.bases[v][1];
             if (classify(px, py) == ON) {
-                printf("point on edge, perturbing\n");
+                //printf("point on edge, perturbing\n");
+                perturbed = true;
                 double dx = px - in_b_cx;
                 double dy = py - in_b_cy;
+                
                 double n = sqrt(dx*dx + dy*dy);
-                if (fabs(n) < 1e-11) {
-                    printf("found point exactly on centroid, reverting to random perturbation\n");
-                    px += 1e-9*rand()/double(RAND_MAX);
-                    py += 1e-9*rand()/double(RAND_MAX);
+                
+                if (n < 1e-11) {
+                    printf("reverting to random perturbation\n");
+                    px += 1e-10*rand()/double(RAND_MAX);
+                    py += 1e-10*rand()/double(RAND_MAX);
                 } else {
+                    
                     dx /= n;
                     dy /= n;
                     
-                    double npx = px + 1e-10*dx;
-                    double npy = py + 1e-10*dy;
+                    if (fabs(dx) < 1e-11) {
+                        dx = dx < 0 ? -1 : 1;
+                    }
+                    if (fabs(dy) < 1e-11) {
+                        dy = dy < 0 ? -1 : 1;
+                    }
                     
-                    if (classify(npx, npy) == INSIDE) {
-                        px -= 1e-10*dx;
-                        py -= 1e-10*dy;
+                    dx *= 1e-4;
+                    dy *= 1e-4;
+                    
+                    if (sqrt(dx*dx+dy*dy) > delta) {
+                        delta = sqrt(dx*dx+dy*dy);
+                    }
+                    
+                    if (classify(px + dx, py + dy) == INSIDE) {
+                        px -= dx;
+                        py -= dy;
                     } else {
-                        px = npx;
-                        py = npy;
+                        px += dx;
+                        py += dy;
                     }
                     
-                    if (classify(px, py) != OUTSIDE) {
-                        printf("## perturbation failed to move point to outside?\n");
-                    }
+                }
+                
+                if (classify(px, py) != OUTSIDE) {
+                    printf("## perturbation failed to move point to outside?\n");
                 }
             }
             nverts.push_back(cv::Vec2d(px, py));
@@ -656,41 +671,11 @@ class Polygon_geom : public Geometry {
         int poly1_start = GH_clipping::init_gh_list(verts, bases, 0, 1);
         int vs = GH_clipping::init_gh_list(verts, b.bases, poly1_start, -1);
         
-        
-        printf("vs is now = %d\n", vs);
-        for (int i=0; i < vs; i++) {
-            printf("i=%d: (%lf %lf), p=%d, n=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next);
-        }
-        
-        
         int vs_before_intersections = vs;
         GH_clipping::gh_phase_one(verts, vs, bases.size(), b.bases.size());
         
-        
-        printf("after phase 1, vs is %d\n", vs);
-        
-        for (int i=0; i < vs; i++) {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d, en=%d, neigh=%d, isect=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly, verts[i].en, verts[i].neighbour, verts[i].isect);
-        }
-        
-        printf("tracing poly 0\n");
-        int c=0;
-        do {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha);    
-            c = verts[c].next;
-        } while (c != 0);
-        
-        printf("tracing poly 1\n");
-        c=poly1_start;
-        do {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha);    
-            c = verts[c].next;
-        } while (c != poly1_start);
-        
-        
         if (vs == vs_before_intersections) {
-            //printf("** No intersections found ...\n");
-            
+        
             bool all_on = true;
             for (size_t p=0; p < bases.size(); p++) {
                 int cl = b.classify(bases[p][0], bases[p][1]);
@@ -726,60 +711,74 @@ class Polygon_geom : public Geometry {
             }
         }
         
-        // label all original vertices as inside/outside
-        //GH_clipping::gh_phase_two_a(verts, b, 0, bases.size());
-        //GH_clipping::gh_phase_two_a(verts, *this, poly1_start, b.bases.size());
+        GH_clipping::gh_phase_two(verts, b, 0);
+        GH_clipping::gh_phase_two(verts, *this, poly1_start);
         
+        for (size_t v=0; v < vs; v++) {
+            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d\n",
+                v, verts[v].x, verts[v].y,
+                verts[v].next, verts[v].prev,
+                verts[v].en, verts[v].isect,
+                verts[v].neighbour
+            );
+        }
         
-        
-        //printf("after phase 2a, vs is %d\n", vs);
-        
-        //for (int i=0; i < vs; i++) {
-        //    printf("i=%d: (%lf %lf), p=%d, n=%d, np=%d, en=%d\n", i, verts[i].x, verts[i].y, verts[i].prev, verts[i].next, verts[i].next_poly, verts[i].en);
-        //}
-        
-        
-        
-        // phase 2 (of original gh algo)
-        
-        //printf("phase 2, poly0\n");
-        //GH_clipping::gh_phase_two(verts, 0);
-        
-        //printf("phase 2, poly1\n");
-        //GH_clipping::gh_phase_two(verts, poly1_start);
-        
-        
-        printf("after phase 2b(S), vs is %d\n", vs);
-        
-        GH_clipping::gh_phase_two_old(verts, b, 0);
-        GH_clipping::gh_phase_two_old(verts, *this, poly1_start);
-        
-        printf("*tracing poly 0\n");
-        c=0;
+        printf("Poly 0\n");
+        int cur = 0;
         do {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf, np=%d, neigh=%d, en=%d, isect=%d\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha, verts[c].next_poly, verts[c].neighbour, verts[c].en, verts[c].isect);    
-            c = verts[c].next;
-        } while (c != 0);
+            int& v = cur;
+            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d\n",
+                v, verts[v].x, verts[v].y,
+                verts[v].next, verts[v].prev,
+                verts[v].en, verts[v].isect,
+                verts[v].neighbour
+            );
+            cur = verts[v].next;
+        } while (cur != 0);
         
-        printf("*tracing poly 1\n");
-        c=poly1_start;
+        printf("Poly 1\n");
+        cur = poly1_start;
         do {
-            printf("i=%d: (%lf %lf), p=%d, n=%d, alpha=%lf, np=%d, neigh=%d, en=%d, isect=%d\n", c, verts[c].x, verts[c].y, verts[c].prev, verts[c].next, verts[c].alpha, verts[c].next_poly, verts[c].neighbour, verts[c].en, verts[c].isect);
-            c = verts[c].next;
-        } while (c != poly1_start);
+            int& v = cur;
+            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d\n",
+                v, verts[v].x, verts[v].y,
+                verts[v].next, verts[v].prev,
+                verts[v].en, verts[v].isect,
+                verts[v].neighbour
+            );
+            cur = verts[v].next;
+        } while (cur != poly1_start);
         
-        
-        // phase 3 ....
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
         
-        
-        
-        for (size_t k=0; k < polys.size(); k++){
-            printf("poly %d\n", (int)k);
-            for (int j=0; j < polys[k].bases.size(); j++) {
-                printf("\t%lf %lf\n", polys[k].bases[j][0], polys[k].bases[j][1]);
-            }
+        if (perturbed) { // clean up the near-duplicates introduced by perturbation
+            vector<Polygon_geom> npolys;
+            for (size_t k=0; k < polys.size(); k++){
+                
+                vector<cv::Vec2d> nverts;
+                
+                int prev = polys[k].bases.size() - 1;
+                for (int j=0; j < polys[k].bases.size(); j++) {
+                
+                    if (norm(polys[k].bases[j] - polys[k].bases[prev]) < 2.5*delta) {
+                    } else {
+                        nverts.push_back(polys[k].bases[j]);
+                    }
+                    prev = j;
+                }
+                if (nverts.size() > 2) {
+                    npolys.push_back(Polygon_geom(nverts));
+                }
+            }    
+            polys = npolys;
         }
+        
+        //for (size_t k=0; k < polys.size(); k++){
+        //    printf("poly %d\n", (int)k);
+        //    for (int j=0; j < polys[k].bases.size(); j++) {
+        //        printf("\t%lf %lf\n", polys[k].bases[j][0], polys[k].bases[j][1]);
+        //    }
+        //}
         
         return polys;
     }
