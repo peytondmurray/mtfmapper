@@ -496,8 +496,9 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
             
             printf("couple: current=%d\n", current);
             
-            while (next != current && !done) { // TODO: test couple code?
-                if (verts[next].isect && verts[next].flag == verts[current].flag) {
+            //while (next != current && !done) { // TODO: what happens when we have three colinear points on the edge of the other poly?
+                if (verts[next].isect && verts[next].flag == verts[current].flag && 
+                    verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
                     done = true;
                     printf("coupling vertices %d and %d\n", next, current);
                     verts[current].couple = next;
@@ -508,8 +509,8 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
                     verts[verts[next].neighbour].couple = verts[current].neighbour;
                     printf(" ** coupling vertices %d and %d\n", verts[next].neighbour, verts[current].neighbour);
                 }
-                next = verts[next].next;
-            }
+              //  next = verts[next].next;
+            //}
         }
         
         current = verts[current].next;
@@ -660,7 +661,7 @@ static traversal_edge delete_flag2(int current, int prev, traversal_edge status,
             
             // mark both vertices in couple to prevent them from being selected
             verts[current].next_poly = -4;
-            verts[verts[current].couple].next_poly = -5;
+            verts[verts[current].couple].next_poly = -5; //?
             
             return D1; // keep going in the same direction when encountering a coupled vertex
         }
@@ -674,7 +675,7 @@ static traversal_edge delete_flag2(int current, int prev, traversal_edge status,
             
             // mark both vertices in couple to prevent them from being selected
             verts[current].next_poly = -4;
-            verts[verts[current].couple].next_poly = -5;
+            verts[verts[current].couple].next_poly = -5; //?
             
             return D2;
         }
@@ -703,7 +704,9 @@ int select_vertex(vector<gh_vertex>& verts, int vs) {
                         printf("**selecting vertex (1st in couple) %d as starting point\n", si);
                         return si;
                     } else {
-                        printf("broken couple? (%d)\n", si);
+                        // we reach this state if one of the couple was accessed through the neighbour pointer
+                        verts[si].next_poly = -11;
+                        continue; // try next si?
                         //assert(false);
                     }
                 }
@@ -737,9 +740,9 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
             while (current != start) {
                 if (verts[current].flag) {
                     if (status == D1 || status == D2) {
-                        status = delete_flag2(current, prev, status, verts);
+                        status = delete_flag2(current, prev, status, verts); // Kim does not appear to set status here ?
                     } else {
-                        status = delete_flag1(current, status, verts);
+                        status = delete_flag1(current, status, verts); // or here?
                     }
                     prev = current;
                 }
@@ -747,6 +750,7 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
             }
             printf("got %d vertices for next poly\n", (int)vertices.size());
             if (vertices.size() > 2) {
+                // we should scan for colinearity here, just to keep the polygons simpler
                 polys.push_back(Polygon_geom(vertices));
             }
             vertices.clear();
