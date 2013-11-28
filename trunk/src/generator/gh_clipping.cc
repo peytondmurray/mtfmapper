@@ -31,6 +31,15 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 namespace GH_clipping {
 
+inline static double cross(const cv::Vec2d& v0, const cv::Vec2d& v1, const cv::Vec2d& v2) {
+    double ds_x = v1[0] - v0[0];
+    double ds_y = v1[1] - v0[1];
+    double dc_x = v2[0] - v0[0];
+    double dc_y = v2[1] - v0[1];
+                                      
+    return (dc_y*ds_x - dc_x*ds_y);
+}
+
 static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
                         const gh_vertex& c0, const gh_vertex& c1,
                         gh_vertex& is, gh_vertex& ic) {
@@ -126,7 +135,6 @@ int check_degeneracy(vector<gh_vertex>& verts, int vs, int si, int ci, int nsi, 
         return ci;
     }
     
-    
     if (dist(verts[vs], verts[si_next]) < 1e-11) {
         return si_next;
     }
@@ -134,7 +142,6 @@ int check_degeneracy(vector<gh_vertex>& verts, int vs, int si, int ci, int nsi, 
     if (dist(verts[vs], verts[ci_next]) < 1e-11) {
         return ci_next;
     }
-    
     
     for (int k=0; k < vs; k++) {
         if (dist(verts[vs], verts[k]) < 1e-11) {
@@ -276,43 +283,6 @@ inline static double triangle_cross(const gh_vertex& v0, const gh_vertex& v1, co
     double dc_y = v2.y - v0.y;
                                       
     return (dc_y*ds_x - dc_x*ds_y);
-}
-
-inline static edge_status classify_edge(int stat) {
-    edge_status ret = OUT;
-    switch(stat) {
-    case 8: // on/on
-        ret = ON;
-        break;
-    case 4: // in/in
-        ret = IN;
-        break;
-    case 0: // out/out
-        ret = OUT;
-        break;
-        
-    case 5: // in/on
-        ret = IN; // TODO: ON?
-        break;
-    case 2: // out/on
-        ret = OUT; // TODO: ON?
-        break;
-        
-    case 6: // on/out
-        ret = OUT; // TODO: ON?
-        break;
-    case 7: // on/in
-        ret = IN; // TODO: ON?
-        break;
-        
-    case 1: // out/in
-    case 3: // in/out
-        printf("This should not happen!\n");
-        ret = ON;
-        break;    
-    }
-    
-    return ret;
 }
 
 bool edge_present(vector<gh_vertex>& verts, int other, int current) {
@@ -538,13 +508,29 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
 
 static int proceed(int current, traversal_edge status, vector<gh_vertex>& verts, vector<cv::Vec2d>& vertices) {
     if (status == D1) {
-        // TODO: check for degeneracy first
-        vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
+        // check for degeneracy first
+        cv::Vec2d next(verts[current].x, verts[current].y);
+        size_t v_size = vertices.size();
+        if (v_size > 1) {
+            if ( fabs(cross(vertices[v_size-1], vertices[v_size-2], next)) < 1e-11 ) {
+                vertices[v_size-1] = next;
+                return verts[current].next;
+            }
+        }
+        vertices.push_back(next);
         return verts[current].next;
     }
     if (status == D2) {
-        // TODO: check for degeneracy first
-        vertices.push_back(cv::Vec2d(verts[current].x, verts[current].y));
+        // check for degeneracy first
+        cv::Vec2d next(verts[current].x, verts[current].y);
+        size_t v_size = vertices.size();
+        if (v_size > 1) {
+            if ( fabs(cross(vertices[v_size-1], vertices[v_size-2], next)) < 1e-11 ) {
+                vertices[v_size-1] = next;
+                return verts[current].prev;
+            }
+        }
+        vertices.push_back(next);
         return verts[current].prev;
     }
     // touch both intersections
@@ -690,6 +676,10 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
                 current = proceed(current, status, verts, vertices);
             }
             if (vertices.size() > 2) {
+                // quickly check for degeneracy with last point wrapping around
+                if ( fabs(cross(vertices[vertices.size()-1], vertices[0], vertices[vertices.size()-2])) < 1e-11 ) {
+                    vertices.erase(--vertices.end());
+                }
                 polys.push_back(Polygon_geom(vertices));
             }
             vertices.clear();
