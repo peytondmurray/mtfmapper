@@ -437,20 +437,18 @@ int main(int argc, char** argv) {
         M_PI/2 - theta,
         32
     );
-
-        
+    ((Polygon_geom*)target_geom)->rebuild(); // hmmm. looks like the normals of regular_polygon are broken ...
     
 
     if (tc_target_name.isSet()) {
         delete target_geom;
-        //target_geom = new Multipolygon_geom (
         target_geom = new Quadtree (
             0,
             0,
             tc_target_name.getValue()
         );
         
-        //((Quadtree*)target_geom)->print_bounds(0);
+       //((Quadtree*)target_geom)->print_bounds(0);
     }
 
     Render_polygon default_target(

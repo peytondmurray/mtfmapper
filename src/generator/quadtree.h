@@ -110,8 +110,6 @@ class Quadtree : public Multipolygon_geom {
             // if the part's bounding box area is much smaller than the
             // current quad's area, the use it, otherwise skip bounds
             // check in this polygon
-            //printf("part[%d] bound area=%lf, quad bounding area=%lf\n",
-            //    p, parts[p].bb_area, bounding_box.own_area);
             area += b.intersection_area(
                 parts[p], 
                 xoffset, yoffset,
@@ -126,12 +124,22 @@ class Quadtree : public Multipolygon_geom {
     }
     
     virtual bool is_inside(double x, double y) const {
-        printf("\n\nnot defined\n\n");
-        return x + y; // just to keep the warnings down
+        for (size_t p=0; p < parts.size(); p++) {
+            if (parts[p].is_inside(x, y)) {
+                return true;
+            }
+        }
+        
+        bool inside = false;
+        if (q_tl) inside = q_tl->is_inside(x, y);
+        if (!inside && q_tr) inside = q_tr->is_inside(x, y);
+        if (!inside && q_bl) inside = q_bl->is_inside(x, y);
+        if (!inside && q_br) inside = q_br->is_inside(x, y);
+        
+        return inside;
     }
     
     void partition_polygons(int level = 0, int cumulative_verts=0) {
-        printf("entering partition at level %d with %d parts\n", level, (int)parts.size());
         
         vector<double> all_x;
         vector<double> all_y;
@@ -153,7 +161,6 @@ class Quadtree : public Multipolygon_geom {
         sort(all_x.begin(), all_x.end());
         sort(all_y.begin(), all_y.end());
 
-        printf("\nmidx=%lf, midy=%lf\n", all_x[all_x.size()/2], all_y[all_y.size()/2]);
 
         // somewhat verbose, but manually build the four quadrants
 
@@ -162,12 +169,9 @@ class Quadtree : public Multipolygon_geom {
         Polygon_geom bl;
         Polygon_geom br;
 
-        const double eps = 0; //1e-8;
-
         size_t last = all_x.size() - 1;
 
         cv::Vec2d v_min(all_x[0], all_y[0]);
-        //cv::Vec2d v_mid(all_x[last/2], all_y[last/2]);
         cv::Vec2d v_mid((all_x[last]+all_x[0])/2.0, (all_y[last]+all_y[0])/2.0 );
         cv::Vec2d v_max(all_x[last], all_y[last]);
 
@@ -177,22 +181,22 @@ class Quadtree : public Multipolygon_geom {
         tl.bases[0] = cv::Vec2d(v_mid[0], v_min[1]);
         tl.rebuild();
 
-        tr.bases[3] = cv::Vec2d(v_mid[0]+eps, v_min[1]);
-        tr.bases[2] = cv::Vec2d(v_mid[0]+eps, v_mid[1]);
-        tr.bases[1] = cv::Vec2d(v_max[0]+eps, v_mid[1]);
-        tr.bases[0] = cv::Vec2d(v_max[0]+eps, v_min[1]);
+        tr.bases[3] = cv::Vec2d(v_mid[0], v_min[1]);
+        tr.bases[2] = cv::Vec2d(v_mid[0], v_mid[1]);
+        tr.bases[1] = cv::Vec2d(v_max[0], v_mid[1]);
+        tr.bases[0] = cv::Vec2d(v_max[0], v_min[1]);
         tr.rebuild();
 
-        bl.bases[3] = cv::Vec2d(v_min[0], v_mid[1]+eps);
-        bl.bases[2] = cv::Vec2d(v_min[0], v_max[1]+eps);
-        bl.bases[1] = cv::Vec2d(v_mid[0], v_max[1]+eps);
-        bl.bases[0] = cv::Vec2d(v_mid[0], v_mid[1]+eps);
+        bl.bases[3] = cv::Vec2d(v_min[0], v_mid[1]);
+        bl.bases[2] = cv::Vec2d(v_min[0], v_max[1]);
+        bl.bases[1] = cv::Vec2d(v_mid[0], v_max[1]);
+        bl.bases[0] = cv::Vec2d(v_mid[0], v_mid[1]);
         bl.rebuild();
 
-        br.bases[3] = cv::Vec2d(v_mid[0]+eps, v_mid[1]+eps);
-        br.bases[2] = cv::Vec2d(v_mid[0]+eps, v_max[1]+eps);
-        br.bases[1] = cv::Vec2d(v_max[0]+eps, v_max[1]+eps);
-        br.bases[0] = cv::Vec2d(v_max[0]+eps, v_mid[1]+eps);
+        br.bases[3] = cv::Vec2d(v_mid[0], v_mid[1]);
+        br.bases[2] = cv::Vec2d(v_mid[0], v_max[1]);
+        br.bases[1] = cv::Vec2d(v_max[0], v_max[1]);
+        br.bases[0] = cv::Vec2d(v_max[0], v_mid[1]);
         br.rebuild();
         
         int child_verts_sum = cumulative_verts;
@@ -202,46 +206,59 @@ class Quadtree : public Multipolygon_geom {
         for (size_t p=0; p < parts.size(); p++) {
             leaf_verts_sum += parts[p].bases.size();
         
-            Polygon_geom np;
+            vector<Polygon_geom> np;
             
-            if (tl.intersect(parts[p], np)) {
+            np = tl.intersect_greiner_horman(parts[p]);
+            if (np.size() > 0) {
                 if (!q_tl) {
                     q_tl = new Quadtree(tl);
                     child_verts_sum += 4; // subtree bounds cost
                     nchildren++;
                 }
-                q_tl->add_poly(np);
-                child_verts_sum += np.bases.size();
+                for (size_t k=0; k < np.size(); k++) {
+                    q_tl->add_poly(np[k]);
+                    child_verts_sum += np[k].bases.size();
+                }
             }
                 
-            if (tr.intersect(parts[p], np)) {
+            np = tr.intersect_greiner_horman(parts[p]);
+            if (np.size() > 0) {
                 if (!q_tr) {
                     q_tr = new Quadtree(tr);
                     child_verts_sum += 4; // subtree bounds cost
                     nchildren++;
                 }
-                q_tr->add_poly(np);
-                child_verts_sum += np.bases.size();
+                for (size_t k=0; k < np.size(); k++) {
+                    q_tr->add_poly(np[k]);
+                    child_verts_sum += np[k].bases.size();
+                }
             }
 
-            if (bl.intersect(parts[p], np)) {
+            np = bl.intersect_greiner_horman(parts[p]);
+            if (np.size() > 0) {
+            
                 if (!q_bl) {
                     q_bl = new Quadtree(bl);
                     child_verts_sum += 4; // subtree bounds cost
                     nchildren++;
                 }
-                q_bl->add_poly(np);
-                child_verts_sum += np.bases.size();
+                for (size_t k=0; k < np.size(); k++) {
+                    q_bl->add_poly(np[k]);
+                    child_verts_sum += np[k].bases.size();
+                }
             }
 
-            if (br.intersect(parts[p], np)) {
+            np = br.intersect_greiner_horman(parts[p]);
+            if (np.size() > 0) {
                 if (!q_br) {
                     q_br = new Quadtree(br);
                     child_verts_sum += 4; // subtree bounds cost
                     nchildren++;
                 }
-                q_br->add_poly(np);
-                child_verts_sum += np.bases.size();
+                for (size_t k=0; k < np.size(); k++) {
+                    q_br->add_poly(np[k]);
+                    child_verts_sum += np[k].bases.size();
+                }
             }
         }
         
@@ -251,56 +268,16 @@ class Quadtree : public Multipolygon_geom {
         if (q_bl) { q_bl->compute_bounding_box(); }
         if (q_br) { q_br->compute_bounding_box(); }
         
-        // here we decide based on cumulative complexity
-        // child_verts_sum is the cost of intersection with all children (including their bounds)
-        // we only subdivide if we will gain anything
-        
-        // child_verts will be leaf+4 for polys that do not have to be cut by the child bounds
-        // worst case thus: (leaf-child) between 4 and 16
-        
-        // if we have to split a poly, then the cost per child is 4+verts_in_child
-        // best case: only one of the children will be traversed, so cost per child
-        // will be between 4+min_child and 4+max_child
-        
-        int vthresh = std::max(20, leaf_verts_sum/(nchildren+1));
-        printf("cost of performing test as leaf=%d vs cost with children=%d, vthresh=%d\n", leaf_verts_sum, child_verts_sum, vthresh);
-        printf("\ttl=%d, tr=%d, bl=%d, br=%d\n",
-            q_tl ? q_tl->total_vertices : 0,
-            q_tr ? q_tr->total_vertices : 0,
-            q_bl ? q_bl->total_vertices : 0,
-            q_br ? q_br->total_vertices : 0
-        );
-        
-        const int max_verts_per_quad = 20;
+        int vthresh = 20 + 8*level; 
         const int maxdepth = 6;
-
                 
-        if (level+1 < maxdepth && double(child_verts_sum)/double(leaf_verts_sum) < 2) {
+        if (level+1 < maxdepth) {
             if (q_tl && q_tl->total_vertices > vthresh) q_tl->partition_polygons(level+1, cumulative_verts + 4);            
             if (q_tr && q_tr->total_vertices > vthresh) q_tr->partition_polygons(level+1, cumulative_verts + 4);
             if (q_bl && q_bl->total_vertices > vthresh) q_bl->partition_polygons(level+1, cumulative_verts + 4);
             if (q_br && q_br->total_vertices > vthresh) q_br->partition_polygons(level+1, cumulative_verts + 4);
         }
         
-        /*
-        printf("about to recurse into child QT nodes\n");
-        if (q_tl && q_tl->total_vertices > max_verts_per_quad && level < maxdepth) {
-            q_tl->partition_polygons(level+1);
-        }
-        
-        if (q_tr && q_tr->total_vertices > max_verts_per_quad && level < maxdepth) {
-            q_tr->partition_polygons(level+1);
-        }
-        
-        if (q_bl && q_bl->total_vertices > max_verts_per_quad && level < maxdepth) {
-            q_bl->partition_polygons(level+1);
-        }
-        
-        if (q_br && q_br->total_vertices > max_verts_per_quad && level < maxdepth) {
-            q_br->partition_polygons(level+1);
-        }
-        */
-
         parts.clear();
     }
 
