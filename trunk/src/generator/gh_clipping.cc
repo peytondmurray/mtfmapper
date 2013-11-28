@@ -416,22 +416,16 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
     do {
         if ( verts[current].isect && (verts[current].flag == EN || verts[current].flag == EX) ) {
             int next = verts[current].next;
-            //bool done = false;
-            
-            
-            //while (next != current && !done) { // TODO: what happens when we have three colinear points on the edge of the other poly?
-                if (verts[next].isect && verts[next].flag == verts[current].flag && 
-                    verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
-                    //done = true;
-                    verts[current].couple = next;
-                    verts[next].couple = current;
-                    
-                    // should we couple the same vertices in the other polygon?
-                    verts[verts[current].neighbour].couple = verts[next].neighbour;
-                    verts[verts[next].neighbour].couple = verts[current].neighbour;
-                }
-              //  next = verts[next].next;
-            //}
+                
+            if (verts[next].isect && verts[next].flag == verts[current].flag && 
+                verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
+                verts[current].couple = next;
+                verts[next].couple = current;
+                
+                // should we couple the same vertices in the other polygon?
+                verts[verts[current].neighbour].couple = verts[next].neighbour;
+                verts[verts[next].neighbour].couple = verts[current].neighbour;
+            }
         }
         
         current = verts[current].next;
