@@ -590,16 +590,6 @@ class Polygon_geom : public Geometry {
 
         assert(compute_area_sign() == b.compute_area_sign());
         
-        // erm, let's say poly 0 = S, and poly 1 = C ?
-        printf("Poly 0: (%ld)\n", compute_area_sign());
-        for (size_t v=0; v < bases.size(); v++) {
-            printf("%lf %lf\n", bases[v][0], bases[v][1]);
-        }
-        printf("\nPoly 1: (%ld)\n", b.compute_area_sign());
-        for (size_t v=0; v < b.bases.size(); v++) {
-            printf("%lf %lf\n", b.bases[v][0], b.bases[v][1]);
-        }
-        
         vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
         vector<Polygon_geom> poly(2);
         poly[0] = *this;
@@ -624,7 +614,6 @@ class Polygon_geom : public Geometry {
             
             if (all_on) {
                 // *this must be entirely within b, so return *this
-                printf("S inside C: returning S\n");
                 polys.push_back(*this);
                 return polys;
             } else {
@@ -638,114 +627,29 @@ class Polygon_geom : public Geometry {
                 }
                 
                 if (all_in) {
-                    printf("C inside S: returning C\n");
                     polys.push_back(b);
                     return polys;
                 }
             
                 // *this is entirely outside b, so return empty list
-                printf("no intersection\n");
                 return polys;
             }
         }
         
-        int cur = 0;
         
         // first process C
-        
-        printf("##Poly 1\n");
-        cur = poly1_start;
-        do {
-            int& v = cur;
-            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d, np=%d, couple=%d, cross=%d\n",
-                v, verts[v].x, verts[v].y,
-                verts[v].next, verts[v].prev,
-                verts[v].flag, verts[v].isect,
-                verts[v].neighbour,
-                verts[v].next_poly,
-                verts[v].couple,
-                verts[v].cross_change
-            );
-            cur = verts[v].next;
-        } while (cur != poly1_start);
-        
         GH_clipping::gh_phase_two(verts, *this, poly1_start);
-        
-        printf("###Poly 1\n");
-        cur = poly1_start;
-        do {
-            int& v = cur;
-            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d, np=%d, couple=%d, cross=%d\n",
-                v, verts[v].x, verts[v].y,
-                verts[v].next, verts[v].prev,
-                verts[v].flag, verts[v].isect,
-                verts[v].neighbour,
-                verts[v].next_poly,
-                verts[v].couple,
-                verts[v].cross_change
-            );
-            cur = verts[v].next;
-        } while (cur != poly1_start);
-        
         // then process S with alternate version 
         GH_clipping::gh_phase_two_b(verts, b, 0);
         
         
-        for (size_t v=0; (int)v < vs; v++) {
-            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d, np=%d, couple=%d, cross=%d\n",
-                (int)v, verts[v].x, verts[v].y,
-                verts[v].next, verts[v].prev,
-                verts[v].flag, verts[v].isect,
-                verts[v].neighbour,
-                verts[v].next_poly,
-                verts[v].couple,
-                verts[v].cross_change
-            );
-        }
-        
-        printf("Poly 0\n");
-        cur = 0;
-        do {
-            int& v = cur;
-            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d, np=%d, couple=%d, cross=%d\n",
-                v, verts[v].x, verts[v].y,
-                verts[v].next, verts[v].prev,
-                verts[v].flag, verts[v].isect,
-                verts[v].neighbour,
-                verts[v].next_poly,
-                verts[v].couple,
-                verts[v].cross_change
-            );
-            cur = verts[v].next;
-        } while (cur != 0);
-        
-        printf("Poly 1\n");
-        cur = poly1_start;
-        do {
-            int& v = cur;
-            printf("%d: (%lf, %lf), n=%d, p=%d, en=%d, isect=%d, neigh=%d, np=%d, couple=%d, cross=%d\n",
-                v, verts[v].x, verts[v].y,
-                verts[v].next, verts[v].prev,
-                verts[v].flag, verts[v].isect,
-                verts[v].neighbour,
-                verts[v].next_poly,
-                verts[v].couple,
-                verts[v].cross_change
-            );
-            cur = verts[v].next;
-        } while (cur != poly1_start);
-        
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
         
         for (size_t k=0; k < polys.size(); k++){
-            printf("poly %d: sign=%d\n", (int)k, polys[k].compute_area_sign());
             if (polys[k].compute_area_sign() != 0) {
                 printf("reversing polygon winding order\n");
                 polys[k] = Polygon_geom(vector<cv::Vec2d>(polys[k].bases.rbegin(), polys[k].bases.rend()));
             }
-        //    for (int j=0; j < polys[k].bases.size(); j++) {
-        //        printf("\t%lf %lf\n", polys[k].bases[j][0], polys[k].bases[j][1]);
-        //    }
         }
         
         return polys;
