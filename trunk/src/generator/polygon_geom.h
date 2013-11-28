@@ -56,15 +56,20 @@ class Polygon_geom : public Geometry {
     
   
     Polygon_geom(double cx=0, double cy=0, double width=1, double height=1, double angle=0, int nverts=4) 
-    : Geometry(cx, cy, 0), nvertices(nverts) {
+    : Geometry(cx, cy, 0), nvertices(nverts), is_convex(false) {
 
         construct_regular_polygon(width, height, angle);
         precompute_point_test();
         own_area = compute_area();
-        printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
+        //printf("built polygon with %d vertices, area=%lf\n\n", nverts, own_area);
     }
 
-    Polygon_geom(const vector<cv::Vec2d>& verts) {
+    Polygon_geom(const vector<cv::Vec2d>& verts) 
+    : is_convex(false) {
+    
+        // although it is possible for an arbitrary polygon specified through
+        // "verts" to be convex, we choose to not take chances here
+        // so the slower (but concave-capable) point-in-poly test will be used
 
         nvertices = verts.size();
 
@@ -85,14 +90,14 @@ class Polygon_geom : public Geometry {
         compute_bounding_box();
         
         own_area = compute_area();
-        printf("built polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+        //printf("built polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
     }
 
     virtual ~Polygon_geom(void) {
     }
 
     void rebuild(void) {
-	// compute normals
+	    // compute normals
         int prev = nvertices - 1;
         for (int i=0; i < nvertices; i++) {
             cv::Vec2d d = bases[i] - bases[prev];
@@ -106,15 +111,17 @@ class Polygon_geom : public Geometry {
         compute_bounding_box();
         
         own_area = compute_area();
-        printf("rebuilt polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+        //printf("rebuilt polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
     }
 
     void construct_regular_polygon(double width, double height, double angle) {
+        is_convex = true;
+        
         bases   = vector<cv::Vec2d>(nvertices);
         normals = vector<cv::Vec2d>(nvertices);
 
-        printf("nvertices=%d\n", nvertices);
-        printf("rendering a polygon with %d sides\n", nvertices);
+        //printf("nvertices=%d\n", nvertices);
+        //printf("rendering a polygon with %d sides\n", nvertices);
         assert(nvertices >= 3);
         for (int i=0; i < nvertices; i++) {
             double phi = i*M_PI*2/double(nvertices);
@@ -123,7 +130,7 @@ class Polygon_geom : public Geometry {
             normals[i][0] = cos(angle+phi);
             normals[i][1] = -sin(angle+phi);
             //printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
-            if (nvertices > 4) fprintf(stderr, "%lf %lf\n", bases[i][0], bases[i][1]);
+            //if (nvertices > 4) fprintf(stderr, "%lf %lf\n", bases[i][0], bases[i][1]);
         }
 
         compute_bounding_box();
@@ -160,9 +167,9 @@ class Polygon_geom : public Geometry {
 
         bb_area = compute_bb_area();
 
-        for (int k=0; k < 4; k++) {
-            printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
-        }
+        //for (int k=0; k < 4; k++) {
+        //    printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
+        //}
     }
     
     void precompute_point_test(void) {
@@ -183,11 +190,15 @@ class Polygon_geom : public Geometry {
             j = i; 
         }
     }
-
+    
     // NOTE: indeterminate result if point falls exactly on boundary
-    // TODO: since there is no "early out" option here, this is about
-    // half the speed of the older test (see below)
+    // the "classify" test can correctly detect boundary cases
+    // but it is too slow for general point-in-poly tests
     bool is_inside(double x, double y) const {
+    
+        if (is_convex) {
+            return convex_is_inside(x, y);
+        }
 
         int j = bases.size() - 1;
         bool  oddNodes = false;
@@ -205,7 +216,7 @@ class Polygon_geom : public Geometry {
     }
 
     
-    bool xis_inside(double x, double y) const {
+    inline bool convex_is_inside(double x, double y) const {
         bool inside = true;
         for (int i=0; i < nvertices && inside; i++) {
             double dot = normals[i][0]*(x - bases[i][0]) + 
@@ -274,84 +285,6 @@ class Polygon_geom : public Geometry {
         return w == 0 ? OUTSIDE : INSIDE; 
     }
     
-    
-    bool remove_degeneracy(int pass=0) {
-        // This method is rather crude, and not tested for every possible case
-    
-        if (bases.size() < 3) return false;
-        
-        // first strip out doubles
-        int pe =   (int)bases.size() - 1;
-        vector<cv::Vec2d> fbases;
-        for (size_t e=0; e < bases.size(); e++) {
-            if ( norm(bases[pe] - bases[e]) > 1e-11 ) {
-                fbases.push_back(bases[e]);
-            }
-            pe = e;
-        }
-        if (fbases.size() < bases.size()) {
-            double old_area = own_area;
-            bases = fbases;
-            normals = fbases;
-            nvertices = bases.size();
-            rebuild();
-            printf("after squashing duplicate points, area diff=%lf\n", old_area - own_area);
-        }
-        
-        
-        pe =   (int)bases.size() - 1;
-        int pem1 = (int)bases.size() - 2;
-        
-        cv::Vec2d pd(bases[pe] - bases[pem1]);
-        
-        int collinear_count = 0;
-        bool some_marked = false;
-        vector<bool> marked(bases.size(), false);
-        for (int e=0; e < (int)bases.size(); e++) {
-            cv::Vec2d cd(bases[e] - bases[pe]);
-            if ( fabs(cd[0]*pd[1] - cd[1]*pd[0]) < 2e-10 ) { // area of triangle less than 1e-10
-                collinear_count++;
-                
-                
-                printf("$$ found colinear points %lf %lf %lf %lf (pass %d)\n",
-                    bases[e][0], bases[e][1],
-                    bases[pe][0], bases[pe][1],
-                    pass
-                );
-                for (size_t k=0; k < bases.size(); k++) {
-                    printf("%lf %lf, ", bases[k][0], bases[k][1]);
-                }
-                printf("\n");
-                // TODO: only remove a marked point if the area remains unaffected?
-                
-                printf("[%lf %lf] marked for removal\n", bases[pe][0], bases[pe][1]);
-                
-                marked[pe] = true;
-                some_marked = true;
-            } 
-            
-            pe = e;
-            pd = cd;
-        }
-        
-        if (some_marked) {
-            double old_area = own_area;
-            vector<cv::Vec2d> ncoords;
-            for (size_t i=0; i < bases.size(); i++) {
-                if (!marked[i]) {
-                    ncoords.push_back(bases[i]);
-                }
-            }
-            bases = ncoords;
-            normals = ncoords;
-            nvertices = bases.size();
-            rebuild();
-            printf("after nuking degenerate points, area diff=%lf\n", old_area - own_area);
-        }
-        
-        
-        return collinear_count == 0;
-    }
     
     double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
     
@@ -431,13 +364,13 @@ class Polygon_geom : public Geometry {
         return 0.5 * fabs(A);
     }
     
-    bool compute_area_sign(void) const {
+    bool has_ccw_winding(void) const {
         double A = 0;
         for (int i=0; i < nvertices; i++) {
             int ni = (i+1) % nvertices;
             A += bases[i][0]*bases[ni][1] - bases[ni][0]*bases[i][1];
         }
-        return A < 0;
+        return A > 0;
     }
 
     double compute_bb_area(void) const {
@@ -475,8 +408,8 @@ class Polygon_geom : public Geometry {
     bool intersect(const Polygon_geom& b, Polygon_geom& s) const {
 
         double points_x[2*max_verts_per_poly];
-	double points_y[2*max_verts_per_poly];
-	int points_len = 0;
+	    double points_y[2*max_verts_per_poly];
+	    int points_len = 0;
 
         for (int i=0; i < b.nvertices; i++) { 
             points_x[i] = b.bases[i][0];
@@ -496,8 +429,6 @@ class Polygon_geom : public Geometry {
             }
 
             s = Polygon_geom(new_vertices);
-            s.remove_degeneracy(0);
-            //s.remove_degeneracy(1); // call it again, just to make sure. maybe something interesting is happening ?
             return s.compute_area() > 1e-11;
         } else {
             return false;
@@ -511,6 +442,9 @@ class Polygon_geom : public Geometry {
     // outside of the clipping polygon. these overlapping
     // edges cause no harm, because they have zero area (which
     // seems to work out fine with compute_area())
+    // see the Greiner-Hormann algorithm below if you
+    // are interested in the correct geometry for
+    // concave/concave or convex/concave cases
     void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges,
                         double xoffset, double yoffset) const {
         int ne = (e + 1) % nedges;
@@ -588,7 +522,7 @@ class Polygon_geom : public Geometry {
     vector<Polygon_geom> intersect_greiner_horman(const Polygon_geom& b) {
         vector<Polygon_geom> polys;
 
-        assert(compute_area_sign() == b.compute_area_sign());
+        assert(has_ccw_winding() == b.has_ccw_winding());
         
         vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
         vector<Polygon_geom> poly(2);
@@ -645,12 +579,13 @@ class Polygon_geom : public Geometry {
         
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
         
+        
         for (size_t k=0; k < polys.size(); k++){
-            if (polys[k].compute_area_sign() != 0) {
-                printf("reversing polygon winding order\n");
+            if (!polys[k].has_ccw_winding()) {
                 polys[k] = Polygon_geom(vector<cv::Vec2d>(polys[k].bases.rbegin(), polys[k].bases.rend()));
             }
         }
+        
         
         return polys;
     }
@@ -667,6 +602,7 @@ class Polygon_geom : public Geometry {
     int nvertices;
 
     double bb_area;
+    bool is_convex;
 };
 
 #endif // RENDER_H

@@ -69,8 +69,13 @@ class Multipolygon_geom : public Geometry {
                     verts[i][0] += cx; // TODO: hack to centre the polygon on (cx,cy) ?
                     verts[i][1] += cy;
                 }
+                
                 total_vertices += nverts;
-                parts.push_back(Polygon_geom(verts));
+                Polygon_geom pol(verts);
+                if (!pol.has_ccw_winding()) {
+                    pol = Polygon_geom(vector<cv::Vec2d>(pol.bases.rbegin(), pol.bases.rend()));
+                }
+                parts.push_back(pol);
             }
         }
 
@@ -85,7 +90,7 @@ class Multipolygon_geom : public Geometry {
     
     virtual ~Multipolygon_geom(void) {
     }
-
+    
     void compute_bounding_box(void) {
 
         // compute a bounding box

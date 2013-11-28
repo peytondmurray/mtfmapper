@@ -392,7 +392,7 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
     
     // compute cross_change flag. probably not needed for every vertex ...
     if (trav == EXEN || trav == ENEX) {
-        // TODO: assume this function is called with C (poly 1), so S is neigh, C is self
+        // assume this function is called with C (poly 1), so S is neigh, C is self
         double tr1_cross = triangle_cross(verts[nprev], verts[prev], verts[nnext]);
         double tr2_cross = triangle_cross(verts[nprev], verts[prev], verts[next]);
         verts[current].cross_change = tr1_cross * tr2_cross < 0;
