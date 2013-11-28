@@ -50,10 +50,6 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) / denom;
     
     
-    if (fabs(is.alpha) < 1e-11 && fabs(ic.alpha) < 1e-11) {  // both are at the starting point, so this is degenerate
-        return false;
-    }
-    
     if (fabs(is.alpha) < 1e-11 && fabs(ic.alpha - 1) < 1e-11) { // classical vertex intersection
         return false;
     }
@@ -173,18 +169,6 @@ int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, in
         verts[v+vs].couple = -1;
         verts[v+vs].cross_change = false;
         
-        /*
-        for (int k=0; k < vs; k++) {
-            if (dist(verts[v+vs], verts[k]) < 1e-11) {
-                printf("matched initial vertex of C to S, converting to intersection\n");
-                verts[v+vs].neighbour = k;
-                verts[k].neighbour = v+vs;
-                
-                verts[v+vs].isect = true;
-                verts[k].isect = true;
-            }
-        }
-        */
     }
     return vs + in_verts.size(); // index of next free vertex entry
 }
@@ -478,10 +462,6 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
             printf("setting en flag of vert %d (before=%d)\n", current, verts[current].flag);
             set_traversal_flag(verts, b, current);
             printf("\tafter: flag=%d\n", verts[current].flag);
-
-            //printf("  tentatively setting neighbour en flag of vert %d (before=%d)\n", verts[current].neighbour, verts[verts[current].neighbour].flag);            
-            //set_traversal_flag(verts, b, verts[current].neighbour); // We need the Polygon_geom of S too at this point ...
-            //printf("\tafter: flag=%d\n", verts[current].flags);
         }
         
         current = verts[current].next;
@@ -534,19 +514,23 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
     
     bool reverse = false;
     if (start >= 0) {
-        if (verts[current].flag == EN && verts[verts[current].neighbour].flag == EX) {
+        set_traversal_flag(verts, b, start);
+    
+        if ( (verts[start].flag == EN && verts[verts[start].neighbour].flag == EX) ||
+             (verts[start].flag == EX && verts[verts[start].neighbour].flag == EN) || 
+             (verts[start].flag == ENEX && verts[verts[start].neighbour].flag == EXEN) ) { // TODO: does EXEN/ENEX ever occur?
             reverse = true;
         } else {
-            //assert(verts[current].flag == verts[verts[current].neighbour].flag); // TODO: still open?
-            if (verts[current].flag == verts[verts[current].neighbour].flag) {
-                printf("flags are identical, doing nothing\n");
-                //reverse = true;
+            if (verts[start].flag == verts[verts[start].neighbour].flag) {
+                reverse = false;
             } else {
+                // everything else, assume revers is true, but we would still
+                // like to know about it ...
+                printf("flags in undefined state (%d, %d)->%d. help!\n",
+                    verts[start].flag, verts[verts[start].neighbour].flag, true);
                 reverse = true;
             }
         }
-        
-        printf("** reverse flag = %d\n", reverse);
         
         current = start;
         do {
