@@ -478,38 +478,19 @@ int main(int argc, char** argv) {
     }
     if (tc_photosite_geom.getValue().compare("rounded-square") == 0) {
         
-        #if 0
-        
-        // first approximate the box
-        Polygon_geom box(0, 0,
-            sqrt(2*tc_fillfactor.getValue()),
-            sqrt(2*tc_fillfactor.getValue()),
-            0, 4
-        );
-        
-        // now build a circle that is slightly larger
-        double eff = tc_fillfactor.getValue() * (M_PI/4.0);
-        Polygon_geom disc(
-            0, 0,
-            1.1*2*sqrt(eff/M_PI), 1.1*2*sqrt(eff/M_PI),
-            0, 60
-        );
-        
-        vector<Polygon_geom> polys = box.intersect_greiner_horman(disc);
-        photosite_geom = new Polygon_geom(polys[0].bases);
-        
-        #else
         // a hard-coded shape that looks a bit like a blend between a box and a circle ...
         const int points_per_side = 20;
         vector<cv::Vec2d> verts(4*(points_per_side-1));
         int oidx = 0;
         
         // build top row
+        double x1 = 1.0/(points_per_side/2);
+        double scale = 0.5/(sqrt(1-x1*x1)*(1-pow(fabs(x1),1.8))/5 + 1) * tc_fillfactor.getValue();
         double x = 1;
         for (int i=0; i < points_per_side/2; i++) {
             double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1; // arbitrary empirical function that "looks ok"
-            verts[oidx][0] = x;
-            verts[oidx][1] = y;
+            verts[oidx][0] = scale*x;
+            verts[oidx][1] = scale*y;
             oidx++;
             x -= 1.0/(points_per_side/2);
             
@@ -517,8 +498,8 @@ int main(int argc, char** argv) {
         x = 1 - 1.0/(points_per_side/2);;
         for (int i=0; i < (points_per_side/2-1); i++) {
             double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1;
-            verts[oidx+(points_per_side/2-2)-i][0] = -x;
-            verts[oidx+(points_per_side/2-2)-i][1] = y;
+            verts[oidx+(points_per_side/2-2)-i][0] = -scale*x;
+            verts[oidx+(points_per_side/2-2)-i][1] = scale*y;
             x -= 1.0/(points_per_side/2);
         }
         oidx += points_per_side/2 - 1;
@@ -544,15 +525,9 @@ int main(int argc, char** argv) {
             oidx++;
         }
         
-        FILE* fout = fopen("aperture.txt", "wt");
-        fprintf(fout, "%d\n", oidx);
-        for (int i=0; i < oidx; i++) {
-            fprintf(fout, "%lf %lf\n", verts[i][0], verts[i][1]);
-        }
-        fclose(fout);
-        
         photosite_geom = new Polygon_geom(verts);
-        #endif
+        
+        printf("rounded-square photosite area = %lf\n", ((Polygon_geom*)photosite_geom)->compute_area());
     }
 
 
