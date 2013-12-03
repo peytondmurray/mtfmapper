@@ -46,6 +46,10 @@ class Geometry  {
           printf("\n\nnot defined\n\n");
           return x + y; // just to keep the warnings down
       }
+      
+      virtual void print(void) const {
+          printf("\n\nnot defined\n");
+      }
 
       double cx;
       double cy;

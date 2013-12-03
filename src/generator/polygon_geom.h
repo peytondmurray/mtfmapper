@@ -285,26 +285,28 @@ class Polygon_geom : public Geometry {
         return w == 0 ? OUTSIDE : INSIDE; 
     }
     
-    
+    // NB: ib is assumed to be convex, *this may be concave
     double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
     
         double points_x[max_verts_per_poly];
         double points_y[max_verts_per_poly];
         int points_len = 0;
-
+        
         // TODO: this will probably throw an exception if you try to
         // pass a multipolygon as the photosite geometry. Don't do it!
         const Polygon_geom& b = dynamic_cast<const Polygon_geom&>(ib);
 
+        // first test against photosite bounding box
+        
         if (!skip_bounds && b.nvertices >= 6) {
-            intersect(points_x, points_y, points_len, b, xoffset, yoffset, true);
+            b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset, true);
             double i_bb_area = compute_area(points_x, points_y, points_len);
             
-            if (fabs(i_bb_area) < 1e-11) {
+            if (fabs(i_bb_area) < 1e-11) { // no overlap
                 return 0;
             } else {
-                if (fabs(i_bb_area - b.bb_area) < 1e-11) {
-                    return b.own_area;
+                if (fabs(i_bb_area - b.bb_area) < 1e-11) { // full overlap, no need to check further
+                    return i_bb_area;
                 } 
             }
 
@@ -312,8 +314,8 @@ class Polygon_geom : public Geometry {
             // intersection again using full geometry
             points_len = 0;
         }
-
-        intersect(points_x, points_y, points_len, b, xoffset, yoffset);
+        
+        b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset);  // b is assumed to be convex
         return compute_area(points_x, points_y, points_len);
     }
     
@@ -398,11 +400,11 @@ class Polygon_geom : public Geometry {
                 points_len++;
             }
         }
-
         
         for (int e=0; e < nvertices; e++) {
             intersect_core(points_x, points_y, points_len, e, nvertices, xoffset, yoffset);
         }
+        
     }
 
     bool intersect(const Polygon_geom& b, Polygon_geom& s) const {
@@ -454,7 +456,7 @@ class Polygon_geom : public Geometry {
         
         double Dx = bases[ne][0] - bases[e][0];
         double Dy = bases[ne][1] - bases[e][1];
-         
+        
         double Nx = -Dy;
         double Ny = Dx;
 

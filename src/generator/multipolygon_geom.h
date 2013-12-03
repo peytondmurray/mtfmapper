@@ -79,8 +79,8 @@ class Multipolygon_geom : public Geometry {
             }
         }
 
-	compute_bounding_box();
-
+        compute_bounding_box();
+        
         own_area = 1;
     }
     
@@ -121,6 +121,8 @@ class Multipolygon_geom : public Geometry {
         bounding_box.normals[2][1] = 1;
         bounding_box.normals[3][0] = -1;
         bounding_box.normals[3][1] = 0;
+        
+        bounding_box.compute_bounding_box(); // yeah, this is crazy. why would a bounding box need a bounding box?
     }
 
     bool is_inside(double x, double y) const {
@@ -137,17 +139,24 @@ class Multipolygon_geom : public Geometry {
 
         double bounds_area = 1;
         if (!skip_bounds && total_vertices > 6) {
-            bounds_area = b.intersection_area(bounding_box, xoffset, yoffset);
+            bounds_area = bounding_box.intersection_area(b, xoffset, yoffset);
         }
-
+        
         double total_area = 0;
         if (bounds_area > 1e-11) {
             for (size_t p=0; p < parts.size(); p++) {
-                total_area += b.intersection_area(parts[p], xoffset, yoffset);
+                total_area += parts[p].intersection_area(b, xoffset, yoffset);
             }
         }
         
         return total_area;
+    }
+    
+    void print(void) const {
+        for (size_t p=0; p < parts.size(); p++) {
+            printf("part %d:\n");
+            parts[p].print();
+        }
     }
     
 
