@@ -432,12 +432,12 @@ int main(int argc, char** argv) {
     Geometry* target_geom = new Polygon_geom(
         width*0.5 + tc_xoff.getValue(), 
         height*0.5 + tc_yoff.getValue(),
-        rwidth*0.25,
-        rheight*0.25,
+        rwidth*sqrt(2.0),
+        rheight*sqrt(2.0),
         M_PI/2 - theta,
-        32
+        4
     );
-    ((Polygon_geom*)target_geom)->rebuild(); // hmmm. looks like the normals of regular_polygon are broken ...
+    ((Polygon_geom*)target_geom)->rebuild(); // hmmm. looks like the normals of regular_polygon are broken
     
 
     if (tc_target_name.isSet()) {
@@ -477,12 +477,82 @@ int main(int argc, char** argv) {
         );
     }
     if (tc_photosite_geom.getValue().compare("rounded-square") == 0) {
-        // TODO: must still implement this shape. use circle for now
-        photosite_geom = new Polygon_geom(
+        
+        #if 0
+        
+        // first approximate the box
+        Polygon_geom box(0, 0,
+            sqrt(2*tc_fillfactor.getValue()),
+            sqrt(2*tc_fillfactor.getValue()),
+            0, 4
+        );
+        
+        // now build a circle that is slightly larger
+        double eff = tc_fillfactor.getValue() * (M_PI/4.0);
+        Polygon_geom disc(
             0, 0,
-            1, 1,
+            1.1*2*sqrt(eff/M_PI), 1.1*2*sqrt(eff/M_PI),
             0, 60
         );
+        
+        vector<Polygon_geom> polys = box.intersect_greiner_horman(disc);
+        photosite_geom = new Polygon_geom(polys[0].bases);
+        
+        #else
+        // a hard-coded shape that looks a bit like a blend between a box and a circle ...
+        const int points_per_side = 20;
+        vector<cv::Vec2d> verts(4*(points_per_side-1));
+        int oidx = 0;
+        
+        // build top row
+        double x = 1;
+        for (int i=0; i < points_per_side/2; i++) {
+            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1; // arbitrary empirical function that "looks ok"
+            verts[oidx][0] = x;
+            verts[oidx][1] = y;
+            oidx++;
+            x -= 1.0/(points_per_side/2);
+            
+        }
+        x = 1 - 1.0/(points_per_side/2);;
+        for (int i=0; i < (points_per_side/2-1); i++) {
+            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1;
+            verts[oidx+(points_per_side/2-2)-i][0] = -x;
+            verts[oidx+(points_per_side/2-2)-i][1] = y;
+            x -= 1.0/(points_per_side/2);
+        }
+        oidx += points_per_side/2 - 1;
+        
+        // build left column by transposing top row
+        for (int i=0; i < points_per_side-1; i++) {
+            verts[oidx][0] = -verts[i][1];
+            verts[oidx][1] = verts[i][0];
+            oidx++;
+        }
+        
+        // build bottom row by flipping top row
+        for (int i=0; i < points_per_side-1; i++) {
+            verts[oidx][0] = -verts[i][0];
+            verts[oidx][1] = -verts[i][1];
+            oidx++;
+        }
+        
+        // build right column by transposing top row
+        for (int i=0; i < points_per_side-1; i++) {
+            verts[oidx][0] = verts[i][1];
+            verts[oidx][1] = -verts[i][0];
+            oidx++;
+        }
+        
+        FILE* fout = fopen("aperture.txt", "wt");
+        fprintf(fout, "%d\n", oidx);
+        for (int i=0; i < oidx; i++) {
+            fprintf(fout, "%lf %lf\n", verts[i][0], verts[i][1]);
+        }
+        fclose(fout);
+        
+        photosite_geom = new Polygon_geom(verts);
+        #endif
     }
 
 
@@ -499,7 +569,7 @@ int main(int argc, char** argv) {
                 tc_pitch.getValue(),
                 tc_lambda.getValue(),
                 tc_olpf_split.getValue(),
-		tc_samples.isSet() ? tc_samples.getValue() : 0
+                tc_samples.isSet() ? tc_samples.getValue() : 0
             );
             break;
         case Render_polygon::GAUSSIAN:

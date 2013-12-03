@@ -97,7 +97,7 @@ class Quadtree : public Multipolygon_geom {
         // first, check this level's bounding box
         
         double bounds_area = 1;
-        bounds_area = b.intersection_area(bounding_box, xoffset, yoffset);
+        bounds_area = bounding_box.intersection_area(b, xoffset, yoffset);
         
         if (bounds_area < 1e-11) {
             return bounds_area;
@@ -110,8 +110,8 @@ class Quadtree : public Multipolygon_geom {
             // if the part's bounding box area is much smaller than the
             // current quad's area, the use it, otherwise skip bounds
             // check in this polygon
-            area += b.intersection_area(
-                parts[p], 
+            area += parts[p].intersection_area(
+                b, 
                 xoffset, yoffset,
                 parts[p].bb_area > 0.5*bounding_box.own_area
             );
