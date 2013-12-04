@@ -56,7 +56,7 @@ class Polygon_geom : public Geometry {
     
   
     Polygon_geom(double cx=0, double cy=0, double width=1, double height=1, double angle=0, int nverts=4) 
-    : Geometry(cx, cy, 0), nvertices(nverts), is_convex(false) {
+    : Geometry(cx, cy, 0), nvertices(nverts), convex(false) {
 
         construct_regular_polygon(width, height, angle);
         precompute_point_test();
@@ -65,7 +65,7 @@ class Polygon_geom : public Geometry {
     }
 
     Polygon_geom(const vector<cv::Vec2d>& verts) 
-    : is_convex(false) {
+    : convex(false) {
     
         // although it is possible for an arbitrary polygon specified through
         // "verts" to be convex, we choose to not take chances here
@@ -91,6 +91,8 @@ class Polygon_geom : public Geometry {
         
         own_area = compute_area();
         //printf("built polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+        
+        convex = is_convex();
     }
 
     virtual ~Polygon_geom(void) {
@@ -115,7 +117,7 @@ class Polygon_geom : public Geometry {
     }
 
     void construct_regular_polygon(double width, double height, double angle) {
-        is_convex = true;
+        convex = true;
         
         bases   = vector<cv::Vec2d>(nvertices);
         normals = vector<cv::Vec2d>(nvertices);
@@ -196,7 +198,7 @@ class Polygon_geom : public Geometry {
     // but it is too slow for general point-in-poly tests
     bool is_inside(double x, double y) const {
     
-        if (is_convex) {
+        if (convex) {
             return convex_is_inside(x, y);
         }
 
@@ -285,7 +287,38 @@ class Polygon_geom : public Geometry {
         return w == 0 ? OUTSIDE : INSIDE; 
     }
     
-    // NB: ib is assumed to be convex, *this may be concave
+    bool is_convex(void) const {
+        int flag = 0;
+        int n = bases.size();
+
+        if (n < 3) {
+            return true; // define degenerates as convex
+        }
+
+        for (int i=0; i < n;i++) {
+            int j = (i + 1) % n;
+            int k = (i + 2) % n;
+            
+            double z  = (bases[j][0] - bases[i][0]) * (bases[k][1] - bases[j][1]);
+            z -= (bases[j][1] - bases[i][1]) * (bases[k][0] - bases[j][0]);
+            
+            if (z < 0) {
+                flag |= 1;
+            } else {
+                if (z > 0) {
+                    flag |= 2;
+                }
+            }
+            if (flag == 3) {
+                return false;
+            }
+        }
+        if (flag != 0) {
+            return true;
+        }
+        return false;
+    }
+    
     double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
     
         double points_x[max_verts_per_poly];
@@ -315,8 +348,33 @@ class Polygon_geom : public Geometry {
             points_len = 0;
         }
         
-        b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset);  // b is assumed to be convex
-        return compute_area(points_x, points_y, points_len);
+        if (b.convex) {
+            // if we know the clipper (photosite) is convex, use sutherland-hodgeman
+            b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset);  
+            return compute_area(points_x, points_y, points_len);
+        } else {
+            static bool reported = false;
+            
+            if (!reported) {
+                printf("### using GH photosite intersection\n");
+                reported = true;
+            }
+            
+            // otherwise use Greiner-Horman, which is slower, but works for concave photosites
+            vector<cv::Vec2d> verts(b.bases);
+            for (size_t i=0; i < verts.size(); i++) {
+                verts[i][0] += xoffset;
+                verts[i][1] += yoffset;
+            }
+            Polygon_geom altb(verts);
+            vector<Polygon_geom> polys = altb.intersect_greiner_horman(*this);
+            
+            double area = 0;
+            for (size_t p=0; p < polys.size(); p++) {
+                area += polys[p].compute_area();
+            }
+            return area;
+        }
     }
     
     inline bool t_intersect(double& pix, double& piy, 
@@ -407,37 +465,6 @@ class Polygon_geom : public Geometry {
         
     }
 
-    bool intersect(const Polygon_geom& b, Polygon_geom& s) const {
-
-        double points_x[2*max_verts_per_poly];
-	    double points_y[2*max_verts_per_poly];
-	    int points_len = 0;
-
-        for (int i=0; i < b.nvertices; i++) { 
-            points_x[i] = b.bases[i][0];
-            points_y[i] = b.bases[i][1];
-            points_len++;
-        }
-
-        for (int e=0; e < nvertices; e++) {
-            intersect_core(points_x, points_y, points_len, e, nvertices, 0, 0);
-        }
-
-        if (points_len > 0) {
-            vector<cv::Vec2d> new_vertices(points_len);
-            for (int v=0; v < points_len; v++) {
-                new_vertices[v][0] = points_x[v];
-                new_vertices[v][1] = points_y[v];
-            }
-
-            s = Polygon_geom(new_vertices);
-            return s.compute_area() > 1e-11;
-        } else {
-            return false;
-        }
-        return true;
-    }
-
     // this looks like the Sutherland-Hodgman algorithm
     // the clipping polygon must be convex (req. by SH algo)
     // will produce overlapping edges if a concave point exists
@@ -460,10 +487,6 @@ class Polygon_geom : public Geometry {
         double Nx = -Dy;
         double Ny = Dx;
 
-		double Nl = sqrt(Nx*Nx + Ny*Ny);
-		Nx /= Nl;
-		Ny /= Nl;
-        
         double outpoints_x[max_verts_per_poly];
         double outpoints_y[max_verts_per_poly];
         int out_idx = 0;
@@ -604,7 +627,7 @@ class Polygon_geom : public Geometry {
     int nvertices;
 
     double bb_area;
-    bool is_convex;
+    bool convex;
 };
 
 #endif // RENDER_H
