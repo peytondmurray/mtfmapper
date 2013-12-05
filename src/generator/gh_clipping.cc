@@ -67,8 +67,8 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
         return false;
     }
     
-    if (is.alpha < 0 || is.alpha > 1 ||  
-        ic.alpha < 0 || ic.alpha > 1) {
+    if (is.alpha < -1e-12 || is.alpha > (1+1e-12) ||  
+        ic.alpha < -1e-12 || ic.alpha > (1+1e-12)) {
     
         return false;
     }
