@@ -352,7 +352,7 @@ class Polygon_geom : public Geometry {
                 return 0; 
             } else {
                 if (fabs(i_bb_area - b.bounds.area) < 1e-11) { // full overlap, no need to check further
-                    return i_bb_area;
+                    return b.own_area; // full photosite area
                 } 
             }
 
