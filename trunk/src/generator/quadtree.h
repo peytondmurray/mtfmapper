@@ -77,12 +77,11 @@ class Quadtree : public Multipolygon_geom {
             printf("## (%d) no parts %d\n", level, q_tl || q_tr || q_bl || q_br);
         }
         
-        /*
-        for (size_t i=0; i < bounding_box.bases.size(); i++) {
-            fprintf(stderr, "%d %lf %lf\n", level, bounding_box.bases[i][0], bounding_box.bases[i][1]);
-        }
-        fprintf(stderr, "%d %lf %lf\n\n", level, bounding_box.bases[0][0], bounding_box.bases[0][1]);
-        */
+        fprintf(stderr, "%d %lf %lf\n", level, bounds.max_x, bounds.max_y);
+        fprintf(stderr, "%d %lf %lf\n", level, bounds.max_x, bounds.min_y);
+        fprintf(stderr, "%d %lf %lf\n", level, bounds.min_x, bounds.min_y);
+        fprintf(stderr, "%d %lf %lf\n", level, bounds.min_x, bounds.max_y);
+        fprintf(stderr, "%d %lf %lf\n", level, bounds.max_x, bounds.max_y);
         
         if (q_tl) q_tl->print_bounds(level+1);
         if (q_tr) q_tr->print_bounds(level+1);
@@ -256,8 +255,8 @@ class Quadtree : public Multipolygon_geom {
         if (q_bl) { q_bl->compute_bounding_box(); }
         if (q_br) { q_br->compute_bounding_box(); }
         
-        int vthresh = 20 + 8*level; 
-        const int maxdepth = 6;
+        int vthresh = 20 + 2*level; 
+        const int maxdepth = 8;
                 
         if (level+1 < maxdepth) {
             if (q_tl && q_tl->total_vertices > vthresh) q_tl->partition_polygons(level+1, cumulative_verts + 4);            
