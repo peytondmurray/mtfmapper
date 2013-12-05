@@ -50,6 +50,13 @@ class Render_polygon_is_airyolpf : public Render_polygon_is {
 		  {
           
           initialise();
+          
+          // construct a new bounding box around all four the supports
+          bounds = photosite.bounds;
+          bounds.max_x += olpf_split;
+          bounds.min_x -= olpf_split;
+          bounds.max_y += olpf_split;
+          bounds.min_y -= olpf_split;
     }
 
     virtual ~Render_polygon_is_airyolpf(void) {
@@ -77,9 +84,16 @@ class Render_polygon_is_airyolpf : public Render_polygon_is {
   protected:
 
 	double olpf_split;
+	Aa_bb  bounds;
 	
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
+        
+        // this is a very minor performance boost, since the indivdual
+        // support bounds checks are quite efficient
+        if (!bounds.bounds_overlap(target.bounds, ex + x, ey + y)) {
+            return background_value;
+        }
     
         double sample = 0;
         
