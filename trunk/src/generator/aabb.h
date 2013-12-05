@@ -25,43 +25,58 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GENERAL_GEOM_H
-#define GENERAL_GEOM_H
-
-#include "aabb.h"
+#ifndef AABB_GEOM_H
+#define AABB_GEOM_H
 
 //==============================================================================
-class Geometry  {
+class Aa_bb  { // Axis-aligned bounding box
   public:
-      Geometry(double cx=0, double cy=0, double own_area=0, Aa_bb bounds=Aa_bb())
-      : cx(cx), cy(cy), own_area(own_area), bounds(bounds) {
+      Aa_bb(double min_x=0, double min_y=0, double max_x=0, double max_y=0) 
+      : min_x(min_x), min_y(min_y), max_x(max_x), max_y(max_y),
+        area((max_x - min_x)*(max_y - min_y)) {
       }
       
-      Geometry(Aa_bb in_bounds)
-      : cx(0.5*(in_bounds.min_x + in_bounds.max_y)), 
-        cy(0.5*(in_bounds.min_y + in_bounds.max_y)), 
-        own_area(in_bounds.area), bounds(in_bounds) {
+      inline bool bounds_overlap(const Aa_bb& b, double xoffset=0, double yoffset=0) const {
+          
+          if ((max_x+xoffset) < b.min_x || // *this is left of b
+              (min_x+xoffset) > b.max_x) {  // *this is right of b
+              
+              return false;
+          }
+          
+          if ((max_y+yoffset) < b.min_y || // *this is above b
+              (min_y+yoffset) > b.max_y) {  // *this is below b
+              
+              return false;
+          }
+          
+          return true;
       }
       
-      virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0) const {
-          printf("\n\nnot defined\n\n");
-          return xoffset + yoffset; // just to keep the warnings down
+      inline bool is_inside(double x, double y, double xoffset=0, double yoffset=0) const {
+          // xoffset and yoffset probably do not apply here ...
+          if (x > (max_x+xoffset) ||  
+              x < (min_x+xoffset)) {  
+              
+              return false;
+          }
+          
+          if (y > (max_y+yoffset) || 
+              y < (min_y+yoffset)) {  
+              
+              return false;
+          }
+          
+          return true;
       }
+      
 
-      virtual bool is_inside(double x, double y) const {
-          printf("\n\nnot defined\n\n");
-          return x + y; // just to keep the warnings down
-      }
+      double min_x;
+      double min_y;
+      double max_x;
+      double max_y;
       
-      virtual void print(void) const {
-          printf("\n\nnot defined\n");
-      }
-
-      double cx;
-      double cy;
-      double own_area;
-      
-      Aa_bb bounds;
+      double area;
 };
 
-#endif // GENERAL_GEOM_H
+#endif // AABB_GEOM_H

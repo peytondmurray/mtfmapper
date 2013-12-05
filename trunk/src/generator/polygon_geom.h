@@ -85,14 +85,37 @@ class Polygon_geom : public Geometry {
             prev = (prev + 1) % nvertices;
         }
         
-        precompute_point_test();
+        convex = is_convex();
+        if (!convex) {
+            precompute_point_test();
+        }
 
         compute_bounding_box();
         
         own_area = compute_area();
-        //printf("built polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
+    }
+    
+    Polygon_geom(const Aa_bb& b) // construct polygon geometry from bounding box
+    : Geometry(b), nvertices(4), convex(true) { 
+    
+        bases = vector<cv::Vec2d>(4);
+    
+        bases[0] = cv::Vec2d(bounds.max_x, bounds.max_y);
+        bases[1] = cv::Vec2d(bounds.max_x, bounds.min_y);
+        bases[2] = cv::Vec2d(bounds.min_x, bounds.min_y);
+        bases[3] = cv::Vec2d(bounds.min_x, bounds.max_y);
         
-        convex = is_convex();
+        normals = vector<cv::Vec2d>(4);
+        
+        // compute normals
+        int prev = 3;
+        for (int i=0; i < 4; i++) {
+            cv::Vec2d d = bases[i] - bases[prev];
+            normals[i][0] = -d[1] / norm(d);
+            normals[i][1] = d[0] / norm(d);
+            prev = (prev + 1) % 4;
+        }
+        
     }
 
     virtual ~Polygon_geom(void) {
@@ -141,37 +164,17 @@ class Polygon_geom : public Geometry {
 
     void compute_bounding_box(void) {
         // compute a bounding box
-        bb_bases[0][1] = 1e12;
-        bb_bases[1][0] = -1e12;
-        bb_bases[2][1] = -1e12;
-        bb_bases[3][0] = 1e12;
-
-        for (int i=0; i < nvertices; i++) {
-            // bb_bases: 0=top, 1=right, 2=bottom, 3=left
-            bb_bases[0][1] = std::min(bases[i][1], bb_bases[0][1]);
-            bb_bases[1][0] = std::max(bases[i][0], bb_bases[1][0]);
-            bb_bases[2][1] = std::max(bases[i][1], bb_bases[2][1]);
-            bb_bases[3][0] = std::min(bases[i][0], bb_bases[3][0]);
+        bounds.min_y = 1e12;
+        bounds.max_x = -1e12;
+        bounds.max_y = -1e12;
+        bounds.min_x = 1e12;
+        for (size_t i=0; i < bases.size(); i++) {
+            bounds.min_y = std::min(bases[i][1], bounds.min_y);
+            bounds.max_x = std::max(bases[i][0], bounds.max_x);
+            bounds.max_y = std::max(bases[i][1], bounds.max_y);
+            bounds.min_x = std::min(bases[i][0], bounds.min_x);
         }
-        bb_bases[0][0] = bb_bases[3][0];
-        bb_bases[1][1] = bb_bases[0][1];
-        bb_bases[2][0] = bb_bases[1][0];
-        bb_bases[3][1] = bb_bases[2][1];
-
-        bb_normals[0][0] = 0;
-        bb_normals[0][1] = -1;
-        bb_normals[1][0] = 1;
-        bb_normals[1][1] = 0;
-        bb_normals[2][0] = 0;
-        bb_normals[2][1] = 1;
-        bb_normals[3][0] = -1;
-        bb_normals[3][1] = 0;
-
-        bb_area = compute_bb_area();
-
-        //for (int k=0; k < 4; k++) {
-        //    printf("BB: %lf %lf (%lf %lf)\n", bb_bases[k][0], bb_bases[k][1], bb_normals[k][0], bb_normals[k][1]);
-        //}
+        bounds.area = (bounds.max_x - bounds.min_x) * (bounds.max_y - bounds.min_y);
     }
     
     void precompute_point_test(void) {
@@ -197,6 +200,9 @@ class Polygon_geom : public Geometry {
     // the "classify" test can correctly detect boundary cases
     // but it is too slow for general point-in-poly tests
     bool is_inside(double x, double y) const {
+        if (!bounds.is_inside(x, y)) {
+            return false;
+        }
     
         if (convex) {
             return convex_is_inside(x, y);
@@ -219,15 +225,16 @@ class Polygon_geom : public Geometry {
 
     
     inline bool convex_is_inside(double x, double y) const {
-        bool inside = true;
-        for (int i=0; i < nvertices && inside; i++) {
-            double dot = normals[i][0]*(x - bases[i][0]) + 
-                         normals[i][1]*(y - bases[i][1]);
-            if (dot < 0) {
-                inside = false;
+        for (int i=0; i < nvertices; i++) {
+        
+            if ( (normals[i][0]*(x - bases[i][0]) + 
+                 normals[i][1]*(y - bases[i][1])) < 0) {
+                 
+                return false;
             }
+            
         }
-        return inside;
+        return true; // failed to elliminate point using any of the half-spaces
     }
     
     inline double det(int i, double x, double y, bool& edge) const {
@@ -319,7 +326,7 @@ class Polygon_geom : public Geometry {
         return false;
     }
     
-    double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
+    double intersection_area(const Geometry& ib, double xoffset = 0, double yoffset = 0)  const {
     
         double points_x[max_verts_per_poly];
         double points_y[max_verts_per_poly];
@@ -329,16 +336,22 @@ class Polygon_geom : public Geometry {
         // pass a multipolygon as the photosite geometry. Don't do it!
         const Polygon_geom& b = dynamic_cast<const Polygon_geom&>(ib);
 
-        // first test against photosite bounding box
+        // first check for overlap between the bounding boxes
+        if (!b.bounds.bounds_overlap(bounds, xoffset, yoffset)) {
+            return 0;
+        }
         
-        if (!skip_bounds && b.nvertices >= 6) {
-            b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset, true);
+        // if poly b is moderately complex, first check if the bounding box of
+        // b intersects the real geometry (since we know the the bounds overlap),
+        // then check if this is total overlap
+        if (b.nvertices >= 6) { 
+            b.intersect_bounds(points_x, points_y, points_len, *this, xoffset, yoffset);
             double i_bb_area = compute_area(points_x, points_y, points_len);
             
-            if (fabs(i_bb_area) < 1e-11) { // no overlap
-                return 0;
+            if (fabs(i_bb_area) < 1e-11) { // bounds overlapped, but actual overlap is null
+                return 0; 
             } else {
-                if (fabs(i_bb_area - b.bb_area) < 1e-11) { // full overlap, no need to check further
+                if (fabs(i_bb_area - b.bounds.area) < 1e-11) { // full overlap, no need to check further
                     return i_bb_area;
                 } 
             }
@@ -348,19 +361,13 @@ class Polygon_geom : public Geometry {
             points_len = 0;
         }
         
+        
         if (b.convex) {
             // if we know the clipper (photosite) is convex, use sutherland-hodgeman
             b.intersect(points_x, points_y, points_len, *this, xoffset, yoffset);  
             return compute_area(points_x, points_y, points_len);
         } else {
-            static bool reported = false;
-            
-            if (!reported) {
-                printf("### using GH photosite intersection\n");
-                reported = true;
-            }
-            
-            // otherwise use Greiner-Horman, which is slower, but works for concave photosites
+            // otherwise use Greiner-Horman, which is about 6x slower, but works for concave photosites
             vector<cv::Vec2d> verts(b.bases);
             for (size_t i=0; i < verts.size(); i++) {
                 verts[i][0] += xoffset;
@@ -433,37 +440,59 @@ class Polygon_geom : public Geometry {
         return A > 0;
     }
 
-    double compute_bb_area(void) const {
-        double A = 0;
-        for (int i=0; i < 4; i++) {
-            int ni = (i+1) % 4;
-            A += bb_bases[i][0]*bb_bases[ni][1] - bb_bases[ni][0]*bb_bases[i][1];
-        }
-        return 0.5 * fabs(A);
-    }
-    
     void intersect(double* points_x, double* points_y, int& points_len, 
-        const Polygon_geom& b, double xoffset = 0, double yoffset = 0, bool bounding_box=false) const {
+        const Polygon_geom& b, double xoffset = 0, double yoffset = 0) const {
 
-        if (bounding_box) {
-            for (int i=0; i < 4; i++) { 
-                points_x[i] = b.bb_bases[i][0];
-                points_y[i] = b.bb_bases[i][1];
-                points_len++;
-            }
-        } else {
-            for (int i=0; i < b.nvertices; i++) { 
-                points_x[i] = b.bases[i][0];
-                points_y[i] = b.bases[i][1];
-                points_len++;
-            }
+        for (int i=0; i < b.nvertices; i++) {
+            points_x[i] = b.bases[i][0];
+            points_y[i] = b.bases[i][1];
+            points_len++;
         }
         
         for (int e=0; e < nvertices; e++) {
-            intersect_core(points_x, points_y, points_len, e, nvertices, xoffset, yoffset);
+        
+            int ne = (e + 1) % nvertices;
+            double Px = bases[e][0] + xoffset;
+            double Py = bases[e][1] + yoffset;
+            double Dx = bases[ne][0] - bases[e][0];
+            double Dy = bases[ne][1] - bases[e][1];
+        
+            intersect_core(points_x, points_y, points_len, Px, Py, Dx, Dy);
         }
         
     }
+    
+    
+    void intersect_bounds(double* points_x, double* points_y, int& points_len, 
+        const Polygon_geom& b, double xoffset = 0, double yoffset = 0) const { // special case for bounding boxes
+        
+        for (int i=0; i < b.nvertices; i++) { 
+            points_x[i] = b.bases[i][0];
+            points_y[i] = b.bases[i][1];
+            points_len++;
+        }
+        
+        intersect_core(points_x, points_y, points_len, 
+            bounds.max_x + xoffset, bounds.max_y + yoffset, 
+            -1, 0
+        );
+        
+        intersect_core(points_x, points_y, points_len, 
+            bounds.max_x + xoffset, bounds.min_y + yoffset, 
+            0, 1
+        );
+        
+        intersect_core(points_x, points_y, points_len, 
+            bounds.min_x + xoffset, bounds.min_y + yoffset, 
+            1, 0
+        );
+        
+        intersect_core(points_x, points_y, points_len, 
+            bounds.min_x + xoffset, bounds.max_y + yoffset, 
+            0, -1
+        );
+    }
+    
 
     // this looks like the Sutherland-Hodgman algorithm
     // the clipping polygon must be convex (req. by SH algo)
@@ -474,16 +503,9 @@ class Polygon_geom : public Geometry {
     // see the Greiner-Hormann algorithm below if you
     // are interested in the correct geometry for
     // concave/concave or convex/concave cases
-    void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, int e, int nedges,
-                        double xoffset, double yoffset) const {
-        int ne = (e + 1) % nedges;
-        
-        double Px = bases[e][0] + xoffset;
-        double Py = bases[e][1] + yoffset;
-        
-        double Dx = bases[ne][0] - bases[e][0];
-        double Dy = bases[ne][1] - bases[e][1];
-        
+    inline void intersect_core(double* inpoints_x, double* inpoints_y, int& in_len, 
+        double Px, double Py, double Dx, double Dy) const {
+                        
         double Nx = -Dy;
         double Ny = Dx;
 
@@ -618,15 +640,11 @@ class Polygon_geom : public Geometry {
     vector<cv::Vec2d> normals;
     vector<cv::Vec2d> bases;
 
-    cv::Vec2d bb_normals[4];
-    cv::Vec2d bb_bases[4];
-
     vector<double> constant;
     vector<double> multiple;
     
     int nvertices;
 
-    double bb_area;
     bool convex;
 };
 
