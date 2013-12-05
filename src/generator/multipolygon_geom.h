@@ -46,7 +46,7 @@ class Multipolygon_geom : public Geometry {
   public:
 
     Multipolygon_geom(double cx, double cy, const string& fname) 
-    : Geometry(cx, cy, 0), bounding_box(0,0,1,1,0,4), total_vertices(0) {
+    : Geometry(cx, cy, 0, Aa_bb(0,0,1,1)), total_vertices(0) {
 
         FILE* fin = fopen(fname.c_str(), "rt");
         if (!fin) {
@@ -94,59 +94,45 @@ class Multipolygon_geom : public Geometry {
     void compute_bounding_box(void) {
 
         // compute a bounding box
-        bounding_box.bases[0][1] = 1e12;
-        bounding_box.bases[1][0] = -1e12;
-        bounding_box.bases[2][1] = -1e12;
-        bounding_box.bases[3][0] = 1e12;
+        bounds.min_y = 1e12;
+        bounds.max_x = -1e12;
+        bounds.max_y = -1e12;
+        bounds.min_x = 1e12;
         for (size_t p=0; p < parts.size(); p++) {
             for (int i=0; i < parts[p].nvertices; i++) {
-                // bounding_box.bases: 0=top, 1=right, 2=bottom, 3=left
-                bounding_box.bases[0][1] = std::min(parts[p].bases[i][1], bounding_box.bases[0][1]);
-                bounding_box.bases[1][0] = std::max(parts[p].bases[i][0], bounding_box.bases[1][0]);
-                bounding_box.bases[2][1] = std::max(parts[p].bases[i][1], bounding_box.bases[2][1]);
-                bounding_box.bases[3][0] = std::min(parts[p].bases[i][0], bounding_box.bases[3][0]);
+                bounds.min_y = std::min(parts[p].bases[i][1], bounds.min_y);
+                bounds.max_x = std::max(parts[p].bases[i][0], bounds.max_x);
+                bounds.max_y = std::max(parts[p].bases[i][1], bounds.max_y);
+                bounds.min_x = std::min(parts[p].bases[i][0], bounds.min_x);
             }
         }
-        
-        bounding_box.bases[0][0] = bounding_box.bases[3][0];
-        bounding_box.bases[1][1] = bounding_box.bases[0][1];
-        bounding_box.bases[2][0] = bounding_box.bases[1][0];
-        bounding_box.bases[3][1] = bounding_box.bases[2][1];
-
-        bounding_box.normals[0][0] = 0;
-        bounding_box.normals[0][1] = -1;
-        bounding_box.normals[1][0] = 1;
-        bounding_box.normals[1][1] = 0;
-        bounding_box.normals[2][0] = 0;
-        bounding_box.normals[2][1] = 1;
-        bounding_box.normals[3][0] = -1;
-        bounding_box.normals[3][1] = 0;
-        
-        bounding_box.compute_bounding_box(); // yeah, this is crazy. why would a bounding box need a bounding box?
+        bounds.area = (bounds.max_x - bounds.min_x) * (bounds.max_y - bounds.min_y);
     }
 
     bool is_inside(double x, double y) const {
-        bool inside = false;
-
+    
+        if (!bounds.is_inside(x, y)) {
+            return false;
+        }
+    
         for (size_t p=0; p < parts.size(); p++) {
-            inside |= parts[p].is_inside(x, y);
+            if (parts[p].is_inside(x, y)) {
+                return true;
+            }
         }
 
-        return inside;
+        return false;
     }
     
-    double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0, bool skip_bounds=false)  const {
+    double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0)  const {
 
-        double bounds_area = 1;
-        if (!skip_bounds && total_vertices > 6) {
-            bounds_area = bounding_box.intersection_area(b, xoffset, yoffset);
+        if (!b.bounds.bounds_overlap(bounds, xoffset, yoffset)) {
+            return 0;
         }
         
         double total_area = 0;
-        if (bounds_area > 1e-11) {
-            for (size_t p=0; p < parts.size(); p++) {
-                total_area += parts[p].intersection_area(b, xoffset, yoffset);
-            }
+        for (size_t p=0; p < parts.size(); p++) {
+            total_area += parts[p].intersection_area(b, xoffset, yoffset);
         }
         
         return total_area;
@@ -154,7 +140,7 @@ class Multipolygon_geom : public Geometry {
     
     void print(void) const {
         for (size_t p=0; p < parts.size(); p++) {
-            printf("part %d:\n");
+            printf("part %d:\n", int(p));
             parts[p].print();
         }
     }
@@ -162,8 +148,6 @@ class Multipolygon_geom : public Geometry {
 
     double cx;
     double cy;
-
-    Polygon_geom bounding_box;
 
     vector<Polygon_geom> parts;
     int total_vertices;
