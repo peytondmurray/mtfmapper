@@ -64,13 +64,22 @@ class Multipolygon_geom : public Geometry {
                     printf("\t which exceeds the built-in limit of %d vertices\n", Polygon_geom::max_verts_per_poly);
                 }
                 vector<cv::Vec2d> verts(nverts);
+                int j = 0; // out vertex index
                 for (int i=0; i < nverts; i++) {
-                    nread = fscanf(fin, "%lf %lf", &verts[i][0], &verts[i][1]);
-                    verts[i][0] += cx; // TODO: hack to centre the polygon on (cx,cy) ?
-                    verts[i][1] += cy;
+                    nread = fscanf(fin, "%lf %lf", &verts[j][0], &verts[j][1]);
+                    verts[j][0] += cx; // TODO: hack to centre the polygon on (cx,cy) ?
+                    verts[j][1] += cy;
+                    // elliminate duplicates
+                    if ( (j > 0 && (fabs(verts[j][0] - verts[j-1][0]) < 1e-11 && fabs(verts[j][1] - verts[j-1][1]) < 1e-11)) ||
+                         (j > 1 && (fabs(verts[0][0] - verts[j][0]) < 1e-11 && fabs(verts[0][1] - verts[j][1]) < 1e-11)) ) {
+                        
+                        printf("erasing duplicate vertex (%lf, %lf)\n", verts[j][0], verts[j][1]);
+                        verts.erase(--verts.end());
+                    } else {
+                        j++;
+                    }
                 }
-                
-                total_vertices += nverts;
+                total_vertices += j;
                 Polygon_geom pol(verts);
                 if (!pol.has_ccw_winding()) {
                     pol = Polygon_geom(vector<cv::Vec2d>(pol.bases.rbegin(), pol.bases.rend()));

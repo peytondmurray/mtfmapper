@@ -59,7 +59,7 @@ using std::endl;
 #define SQR(x) ((x)*(x))
 
 const int border = 30;
-
+int dummy_crc = 0;
 
 inline unsigned char reverse_gamma(double x) {
     const double C_linear = 0.0031308;
@@ -94,10 +94,11 @@ class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
         double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
-        int buffer_border=30)
+        int buffer_border=30, int& crc=dummy_crc)
      : img(in_img), rect(in_r), noise_source(noise_source),
        gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
-       use_16bit(use_16bit), buffer_border(buffer_border) {
+       use_16bit(use_16bit), buffer_border(buffer_border),
+       crc(crc) {
      
         
     }
@@ -129,7 +130,7 @@ class Render_rows {
         // assume a dynamic range of 5% to 95% of full scale
         double object_value = contrast_reduction / 2.0;
         double background_value = 1 - object_value;
-
+        
         for (size_t row=r.begin(); row != r.end(); ++row) {
 
             if (int(row) < buffer_border || int(row) > img.rows - buffer_border) {
@@ -152,6 +153,13 @@ class Render_rows {
                     putpixel(row, col, rval);
                 }
             }
+            
+            crc++; // this will cause a race condition, but that does not matter ...
+            if (crc % (img.rows/10) == 0) {
+                //printf("completed %d rows (%.2lf%%)\n", crc, double(crc*100)/double(img.rows));
+                printf("...%d%%", (int)lrint(double(crc*100)/double(img.rows)));
+                fflush(stdout);
+            }
         }
     } 
      
@@ -162,6 +170,7 @@ class Render_rows {
     double contrast_reduction;
     bool use_16bit;
     int buffer_border;
+    int& crc;
 };
 
 
@@ -271,6 +280,7 @@ int main(int argc, char** argv) {
     photosite_names.push_back("square");
     photosite_names.push_back("circle");
     photosite_names.push_back("rounded-square");
+    photosite_names.push_back("spare");
     TCLAP::ValuesConstraint<string> photosite_constraints(photosite_names);
     TCLAP::ValueArg<std::string> tc_photosite_geom("", "photosite-geom", "Photosite aperture geometry", false, "square", &photosite_constraints );
     cmd.add(tc_photosite_geom);
@@ -437,7 +447,6 @@ int main(int argc, char** argv) {
         M_PI/2 - theta,
         4
     );
-    ((Polygon_geom*)target_geom)->rebuild(); // hmmm. looks like the normals of regular_polygon are broken
     
 
     if (tc_target_name.isSet()) {
@@ -465,8 +474,10 @@ int main(int argc, char** argv) {
         0, 4
     );
 
+    bool display_mtf_equation = false;
     if (tc_photosite_geom.getValue().compare("square") == 0) {
         // do nothing
+        display_mtf_equation = true;
     }
     if (tc_photosite_geom.getValue().compare("circle") == 0) {
         double eff = tc_fillfactor.getValue() * (M_PI/4.0);
@@ -485,10 +496,10 @@ int main(int argc, char** argv) {
         
         // build top row
         double x1 = 1.0/(points_per_side/2);
-        double scale = 0.5/(sqrt(1-x1*x1)*(1-pow(fabs(x1),1.8))/5 + 1) * tc_fillfactor.getValue();
+        double scale = 0.5/(sqrt(1-x1*x1)*(1-pow(fabs(x1),1.8))/7.0 + 1) * tc_fillfactor.getValue();
         double x = 1;
         for (int i=0; i < points_per_side/2; i++) {
-            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1; // arbitrary empirical function that "looks ok"
+            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/7.0 + 1; // arbitrary empirical function that "looks ok"
             verts[oidx][0] = scale*x;
             verts[oidx][1] = scale*y;
             oidx++;
@@ -497,7 +508,7 @@ int main(int argc, char** argv) {
         }
         x = 1 - 1.0/(points_per_side/2);;
         for (int i=0; i < (points_per_side/2-1); i++) {
-            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/5 + 1;
+            double y = sqrt(1-x*x)*(1-pow(fabs(x),1.8))/7.0 + 1;
             verts[oidx+(points_per_side/2-2)-i][0] = -scale*x;
             verts[oidx+(points_per_side/2-2)-i][1] = scale*y;
             x -= 1.0/(points_per_side/2);
@@ -527,8 +538,37 @@ int main(int argc, char** argv) {
         
         photosite_geom = new Polygon_geom(verts);
         
+        /*
+        FILE* fout = fopen("aperture.txt", "wt");
+        for (size_t i=0; i < verts.size(); i++) {
+            fprintf(fout, "%lf %lf\n", verts[i][0], verts[i][1]);
+        }
+        fprintf(fout, "%lf %lf\n", verts[0][0], verts[0][1]);
+        fclose(fout);
+        */
+        
         printf("rounded-square photosite area = %lf\n", ((Polygon_geom*)photosite_geom)->compute_area());
     }
+    
+    if (tc_photosite_geom.getValue().compare("spare") == 0) {
+        vector<cv::Vec2d> verts(4);
+        
+        verts[3][0] = 0.5;
+        verts[3][1] = 0.01;
+        
+        verts[2][0] = 0.5;
+        verts[2][1] = -0.01;
+        
+        verts[1][0] = -0.5;
+        verts[1][1] = -0.01;
+        
+        verts[0][0] = -0.5;
+        verts[0][1] = 0.01;
+        
+        photosite_geom = new Polygon_geom(verts);
+    }
+    
+    printf("photosite area = %lf\n", ((Polygon_geom*)photosite_geom)->compute_area());
 
 
     // decide which PSF rendering algorithm to use
@@ -578,8 +618,12 @@ int main(int argc, char** argv) {
     }
     
     if (!tc_profile.getValue()) {
-        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border);
+        int crc = 0;
+        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border, crc);
+        printf("progress: 0%% ");
+        fflush(stdout);
         parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
+        printf("\n");
         imwrite(tc_out_name.getValue(), img);
     } else {
         string profile_fname("profile.txt");
@@ -587,16 +631,20 @@ int main(int argc, char** argv) {
             profile_fname = tc_out_name.getValue();
         }
         // render call
-        const int oversample = 32;
+        const int oversample = 32*4;
         vector< pair<double, double> > esf(Render_esf::n_samples(rwidth, oversample));
         Render_esf re(*rect, esf, rwidth, theta, oversample, tc_xoff.getValue(), tc_yoff.getValue());
         parallel_for(blocked_range<size_t>(size_t(0), esf.size()), re);
         re.write(profile_fname);
     }
     
-    printf("MTF curve:  %s\n", rect->get_mtf_curve().c_str());
-    printf("PSF : %s\n", rect->get_psf_curve().c_str());
-    printf("MTF50 = %lf\n", rect->get_mtf50_value());    
+    if (display_mtf_equation) { // for now we only output equations for square photosites
+        printf("MTF curve:  %s\n", rect->get_mtf_curve().c_str());
+        printf("PSF : %s\n", rect->get_psf_curve().c_str());
+        printf("Note: above MTF/PSF functions apply strictly to an ESF taken perpendicular to a step edge.\n");
+        printf("Note: edge orientation set using '-a' is NOT taken into account here\n");
+        printf("MTF50 = %lf\n", rect->get_mtf50_value());    
+    }
 
     delete ns;
     delete rect;

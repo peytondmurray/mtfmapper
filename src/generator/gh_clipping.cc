@@ -59,13 +59,19 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) / denom;
     
     
+    /*
     if (fabs(is.alpha) < 1e-11 && fabs(ic.alpha - 1) < 1e-11) { // classical vertex intersection
+    //if (is.alpha > -1e-11 && is.alpha < 1e-11 && fabs(ic.alpha - 1) < 1e-11) { // classical vertex intersection
         return false;
     }
     
+    
     if (fabs(ic.alpha) < 1e-11 && fabs(is.alpha - 1) < 1e-11) { // same, other way around
+    //if (ic.alpha > 0 && ic.alpha < 1e-11 && fabs(is.alpha - 1) < 1e-11) { // same, other way around
         return false;
     }
+    */
+    
     
     if (is.alpha < -1e-12 || is.alpha > (1+1e-12) ||  
         ic.alpha < -1e-12 || ic.alpha > (1+1e-12)) {
@@ -202,6 +208,14 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 int deg = check_degeneracy(verts, vs, si, ci+poly0_size, nsi, nci+poly0_size);
                 
                 if (deg >= 0) { // intersection already exists
+                    if (dist(verts[si], verts[ci+poly0_size]) < 1e-11) {
+                        //printf("overlapping original vertices (%d, %d) detected. Linking them as intersections\n", si, ci+poly0_size);
+                        verts[si].neighbour = ci+poly0_size;
+                        verts[ci+poly0_size].neighbour = si;
+                        verts[si].isect = 1;
+                        verts[ci+poly0_size].isect = 1;
+                        continue;
+                    }
                     if (verts[deg].neighbour == -1) { // if vertex already has a neighbour, just skip
                         if (deg < poly0_size) { // match comes from S, so add intersection to C
                         
@@ -417,6 +431,7 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
         if ( verts[current].isect && (verts[current].flag == EN || verts[current].flag == EX) ) {
             int next = verts[current].next;
                 
+            #if 0    
             if (verts[next].isect && verts[next].flag == verts[current].flag && 
                 verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
                 verts[current].couple = next;
@@ -426,6 +441,28 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
                 verts[verts[current].neighbour].couple = verts[next].neighbour;
                 verts[verts[next].neighbour].couple = verts[current].neighbour;
             }
+            #else
+            int last_next = next;
+            while (verts[next].isect && verts[next].flag != verts[current].flag /*&& 
+                    verts[current].couple == -1*/ && verts[next].couple == -1) {
+                    //printf("\tlooking at coupling %d and %d\n", current, next);
+                    last_next = next;
+                    next = verts[next].next;
+            }
+            //next = last_next;
+            //printf("trying to couple %d and %d\n", current, next);
+            if (current != next &&
+                verts[next].isect && verts[next].flag == verts[current].flag && 
+                verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
+                verts[current].couple = next;
+                verts[next].couple = current;
+                
+                // should we couple the same vertices in the other polygon?
+                verts[verts[current].neighbour].couple = verts[next].neighbour;
+                verts[verts[next].neighbour].couple = verts[current].neighbour;
+                //printf("\t success!\n");
+            } //else printf("\t not coupled!\n");
+            #endif
         }
         
         current = verts[current].next;
@@ -448,6 +485,20 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
     bool reverse = false;
     if (start >= 0) {
         set_traversal_flag(verts, b, start);
+        current = verts[current].next;
+        while (verts[start].flag == 0 && current != first_vert_index) {
+            // find next intersection
+            if (verts[current].isect) {
+                start = current;
+                set_traversal_flag(verts, b, start);
+                break;
+            }
+            current = verts[current].next;
+        }
+        if (current == first_vert_index) {
+            printf("no valid intersections found?\n");
+            assert(false);
+        }
     
         if ( (verts[start].flag == EN && verts[verts[start].neighbour].flag == EX) ||
              (verts[start].flag == EX && verts[verts[start].neighbour].flag == EN) || 
@@ -457,7 +508,7 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
             if (verts[start].flag == verts[verts[start].neighbour].flag) {
                 reverse = false;
             } else {
-                // everything else, assume revers is true, but we would still
+                // everything else, assume reverse is true, but we would still
                 // like to know about it ...
                 printf("flags in undefined state (%d, %d)->%d. help!\n",
                     verts[start].flag, verts[verts[start].neighbour].flag, true);
@@ -501,6 +552,11 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
 }
 
 static int proceed(int current, traversal_edge status, vector<gh_vertex>& verts, vector<cv::Vec2d>& vertices) {
+    if (verts[current].neighbour != -1) { // TODO: This is a bit extreme? What about ENEX or EXEN nodes?
+        verts[current].next_poly = -51;
+        verts[verts[current].neighbour].next_poly = -50; 
+    }
+    
     if (status == D1) {
         // check for degeneracy first
         cv::Vec2d next(verts[current].x, verts[current].y);
@@ -616,7 +672,7 @@ static traversal_edge delete_flag2(int current, int prev, traversal_edge status,
 int select_vertex(vector<gh_vertex>& verts, int vs) {
     
     for (int si=0; si < vs; si++) {
-        if (verts[si].next_poly == 1 && verts[si].isect) {
+        if (verts[si].next_poly == 1 && verts[si].isect && verts[si].flag != NONE) {
         
             // we have an unmarked intersection
             
