@@ -49,7 +49,7 @@ typedef enum {
 //==============================================================================
 class Polygon_geom : public Geometry {
   public:
-    static const int max_verts_per_poly = 200; // max number of point in intersected polygon
+    static const int max_verts_per_poly = 400; // max number of point in intersected polygon
 
     friend class Multipolygon_geom;
     
@@ -136,7 +136,6 @@ class Polygon_geom : public Geometry {
         compute_bounding_box();
         
         own_area = compute_area();
-        //printf("rebuilt polygon with %d vertices, area=%lf\n\n", nvertices, own_area);
     }
 
     void construct_regular_polygon(double width, double height, double angle) {
@@ -145,17 +144,19 @@ class Polygon_geom : public Geometry {
         bases   = vector<cv::Vec2d>(nvertices);
         normals = vector<cv::Vec2d>(nvertices);
 
-        //printf("nvertices=%d\n", nvertices);
-        //printf("rendering a polygon with %d sides\n", nvertices);
         assert(nvertices >= 3);
         for (int i=0; i < nvertices; i++) {
             double phi = i*M_PI*2/double(nvertices);
             bases[i][0] = width/2*cos(angle+phi - M_PI/4.0) + cx;
             bases[i][1] = height/2*sin(angle+phi - M_PI/4.0) + cy;
-            normals[i][0] = cos(angle+phi);
-            normals[i][1] = -sin(angle+phi);
-            //printf("%lf %lf (%lf %lf)\n", bases[i][0], bases[i][1], normals[i][0], normals[i][1]);
-            //if (nvertices > 4) fprintf(stderr, "%lf %lf\n", bases[i][0], bases[i][1]);
+        }
+        // yes, I know I should be able to compute the normals directly, but this still works, ok :)
+        int prev = nvertices - 1;
+        for (int i=0; i < nvertices; i++) {
+            cv::Vec2d d = bases[i] - bases[prev];
+            normals[i][0] = -d[1] / norm(d);
+            normals[i][1] = d[0] / norm(d);
+            prev = i;
         }
 
         compute_bounding_box();
