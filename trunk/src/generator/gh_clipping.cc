@@ -59,20 +59,6 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) / denom;
     
     
-    /*
-    if (fabs(is.alpha) < 1e-11 && fabs(ic.alpha - 1) < 1e-11) { // classical vertex intersection
-    //if (is.alpha > -1e-11 && is.alpha < 1e-11 && fabs(ic.alpha - 1) < 1e-11) { // classical vertex intersection
-        return false;
-    }
-    
-    
-    if (fabs(ic.alpha) < 1e-11 && fabs(is.alpha - 1) < 1e-11) { // same, other way around
-    //if (ic.alpha > 0 && ic.alpha < 1e-11 && fabs(is.alpha - 1) < 1e-11) { // same, other way around
-        return false;
-    }
-    */
-    
-    
     if (is.alpha < -1e-12 || is.alpha > (1+1e-12) ||  
         ic.alpha < -1e-12 || ic.alpha > (1+1e-12)) {
     
@@ -209,7 +195,6 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 
                 if (deg >= 0) { // intersection already exists
                     if (dist(verts[si], verts[ci+poly0_size]) < 1e-11) {
-                        //printf("overlapping original vertices (%d, %d) detected. Linking them as intersections\n", si, ci+poly0_size);
                         verts[si].neighbour = ci+poly0_size;
                         verts[ci+poly0_size].neighbour = si;
                         verts[si].isect = 1;
@@ -431,26 +416,10 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
         if ( verts[current].isect && (verts[current].flag == EN || verts[current].flag == EX) ) {
             int next = verts[current].next;
                 
-            #if 0    
-            if (verts[next].isect && verts[next].flag == verts[current].flag && 
-                verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
-                verts[current].couple = next;
-                verts[next].couple = current;
-                
-                // should we couple the same vertices in the other polygon?
-                verts[verts[current].neighbour].couple = verts[next].neighbour;
-                verts[verts[next].neighbour].couple = verts[current].neighbour;
+            while (verts[next].isect && verts[next].flag != verts[current].flag &&
+                   verts[next].couple == -1) {
+                next = verts[next].next;
             }
-            #else
-            int last_next = next;
-            while (verts[next].isect && verts[next].flag != verts[current].flag /*&& 
-                    verts[current].couple == -1*/ && verts[next].couple == -1) {
-                    //printf("\tlooking at coupling %d and %d\n", current, next);
-                    last_next = next;
-                    next = verts[next].next;
-            }
-            //next = last_next;
-            //printf("trying to couple %d and %d\n", current, next);
             if (current != next &&
                 verts[next].isect && verts[next].flag == verts[current].flag && 
                 verts[current].couple == -1 && verts[next].couple == -1) { // only couple uncoupled vertices?
@@ -460,9 +429,7 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
                 // should we couple the same vertices in the other polygon?
                 verts[verts[current].neighbour].couple = verts[next].neighbour;
                 verts[verts[next].neighbour].couple = verts[current].neighbour;
-                //printf("\t success!\n");
-            } //else printf("\t not coupled!\n");
-            #endif
+            } 
         }
         
         current = verts[current].next;
@@ -496,8 +463,16 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_v
             current = verts[current].next;
         }
         if (current == first_vert_index) {
-            printf("no valid intersections found?\n");
-            assert(false);
+            printf("no valid intersections found? reverting to first intersection\n");
+            current = first_vert_index;
+            start = -1;
+            do {
+                if (verts[current].isect) {
+                    start = current;
+                    break;
+                }
+                current = verts[current].next;
+            } while (current != first_vert_index); 
         }
     
         if ( (verts[start].flag == EN && verts[verts[start].neighbour].flag == EX) ||
