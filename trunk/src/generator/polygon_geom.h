@@ -622,7 +622,7 @@ class Polygon_geom : public Geometry {
         // first process C
         GH_clipping::gh_phase_two(verts, *this, poly1_start);
         // then process S with alternate version 
-        GH_clipping::gh_phase_two_b(verts, b, 0);
+        GH_clipping::gh_phase_two_b(verts, b, poly1_start);
         
         
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
