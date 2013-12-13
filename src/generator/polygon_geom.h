@@ -369,19 +369,7 @@ class Polygon_geom : public Geometry {
             return compute_area(points_x, points_y, points_len);
         } else {
             // otherwise use Greiner-Horman, which is about 6x slower, but works for concave photosites
-            vector<cv::Vec2d> verts(b.bases);
-            for (size_t i=0; i < verts.size(); i++) {
-                verts[i][0] += xoffset;
-                verts[i][1] += yoffset;
-            }
-            Polygon_geom altb(verts);
-            vector<Polygon_geom> polys = altb.intersect_greiner_horman(*this);
-            
-            double area = 0;
-            for (size_t p=0; p < polys.size(); p++) {
-                area += polys[p].compute_area();
-            }
-            return area;
+            return b.intersect_greiner_horman_area(*this, xoffset, yoffset);
         }
     }
     
@@ -567,15 +555,12 @@ class Polygon_geom : public Geometry {
     
     // slower polygon clipping algorithm, but this one should handle concave-concave
     // clipping, and it should also avoid creating degenerate parts
-    vector<Polygon_geom> intersect_greiner_horman(const Polygon_geom& b) {
+    vector<Polygon_geom> intersect_greiner_horman(const Polygon_geom& b) const {
         vector<Polygon_geom> polys;
 
         assert(has_ccw_winding() == b.has_ccw_winding());
         
         vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
-        vector<Polygon_geom> poly(2);
-        poly[0] = *this;
-        poly[1] = b;
         
         // populate the verts vector with the two polys
         int poly1_start = GH_clipping::init_gh_list(verts, bases, 0, 1);
@@ -627,7 +612,6 @@ class Polygon_geom : public Geometry {
         
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
         
-        
         for (size_t k=0; k < polys.size(); k++){
             if (!polys[k].has_ccw_winding()) {
                 polys[k] = Polygon_geom(vector<cv::Vec2d>(polys[k].bases.rbegin(), polys[k].bases.rend()));
@@ -636,6 +620,64 @@ class Polygon_geom : public Geometry {
         
         
         return polys;
+    }
+    
+    double intersect_greiner_horman_area(const Polygon_geom& b, double xoffset=0, double yoffset=0) const {
+
+        assert(has_ccw_winding() == b.has_ccw_winding());
+        
+        vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
+        
+        // populate the verts vector with the two polys
+        // xoffset and yoffset are typically used on a photosite aperture polygon
+        // so *this is by default considered to be 
+        int poly1_start = GH_clipping::init_gh_list(verts, bases, 0, 1, xoffset, yoffset);
+        int vs = GH_clipping::init_gh_list(verts, b.bases, poly1_start, -1);
+        
+        int vs_before_intersections = vs;
+        GH_clipping::gh_phase_one(verts, vs, bases.size(), b.bases.size());
+        
+        if (vs == vs_before_intersections) {
+        
+            bool all_on = true;
+            for (size_t p=0; p < bases.size(); p++) {
+                int cl = b.classify(bases[p][0], bases[p][1]);
+                if (cl == OUTSIDE) {
+                    all_on = false;
+                }
+            }
+            
+            if (all_on) {
+                // *this must be entirely within b, so return *this
+                return own_area;
+            } else {
+                // maybe b is entirely inside *this?
+                bool all_in = true;
+                for (size_t p=0; p < b.bases.size(); p++) {
+                    int cl = classify(b.bases[p][0], b.bases[p][1]);
+                    if (cl == OUTSIDE) {
+                        all_in = false;
+                    }
+                }
+                
+                if (all_in) {
+                    return b.own_area;
+                }
+            
+                // *this is entirely outside b, so return empty list
+                return 0; 
+            }
+        }
+        
+        
+        // first process C
+        GH_clipping::gh_phase_two(verts, *this, poly1_start, xoffset, yoffset); // set_traversal modified
+        // then process S with alternate version 
+        GH_clipping::gh_phase_two_b(verts, b, poly1_start); // this way round is safe, because b has not been modified
+        
+        vector<Polygon_geom> polys; // is this slow?
+        
+        return GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys, true);
     }
 
     vector<cv::Vec2d> normals;

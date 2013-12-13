@@ -139,10 +139,11 @@ int check_degeneracy(vector<gh_vertex>& verts, int vs, int si, int ci, int nsi, 
 }
 
 
-int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, int vs, int next_poly) {
+int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, int vs, int next_poly,
+    double xoffset, double yoffset) {
     for (int v=0; v < (int)in_verts.size(); v++) {
-        verts[v+vs].x = in_verts[v][0];
-        verts[v+vs].y = in_verts[v][1];
+        verts[v+vs].x = in_verts[v][0] + xoffset;
+        verts[v+vs].y = in_verts[v][1] + yoffset;
         verts[v+vs].next = (v+1) % in_verts.size() + vs;
         verts[v+vs].prev = (v + in_verts.size() - 1) % in_verts.size() + vs;
         verts[v+vs].isect = false;   // this it not an intersection, so it is a vertex
@@ -294,7 +295,8 @@ inline bool edge_present(vector<gh_vertex>& verts, int other, int current) {
     return false;
 }
 
-static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, int current) {
+static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, int current,
+    double xoffset=0, double yoffset=0) {
     
     const int& prev = verts[current].prev;
     const int& next = verts[current].next;
@@ -309,8 +311,8 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
     if (prev_status != ON) {
         switch (
             b.classify( 
-                0.5*(verts[prev].x + verts[current].x), 
-                0.5*(verts[prev].y + verts[current].y)
+                0.5*(verts[prev].x + verts[current].x) - xoffset, 
+                0.5*(verts[prev].y + verts[current].y) - yoffset
             ) 
         ) {
         case ON:
@@ -329,8 +331,8 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
     if (next_status != ON) {
         switch (
             b.classify( 
-                0.5*(verts[next].x + verts[current].x), 
-                0.5*(verts[next].y + verts[current].y)
+                0.5*(verts[next].x + verts[current].x) - xoffset, 
+                0.5*(verts[next].y + verts[current].y) - yoffset
             ) 
         ) {
         case ON:
@@ -382,13 +384,13 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
     }
 }
 
-void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index) {
+void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index, double xoffset, double yoffset) {
 
     // set the traversal flags for C (poly 1)
     int current = first_vert_index;
     do {
         if (verts[current].isect) {
-            set_traversal_flag(verts, b, current);
+            set_traversal_flag(verts, b, current, xoffset, yoffset);
         }
         
         current = verts[current].next;
@@ -656,7 +658,17 @@ int select_vertex(vector<gh_vertex>& verts, int vs) {
     return -1;
 }
 
-void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys) {
+static double compute_area(const vector<cv::Vec2d>& points) {
+    double A = 0;
+    for (size_t i=0; i < points.size(); i++) {
+        int ni = (i+1) % points.size();
+        A += points[i][0]*points[ni][1] - points[ni][0]*points[i][1];
+    }
+    return 0.5 * fabs(A);
+}
+
+double gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys, bool area_only) {
+    double combined_area = 0;
 
     bool done = false;
     while (!done) {
@@ -685,17 +697,24 @@ void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vec
                 current = proceed(current, status, verts, vertices);
             }
             if (vertices.size() > 2) {
-                // quickly check for degeneracy with last point wrapping around
-                if ( fabs(cross(vertices[vertices.size()-1], vertices[0], vertices[vertices.size()-2])) < 1e-11 ) {
-                    vertices.erase(--vertices.end());
+                
+                if (area_only) {
+                    combined_area += compute_area(vertices);
+                } else {
+            
+                    // quickly check for degeneracy with last point wrapping around
+                    if ( fabs(cross(vertices[vertices.size()-1], vertices[0], vertices[vertices.size()-2])) < 1e-11 ) {
+                        vertices.erase(--vertices.end());
+                    }
+                    polys.push_back(Polygon_geom(vertices));
                 }
-                polys.push_back(Polygon_geom(vertices));
             }
             vertices.clear();
         }
         
     }
     
+    return combined_area;
 }
 
 }; // namespace GH_clipping

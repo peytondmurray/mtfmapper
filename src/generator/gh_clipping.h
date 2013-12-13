@@ -78,11 +78,11 @@ namespace GH_clipping {
     };
 
                       
-    int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, int vs, int next_poly);
+    int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, int vs, int next_poly, double xoffset=0, double yoffset=0);
     void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_size);
-    void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index);
+    void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index, double xoffset=0, double yoffset=0);
     void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int poly1_start);
-    void gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys);
+    double gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys, bool area_only=false);
     
 };
 
