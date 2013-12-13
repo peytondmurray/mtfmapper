@@ -100,8 +100,8 @@ static void insert_vertex(vector<gh_vertex>& verts, int v1, int next, int vs) {
     verts[vs].cross_change = false;
 }
 
-static inline double dist(const gh_vertex& a, const gh_vertex& b) {
-    return sqrt((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y));
+static inline bool same(const gh_vertex& a, const gh_vertex& b) {
+    return fabs(a.x - b.x) < 1e-11 && fabs(a.y - b.y) < 1e-11;
 }
 
 int check_degeneracy(vector<gh_vertex>& verts, int vs, int si, int ci, int nsi, int nci) {
@@ -111,35 +111,28 @@ int check_degeneracy(vector<gh_vertex>& verts, int vs, int si, int ci, int nsi, 
     int& ci_prev = verts[ci].prev;
     int& ci_next = nci;
     
-    if (dist(verts[vs], verts[si_prev]) < 1e-11) {
+    if (same(verts[vs], verts[si_prev])) {
         return si_prev;
     }
     
-    if (dist(verts[vs], verts[ci_prev]) < 1e-11) {
+    if (same(verts[vs], verts[ci_prev])) {
         return ci_prev;
     }
     
-    if (dist(verts[vs], verts[si]) < 1e-11) {
+    if (same(verts[vs], verts[si])) {
         return si;
     }
     
-    if (dist(verts[vs], verts[ci]) < 1e-11) {
+    if (same(verts[vs], verts[ci])) {
         return ci;
     }
     
-    if (dist(verts[vs], verts[si_next]) < 1e-11) {
+    if (same(verts[vs], verts[si_next])) {
         return si_next;
     }
     
-    if (dist(verts[vs], verts[ci_next]) < 1e-11) {
+    if (same(verts[vs], verts[ci_next])) {
         return ci_next;
-    }
-    
-    for (int k=0; k < vs; k++) {
-        if (dist(verts[vs], verts[k]) < 1e-11) {
-            printf("new vert %d identical to arb C vertex %d\n", vs, k);
-            return k;
-        }
     }
     
     return -1;
@@ -179,9 +172,10 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 verts[vs], verts[vs+1]
             );
             
+            // if this is identical to the previous intersection, just skip over it
             if (isect &&
                 vs - 2 > (poly1_size + poly0_size) &&
-                dist(verts[vs], verts[vs-2]) < 1e-11) {
+                same(verts[vs], verts[vs-2])) {
                 isect = false;
             }
             
@@ -194,7 +188,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 int deg = check_degeneracy(verts, vs, si, ci+poly0_size, nsi, nci+poly0_size);
                 
                 if (deg >= 0) { // intersection already exists
-                    if (dist(verts[si], verts[ci+poly0_size]) < 1e-11) {
+                    if (same(verts[si], verts[ci+poly0_size])) {
                         verts[si].neighbour = ci+poly0_size;
                         verts[ci+poly0_size].neighbour = si;
                         verts[si].isect = 1;
@@ -208,7 +202,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                             
                             int found_idx = poly0_size;
                             for (; found_idx < (poly0_size+poly1_size); found_idx++) {
-                                if (dist(verts[found_idx], verts[deg]) < 1e-11) {
+                                if (same(verts[found_idx], verts[deg])) {
                                     found = true;
                                     break;
                                 }
@@ -237,7 +231,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                             bool found = false;
                             int found_idx = 0;
                             for (; found_idx < poly0_size; found_idx++) {
-                                if (dist(verts[found_idx], verts[deg]) < 1e-11) {
+                                if (same(verts[found_idx], verts[deg])) {
                                     found = true;
                                     break;
                                 }
@@ -284,27 +278,17 @@ inline static double triangle_cross(const gh_vertex& v0, const gh_vertex& v1, co
     return (dc_y*ds_x - dc_x*ds_y);
 }
 
-bool edge_present(vector<gh_vertex>& verts, int other, int current) {
+inline bool edge_present(vector<gh_vertex>& verts, int other, int current) {
 
-    int neighbour = verts[current].neighbour;
-
+    int& neighbour = verts[current].neighbour;
 
     if (neighbour >= 0) { // we have a neighbour
-        // take the expensive O(n) route to check if other->current is an edge in the other polygon
-        int nc = verts[current].neighbour;
-        do {
-            if (dist(verts[nc], verts[current]) < 1e-11) {
-                
-                // now check if prev/next of found_idx matches "other"
-                if (dist(verts[verts[nc].prev], verts[other]) < 1e-11 ||
-                    dist(verts[verts[nc].next], verts[other]) < 1e-11) {
-                    
-                    return true;
-                }
-                
-            }
-            nc = verts[nc].next;
-        } while (nc != verts[current].neighbour);
+        int& nc = verts[current].neighbour;
+        if (verts[nc].prev == verts[other].neighbour ||
+            verts[nc].next == verts[other].neighbour) {
+            
+            return true;
+        }
     } 
     
     return false;
@@ -436,44 +420,44 @@ void gh_phase_two(vector<gh_vertex>& verts, const Polygon_geom& b, int first_ver
     } while (current != first_vert_index); 
 }
 
-void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int first_vert_index) {
+void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int poly1_start) {
 
-    // set the traversal flags for C (poly 1)
-    int current = first_vert_index;
+    // since we have already set the flags for C, we can quickly
+    // scan its intersections for a suitable candidate intersection
+    const int first_vert_index = 0;
+    int current = poly1_start;
     int start = -1;
+    
     do {
-        if (verts[current].isect) {
+        // look for an intersection with flag that tells us something
+        // about the orientation (reverse or not)
+        if (verts[current].isect && verts[current].flag != 0) { 
             start = current;
             break;
         }
         current = verts[current].next;
-    } while (current != first_vert_index); 
+    } while (current != poly1_start); 
     
-    bool reverse = false;
-    if (start >= 0) {
-        set_traversal_flag(verts, b, start);
-        current = verts[current].next;
-        while (verts[start].flag == 0 && current != first_vert_index) {
-            // find next intersection
+    if (start != -1) {
+        start = verts[start].neighbour;
+    } else {
+        // it appears that all of the intersections had their
+        // traversal flags set to "NONE". this probably means that
+        // we can start with any of them 
+        current = first_vert_index;
+        do {
             if (verts[current].isect) {
                 start = current;
-                set_traversal_flag(verts, b, start);
                 break;
             }
             current = verts[current].next;
-        }
-        if (current == first_vert_index) {
-            printf("no valid intersections found? reverting to first intersection\n");
-            current = first_vert_index;
-            start = -1;
-            do {
-                if (verts[current].isect) {
-                    start = current;
-                    break;
-                }
-                current = verts[current].next;
-            } while (current != first_vert_index); 
-        }
+        } while (current != first_vert_index); 
+        printf("no intersections with flags != NONE found. picking first intersection instead ...\n");
+    }
+
+    bool reverse = false;
+    if (start >= 0) {
+        set_traversal_flag(verts, b, start);
     
         if ( (verts[start].flag == EN && verts[verts[start].neighbour].flag == EX) ||
              (verts[start].flag == EX && verts[verts[start].neighbour].flag == EN) || 
