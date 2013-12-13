@@ -54,9 +54,11 @@ static inline bool t_intersect(const gh_vertex& s0, const gh_vertex& s1,
     if (fabs(denom) < 1e-11) {
         return false;
     }
+    
+    denom = 1.0/denom;
                                                                                                                           
-    is.alpha = (dc_x*(s0.y - c0.y) - dc_y*(s0.x - c0.x)) / denom;
-    ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) / denom;
+    is.alpha = (dc_x*(s0.y - c0.y) - dc_y*(s0.x - c0.x)) * denom;
+    ic.alpha = -(ds_x*(c0.y - s0.y) - ds_y*(c0.x - s0.x)) * denom;
     
     
     if (is.alpha < -1e-12 || is.alpha > (1+1e-12) ||  
@@ -673,6 +675,7 @@ double gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, v
     bool done = false;
     while (!done) {
         vector<cv::Vec2d> vertices;
+        vertices.reserve(vs);
         
         int current = select_vertex(verts, vs);
         done = current < 0;
