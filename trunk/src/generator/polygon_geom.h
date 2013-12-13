@@ -626,7 +626,7 @@ class Polygon_geom : public Geometry {
 
         assert(has_ccw_winding() == b.has_ccw_winding());
         
-        vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices);
+        vector<GH_clipping::gh_vertex> verts(nvertices * b.nvertices*2 + nvertices + b.nvertices); // this malloc will slow things down a lot
         
         // populate the verts vector with the two polys
         // xoffset and yoffset are typically used on a photosite aperture polygon
@@ -641,7 +641,7 @@ class Polygon_geom : public Geometry {
         
             bool all_on = true;
             for (size_t p=0; p < bases.size(); p++) {
-                int cl = b.classify(bases[p][0], bases[p][1]);
+                int cl = b.classify(bases[p][0] + xoffset, bases[p][1] + yoffset);
                 if (cl == OUTSIDE) {
                     all_on = false;
                 }
@@ -654,7 +654,7 @@ class Polygon_geom : public Geometry {
                 // maybe b is entirely inside *this?
                 bool all_in = true;
                 for (size_t p=0; p < b.bases.size(); p++) {
-                    int cl = classify(b.bases[p][0], b.bases[p][1]);
+                    int cl = classify(b.bases[p][0] - xoffset, b.bases[p][1] - yoffset);
                     if (cl == OUTSIDE) {
                         all_in = false;
                     }
