@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <vector>
 #include <list>
 #include <map>
+#include <cmath>
 
 using std::vector;
 using std::pair;
@@ -59,14 +60,30 @@ using std::make_pair;
 	#define EXE_SUFFIX ""
 #endif
 
-#ifdef _MSC_VER
+#ifndef M_PI
+	#define M_PI 3.14159265358979
+#endif
+
+#ifndef uint16_t
+	typedef unsigned short int uint16_t;
+#endif
+
+#ifndef uint32_t
+    typedef unsigned int uint32_t;
+#endif
+
+#ifndef uint32_t
+    typedef int int32_t;
+#endif
+
+#if _MSC_VER == 1600 
 	typedef unsigned short int uint16_t;
 	typedef unsigned int uint32_t;
 	typedef int int32_t;
 
 	#define M_PI 3.14159265358979
 	
-	__inline int 
+	__inline long int 
 	lrint (double flt) 	{	
 		int intgr;
 

@@ -34,7 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <math.h>
 #include "render.h"
 
-#ifdef _MSC_VER
+#if _MSC_VER == 1600
 
 double erf(double x) {
     // constants
