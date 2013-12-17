@@ -61,11 +61,11 @@ using std::make_pair;
 #endif
 
 #ifndef M_PI
-	#define M_PI 3.14159265358979
+    #define M_PI 3.14159265358979
 #endif
 
 #ifndef uint16_t
-	typedef unsigned short int uint16_t;
+    typedef unsigned short int uint16_t;
 #endif
 
 #ifndef uint32_t
@@ -83,7 +83,7 @@ using std::make_pair;
 
 	#define M_PI 3.14159265358979
 	
-	__inline long int 
+    __inline long int 
 	lrint (double flt) 	{	
 		int intgr;
 
