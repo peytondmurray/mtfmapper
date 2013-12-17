@@ -155,7 +155,7 @@ class Render_polygon_is : public Render_polygon {
             // collect the indices of the outermost points
             // this ensures that the early stopping criterion works well
             if (rad > Airy_sampler::diam*0.15) {
-                radius_list.push_back(make_pair<double, int>(fabs(rad - Airy_sampler::diam*0.8), sidx));
+                radius_list.push_back(make_pair(fabs(rad - Airy_sampler::diam*0.8), sidx));
             }
             
             double jinc_weight = 4*Airy_sampler::jinc(rad)*Airy_sampler::jinc(rad);

@@ -51,9 +51,9 @@ namespace GH_clipping {
     } traversal_flag;
     
     typedef enum {
-        OUT = 0,
-        IN = 1,
-        ON = 2
+        EDGE_OUT = 0,
+        EDGE_IN = 1,
+        EDGE_ON = 2
     } edge_status;
     
     typedef enum {

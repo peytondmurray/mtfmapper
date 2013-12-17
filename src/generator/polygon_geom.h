@@ -28,6 +28,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef POLYGON_GEOM_H
 #define POLYGON_GEOM_H
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979
+#endif
 
 #include <cv.h>
 using namespace cv;
