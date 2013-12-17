@@ -323,14 +323,14 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
         case INSIDE:
             prev_status = EDGE_IN;
             break;
-		case OUTSIDE:
-			prev_status = EDGE_OUT;
+        case OUTSIDE:
+            prev_status = EDGE_OUT;
         }
     }
     
     // classify the current->next edge
-	edge_status next_status = edge_present(verts, next, current) ? EDGE_ON : EDGE_OUT;
-	if (next_status != EDGE_ON) {
+    edge_status next_status = edge_present(verts, next, current) ? EDGE_ON : EDGE_OUT;
+    if (next_status != EDGE_ON) {
         switch (
             b.classify( 
                 0.5*(verts[next].x + verts[current].x) - xoffset, 
@@ -341,10 +341,10 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
             printf("Warning! (next) This should not be possible\n");
             break;
         case INSIDE:
-			next_status = EDGE_IN;
+            next_status = EDGE_IN;
             break;
         case OUTSIDE:
-			next_status = EDGE_OUT;
+            next_status = EDGE_OUT;
         }
     }
     
