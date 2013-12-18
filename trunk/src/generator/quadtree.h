@@ -35,8 +35,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Quadtree : public Multipolygon_geom {
   public:
      // constructor for root of tree
-    Quadtree(double cx, double cy, const string& fname)
-     : Multipolygon_geom(cx, cy, fname),  
+    Quadtree(double xoff, double yoff, const string& fname, double analogue_scale=1.0)
+     : Multipolygon_geom(xoff, yoff, fname, analogue_scale),  
        q_tl(0), q_tr(0), q_bl(0), q_br(0), leaf(false) {
     
         partition_polygons(0);
@@ -268,8 +268,6 @@ class Quadtree : public Multipolygon_geom {
         parts.clear();
     }
 
-    double cx;
-    double cy;
     double own_area;
       
     Quadtree* q_tl;
