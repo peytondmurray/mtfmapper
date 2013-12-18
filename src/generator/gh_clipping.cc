@@ -162,7 +162,8 @@ int init_gh_list(vector<gh_vertex>& verts, const vector<cv::Vec2d>& in_verts, in
 
 
 
-void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_size) {
+bool gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_size) {
+    bool some_intersections = false;
     // phase one
     for (int si=0; si < poly0_size; si++) {
         int nsi = (si + 1) % poly0_size;
@@ -181,6 +182,8 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
                 same(verts[vs], verts[vs-2])) {
                 isect = false;
             }
+            
+            some_intersections |= isect;
             
             if (isect) { 
                 verts[vs].neighbour = vs+1;
@@ -270,6 +273,7 @@ void gh_phase_one(vector<gh_vertex>& verts, int& vs, int poly0_size, int poly1_s
             }
         }
     }
+    return some_intersections;
 }
 
 inline static double triangle_cross(const gh_vertex& v0, const gh_vertex& v1, const gh_vertex& v2) {
@@ -465,7 +469,8 @@ void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int poly1_s
     
         if ( (verts[start].flag == EN && verts[verts[start].neighbour].flag == EX) ||
              (verts[start].flag == EX && verts[verts[start].neighbour].flag == EN) || 
-             (verts[start].flag == ENEX && verts[verts[start].neighbour].flag == EXEN) ) { // TODO: does EXEN/ENEX ever occur?
+             (verts[start].flag == ENEX && verts[verts[start].neighbour].flag == EXEN) ||
+             (verts[start].flag == EXEN && verts[verts[start].neighbour].flag == ENEX)) { 
             reverse = true;
         } else {
             if (verts[start].flag == verts[verts[start].neighbour].flag) {

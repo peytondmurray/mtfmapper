@@ -570,9 +570,9 @@ class Polygon_geom : public Geometry {
         int vs = GH_clipping::init_gh_list(verts, b.bases, poly1_start, -1);
         
         int vs_before_intersections = vs;
-        GH_clipping::gh_phase_one(verts, vs, bases.size(), b.bases.size());
+        bool found_intersections = GH_clipping::gh_phase_one(verts, vs, bases.size(), b.bases.size());
         
-        if (vs == vs_before_intersections) {
+        if (vs == vs_before_intersections && !found_intersections) {
         
             bool all_on = true;
             for (size_t p=0; p < bases.size(); p++) {
@@ -606,12 +606,10 @@ class Polygon_geom : public Geometry {
             }
         }
         
-        
         // first process C
         GH_clipping::gh_phase_two(verts, *this, poly1_start);
         // then process S with alternate version 
         GH_clipping::gh_phase_two_b(verts, b, poly1_start);
-        
         
         GH_clipping::gh_phase_three(verts, vs, vs_before_intersections, polys);
         
@@ -620,7 +618,6 @@ class Polygon_geom : public Geometry {
                 polys[k] = Polygon_geom(vector<cv::Vec2d>(polys[k].bases.rbegin(), polys[k].bases.rend()));
             }
         }
-        
         
         return polys;
     }

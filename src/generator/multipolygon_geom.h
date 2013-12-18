@@ -45,8 +45,8 @@ using std::sort;
 class Multipolygon_geom : public Geometry {
   public:
 
-    Multipolygon_geom(double cx, double cy, const string& fname) 
-    : Geometry(cx, cy, 0, Aa_bb(0,0,1,1)), total_vertices(0) {
+    Multipolygon_geom(double xoff, double yoff, const string& fname, double analogue_scale=1.0) 
+    : Geometry(0, 0, 0, Aa_bb(0,0,1,1)), total_vertices(0) {
 
         FILE* fin = fopen(fname.c_str(), "rt");
         if (!fin) {
@@ -67,8 +67,9 @@ class Multipolygon_geom : public Geometry {
                 int j = 0; // out vertex index
                 for (int i=0; i < nverts; i++) {
                     nread = fscanf(fin, "%lf %lf", &verts[j][0], &verts[j][1]);
-                    verts[j][0] += cx; // TODO: hack to centre the polygon on (cx,cy) ?
-                    verts[j][1] += cy;
+                    verts[j] *= analogue_scale;
+                    verts[j][0] += xoff; 
+                    verts[j][1] += yoff;
                     // elliminate duplicates
                     if ( (j > 0 && (fabs(verts[j][0] - verts[j-1][0]) < 1e-11 && fabs(verts[j][1] - verts[j-1][1]) < 1e-11)) ||
                          (j > 1 && (fabs(verts[0][0] - verts[j][0]) < 1e-11 && fabs(verts[0][1] - verts[j][1]) < 1e-11)) ) {
@@ -154,9 +155,6 @@ class Multipolygon_geom : public Geometry {
         }
     }
     
-
-    double cx;
-    double cy;
 
     vector<Polygon_geom> parts;
     int total_vertices;

@@ -94,11 +94,11 @@ class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
         double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
-        int buffer_border=30, int& crc=dummy_crc)
+        int buffer_border=30, int& crc=dummy_crc, double analogue_scale=1.0)
      : img(in_img), rect(in_r), noise_source(noise_source),
        gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
        use_16bit(use_16bit), buffer_border(buffer_border),
-       crc(crc) {
+       crc(crc), analogue_scale(analogue_scale) {
      
         
     }
@@ -148,7 +148,7 @@ class Render_rows {
                 for (int col = buffer_border; col < img.cols-buffer_border; col++) {
                     
                     double rval = 0;
-                    rval = rect.evaluate(col, row, object_value, background_value);
+                    rval = rect.evaluate(col*analogue_scale, row*analogue_scale, object_value, background_value);
                     
                     putpixel(row, col, rval);
                 }
@@ -171,6 +171,7 @@ class Render_rows {
     bool use_16bit;
     int buffer_border;
     int& crc;
+    double analogue_scale;
 };
 
 
@@ -265,6 +266,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
     TCLAP::ValueArg<std::string> tc_target_name("", "target-poly", "Target polygon file name", false, "poly.txt", "filename", cmd);
     TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, "factor", cmd);
+    TCLAP::ValueArg<double> tc_ascale("", "analogue-scale", "Analogue scaling factor", false, 1.0, "factor", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -452,12 +454,16 @@ int main(int argc, char** argv) {
     if (tc_target_name.isSet()) {
         delete target_geom;
         target_geom = new Quadtree (
-            0,
-            0,
-            tc_target_name.getValue()
+            tc_xoff.getValue(),
+            tc_yoff.getValue(),
+            tc_target_name.getValue(),
+            tc_ascale.getValue()
         );
         
        //((Quadtree*)target_geom)->print_bounds(0);
+       width = 40 + target_geom->bounds.max_x / tc_ascale.getValue();
+       height = 40 + target_geom->bounds.max_y / tc_ascale.getValue();
+       printf("setting image dimensions to: %d, %d\n", lrint(width), lrint(height));
     }
 
     Render_polygon default_target(
@@ -619,7 +625,7 @@ int main(int argc, char** argv) {
     
     if (!tc_profile.getValue()) {
         int crc = 0;
-        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border, crc);
+        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border, crc, tc_ascale.getValue());
         printf("progress: 0%% ");
         fflush(stdout);
         parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
