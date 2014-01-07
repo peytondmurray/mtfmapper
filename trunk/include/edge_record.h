@@ -47,7 +47,7 @@ class Edge_record {
         }
         for (size_t i=0; i < a.points.size(); i++) {
             points.push_back(
-                make_pair<double,double>(
+                make_pair(
                     a.points[i].first - cx, 
                     a.points[i].second - cy
                 )
@@ -64,7 +64,7 @@ class Edge_record {
         }
         for (size_t i=0; i < b.points.size(); i++) {
             points.push_back(
-                make_pair<double,double>(
+                make_pair(
                     b.points[i].first - cx, 
                     b.points[i].second - cy
                 )
@@ -160,7 +160,7 @@ class Edge_record {
 
         for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); it++) {
             if (it->second >= weight_thresh) {
-                points.push_back(make_pair<double, double>(it->first, (*mean)[it->first] / it->second));
+                points.push_back(make_pair(it->first, (*mean)[it->first] / it->second));
                 weights.push_back(it->second);
             }
         }
@@ -169,7 +169,7 @@ class Edge_record {
         if (ratio < 1.6) {
             for (map<int, double>::const_iterator it=other_weight->begin(); it != other_weight->end(); it++) {
                 if (it->second >= weight_thresh) {
-                    points.push_back(make_pair<double, double>((*other_mean)[it->first] / it->second, it->first));
+                    points.push_back(make_pair((*other_mean)[it->first] / it->second, it->first));
                     weights.push_back(it->second/ratio);
                 }
             }
