@@ -56,6 +56,7 @@ using std::make_pair;
 
 #ifdef _WIN32
 	#define EXE_SUFFIX ".exe"
+    #define _WIN32_WINNT 0x0502
 #else
 	#define EXE_SUFFIX ""
 #endif
