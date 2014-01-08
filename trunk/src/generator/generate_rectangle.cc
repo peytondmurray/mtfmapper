@@ -594,6 +594,11 @@ int main(int argc, char** argv) {
             );
             break;
         case Render_polygon::GAUSSIAN:
+            if (tc_target_name.isSet()) {
+                fprintf(stderr, "Error! Gaussian integral PSF not compatible with --target-poly (at the moment).\n");
+                fprintf(stderr, "       Please specify one of the Airy PSFs, or gaussian-sampled (see -p option).\n");
+                return -1;
+            }
             rect = new Render_rectangle_integral(*dynamic_cast<Polygon_geom*>(target_geom), sigma);
             break;
         case Render_polygon::GAUSSIAN_SAMPLED:
