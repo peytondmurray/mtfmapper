@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
     cv::Mat cvimg;
 	try {
 	    cvimg = cv::imread(tc_in_name.getValue(),-1);
-	} catch (cv::Exception ex) {
+	} catch (const cv::Exception& ex) {
 		cout << ex.what() << endl;
 	}
 

@@ -68,7 +68,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
         // compute robust maximum
         vector<double> mtf50_values;
-        for (map<int,double>::const_iterator it=row_max.begin(); it != row_max.end(); it++) {
+        for (map<int,double>::const_iterator it=row_max.begin(); it != row_max.end(); ++it) {
             mtf50_values.push_back(it->second);
         }
         sort(mtf50_values.begin(), mtf50_values.end());
@@ -85,7 +85,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             centroid.y += blocks[i].get_centroid().y;
         }
         
-        if (row_max.size() == 0) {
+        if (row_max.empty()) {
             printf("Warning: All mtf50 values are zero; cannot generate a profile.\n");
             return;
         }
@@ -97,13 +97,13 @@ class Mtf_renderer_profile : public Mtf_renderer {
         vector<double> med_filt_mtf(row_max.size(), 0);
         size_t i = 0;
         vector<Ordered_point> ordered;
-        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
+        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); ++it) {
             vector<double> medwin;
             map<int, double>::const_iterator start = it;
             map<int, double>::const_iterator end = it;
-            for (size_t j=0; j < w && start != row_max.begin(); j++, start--);
-            for (size_t j=0; j <= w && end != row_max.end(); j++, end++);
-            for (; start != end; start++) {
+            for (size_t j=0; j < w && start != row_max.begin(); j++, --start);
+            for (size_t j=0; j <= w && end != row_max.end(); j++, ++end);
+            for (; start != end; ++start) {
                 medwin.push_back(start->second);
             }
             sort(medwin.begin(), medwin.end());
@@ -141,7 +141,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         i=0;
         double max_med_filt = 0;
         int max_med_filt_coord = 0;
-        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
+        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); ++it) {
             if (med_filt_mtf[i] >= max_med_filt) {
                 max_med_filt = med_filt_mtf[i];
                 max_med_filt_coord = it->first;
@@ -191,7 +191,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         double mean_mtf50_at_ref_edge = 0;
         min_dist = 1e50;
         i = 0;
-        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); it++) {
+        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); ++it) {
             double dist = fabs(it->first - ref_edge_position);
             if (dist < min_dist) {
                 min_dist = dist;
@@ -274,7 +274,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
         // bin coarser
         vector<double> counts(nbins, 0);
-        for (map<int, double>::const_iterator it = data.begin(); it != data.end(); it++) {
+        for (map<int, double>::const_iterator it = data.begin(); it != data.end(); ++it) {
             int idx = (it->first - minval)*nbins/(span);
             idx = std::max(0, idx);
             idx = std::min(nbins-1, idx);

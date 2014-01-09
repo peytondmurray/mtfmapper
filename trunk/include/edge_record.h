@@ -139,7 +139,7 @@ class Edge_record {
         }
 
         vector<double> sweight;
-        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); it++) {
+        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); ++it) {
             if (it->second > 0) {
                 sweight.push_back(it->second);
             }
@@ -158,7 +158,7 @@ class Edge_record {
             weight_thresh = sweight[0];
         }
 
-        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); it++) {
+        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); ++it) {
             if (it->second >= weight_thresh) {
                 points.push_back(make_pair(it->first, (*mean)[it->first] / it->second));
                 weights.push_back(it->second);
@@ -167,7 +167,7 @@ class Edge_record {
 
         double ratio = double(mean->size())/double(other_mean->size());
         if (ratio < 1.6) {
-            for (map<int, double>::const_iterator it=other_weight->begin(); it != other_weight->end(); it++) {
+            for (map<int, double>::const_iterator it=other_weight->begin(); it != other_weight->end(); ++it) {
                 if (it->second >= weight_thresh) {
                     points.push_back(make_pair((*other_mean)[it->first] / it->second, it->first));
                     weights.push_back(it->second/ratio);
@@ -276,9 +276,8 @@ class Edge_record {
         
         double sx  = 0;
         double sy  = 0;
-        double ss = n;
+        double ss  = 0;
         
-        ss = 0;
         for (int i=0; i < n; i++) {
             double weight = SQR(weights[i]);
             ss += weight;

@@ -36,14 +36,14 @@ class Quadtree : public Multipolygon_geom {
   public:
      // constructor for root of tree
     Quadtree(double xoff, double yoff, const string& fname, double analogue_scale=1.0)
-     : Multipolygon_geom(xoff, yoff, fname, analogue_scale),  
+     : Multipolygon_geom(xoff, yoff, fname, analogue_scale),
        q_tl(0), q_tr(0), q_bl(0), q_br(0), leaf(false) {
     
         partition_polygons(0);
     }
 
     Quadtree(const Polygon_geom& bounding_poly) 
-    : q_tl(0), q_tr(0), q_bl(0), q_br(0), leaf(false) {
+    : own_area(0), q_tl(0), q_tr(0), q_bl(0), q_br(0), leaf(false) {
         
         bounds = bounding_poly.bounds;
         total_vertices = 0;
@@ -186,25 +186,17 @@ class Quadtree : public Multipolygon_geom {
         br.bases[0] = cv::Vec2d(v_max[0], v_mid[1]);
         br.rebuild();
         
-        int child_verts_sum = cumulative_verts;
-        int leaf_verts_sum = cumulative_verts;
-        int nchildren = 0;
 
         for (size_t p=0; p < parts.size(); p++) {
-            leaf_verts_sum += parts[p].bases.size();
-        
             vector<Polygon_geom> np;
             
             np = tl.intersect_greiner_horman(parts[p]);
             if (np.size() > 0) {
                 if (!q_tl) {
                     q_tl = new Quadtree(tl);
-                    child_verts_sum += 4; // subtree bounds cost
-                    nchildren++;
                 }
                 for (size_t k=0; k < np.size(); k++) {
                     q_tl->add_poly(np[k]);
-                    child_verts_sum += np[k].bases.size();
                 }
             }
                 
@@ -212,12 +204,9 @@ class Quadtree : public Multipolygon_geom {
             if (np.size() > 0) {
                 if (!q_tr) {
                     q_tr = new Quadtree(tr);
-                    child_verts_sum += 4; // subtree bounds cost
-                    nchildren++;
                 }
                 for (size_t k=0; k < np.size(); k++) {
                     q_tr->add_poly(np[k]);
-                    child_verts_sum += np[k].bases.size();
                 }
             }
 
@@ -226,12 +215,9 @@ class Quadtree : public Multipolygon_geom {
             
                 if (!q_bl) {
                     q_bl = new Quadtree(bl);
-                    child_verts_sum += 4; // subtree bounds cost
-                    nchildren++;
                 }
                 for (size_t k=0; k < np.size(); k++) {
                     q_bl->add_poly(np[k]);
-                    child_verts_sum += np[k].bases.size();
                 }
             }
 
@@ -239,12 +225,9 @@ class Quadtree : public Multipolygon_geom {
             if (np.size() > 0) {
                 if (!q_br) {
                     q_br = new Quadtree(br);
-                    child_verts_sum += 4; // subtree bounds cost
-                    nchildren++;
                 }
                 for (size_t k=0; k < np.size(); k++) {
                     q_br->add_poly(np[k]);
-                    child_verts_sum += np[k].bases.size();
                 }
             }
         }

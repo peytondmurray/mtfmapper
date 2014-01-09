@@ -28,7 +28,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/component_labelling.h"
 
 //------------------------------------------------------------------------------
-Component_labeller::Component_labeller(void) : configured(false) {
+Component_labeller::Component_labeller(void) 
+: _width(0), _height(0),
+  _min_boundary_length(0), 
+  _max_boundary_length(0),
+  configured(false) {
     // nothing to do
 }
 
@@ -123,6 +127,11 @@ Component_labeller::~Component_labeller(void) {
 
 //------------------------------------------------------------------------------
 Component_labeller& Component_labeller::operator=(const Component_labeller& b) {
+
+    if (this == &b) {
+        return *this;
+    }
+
     // perform destructor operations first
     if (configured) {
         _pix -= _width;
@@ -281,6 +290,7 @@ void Component_labeller::_tracer(int x, int y, int& nx, int& ny,
         break;
     case INTERNAL_FIRST:
         dir = 3;
+        break;
     default:
         dir = (from + 2) % 8;
     }

@@ -57,7 +57,7 @@ class Multipolygon_geom : public Geometry {
         // TODO: maybe one day this can read SVG?
         while (!feof(fin)) {
             int nverts = 0;
-            int nread = fscanf(fin, "%d", &nverts);
+            int nread = fscanf(fin, "%4d", &nverts);
             if (nread == 1) {
                 if (nverts > Polygon_geom::max_verts_per_poly) {
                     printf("Error! Polygon input file [%s] contains a polygon with %d vertices, which\n", fname.c_str(), nverts);
@@ -66,7 +66,7 @@ class Multipolygon_geom : public Geometry {
                 vector<cv::Vec2d> verts(nverts);
                 int j = 0; // out vertex index
                 for (int i=0; i < nverts; i++) {
-                    nread = fscanf(fin, "%lf %lf", &verts[j][0], &verts[j][1]);
+                    nread = fscanf(fin, "%22lf %22lf", &verts[j][0], &verts[j][1]);
                     verts[j] *= analogue_scale;
                     verts[j][0] += xoff; 
                     verts[j][1] += yoff;
@@ -88,13 +88,15 @@ class Multipolygon_geom : public Geometry {
                 parts.push_back(pol);
             }
         }
+        
+        fclose(fin);
 
         compute_bounding_box();
         
         own_area = 1;
     }
     
-    Multipolygon_geom(void) {
+    Multipolygon_geom(void) : total_vertices(0) {
         own_area = 1;
     }
     

@@ -199,12 +199,12 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     //printf("original angle estimate: %lf %lf\n", angle/M_PI*180, angle_reduce(angle));
 
     vector<Ordered_point> ordered;
-    double min_sum = 1e50;
     double best_angle = angle;
     double edge_length = 0;
 
     // if there appears to be significant noise, refine the edge orientation estimate
     if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5 && angle_reduce(angle) < 44.2 && bayer == NONE) { 
+        double min_sum = 1e50;
 
         vector<double> sum_x(32*4+1, 0);
         vector<double> sum_xx(32*4+1, 0);

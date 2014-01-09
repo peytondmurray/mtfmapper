@@ -92,7 +92,7 @@ class Mtf_core {
         fftw_free(fft_in);
         
         
-        for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); it++) {
+        for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
         }
     }
@@ -117,7 +117,7 @@ class Mtf_core {
         // make a copy into an STL container if necessary
         if (detected_blocks.size() == 0) {
             for (map<int,Block>::const_iterator it=shared_blocks_map.begin();
-                 it != shared_blocks_map.end(); it++) {
+                 it != shared_blocks_map.end(); ++it) {
 
                 detected_blocks.push_back(it->second);
             }
@@ -163,15 +163,13 @@ class Mtf_core {
             double max_dot_angle = snap_to_angle;
             double max_dot = 0;
             
-            double dot = 0;
-            
             double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
             
             for (int k=0; k < 4; k++) {
             
                 double sa = angles[k];
                 
-                dot = cos(ea)*cos(sa) + sin(ea)*sin(sa);
+                double dot = cos(ea)*cos(sa) + sin(ea)*sin(sa);
                 if (dot > max_dot) {
                     max_dot = dot;
                     max_dot_angle = sa;
@@ -185,9 +183,9 @@ class Mtf_core {
         Point edge_direction(-sin(ea), cos(ea));
 
         if (bayer == NONE) {
-            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
-                for (int x=it->second.start; x <= it->second.end; x++) {
+                for (int x=it->second.start; x <= it->second.end; ++x) {
 
                     Point d((x) - cent.x, (y) - cent.y);
                     double dot = d.ddot(mean_grad); 
@@ -200,10 +198,10 @@ class Mtf_core {
                 }
             }
         } else {
-            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
                 int rowcode = (y & 1) << 1;
-                for (int x=it->second.start; x <= it->second.end; x++) {
+                for (int x=it->second.start; x <= it->second.end; ++x) {
                     int code = rowcode | (x & 1);
 
                     // skip the appropriate sites if we are operating only on a subset
@@ -240,9 +238,9 @@ class Mtf_core {
         Point mean_grad(cos(ea), sin(ea));
         Point edge_direction(sin(ea), cos(ea));
 
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); it++) {
+        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
             int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; x++) {
+            for (int x=it->second.start; x <= it->second.end; ++x) {
                 Point d((x) - cent.x, (y) - cent.y);
                 double dot = d.ddot(mean_grad); 
                 double dist_along_edge = d.ddot(edge_direction);
