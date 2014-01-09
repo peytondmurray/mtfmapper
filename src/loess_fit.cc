@@ -61,9 +61,8 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     
     double sx  = 0;
     double sy  = 0;
-    double ss = n;
+    double ss  = 0;
     
-    ss = 0;
     for (int i=0; i < n; i++) {
         double weight = 1.0/SQR(sig[i]);
         ss += weight;

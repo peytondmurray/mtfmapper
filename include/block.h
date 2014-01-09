@@ -39,11 +39,13 @@ class Block {
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
-        sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), centroid(0,0) {
+        sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
+        centroid(0,0), area(0.0) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
-        quality(4, 0.0), sfr(4, vector<double>(32,0)), esf(4, vector<double>(2, 0)), centroid(0,0) {
+        quality(4, 0.0), sfr(4, vector<double>(32,0)), 
+        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;

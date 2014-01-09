@@ -233,10 +233,8 @@ int main(int argc, char** argv) {
     int height = 300;
     
     double sigma = 0.3;
-    
-    double theta = 4.0/180.0*M_PI;
-    
-    int rseed = int(time(time_t(0)));
+    double theta;
+    int rseed;
     
     stringstream ss;
     ss << genrectangle_VERSION_MAJOR << "." << genrectangle_VERSION_MINOR;
@@ -463,7 +461,10 @@ int main(int argc, char** argv) {
        //((Quadtree*)target_geom)->print_bounds(0);
        width = 40 + target_geom->bounds.max_x / tc_ascale.getValue();
        height = 40 + target_geom->bounds.max_y / tc_ascale.getValue();
-       printf("setting image dimensions to: %d, %d\n", lrint(width), lrint(height));
+       printf("setting image dimensions to: %d, %d\n", 
+           static_cast<int>(lrint(width)), 
+           static_cast<int>(lrint(height))
+       );
     }
 
     Render_polygon default_target(
@@ -553,7 +554,7 @@ int main(int argc, char** argv) {
         fclose(fout);
         */
         
-        printf("rounded-square photosite area = %lf\n", ((Polygon_geom*)photosite_geom)->compute_area());
+        printf("rounded-square photosite area = %lf\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
     }
     
     if (tc_photosite_geom.getValue().compare("spare") == 0) {
@@ -574,7 +575,7 @@ int main(int argc, char** argv) {
         photosite_geom = new Polygon_geom(verts);
     }
     
-    printf("photosite area = %lf\n", ((Polygon_geom*)photosite_geom)->compute_area());
+    printf("photosite area = %lf\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
 
 
     // decide which PSF rendering algorithm to use

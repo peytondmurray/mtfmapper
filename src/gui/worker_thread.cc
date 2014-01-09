@@ -41,7 +41,8 @@ using std::cout;
 using std::endl;
 using std::string;
 
-Worker_thread::Worker_thread(QWidget* parent) : parent((mtfmapper_app*)parent) {
+Worker_thread::Worker_thread(QWidget* parent) 
+: parent(dynamic_cast<mtfmapper_app*>(parent)), abort(false) {
 
 }
 

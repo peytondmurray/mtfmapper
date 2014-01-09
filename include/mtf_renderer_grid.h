@@ -41,7 +41,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
       :  wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
          img_y(img.rows), img_x(img.cols), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         gnuplot_failure(false), gnuplot_warning(true) {
+         gnuplot_failure(false), gnuplot_warning(true),
+         m_lower(0), m_upper(0) {
 
         const int base_grid_size = 200;
         if (img.rows > img.cols) {

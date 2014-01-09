@@ -43,7 +43,7 @@ class Mrectangle {
     Mrectangle(const Mrectangle& b, size_t k, double width) 
       : thetas(4, .0), centroids(4, Point(0.0,0.0)), valid(true), 
         corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 
-        normals(4, Point(0.0,0.0)) {
+        normals(4, Point(0.0,0.0)), boundary_length(0) {
         
         assert(k < b.centroids.size());
         assert(b.corners.size() == 4);
