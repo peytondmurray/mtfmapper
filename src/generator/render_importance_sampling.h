@@ -51,12 +51,14 @@ class Render_polygon_is : public Render_polygon {
     // the named constructor idiom (below)
     Render_polygon_is(Geometry& target, Geometry& photosite,
         Render_type render_type=AIRY_PLUS_BOX,
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int in_hs=60) 
         : Render_polygon(target, 1, 1, 0, false),
           aperture(in_aperture), pitch(in_pitch), lambda(in_lambda),
           target(target), photosite(photosite),
           nsamples(0),
           render_type(render_type) {
+          
+          hs = in_hs;
     }
 
   public:
