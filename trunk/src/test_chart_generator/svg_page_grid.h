@@ -72,14 +72,32 @@ class Svg_page_grid : public Svg_page {
                 
                 dPoint delta = dPoint(xpos, ypos) - centre;
                 
-                double eang = atan2(delta.y, delta.x) + M_PI/4.0;
-
-                if (fabs(eang) < 3.0/180*M_PI) {
-                    eang = eang < 0 ? -3.0/180*M_PI : 3.0/180*M_PI;
+                double eang = atan2(fabs(delta.y), fabs(delta.x));
+                double degrees = eang / M_PI * 180;
+                double orient = degrees;
+                if (orient > 45) {
+                    orient = 90 - orient;
                 }
-                if (fabs(eang - M_PI/2) < 3/180*M_PI) {
-                    eang = eang < 0 ? -93.0/180*M_PI : 93.0/180*M_PI;
+                
+                
+                const double tolerance = 3.0;
+                const int ncrit = 4;
+                double crit[ncrit] = {0, 14.036, 26.565, 45};
+                double correction = 0;
+                
+                for (int k=0; k < ncrit; k++) {
+                    double del = orient - crit[k];
+                    if (fabs(del) < tolerance) {
+                        if (del < 0) {
+                            correction = orient - (crit[k] + tolerance);
+                        } else {
+                            correction = orient - (crit[k] - tolerance);
+                        }
+                    }
                 }
+                
+                degrees -= correction;
+                eang = degrees / 180.0 * M_PI + M_PI/4;
           
                 rotated_square(xpos, ypos, swidth*0.5, eang);
                 fprintf(fout, "\n");
