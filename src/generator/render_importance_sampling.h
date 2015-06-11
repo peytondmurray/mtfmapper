@@ -167,6 +167,28 @@ class Render_polygon_is : public Render_polygon {
             swap(pos_y[i], pos_y[radius_list[i].second]);
             swap(weights[i], weights[radius_list[i].second]);
         }
+        /*
+        double disc_rad = 1.0;
+        printf("distributing samples with an additional disc of radius %lf\n", disc_rad);
+        for (int sidx=0; sidx < nsamples; sidx++) {
+            double& ex = pos_x[sidx];
+            double& ey = pos_y[sidx];
+            double px;
+            double py;
+            sampler.runif2d(px, py, 0.5, 0.5);
+            px += 0.5; // undo the scaling of runif2d
+            py += 0.5;
+            py *= 2*M_PI;
+            
+            // treat px as radius (0-1), and py as angle (0-2pi)
+            px = sqrt(px); // compensate for area-proportional sampling on a uniform disc
+            px = sqrt(px); // compensate for area-proportional sampling on a uniform disc
+            fprintf(stderr, "%lf %lf ", ex, ey);
+            ex += px*cos(py);
+            ey += px*sin(py);
+            fprintf(stderr, "%lf %lf\n", ex, ey);
+        }
+        */
         
         printf("using IS renderer with %d samples per pixel\n", nsamples);
     }

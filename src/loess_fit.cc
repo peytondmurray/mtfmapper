@@ -173,14 +173,24 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     double noise_est = std::max(1.0,med[9*med.size()/10]);
 
     double old = sampled[0];
+    const double alpha = 0.6;
+    const int tukey_w = fft_size/2; 
+    // TODO: the window function really should be statically computed ...
     for (int idx=fft_size/4; idx <= 3*fft_size/4; idx++) {
-        double w = 0.54 + 0.46*cos(scale*2*M_PI*(idx - fft_size/2)/double(fft_size-1));  // Hamming window function
+        double lx = idx - fft_size/4;
+        double w = 1.0;
+        if (lx < alpha*(tukey_w-1)/2.0) {
+            w = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 1));
+        }
+        if (lx > (tukey_w - 1)*(1 - alpha/2)) {
+            w = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 2/alpha + 1));
+        }
         double temp = sampled[idx];
         sampled[idx] = (sampled[idx+1] - old) * w;
         old = temp;
     }
 
-    // pad surrounding are before fft
+    // pad surrounding area before fft
     for (int idx=0; idx < fft_size/4+8; idx++) {
         sampled[idx] = 0;
     }

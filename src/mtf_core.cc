@@ -33,8 +33,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/point_helpers.h"
 #include "include/mtf50_edge_quality_rating.h"
-#include "include/sfr_table.h"
-
 
 // global lock to prevent race conditions on detected_blocks
 static tbb::mutex global_mutex;
@@ -267,18 +265,14 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         }
     }
 
-    // find closest entry in sfr correction table
-    const double* base_mtf = sfr_correction_table[22] + 2;
-    double cdist = 1e50;
-    int min_idx = 0;
-    for (int i=0; i < 27; i++) {
-        double dist = fabs(sfr_correction_table[i][0] - sfr_area);
-        if (dist < cdist) {
-            min_idx = i;
-            cdist = dist;
-        }
+    
+    double base_mtf[NYQUIST_FREQ*2];
+    base_mtf[0] = 1.0;
+    for (int i=1; i < NYQUIST_FREQ*2; i++) {
+        double x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
+        base_mtf[i] = (sin(x)*sin(0.7071068*x))/(x*x*0.7071068);
     }
-    base_mtf = sfr_correction_table[min_idx] + 2;
+    
 
     // critical angles: 14.036 and 26.565 -> these are 0.25 and 0.5 respectively, so they result in 
     // severe quantization of the ESF, leading to underestimates of the MTF 
