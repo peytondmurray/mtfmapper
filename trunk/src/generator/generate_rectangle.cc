@@ -461,6 +461,8 @@ int main(int argc, char** argv) {
        //((Quadtree*)target_geom)->print_bounds(0);
        width = 40 + target_geom->bounds.max_x / tc_ascale.getValue();
        height = 40 + target_geom->bounds.max_y / tc_ascale.getValue();
+       width += width % 8;
+       height += height % 8;
        printf("setting image dimensions to: %d, %d\n", 
            static_cast<int>(lrint(width)), 
            static_cast<int>(lrint(height))
