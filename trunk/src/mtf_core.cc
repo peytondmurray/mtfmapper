@@ -270,13 +270,10 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     base_mtf[0] = 1.0;
     for (int i=1; i < NYQUIST_FREQ*2; i++) {
         double x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
-        base_mtf[i] = (sin(x)*sin(0.7071068*x))/(x*x*0.7071068);
+        //base_mtf[i] = (sin(x)*sin(1.5*x))/(1.5*x*x); // goes with lpwidth=0.3333 ??
+        base_mtf[i] = (sin(x)*sin(1.41*x))/(1.41*x*x); // goes with lpwidth=0.3333 ??
     }
     
-
-    // critical angles: 14.036 and 26.565 -> these are 0.25 and 0.5 respectively, so they result in 
-    // severe quantization of the ESF, leading to underestimates of the MTF 
-    // should we detect and correct for this?
 
     double prev_freq = 0;
     double prev_val  = n0;
