@@ -100,47 +100,81 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
 
     const double scale = 2;
+    double rightsum = 0;
+    int rightcount = 0;
+    double leftsum = 0;
+    int leftcount = 0;
+    int left_non_missing  = 0;
+    int right_non_missing = 0;
     for (int idx=fft_size/4-1; idx <= 3*fft_size/4+1; idx++) {
         
-        double mid = idx*scale*(upper-lower)/double(fft_size-1) + scale*lower - 0.5 + 0.125;
-        size_t start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.25/2.0) - ordered.begin();
-        size_t end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.25/2.0) - ordered.begin();
+        double mid = idx*scale*(upper-lower)/double(fft_size-1) + scale*lower;
+        size_t start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.5) - ordered.begin();
+        size_t end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.5) - ordered.begin();
+        const double left  = mid - 0.125/2.0;
+        const double right = mid + 0.125/2.0;
+
+        int included = 0;
 
         if (end_idx - start_idx > 2) {
-            vector<double> vals;
-            for (size_t k=start_idx; k < end_idx; k++) {
-                vals.push_back(ordered[k].second);
-            }
-            sort(vals.begin(), vals.end());
+            const double lpwidth = 0.33333333;
+            double weight = 0;
             double sum = 0;
-            int count = 0;
-            if (vals.size() > 5) {
-                for (int j=int(vals.size()*0.1);  j < int(vals.size()*0.9); j++) {
-                    sum += vals[j];
-                    count++;
-                }
-            } else {
-                for (int j=0;  j < int(vals.size()); j++) {
-                    sum += vals[j];
-                    count++;
+            for (size_t k=start_idx; k < end_idx; k++) {
+                double lb = ordered[k].first - lpwidth/2;
+                double rb = ordered[k].first + lpwidth/2;
+                
+                
+                
+                if (lb < right && rb > left) { // we have non-zero intersection
+                    if (lb < left) lb = left;
+                    if (rb > right) rb = right;
+                    double w = rb - lb;
+                    assert(w >= 0);
+                    sum += ordered[k].second * w;
+                    weight += w;
+                    included++;
                 }
             }
-            sampled[idx] = sum / double(count);
+            if (weight > 0) {
+                sampled[idx] = sum / weight;
+                if (idx < fft_size/2 - fft_size/8) {
+                    leftsum += sampled[idx];
+                    leftcount++;
+                }
+                if (idx > fft_size/2 + fft_size/8) {
+                    rightsum += sampled[idx];
+                    rightcount++;
+                }
+                if (!left_non_missing) {
+                    left_non_missing = idx; // first non-missing value from left
+                }
+                right_non_missing = idx; // last non-missing value
+            } else {
+                sampled[idx] = missing;
+            }
         } else {
             sampled[idx] = missing;
         }
+        
     }
-
-    if (sampled[fft_size/4] == missing) { // first value is missing
-        int j = fft_size/4;
-        while (j < fft_size && sampled[j] == missing) {
-            j++;
-        }
-        sampled[fft_size/4] = sampled[j];
+    
+    // now just pad out the ends of the sequences with the last non-missing values
+    for (int idx=left_non_missing-1; idx >= fft_size/4-16; idx--) {
+        sampled[idx] = sampled[left_non_missing];
     }
-    for (int idx=fft_size/4+1; idx <= 3*fft_size/4+4; idx++) {
-        if (sampled[idx] == missing) {
-            sampled[idx] = sampled[idx-1];
+    for (int idx=right_non_missing+1; idx < 3*fft_size/4 + 16; idx++) {
+        sampled[idx] = sampled[right_non_missing];
+    }
+    
+    // Reverse the ESF if necessary
+    leftsum /= double(leftcount);
+    rightsum /= double(rightcount);
+    if (leftsum < rightsum) {
+        for (int idx=0; idx <= fft_size/4 + 15; idx++) {
+            double t = sampled[fft_size/2 - idx - 1];
+            sampled[fft_size/2 - idx - 1] = sampled[fft_size/2 + idx];
+            sampled[fft_size/2 + idx] = t;
         }
     }
     
@@ -189,12 +223,12 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = (sampled[idx+1] - old) * w;
         old = temp;
     }
-
+    
     // pad surrounding area before fft
-    for (int idx=0; idx < fft_size/4+8; idx++) {
+    for (int idx=0; idx < fft_size/4+1; idx++) {
         sampled[idx] = 0;
     }
-    for (int idx=3*fft_size/4-8; idx < fft_size; idx++) {
+    for (int idx=3*fft_size/4-1; idx < fft_size; idx++) {
         sampled[idx] = 0;
     }
 
