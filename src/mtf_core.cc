@@ -266,7 +266,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
 
     
-    double base_mtf[NYQUIST_FREQ*2];
+    vector<double> base_mtf(NYQUIST_FREQ*2, 0);
     base_mtf[0] = 1.0;
     for (int i=1; i < NYQUIST_FREQ*2; i++) {
         double x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
