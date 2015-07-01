@@ -606,6 +606,9 @@ int main(int argc, char** argv) {
             break;
         case Render_polygon::GAUSSIAN_SAMPLED:
             rect = &default_target;
+            if (tc_samples.isSet()) {
+                rect->initialize_samples(tc_samples.getValue());
+            }
             break;
     }
     
@@ -661,7 +664,9 @@ int main(int argc, char** argv) {
     }
 
     delete ns;
-    delete rect;
+    if (rect != &default_target) {
+        delete rect;
+    }
     
     return 0;
 }

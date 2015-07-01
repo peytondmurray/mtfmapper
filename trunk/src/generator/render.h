@@ -66,19 +66,28 @@ class Render_polygon : public Render_target {
         
         
         if (init) {
-            hs = 22; // seems like enough samples for up to sigma=6, at least
-            int nsamples = SQR(hs*2 + 1);
-            pos_x   = vector<double>(nsamples);
-            pos_y   = vector<double>(nsamples);
-        
-            normal_sampler sampler;
-            for (int sidx=0; sidx < nsamples; sidx++) {
-                sampler.rnorm2d(pos_x[sidx], pos_y[sidx], sigma, minor_sigma, theta);
-            } 
+            initialize_samples(22, fabs(minor_sigma - 6.0) < 1e-6 ? sigma : minor_sigma, theta); // seems like enough samples for up to sigma=6, at least
         }
     }
     
     virtual ~Render_polygon(void) {
+    }
+    
+    void initialize_samples(int hs=22, double minor_sigma=0, double theta=0) {
+        this->hs = hs;
+        int nsamples = SQR(hs*2 + 1);
+        pos_x   = vector<double>(nsamples);
+        pos_y   = vector<double>(nsamples);
+    
+        normal_sampler sampler;
+        for (int sidx=0; sidx < nsamples; sidx++) {
+            sampler.rnorm2d(
+                pos_x[sidx], pos_y[sidx], 
+                sigma, 
+                minor_sigma == 0 ? sigma : minor_sigma, 
+                theta
+            );
+        } 
     }
     
     double evaluate(double x, double y, double object_value, double background_value) const {
