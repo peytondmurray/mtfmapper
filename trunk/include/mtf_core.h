@@ -65,7 +65,7 @@ class Mtf_core {
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
              const cv::Mat& in_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img), absolute_sfr(false),
-        snap_to(false), snap_to_angle(0) {
+        snap_to(false), snap_to_angle(0), sfr_smoothing(true) {
 
         if (bayer_subset.compare("none") == 0) {
             bayer = NONE;
@@ -129,6 +129,10 @@ class Mtf_core {
         absolute_sfr = val;
     }
     
+    void set_sfr_smoothing(bool val) {
+        sfr_smoothing = val;
+    }
+    
     void set_snap_angle(double angle) {
         snap_to = true;
         snap_to_angle = angle;
@@ -150,6 +154,7 @@ class Mtf_core {
     bool absolute_sfr;
     bool snap_to;
     double snap_to_angle;
+    bool sfr_smoothing;
   
     void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
         const map<int, scanline>& scanset, const Point& cent,

@@ -27,6 +27,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/loess_fit.h"
 #include "include/gaussfilter.h"
+#include "include/mtf_tables.h"
 #include <stdio.h>
 #include <cmath>
 #include <algorithm>
@@ -106,57 +107,40 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int leftcount = 0;
     int left_non_missing  = 0;
     int right_non_missing = 0;
-    for (int idx=fft_size/4-1; idx <= 3*fft_size/4+1; idx++) {
+    vector<double> weights(fft_size, 0);
+    vector<double> mean(fft_size, 0);
+    
+    for (int i=0; i < int(ordered.size()); i++) {
+        int cbin = floor(ordered[i].first*8 + fft_size/2);
+        int left = std::max(fft_size/4, cbin-6);
+        int right = std::min(3*fft_size/4-1, cbin+6);
         
-        double mid = idx*scale*(upper-lower)/double(fft_size-1) + scale*lower;
-        size_t start_idx = lower_bound(ordered.begin(), ordered.end(), mid - 0.5) - ordered.begin();
-        size_t end_idx   = lower_bound(ordered.begin(), ordered.end(), mid + 0.5) - ordered.begin();
-        const double left  = mid - 0.125/2.0;
-        const double right = mid + 0.125/2.0;
-
-        int included = 0;
-
-        if (end_idx - start_idx > 2) {
-            const double lpwidth = 0.33333333;
-            double weight = 0;
-            double sum = 0;
-            for (size_t k=start_idx; k < end_idx; k++) {
-                double lb = ordered[k].first - lpwidth/2;
-                double rb = ordered[k].first + lpwidth/2;
-                
-                
-                
-                if (lb < right && rb > left) { // we have non-zero intersection
-                    if (lb < left) lb = left;
-                    if (rb > right) rb = right;
-                    double w = rb - lb;
-                    assert(w >= 0);
-                    sum += ordered[k].second * w;
-                    weight += w;
-                    included++;
-                }
+        for (int b=left; b <= right; b++) {
+            double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
+            double w = exp( -SQR(ordered[i].first - mid)/(2*SQR(Mtf_correction::sdev))  );
+            mean[b] += ordered[i].second * w;
+            weights[b] += w;
+        }
+    }
+    // some housekeeping to take care of missing values
+    for (int idx=fft_size/4-1; idx <= 3*fft_size/4+1; idx++) {
+        if (weights[idx] > 0) {
+            sampled[idx] = mean[idx] / weights[idx];
+            if (idx < fft_size/2 - fft_size/8) {
+                leftsum += sampled[idx];
+                leftcount++;
             }
-            if (weight > 0) {
-                sampled[idx] = sum / weight;
-                if (idx < fft_size/2 - fft_size/8) {
-                    leftsum += sampled[idx];
-                    leftcount++;
-                }
-                if (idx > fft_size/2 + fft_size/8) {
-                    rightsum += sampled[idx];
-                    rightcount++;
-                }
-                if (!left_non_missing) {
-                    left_non_missing = idx; // first non-missing value from left
-                }
-                right_non_missing = idx; // last non-missing value
-            } else {
-                sampled[idx] = missing;
+            if (idx > fft_size/2 + fft_size/8) {
+                rightsum += sampled[idx];
+                rightcount++;
             }
+            if (!left_non_missing) {
+                left_non_missing = idx; // first non-missing value from left
+            }
+            right_non_missing = idx; // last non-missing value
         } else {
             sampled[idx] = missing;
         }
-        
     }
     
     // now just pad out the ends of the sequences with the last non-missing values
@@ -176,6 +160,7 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             sampled[fft_size/2 - idx - 1] = sampled[fft_size/2 + idx];
             sampled[fft_size/2 + idx] = t;
         }
+        std::swap(leftsum, rightsum);
     }
     
     int lidx = 0;
@@ -205,23 +190,26 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     double right_median = rmed[rmed.size()/2];
 
     double noise_est = std::max(1.0,med[9*med.size()/10]);
-
+    
     double old = sampled[0];
-    const double alpha = 0.6;
-    const int tukey_w = fft_size/2; 
-    // TODO: the window function really should be statically computed ...
+    double* w = Apodization::get_instance()->w.data();
     for (int idx=fft_size/4; idx <= 3*fft_size/4; idx++) {
-        double lx = idx - fft_size/4;
-        double w = 1.0;
-        if (lx < alpha*(tukey_w-1)/2.0) {
-            w = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 1));
-        }
-        if (lx > (tukey_w - 1)*(1 - alpha/2)) {
-            w = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 2/alpha + 1));
-        }
         double temp = sampled[idx];
-        sampled[idx] = (sampled[idx+1] - old) * w;
+        sampled[idx] = (sampled[idx+1] - old) * w[idx];
         old = temp;
+    }
+    
+    // quickly apply some additional smoothing to the PSF, for good luck
+    const int sgh = 2;
+    const double sgw[] = {-0.086, 0.343, 0.486, 0.343, -0.086};
+    vector<double> smoothed(fft_size, 0);
+    for (int idx=fft_size/4+sgh; idx <= 3*fft_size/4-sgh; idx++) {
+        for (int x=-sgh; x <= sgh; x++) {
+            smoothed[idx] += sampled[idx+x] * sgw[x+sgh];
+        }
+    }
+    for (int idx=fft_size/4+sgh; idx <= 3*fft_size/4-sgh; idx++) {
+        sampled[idx] = smoothed[idx];
     }
     
     // pad surrounding area before fft

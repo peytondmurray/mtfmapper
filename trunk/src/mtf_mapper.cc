@@ -48,6 +48,7 @@ using std::stringstream;
 #include "include/mtf_renderer_stats.h"
 #include "include/mtf_renderer_sfr.h"
 #include "include/mtf_renderer_esf.h"
+#include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "config.h"
 
@@ -104,6 +105,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_esf("e","esf","Store raw ESF and PSF curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
+    TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
@@ -193,6 +195,11 @@ int main(int argc, char** argv) {
 	}
 	wdir = wdm;
 	#endif
+	
+	// initialize the global apodization filter
+	global_apodization_instance = new Apodization(512);
+	// initialize the global mtf correction instance
+	global_mtf_correction_instance = new Mtf_correction();
 
     cv::Mat masked_img;
     
@@ -257,6 +264,7 @@ int main(int argc, char** argv) {
     
     Mtf_core mtf_core(cl, gradient, cvimg, tc_bayer.getValue());
     mtf_core.set_absolute_sfr(tc_absolute.getValue());
+    mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
     }
