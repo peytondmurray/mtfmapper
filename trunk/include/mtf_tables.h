@@ -89,7 +89,7 @@ class Mtf_correction {
     
     vector<double> w;
     
-    static const double sdev = 0.2;
+    static const double sdev;
 private:
 
     
