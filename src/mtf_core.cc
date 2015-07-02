@@ -285,7 +285,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         vector<double> smoothed(NYQUIST_FREQ*2, 0);
         const double* sgw = 0;
         for (int idx=0; idx < NYQUIST_FREQ*2; idx++) {
-            if (idx < 5) {
+            if (idx < sgh) {
                 smoothed[idx] = magnitude[idx];
             } else {
                 const int stride = 3;
@@ -297,6 +297,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
                 }
             }
         }
+        assert(fabs(magnitude[0] - 1.0) < 1e-6);
+        assert(fabs(smoothed[0] - 1.0) < 1e-6);
         for (int idx=0; idx < NYQUIST_FREQ*2; idx++) {
             magnitude[idx] = smoothed[idx]/smoothed[0];
         }
