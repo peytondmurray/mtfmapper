@@ -122,6 +122,11 @@ class Block {
         return rect.edges[edge_number];
     }
     
+    Point get_corner(size_t edge_number) const {
+        assert(edge_number < 4);
+        return rect.corners[edge_number];
+    }
+    
     double get_edge_angle(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.thetas[edge_number];
