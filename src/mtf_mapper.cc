@@ -134,8 +134,8 @@ int main(int argc, char** argv) {
         printf("working with=%lf pixels per mm\n", pixel_size);
     }
 
-    if (!tc_profile.getValue() && !tc_annotate.getValue() && !tc_surface.getValue() && !tc_print.getValue() && !tc_sfr.getValue()) {
-        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f]\n");
+    if (!tc_profile.isSet() && !tc_annotate.isSet() && !tc_surface.isSet() && !tc_print.isSet() && !tc_sfr.isSet() && !tc_edges.isSet()) {
+        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]\n");
     }
 
     cv::Mat cvimg;
