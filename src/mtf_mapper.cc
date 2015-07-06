@@ -48,6 +48,7 @@ using std::stringstream;
 #include "include/mtf_renderer_stats.h"
 #include "include/mtf_renderer_sfr.h"
 #include "include/mtf_renderer_esf.h"
+#include "include/mtf_renderer_edges.h"
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "config.h"
@@ -101,6 +102,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_surface("s","surface","Generate MTF50 surface plots", cmd, false);
     TCLAP::SwitchArg tc_linear("l","linear","Input image is linear 8-bit (default for 8-bit is assumed to be sRGB gamma corrected)", cmd, false);
     TCLAP::SwitchArg tc_print("r","raw","Print raw MTF50 values", cmd, false);
+    TCLAP::SwitchArg tc_edges("q","edges","Print raw MTF50 values, grouped by edge location", cmd, false);
     TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_esf("e","esf","Store raw ESF and PSF curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
@@ -329,6 +331,14 @@ int main(int argc, char** argv) {
             tc_angle.getValue()/180.0*M_PI,
             lpmm_mode,
             pixel_size
+        );
+        printer.render(mtf_core.get_blocks());
+    }
+    
+    if (tc_edges.getValue()) {
+        Mtf_renderer_edges printer(
+            wdir + string("edge_mtf_values.txt"), 
+            lpmm_mode, pixel_size
         );
         printer.render(mtf_core.get_blocks());
     }
