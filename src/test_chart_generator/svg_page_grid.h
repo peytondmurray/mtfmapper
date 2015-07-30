@@ -31,16 +31,32 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "svg_page.h"
 #include "include/mtf50_edge_quality_rating.h"
 
+typedef enum {INVALIDGRID, FULLGRID, HALFGRID, THIRDGRID} grid_scale;
+
 class Svg_page_grid : public Svg_page {
   public:
-    Svg_page_grid(const string& page_spec, const string& fname) : Svg_page(page_spec, fname) {
+    Svg_page_grid(const string& page_spec, const string& fname, grid_scale scale=FULLGRID) 
+    : Svg_page(page_spec, fname), centre(0.5, 0.5*sqrt(2.0)), scale(scale) {
     
     }
     
+    
+    
     void render(void) {
-        double bsize=0.04; // block size ....
-        grid(0.08, 0.075, bsize, bsize, 17, 11);
-        //grid(0.05, 0.05*sqrt(2), bsize/2, bsize/2, 2*11*sqrt(2), 2*11);
+        switch(scale) {
+        case FULLGRID: 
+            grid(0.04, 17, 11); 
+            break;
+        case HALFGRID:
+            grid(0.08, 9, 6);
+            break;
+        case THIRDGRID:
+            grid(0.12, 6, 4);
+            break;
+        default:
+            printf("Invalid grid type. Refusing to render\n");
+            break;
+        };
     }
     
   protected:
@@ -60,56 +76,59 @@ class Svg_page_grid : public Svg_page {
         quad1 = quad1 / M_PI * 180;
         return quad1;
     }
-
-    void grid(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols) {
     
-        dPoint centre(0.5, 0.5*sqrt(2.0));
-        for (size_t ry=0; ry < nrows; ry++) {
-            for (size_t rx=0; rx < ncols; rx++) {
-      
-                double ypos = ry * 2.0 * sheight + tly;
-                double xpos = rx * 2.0 * swidth  + tlx;
-                
-                dPoint delta = dPoint(xpos, ypos) - centre;
-                
-                double eang = atan2(fabs(delta.y), fabs(delta.x));
-                double degrees = eang / M_PI * 180;
-                double orient = degrees;
-                if (orient > 45) {
-                    orient = 90 - orient;
-                }
-                
-                
-                const double tolerance = 3.0;
-                const int ncrit = 4;
-                double crit[ncrit] = {0, 14.036, 26.565, 45};
-                double correction = 0;
-                
-                for (int k=0; k < ncrit; k++) {
-                    double del = orient - crit[k];
-                    if (fabs(del) < tolerance) {
-                        if (del < 0) {
-                            correction = orient - (crit[k] + tolerance);
-                        } else {
-                            correction = orient - (crit[k] - tolerance);
-                        }
-                    }
-                }
-                
-                degrees -= correction;
-                eang = degrees / 180.0 * M_PI + M_PI/4;
-          
-                rotated_square(xpos, ypos, swidth*0.5, eang);
-                fprintf(fout, "\n");
-                if (ry < nrows-1) {
-                    xpos += swidth;
-                    ypos += sheight;
-                    rotated_square(xpos, ypos, swidth*0.5, eang);
-                    fprintf(fout, "\n");
+    void place_square(double xpos, double ypos, double width) {
+        dPoint delta = dPoint(xpos, ypos) - centre;
+        
+        double eang = atan2(fabs(delta.y), fabs(delta.x));
+        double degrees = eang / M_PI * 180;
+        double orient = degrees;
+        if (orient > 45) {
+            orient = 90 - orient;
+        }
+        
+        const double tolerance = 3.0;
+        const int ncrit = 4;
+        double crit[ncrit] = {0, 14.036, 26.565, 45};
+        double correction = 0;
+        
+        for (int k=0; k < ncrit; k++) {
+            double del = orient - crit[k];
+            if (fabs(del) < tolerance) {
+                if (del < 0) {
+                    correction = orient - (crit[k] + tolerance);
+                } else {
+                    correction = orient - (crit[k] - tolerance);
                 }
             }
-        } 
+        }
+        
+        degrees -= correction;
+        eang = degrees / 180.0 * M_PI + M_PI/4;
+        
+        rotated_square(xpos, ypos, width*0.5, eang);
     }
+
+    void grid(double swidth, size_t nrows, size_t ncols) {
+        int hr = nrows/2;
+        int hc = ncols/2;
+        for (int col=-hc; col <= hc; col++) {
+            
+            for (int row=-hr; row <= hr; row++) {
+                place_square((col+hc+0.5)/double(2*hc+1), sqrt(2.0)*(row+hr+0.5)/double(2*hr+1), swidth);
+            }
+            
+            // in-between columns
+            if (col < hc) {
+                for (int row=-hr; row < hr; row++) {
+                    place_square((col+hc+1)/double(2*hc+1), sqrt(2.0)*(row+hr+1)/double(2*hr+1), swidth);
+                }
+            }
+        }
+    }
+    
+    dPoint centre;
+    grid_scale scale;
 };
 
 #endif
