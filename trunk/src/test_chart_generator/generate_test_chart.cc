@@ -44,6 +44,8 @@ int main(int argc, char** argv) {
     vector<string> allowed_types;
     allowed_types.push_back("perspective");
     allowed_types.push_back("grid");
+    allowed_types.push_back("halfgrid");
+    allowed_types.push_back("thirdgrid");
     TCLAP::ValuesConstraint<string> type_constraints(allowed_types);
     
     vector<string> allowed_sizes;
@@ -72,18 +74,30 @@ int main(int argc, char** argv) {
     
     printf("Chart type: %s at %s size\n", tc_type.getValue().c_str(), tc_size.getValue().c_str());
     
-    if ( tc_type.getValue().compare("perspective") == 0) {
+    if (tc_type.getValue().compare("perspective") == 0) {
         Svg_page_perspective p(tc_size.getValue(), tc_ofname.getValue());
         printf("Generating chart for viewing distance of %.0lf mm\n", tc_distance.getValue());
         p.set_viewing_parameters(tc_distance.getValue(), -45/180.0*M_PI); // must still become paramers
         p.render();
-    } else
-    if ( tc_type.getValue().compare("grid") == 0) {
-        Svg_page_grid p(tc_size.getValue(), tc_ofname.getValue());
-        p.render();
     } else {
-        printf("Illegal char type %s\n", tc_type.getValue().c_str());
-    }
+        grid_scale scale = INVALIDGRID;
+        if (tc_type.getValue().compare("grid") == 0) {
+            scale = FULLGRID;
+        }
+        if (tc_type.getValue().compare("halfgrid") == 0) {
+            scale = HALFGRID;
+        }
+        if (tc_type.getValue().compare("thirdgrid") == 0) {
+            scale = THIRDGRID;
+        }
+        
+        if (scale != INVALIDGRID) {
+            Svg_page_grid p(tc_size.getValue(), tc_ofname.getValue(), scale);
+            p.render();
+        } else {
+            printf("Illegal chart type %s\n", tc_type.getValue().c_str());
+        }
+    } 
     
     return 0;
 }
