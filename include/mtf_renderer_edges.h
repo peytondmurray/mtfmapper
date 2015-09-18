@@ -34,14 +34,24 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Mtf_renderer_edges : public Mtf_renderer {
   public:
     Mtf_renderer_edges(const std::string& fname, 
+      const std::string& sfrname,
       bool lpmm_mode=false, double pixel_size=1.0) 
-      :  ofname(fname),
+      :  ofname(fname), sfrname(sfrname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
     }
     
     void render(const vector<Block>& blocks) {
+        Point centr(0,0);
+        for (size_t i=0; i < blocks.size(); i++) {
+            centr += blocks[i].get_centroid();
+        }
+        centr = centr*(1.0/double(blocks.size()));
+        
+    
+    
         FILE* fout = fopen(ofname.c_str(), "wt");
+        FILE* sfrout = fopen(sfrname.c_str(), "wt");
         vector<int> corder(4);
         vector<int> eorder(4);
         for (size_t i=0; i < blocks.size(); i++) {
@@ -90,12 +100,44 @@ class Mtf_renderer_edges : public Mtf_renderer {
                     lpmm_mode ? val*pixel_size : val,
                     cr.x, cr.y
                 );
+                
+                fprintf(sfrout, "%d %lf %lf ", int(i), ec.x, ec.y);
+                
+                double edge_angle = atan2(-blocks[i].get_normal(l).x, blocks[i].get_normal(l).y);
+                fprintf(sfrout, "%lf ", angle_reduce(edge_angle));
+                
+                Point cent = blocks[i].get_edge_centroid(l);
+
+                Point dir = cent - centr;
+                dir = dir * (1.0/norm(dir));
+
+                Point norm = blocks[i].get_normal(l);
+                double delta = dir.x*norm.x + dir.y*norm.y;
+                
+                fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);
+                
+                const vector<double>& sfr = blocks[i].get_sfr(l);
+                for (size_t j=0; j < sfr.size(); j++) {
+                    fprintf(sfrout, "%lf ", sfr[j]);
+                }
+                fprintf(sfrout, "\n");
             }
         }    
         fclose(fout);
     }
     
+  private:
+    double angle_reduce(double x) {
+        double quad1 = fabs(fmod(x, M_PI/2.0));
+        if (quad1 > M_PI/4.0) {
+            quad1 = M_PI/2.0 - quad1;
+        }
+        quad1 = quad1 / M_PI * 180;
+        return quad1;
+    }
+    
     string ofname;
+    string sfrname;
     bool filter;
     double angle;
     bool    lpmm_mode;
