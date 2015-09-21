@@ -611,6 +611,10 @@ int main(int argc, char** argv) {
             }
             break;
     }
+    rect->set_img_dimensions(height, width);
+    if (tc_psf_ratio.isSet()) {
+        rect->set_psf_ratio(tc_psf_ratio.getValue());
+    }
     
     cv::Mat img;
     if (use_16bit) {
