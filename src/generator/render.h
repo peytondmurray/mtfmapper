@@ -62,7 +62,10 @@ class Render_polygon : public Render_target {
     Render_polygon(Geometry& target, 
         double in_sigma=6.0, double minor_sigma=6.0, double theta=0, bool init=true) 
         : sigma(in_sigma), 
-          t_geom(target) {
+          t_geom(target),
+          psf_ratio(-1),
+          img_width(0),
+          img_height(0) {
         
         
         if (init) {
@@ -121,6 +124,15 @@ class Render_polygon : public Render_target {
     virtual double get_mtf50_value(void) const {
         return sqrt( log(0.5)/(-2*M_PI*M_PI*sigma*sigma) );
     }
+    
+    void set_img_dimensions(int rows, int cols) {
+        img_width = cols;
+        img_height = rows;
+    }
+    
+    void set_psf_ratio(double ratio) {
+        psf_ratio = ratio;
+    }
       
   public:
       
@@ -131,6 +143,9 @@ class Render_polygon : public Render_target {
     vector<double> pos_y;
 
     Geometry& t_geom; // target geometry
+    double psf_ratio;
+    int img_width;
+    int img_height;
 };
 
 #endif // RENDER_H

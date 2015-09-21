@@ -43,6 +43,7 @@ using std::swap;
   #define SQR(x) ((x)*(x))
 #endif
 
+//#define STATIONARY_PSF
 
 //==============================================================================
 class Render_polygon_is : public Render_polygon {
@@ -77,11 +78,31 @@ class Render_polygon_is : public Render_polygon {
         
         int samples_threshold = std::min((long)nsamples, lrint(sqrt((double)nsamples)*12));
         
+        double dx = x - img_width/2;
+        double dy = y - img_height/2;
+        double phi = atan2(dy, dx);
+        double cosx = cos(phi);
+        double sinx = sin(phi);
+        bool rotate_psf = psf_ratio > 0;
+        
         // take initial batch of samples, checking for convergence along the way
         for (size_t sidx=0; sidx < size_t(samples_threshold); sidx++) {
         
             const double& weight = weights[sidx];
-            double sample = sample_core(pos_x[sidx], pos_y[sidx], x, y, object_value, background_value);
+            
+            double rx = pos_x[sidx];
+            double ry = pos_y[sidx];
+            
+            if (rotate_psf) {
+                #ifndef STATIONARY_PSF 
+                rx = cosx*pos_x[sidx]*psf_ratio - sinx*pos_y[sidx];
+                ry = sinx*pos_x[sidx]*psf_ratio + cosx*pos_y[sidx];
+                #else
+                rx *= psf_ratio;
+                #endif
+            }
+            
+            double sample = sample_core(rx, ry, x, y, object_value, background_value);
             wsum += weight;
             
             accumulator += sample*weight;
@@ -104,7 +125,20 @@ class Render_polygon_is : public Render_polygon {
             for (size_t sidx=samples_threshold; sidx < pos_x.size(); sidx++) {
                 
                 const double& weight = weights[sidx];
-                double sample = sample_core(pos_x[sidx], pos_y[sidx], x, y, object_value, background_value);
+                
+                double rx = pos_x[sidx];
+                double ry = pos_y[sidx];
+                
+                if (rotate_psf) {
+                    #ifndef STATIONARY_PSF
+                    rx = cosx*pos_x[sidx]*psf_ratio - sinx*pos_y[sidx];
+                    ry = sinx*pos_x[sidx]*psf_ratio + cosx*pos_y[sidx];
+                    #else
+                    rx *= psf_ratio;
+                    #endif
+                }
+                
+                double sample = sample_core(rx, ry, x, y, object_value, background_value);
                 wsum += weight;
                 
                 accumulator += sample*weight;
