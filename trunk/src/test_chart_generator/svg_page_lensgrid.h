@@ -171,11 +171,12 @@ class Svg_page_lensgrid : public Svg_page {
             }
         }
         
-        for (double rad=0.5; rad < 1.4; rad += 0.16) {    
-            double angles[4] = {65.0/180.0*M_PI, 115.0/180.0*M_PI, 245.0/180.0*M_PI, 295.0/180.0*M_PI};
+        for (double rad=0.5; rad < 1.55; rad += 0.16) {    
+            double angles[4] = {50.0/180.0*M_PI, 130.0/180.0*M_PI, 230.0/180.0*M_PI, 310.0/180.0*M_PI};
             
             for (int a=0; a < 4; a++) {
-                dPoint slant(-sin(angles[a]) * 0.0 * swidth, cos(angles[a]) * 0.0 * swidth);
+                double sign = (a % 2) == 0 ? -1 : 1;
+                dPoint slant(-sin(angles[a]) * 1.7 * sign * swidth, cos(angles[a]) * sign * 1.7 * swidth);
             
                 place_trapezoid(
                     0.5 + rad*0.5*cos(angles[a]) - slant.x,
