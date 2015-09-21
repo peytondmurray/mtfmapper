@@ -84,6 +84,10 @@ class Render_polygon_is : public Render_polygon {
         double cosx = cos(phi);
         double sinx = sin(phi);
         bool rotate_psf = psf_ratio > 0;
+
+        double max_rad = sqrt((img_width / 2)*(img_width / 2) + (img_height / 2)*(img_height / 2));
+        double rad = sqrt(dx*dx + dy*dy);
+        double erad = 1 + psf_ratio*rad/max_rad;
         
         // take initial batch of samples, checking for convergence along the way
         for (size_t sidx=0; sidx < size_t(samples_threshold); sidx++) {
@@ -95,8 +99,8 @@ class Render_polygon_is : public Render_polygon {
             
             if (rotate_psf) {
                 #ifndef STATIONARY_PSF 
-                rx = cosx*pos_x[sidx]*psf_ratio - sinx*pos_y[sidx];
-                ry = sinx*pos_x[sidx]*psf_ratio + cosx*pos_y[sidx];
+                rx = cosx*pos_x[sidx]*erad - sinx*pos_y[sidx];
+                ry = sinx*pos_x[sidx]*erad + cosx*pos_y[sidx];
                 #else
                 rx *= psf_ratio;
                 #endif
@@ -131,8 +135,8 @@ class Render_polygon_is : public Render_polygon {
                 
                 if (rotate_psf) {
                     #ifndef STATIONARY_PSF
-                    rx = cosx*pos_x[sidx]*psf_ratio - sinx*pos_y[sidx];
-                    ry = sinx*pos_x[sidx]*psf_ratio + cosx*pos_y[sidx];
+                    rx = cosx*pos_x[sidx]*erad - sinx*pos_y[sidx];
+                    ry = sinx*pos_x[sidx]*erad + cosx*pos_y[sidx];
                     #else
                     rx *= psf_ratio;
                     #endif
