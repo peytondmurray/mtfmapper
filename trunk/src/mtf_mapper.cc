@@ -49,6 +49,7 @@ using std::stringstream;
 #include "include/mtf_renderer_sfr.h"
 #include "include/mtf_renderer_esf.h"
 #include "include/mtf_renderer_edges.h"
+#include "include/mtf_renderer_lensprofile.h"
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "config.h"
@@ -105,6 +106,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_edges("q","edges","Print raw MTF50 values, grouped by edge location", cmd, false);
     TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_esf("e","esf","Store raw ESF and PSF curves for each edge", cmd, false);
+    TCLAP::SwitchArg tc_lensprof("","lensprofile","Render M/S lens profile plot", cmd, false);
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
@@ -340,6 +342,18 @@ int main(int argc, char** argv) {
             wdir + string("edge_mtf_values.txt"), 
             wdir + string("edge_sfr_values.txt"),
             lpmm_mode, pixel_size
+        );
+        printer.render(mtf_core.get_blocks());
+    }
+    
+    if (tc_lensprof.getValue()) {
+        Mtf_renderer_lensprofile printer(
+            wdir, 
+            string("lensprof.txt"),
+            tc_gnuplot.getValue(),
+            cvimg,
+            lpmm_mode,
+            pixel_size
         );
         printer.render(mtf_core.get_blocks());
     }
