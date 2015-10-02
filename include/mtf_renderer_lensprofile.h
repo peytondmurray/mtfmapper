@@ -51,13 +51,16 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     void render(const vector<Block>& blocks) {
         Point centr(img.cols/2, img.rows/2);
         
-        vector<Ordered_point> sagittal;
-        vector<Ordered_point> meridional;
+        vector<double> resolution;
+        resolution.push_back(10 * 2 / pixel_size);
+        resolution.push_back(30 * 2 / pixel_size);
+        
+        vector< vector<Ordered_point> > sagittal(2);
+        vector< vector<Ordered_point> > meridional(2);
         for (size_t i=0; i < blocks.size(); i++) {
         
             
             for (size_t k=0; k < 4; k++) {
-                double val = blocks[i].get_mtf50_value(k);
                 Point ec = blocks[i].get_edge_centroid(k);
                 
                 Point udir = ec - centr;
@@ -68,23 +71,55 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                 double delta = dir.x*norm.x + dir.y*norm.y;
                 
                 const vector<double>& sfr = blocks[i].get_sfr(k);
+                for (size_t j=0; j < resolution.size(); j++) {
+                    double res = resolution[j] * NYQUIST_FREQ*2;
+                    int lidx = std::min((int)floor(res), NYQUIST_FREQ*2-2);
+                    double frac = res - lidx;
                 
-                double contrast = sfr[12]; // arbitrary, TODO: select some (several?) resolutions
-                
-                double angle_to_radial = acos(fabs(delta))/M_PI*180.0;
-                
-                if (fabs(delta) < cos(15.0/180.0*M_PI)) { // edge perp to tangent
-                    sagittal.push_back(Ordered_point(radial_len, contrast));
-                } 
-                if (fabs(fabs(delta) - 1) < cos(15.0/180.0*M_PI)) { // edge perp to radial : TODO: check math
-                    meridional.push_back(Ordered_point(radial_len, contrast));
+                    double contrast = (1 - frac)*sfr[lidx] + frac*sfr[lidx+1]; 
+                    
+                    /*
+                    printf("resolution 1: %lf c/p -> index=%lf, frac=%lf\n", 
+                        resolution[j], res, frac
+                    );
+                    */
+                    
+                    
+                    if (fabs(delta) < cos(15.0/180.0*M_PI)) { // edge perp to tangent
+                        sagittal[j].push_back(Ordered_point(radial_len, contrast));
+                    } 
+                    if (fabs(fabs(delta) - 1) < cos(15.0/180.0*M_PI)) { // edge perp to radial : TODO: check math
+                        meridional[j].push_back(Ordered_point(radial_len, contrast));
+                    }
                 }
-                
             }
         }    
-        sort(sagittal.begin(), sagittal.end());
-        sort(meridional.begin(), meridional.end());
         
+        FILE* fout = fopen((wdir + prname).c_str(), "wt");
+        
+        printf("got %d sagittal / %d meridional samples\n", (int)sagittal.size(), (int)meridional.size());
+        
+        vector< vector<Ordered_point> > s_fitted(resolution.size());
+        vector< vector<Ordered_point> > s_spread(resolution.size());
+        
+        vector< vector<Ordered_point> > m_fitted(resolution.size());
+        vector< vector<Ordered_point> > m_spread(resolution.size());
+        
+        
+        fprintf(fout, "# ");
+        for (size_t j=0; j < resolution.size(); j++) {
+        
+            sort(sagittal[j].begin(), sagittal[j].end());
+            sort(meridional[j].begin(), meridional[j].end());
+            
+            lsfit(sagittal[j], s_fitted[j], s_spread[j]);
+            lsfit(meridional[j], m_fitted[j], m_spread[j]);
+            
+            fprintf(fout, "distance  contrast(%.1flp/mm)  ", resolution[j]*1000/pixel_size);
+        }
+        fprintf(fout, "\n");
+        
+        /*
         FILE* fraw = fopen((wdir + "lp_raw.txt").c_str(), "wt");
         for (size_t i=0; i < sagittal.size(); i++) {
             fprintf(fraw, "%lf %lf\n", sagittal[i].first, sagittal[i].second);
@@ -94,49 +129,87 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             fprintf(fraw, "%lf %lf\n", meridional[i].first, meridional[i].second);
         }
         fclose(fraw);
+        */
         
-        FILE* fout = fopen((wdir + prname).c_str(), "wt");
-        
-        printf("got %d sagittal / %d meridional samples\n", (int)sagittal.size(), (int)meridional.size());
-        
-        vector<Ordered_point> s_fitted;
-        vector<Ordered_point> s_spread;
-        
-        lsfit(sagittal, s_fitted, s_spread);
-        
-        vector<Ordered_point> m_fitted;
-        vector<Ordered_point> m_spread;
-        
-        lsfit(meridional, m_fitted, m_spread);
+        printf("pixel size = %lf\n", pixel_size);
+        double scale = 1.0/pixel_size;
         
         fprintf(fout, "#sagittal curve\n");
-        for (size_t i=0; i < s_fitted.size(); i++) {
-            fprintf(fout, "%lf %lf\n", s_fitted[i].first, s_fitted[i].second);
+        for (size_t i=0; i < s_fitted[0].size(); i++) {
+            for (size_t j=0; j < resolution.size(); j++) {
+                fprintf(fout, "%lf %lf ", scale*s_fitted[j][i].first, s_fitted[j][i].second);
+            }
+            fprintf(fout, "\n");
         }
         
         fprintf(fout, "\n\n#meridional curve\n");
-        for (size_t i=0; i < m_fitted.size(); i++) {
-            fprintf(fout, "%lf %lf\n", m_fitted[i].first, m_fitted[i].second);
+        for (size_t i=0; i < m_fitted[0].size(); i++) {
+            for (size_t j=0; j < resolution.size(); j++) {
+                fprintf(fout, "%lf %lf ", scale*m_fitted[j][i].first, m_fitted[j][i].second);
+            }
+            fprintf(fout, "\n");
         }
         
         
         fprintf(fout, "\n\n#sagittal bounds\n");
-        for (size_t i=0; i < s_fitted.size(); i++) {
-            fprintf(fout, "%lf %lf\n", s_fitted[i].first, s_spread[i].first);
+        for (size_t i=0; i < s_spread[0].size(); i++) {
+            for (size_t j=0; j < resolution.size(); j++) {
+                fprintf(fout, "%lf %lf ", scale*s_spread[j][i].first, s_spread[j][i].second);
+            }
+            fprintf(fout, "\n");
         }
-        for (int i=(int)s_fitted.size()-1; i >= 0; i--) {
-            fprintf(fout, "%lf %lf\n", s_fitted[i].first, s_spread[i].second);
-        }
-        
         
         fprintf(fout, "\n\n#meridional bounds\n");
-        for (size_t i=0; i < m_fitted.size(); i++) {
-            fprintf(fout, "%lf %lf\n", m_fitted[i].first, m_spread[i].first);
-        }
-        for (int i=(int)m_fitted.size()-1; i >= 0; i--) {
-            fprintf(fout, "%lf %lf\n", m_fitted[i].first, m_spread[i].second);
+        for (size_t i=0; i < m_spread[0].size(); i++) {
+            for (size_t j=0; j < resolution.size(); j++) {
+                fprintf(fout, "%lf %lf ", scale*m_spread[j][i].first, m_spread[j][i].second);
+            }
+            fprintf(fout, "\n");
         }
         fclose(fout);
+        
+        FILE* gpf = fopen( (wdir + string("lensprofile.gnuplot")).c_str(), "wt");
+        fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
+        fprintf(gpf, "set ylab \"contrast\"\n");
+        fprintf(gpf, "set key left bottom\n");
+        fprintf(gpf, "set term pngcairo size 1024, 768\n");
+        fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
+        fprintf(gpf, "plot [][0:1] "
+                         "\"%s\" index 2 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#ffe0e0\" notitle,"
+                         "\"%s\" index 3 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#f0d0d0\" notitle,"
+                         "\"%s\" index 0 u 1:2 w l lc rgb \"red\" lw 2 t \"S %.1f lp/mm\","
+                         "\"%s\" index 1 u 1:2 w l lc rgb \"red\" lw 2 lt 0 t \"M %.1f lp/mm\","
+                         "\"%s\" index 2 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#e0ffe0\" notitle,"
+                         "\"%s\" index 3 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f0d0\" notitle,"
+                         "\"%s\" index 0 u 1:4 w l lc rgb \"green\" lw 2 t \"S %.1f lp/mm\","
+                         "\"%s\" index 1 u 1:4 w l lc rgb \"green\" lw 2 lt 0 t \"M %.1f lp/mm\"",
+                         (wdir+prname).c_str(),
+                         (wdir+prname).c_str(),
+                         (wdir+prname).c_str(), resolution[0]*1000/pixel_size,
+                         (wdir+prname).c_str(), resolution[0]*1000/pixel_size,
+                         (wdir+prname).c_str(),
+                         (wdir+prname).c_str(),
+                         (wdir+prname).c_str(), resolution[1]*1000/pixel_size,
+                         (wdir+prname).c_str(), resolution[1]*1000/pixel_size
+        );
+        fclose(gpf);
+        
+        char* buffer = new char[1024];
+        #ifdef _WIN32
+        sprintf(buffer, "\"\"%s\" \"%slensprofile.gnuplot\"\"", gnuplot_binary.c_str(), wdir.c_str());
+        #else
+        sprintf(buffer, "\"%s\" \"%slensprofile.gnuplot\"", gnuplot_binary.c_str(), wdir.c_str());
+        #endif
+        int rval = system(buffer);
+        if (rval != 0) {
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute [%s] to render the plots manually\n", buffer);
+            gnuplot_failure = true;
+        } else {
+            printf("Gnuplot plot completed successfully. Look for lensprofile.png\n");
+        }
+        
+        delete [] buffer;
     }
     
     void lsfit(const vector<Ordered_point>& in_data, vector<Ordered_point>& recon, 
@@ -360,10 +433,14 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             }
         }
         
+        spread = vector<Ordered_point>(spread.size()*2);
         // every element of spread is now interpolated, so add spread to recon
-        for (size_t q=0; q < spread.size(); q++) {
-            spread[q].first = recon[q].second + smoothed[q];
-            spread[q].second = recon[q].second - smoothed[q];
+        for (size_t q=0; q < smoothed.size(); q++) {
+            spread[q].first = recon[q].first;
+            spread[q].second = recon[q].second + smoothed[q];
+            
+            spread[spread.size()-1-q].first = recon[q].first;
+            spread[spread.size()-1-q].second = recon[q].second - smoothed[q];
         }
     }
     
