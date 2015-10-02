@@ -349,7 +349,7 @@ int main(int argc, char** argv) {
     if (tc_lensprof.getValue()) {
         Mtf_renderer_lensprofile printer(
             wdir, 
-            string("lensprof.txt"),
+            string("lensprofile.txt"),
             tc_gnuplot.getValue(),
             cvimg,
             lpmm_mode,
