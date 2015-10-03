@@ -115,7 +115,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             lsfit(sagittal[j], s_fitted[j], s_spread[j]);
             lsfit(meridional[j], m_fitted[j], m_spread[j]);
             
-            fprintf(fout, "distance  contrast(%.1flp/mm)  ", resolution[j]*1000/pixel_size);
+            fprintf(fout, "distance  contrast(%.1flp/mm)  ", resolution[j] * pixel_size / 2.0);
         }
         fprintf(fout, "\n");
         
@@ -131,7 +131,6 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fclose(fraw);
         */
         
-        printf("pixel size = %lf\n", pixel_size);
         double scale = 1.0/pixel_size;
         
         fprintf(fout, "#sagittal curve\n");
@@ -169,28 +168,29 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fclose(fout);
         
         FILE* gpf = fopen( (wdir + string("lensprofile.gnuplot")).c_str(), "wt");
-        fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
+        fprintf(gpf, "set xlab \"distance (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"contrast\"\n");
         fprintf(gpf, "set key left bottom\n");
-        fprintf(gpf, "set term pngcairo size 1024, 768\n");
+        fprintf(gpf, "set term pngcairo dashed transparent enhanced size 1024, 768\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
+        //fprintf(gpf, "set linetype 5 dashtype 2 linewidth 2\n"); // Use this with gnuplot 5 onwards, later.
         fprintf(gpf, "plot [][0:1] "
-                         "\"%s\" index 2 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#ffe0e0\" notitle,"
-                         "\"%s\" index 3 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#f0d0d0\" notitle,"
-                         "\"%s\" index 0 u 1:2 w l lc rgb \"red\" lw 2 t \"S %.1f lp/mm\","
-                         "\"%s\" index 1 u 1:2 w l lc rgb \"red\" lw 2 lt 0 t \"M %.1f lp/mm\","
-                         "\"%s\" index 2 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#e0ffe0\" notitle,"
-                         "\"%s\" index 3 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f0d0\" notitle,"
-                         "\"%s\" index 0 u 1:4 w l lc rgb \"green\" lw 2 t \"S %.1f lp/mm\","
-                         "\"%s\" index 1 u 1:4 w l lc rgb \"green\" lw 2 lt 0 t \"M %.1f lp/mm\"",
+                         "\"%s\" index 2 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#ffe0e0\" lt 16 notitle,"
+                         "\"%s\" index 3 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#f0d0d0\" lt 16 notitle,"
+                         "\"%s\" index 0 u 1:2 w l lc rgb \"red\" lw 2 lt 16 t \"S %.1f lp/mm\","
+                         "\"%s\" index 1 u 1:2 w l lc rgb \"red\" lt 12 lw 2 t \"M %.1f lp/mm\","
+                         "\"%s\" index 2 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f7d0\" lt 16 notitle,"
+                         "\"%s\" index 3 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f0d0\" lt 16 notitle,"
+                         "\"%s\" index 0 u 1:4 w l lc rgb \"green\" lw 2 lt 16 t \"S %.1f lp/mm\","
+                         "\"%s\" index 1 u 1:4 w l lc rgb \"green\" lt 12 lw 2 t \"M %.1f lp/mm\"",
                          (wdir+prname).c_str(),
                          (wdir+prname).c_str(),
-                         (wdir+prname).c_str(), resolution[0]*1000/pixel_size,
-                         (wdir+prname).c_str(), resolution[0]*1000/pixel_size,
+                         (wdir+prname).c_str(), resolution[0]*pixel_size*0.5,
+                         (wdir+prname).c_str(), resolution[0]*pixel_size*0.5,
                          (wdir+prname).c_str(),
                          (wdir+prname).c_str(),
-                         (wdir+prname).c_str(), resolution[1]*1000/pixel_size,
-                         (wdir+prname).c_str(), resolution[1]*1000/pixel_size
+                         (wdir+prname).c_str(), resolution[1]*pixel_size*0.5,
+                         (wdir+prname).c_str(), resolution[1]*pixel_size*0.5
         );
         fclose(gpf);
         
