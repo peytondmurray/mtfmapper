@@ -115,6 +115,9 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
     TCLAP::ValueArg<string> tc_gnuplot("", "gnuplot-executable", "Full path (including filename) to gnuplot executable ", false, "gnuplot", "filepath", cmd);
     TCLAP::ValueArg<double> tc_pixelsize("", "pixelsize", "Pixel size in microns. This also switches units to lp/mm", false, 1.0, "size", cmd);
+    TCLAP::ValueArg<double> tc_lp1("", "lp1", "Lens profile resolution 1 (lp/mm)", false, 10.0, "lp/mm", cmd);
+    TCLAP::ValueArg<double> tc_lp2("", "lp2", "Lens profile resolution 2 (lp/mm)", false, 30.0, "lp/mm", cmd);
+    TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm)", false, 50.0, "lp/mm", cmd);
 
     vector<string> allowed_bayer_subsets;
     allowed_bayer_subsets.push_back("red");
@@ -347,11 +350,39 @@ int main(int argc, char** argv) {
     }
     
     if (tc_lensprof.getValue()) {
+    
+        vector<double> resolutions;
+        // try to infer what resolutions the user wants
+        if (!(tc_lp1.isSet() || tc_lp2.isSet() || tc_lp3.isSet())) {
+            // if nothing is specified explicitly, use the first two defaults
+            resolutions.push_back(tc_lp1.getValue());
+            resolutions.push_back(tc_lp2.getValue());
+        } else {
+            if (tc_lp1.isSet()) {
+                resolutions.push_back(tc_lp1.getValue());
+            }
+            if (tc_lp2.isSet()) {
+                resolutions.push_back(tc_lp2.getValue());
+            }
+            if (tc_lp3.isSet()) {
+                resolutions.push_back(tc_lp3.getValue());
+            }
+        }
+        
+        if (!lpmm_mode) { // we have to fudge the resolution values into c/p
+            for (size_t j=0; j < resolutions.size(); j++) {
+                resolutions[j] = 0.5 * resolutions[j] / double(NYQUIST_FREQ*2);
+            }
+        }
+        
+        sort(resolutions.begin(), resolutions.end());
+        
         Mtf_renderer_lensprofile printer(
             wdir, 
             string("lensprofile.txt"),
             tc_gnuplot.getValue(),
             cvimg,
+            resolutions,
             lpmm_mode,
             pixel_size
         );
