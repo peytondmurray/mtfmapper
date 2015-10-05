@@ -39,11 +39,13 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         const std::string& prof_fname, 
         const std::string& gnuplot_binary,
         const cv::Mat& img, 
+        const vector<double>& in_resolution,
         bool lpmm_mode=false, double pixel_size=1.0) 
       :  wdir(wdir), prname(prof_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         gnuplot_failure(false), gnuplot_warning(true) {
+         gnuplot_failure(false), gnuplot_warning(true),
+         in_resolution(in_resolution) {
     
       
     }
@@ -52,13 +54,15 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         Point centr(img.cols/2, img.rows/2);
         
         vector<double> resolution;
-        resolution.push_back(10 * 2 / pixel_size);
-        resolution.push_back(30 * 2 / pixel_size);
+        for (size_t i=0; i < std::min(size_t(3), in_resolution.size()); i++) {
+            resolution.push_back(in_resolution[i] * 2 / pixel_size);
+        }
         
-        vector< vector<Ordered_point> > sagittal(2);
-        vector< vector<Ordered_point> > meridional(2);
+        vector< vector<Ordered_point> > sagittal(resolution.size());
+        vector< vector<Ordered_point> > meridional(resolution.size());
         for (size_t i=0; i < blocks.size(); i++) {
         
+            const double angle_thresh = 10.0;
             
             for (size_t k=0; k < 4; k++) {
                 Point ec = blocks[i].get_edge_centroid(k);
@@ -78,17 +82,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                 
                     double contrast = (1 - frac)*sfr[lidx] + frac*sfr[lidx+1]; 
                     
-                    /*
-                    printf("resolution 1: %lf c/p -> index=%lf, frac=%lf\n", 
-                        resolution[j], res, frac
-                    );
-                    */
+                    //contrast /= sin(resolution[j]*M_PI)/(resolution[j]*M_PI); // TODO: optionally remove photosite aperture / AA MTF
                     
-                    
-                    if (fabs(delta) < cos(15.0/180.0*M_PI)) { // edge perp to tangent
+                    if (acos(fabs(delta))/M_PI*180.0 < angle_thresh) { // edge perp to tangent
                         sagittal[j].push_back(Ordered_point(radial_len, contrast));
                     } 
-                    if (fabs(fabs(delta) - 1) < cos(15.0/180.0*M_PI)) { // edge perp to radial : TODO: check math
+                    if (acos(fabs(delta))/M_PI*180 > (90 - angle_thresh)) { // edge perp to radial : TODO: check math
                         meridional[j].push_back(Ordered_point(radial_len, contrast));
                     }
                 }
@@ -97,7 +96,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         
         FILE* fout = fopen((wdir + prname).c_str(), "wt");
         
-        printf("got %d sagittal / %d meridional samples\n", (int)sagittal.size(), (int)meridional.size());
+        if (sagittal[0].size() == 0 || meridional.size() == 0) {
+            printf("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
+            return;
+        }
+        
+        printf("got %d sagittal / %d meridional samples\n", (int)sagittal[0].size(), (int)meridional[0].size());
         
         vector< vector<Ordered_point> > s_fitted(resolution.size());
         vector< vector<Ordered_point> > s_spread(resolution.size());
@@ -119,19 +123,20 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         }
         fprintf(fout, "\n");
         
+        double scale = 1.0/pixel_size;
+        
         /*
         FILE* fraw = fopen((wdir + "lp_raw.txt").c_str(), "wt");
-        for (size_t i=0; i < sagittal.size(); i++) {
-            fprintf(fraw, "%lf %lf\n", sagittal[i].first, sagittal[i].second);
+        const int ridx = 1;
+        for (size_t i=0; i < sagittal[ridx].size(); i++) {
+            fprintf(fraw, "%lf %lf\n", scale*sagittal[ridx][i].first, sagittal[ridx][i].second);
         }
         fprintf(fraw, "\n\n");
-        for (size_t i=0; i < meridional.size(); i++) {
-            fprintf(fraw, "%lf %lf\n", meridional[i].first, meridional[i].second);
+        for (size_t i=0; i < meridional[0].size(); i++) {
+            fprintf(fraw, "%lf %lf\n", scale*meridional[ridx][i].first, meridional[ridx][i].second);
         }
         fclose(fraw);
         */
-        
-        double scale = 1.0/pixel_size;
         
         fprintf(fout, "#sagittal curve\n");
         for (size_t i=0; i < s_fitted[0].size(); i++) {
@@ -167,31 +172,48 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         }
         fclose(fout);
         
+        vector<string> linecolor;
+        linecolor.push_back("#e00000");
+        linecolor.push_back("web-blue");
+        linecolor.push_back("web-green");
+        
+        vector<string> shadecolor;
+        shadecolor.push_back("#ffe0e0");
+        shadecolor.push_back("#f0d0d0");
+        shadecolor.push_back("#d0d0f7");
+        shadecolor.push_back("#d0d0f0");
+        shadecolor.push_back("#d0f7d0");
+        shadecolor.push_back("#d0f0d0");
+        
+        string resmode = lpmm_mode ? "lp/mm" : "c/p";
+        
         FILE* gpf = fopen( (wdir + string("lensprofile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"distance (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"contrast\"\n");
         fprintf(gpf, "set key left bottom\n");
+        fprintf(gpf, "set ytics 0.1\n");
+        fprintf(gpf, "set style line 11 lc rgb \"#f0f0f0\" lt 1 lw 1\n");
+        fprintf(gpf, "set grid xtics ytics ls 11\n");
         fprintf(gpf, "set term pngcairo dashed transparent enhanced size 1024, 768\n");
+        fprintf(gpf, "set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb \"white\" behind\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
         //fprintf(gpf, "set linetype 5 dashtype 2 linewidth 2\n"); // Use this with gnuplot 5 onwards, later.
-        fprintf(gpf, "plot [][0:1] "
-                         "\"%s\" index 2 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#ffe0e0\" lt 16 notitle,"
-                         "\"%s\" index 3 u 1:2 w filledcurve fs transparent solid 0.5 lc rgb \"#f0d0d0\" lt 16 notitle,"
-                         "\"%s\" index 0 u 1:2 w l lc rgb \"red\" lw 2 lt 16 t \"S %.1f lp/mm\","
-                         "\"%s\" index 1 u 1:2 w l lc rgb \"red\" lt 12 lw 2 t \"M %.1f lp/mm\","
-                         "\"%s\" index 2 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f7d0\" lt 16 notitle,"
-                         "\"%s\" index 3 u 1:4 w filledcurve fs transparent solid 0.5 lc rgb \"#d0f0d0\" lt 16 notitle,"
-                         "\"%s\" index 0 u 1:4 w l lc rgb \"green\" lw 2 lt 16 t \"S %.1f lp/mm\","
-                         "\"%s\" index 1 u 1:4 w l lc rgb \"green\" lt 12 lw 2 t \"M %.1f lp/mm\"",
-                         (wdir+prname).c_str(),
-                         (wdir+prname).c_str(),
-                         (wdir+prname).c_str(), resolution[0]*pixel_size*0.5,
-                         (wdir+prname).c_str(), resolution[0]*pixel_size*0.5,
-                         (wdir+prname).c_str(),
-                         (wdir+prname).c_str(),
-                         (wdir+prname).c_str(), resolution[1]*pixel_size*0.5,
-                         (wdir+prname).c_str(), resolution[1]*pixel_size*0.5
-        );
+        
+        fprintf(gpf, "plot [][-0.05:1] ");
+        for (size_t j=0; j < resolution.size(); j++) {
+            double res = lpmm_mode ? resolution[j]*pixel_size*0.5 : resolution[j] * 2 * NYQUIST_FREQ;
+            fprintf(gpf,   
+                "\"%s\" index 2 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
+                "\"%s\" index 3 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
+                "\"%s\" index 0 u 1:%d w l lc rgb \"%s\" lw 2 lt 16 t \"S %.1lf %s\","
+                "\"%s\" index 1 u 1:%d w l lc rgb \"%s\" lt 12 lw 2 t \"M %.1lf %s\"",
+                (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j].c_str(),
+                (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j+1].c_str(),
+                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), res, resmode.c_str(),
+                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), res, resmode.c_str()
+            );
+            fprintf(gpf, "%c", (j < resolution.size() - 1) ? ',' : '\n');
+        }    
         fclose(gpf);
         
         char* buffer = new char[1024];
@@ -350,9 +372,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                 if (residuals.size() > 2) {
                     sort(residuals.begin(), residuals.end());
                     double p90 = residuals[lrint((residuals.size() - 1)*0.9)];
-                    double p25 = residuals[lrint((residuals.size() - 1)*0.25)];
-                    spread[q].first = p90 - p25;
-                    spread[q].second = p90 - p25;
+                    spread[q].first = spread[q].second = p90;
                 }
             }
         }
@@ -473,6 +493,8 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     double  pixel_size;
     bool gnuplot_failure;
     bool gnuplot_warning;
+    
+    vector<double> in_resolution;
 };
 
 #endif
