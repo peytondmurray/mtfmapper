@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/rectangle.h"
 #include "include/edge_record.h"
 #include "include/loess_fit.h"
+#include "include/afft.h"
 
 #include <map>
 using std::map;
@@ -42,8 +43,6 @@ using std::map;
 using namespace tbb;
 
 typedef vector<Block> block_vector;
-
-#include <fftw3.h>
 
 // global constants for ESF-fourier MTF method
 // TODO: these can be dynamic parameters, with some effort
@@ -81,25 +80,12 @@ class Mtf_core {
         }
         printf("bayer subset is %d\n", bayer);
       
-        // set up FFTW plan
-        double *fft_in;
-        fftw_complex *fft_out;
-        fft_in = (double*)fftw_malloc(sizeof(double)*2*(FFT_SIZE+2));
-        int nc = (FFT_SIZE)  + 1;
-        fft_out = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * nc);
-        plan_forward = fftw_plan_dft_r2c_1d(FFT_SIZE, fft_in, fft_out, FFTW_ESTIMATE);
-        fftw_free(fft_out);
-        fftw_free(fft_in);
-        
-        
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
         }
     }
     
     ~Mtf_core(void) {
-        // clean up FFTW
-        fftw_destroy_plan(plan_forward);
     }
     
     size_t num_objects(void) {
@@ -143,8 +129,7 @@ class Mtf_core {
     const cv::Mat&            img;
     bayer_t bayer;
     
-    // global plan for fourier transform
-    fftw_plan plan_forward;
+    AFFT<512> afft; // FFT_SIZE = 512 ??
     vector<int> valid_obj;
     
     vector<Block> detected_blocks;  

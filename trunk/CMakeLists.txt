@@ -66,12 +66,10 @@ if (NOT OpenCV_VERSION)
     # if neither of the above worked, try the find script
     find_package(OpenCV REQUIRED)
 endif (NOT OpenCV_VERSION)
-find_package(FFTW REQUIRED)
 find_package(TBB REQUIRED)
 find_package(TCLAP REQUIRED)
 find_package(Qt4)
 
-include_directories("${FFTW_INCLUDE_DIR}")
 include_directories("${OpenCV_INCLUDE_DIRS}")
 include_directories("${TCLAP_INCLUDE_DIR}")
 include_directories("${TBB_INCLUDE_DIR}")

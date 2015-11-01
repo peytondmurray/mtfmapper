@@ -244,25 +244,20 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         return 0;
     }
     
-    double* fft_in_buffer = (double*)fftw_malloc(sizeof(double)*2*(FFT_SIZE+2));
-    for (size_t i=0; i < 2*(FFT_SIZE+2); i++) {
-        fft_in_buffer[i] = 0.0;
-    }
+    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
 
-    double SNR = bin_fit(ordered, fft_in_buffer, FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
-    
-    fftw_complex* fft_out_buffer = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * (FFT_SIZE+1));
-    fftw_execute_dft_r2c(plan_forward, fft_in_buffer, fft_out_buffer);
+    double SNR = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    afft.realfft(fft_out_buffer.data());
 
     double quad = angle_reduce(best_angle);
     
-    double n0 = sqrt(SQR(fft_out_buffer[0][0]) + SQR(fft_out_buffer[0][1]));
+    double n0 = sqrt(SQR(fft_out_buffer[0]) + SQR(fft_out_buffer[1]));
     vector<double> magnitude(NYQUIST_FREQ*2+9);
     double sfr_area = 0;
     double prev=0;
     double alpha=0.25;
     for (int i=0; i < NYQUIST_FREQ*2+9; i++) {
-        magnitude[i] = sqrt(SQR(fft_out_buffer[i][0]) + SQR(fft_out_buffer[i][1])) / n0;
+        magnitude[i] = sqrt(SQR(fft_out_buffer[2*i]) + SQR(fft_out_buffer[2*i+1])) / n0;
         if (i <= NYQUIST_FREQ) {
             sfr_area += magnitude[i];
         }
@@ -429,9 +424,6 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     if (edge_length < 25) {  // derate short edges
         quality *= poor_quality;
     }
-    
-    fftw_free(fft_out_buffer);
-    fftw_free(fft_in_buffer);        
     
     return mtf50;
 }
