@@ -85,10 +85,10 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                     //contrast /= sin(resolution[j]*M_PI)/(resolution[j]*M_PI); // TODO: optionally remove photosite aperture / AA MTF
                     
                     if (acos(fabs(delta))/M_PI*180.0 < angle_thresh) { // edge perp to tangent
-                        sagittal[j].push_back(Ordered_point(radial_len, contrast));
+                        meridional[j].push_back(Ordered_point(radial_len, contrast));
                     } 
                     if (acos(fabs(delta))/M_PI*180 > (90 - angle_thresh)) { // edge perp to radial : TODO: check math
-                        meridional[j].push_back(Ordered_point(radial_len, contrast));
+                        sagittal[j].push_back(Ordered_point(radial_len, contrast));
                     }
                 }
             }
