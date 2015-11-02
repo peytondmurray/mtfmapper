@@ -4,12 +4,12 @@ Copyright 2011 Frans van den Bergh. All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright notice, this list of
-conditions and the following disclaimer.
+   1. Redistributions of source code must retain the above copyright notice, this list of
+      conditions and the following disclaimer.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list
-of conditions and the following disclaimer in the documentation and/or other materials
-provided with the distribution.
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+      of conditions and the following disclaimer in the documentation and/or other materials
+      provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY Frans van den Bergh ''AS IS'' AND ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
@@ -28,6 +28,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef AFFT_H
 #define AFFT_H
 
+#include <assert.h>
+
 #include <vector>
 using std::vector;
 using std::pair;
@@ -36,133 +38,109 @@ using std::make_pair;
 template< int n >
 class AFFT {
   public:
-    AFFT(void) 
-    : cstab(2*n), cstable(2*n) {
-        
-        for (int i=0; i < n; i++) {
-            cstab[2*i] = sin(-2*M_PI*i/double(n));
-            cstab[2*i+1] = cos(-2*M_PI*i/double(n));
-        }
-        
-        unsigned int nn = n >> 1; // number of complex values
+    AFFT(void) {
+    
         int j = 1;
-        for (int i = 1; i < n; i += 2) {
-            if (j > i) {
-                bitrev.push_back(make_pair(j - 1, i - 1));
-                bitrev.push_back(make_pair(j, i));
+        // digit (bit) reverse
+        for (int i=1; i < n; i++) {
+            if (i < j) {
+                bitrev.push_back(make_pair(j,i));
             }
-            int m = nn;
-            while (m >= 2 && j > m) {
-                j -= m;
-                m >>= 1;
+            int k = n / 2;
+            while (k >= 1 && k < j) {
+                j -= k;
+                k /= 2;
             }
-            j += m;
-        };
-        
-        double twiddlebase = 2*M_PI/double(n/2);
-        double y = 0.0;
-        for (int i=0; i < n; i++, y += 1.0) {
-            double x = y*twiddlebase;
-            cstable[2*i] = cos(x);
-            cstable[2*i+1] = -sin(x); 
+            j += k;
         }
         
-        power = -1;
+        
+        power = 0;
         unsigned int t = n/2;
         while (t > 0) {
             power++;
             t >>= 1;
         }
+        
+        cstab = vector< vector<double> >(power+1, vector<double>(n/2, 0)); // choose fixed upper limit to help compiler
+        int n2 = 1;
+        for (unsigned int k=2; k <= power; k++) {
+            int n4 = n2;
+            n2 = 2*n4;
+            int n1 = 2*n2;
+            double e = 2*M_PI / double(n1);
+            int idx = 0;
+            for (int i=1; i <= n; i += n1) {
+                double a = e;
+                for (int j=1; j <= (n4 - 1); j++) { 
+                    cstab[k][idx++] = cos(a);
+                    cstab[k][idx++] = sin(a);
+                    a += e;
+                }
+            }
+        }
     }
     
-    void forward(double* data) {
-        // apply bit-reversing 
-        for (size_t j=0; j < bitrev.size(); j++) {
-            std::swap(data[bitrev[j].first], data[bitrev[j].second]);
+    // NB: Input is n real samples
+    //     Output is [Re(0), Re(1), ..., Re(N/2), Im(N/2-1), ..., Im(1)]
+    //     So DC is x[0], and complex frequency k is (x[k], x[N-k])
+    void realfft(double* x) {
+        x--; // simulate 1-based arrays
+        
+        // TODO: can we combine the first pass with the bit reversal?
+        
+        for (size_t i=0; i < bitrev.size(); i++) {
+            std::swap(x[bitrev[i].first], x[bitrev[i].second]);
         }
         
-        
-        // perform first stage where bflys==1 and cos=1, sin=0
-        unsigned int node_space = 2; // start at 2 because we interleave real and complex parts
-        double* x0p = data;
-        for (unsigned int group = 0; group < n/4; group++) {
-            double twidf[2] = {*(x0p + node_space), *(x0p + node_space+1)};
-            
-            *(x0p + node_space)   = *(x0p) - twidf[0];
-            *(x0p + node_space+1) = *(x0p+1) - twidf[1];
-            *(x0p) += twidf[0];
-            *(x0p+1) += twidf[1];
-
-            x0p += 2 + node_space;
-        }                       //end group loop
-        node_space <<= 1;
-        
-        unsigned int bflys_per_group = 2; // start at two because first stage is hardcoded
-        unsigned int num_groups = n/8; // start at n/8 because first stage is hardcoded
-            
-        //stage loop
-        for (unsigned int stage = 1; stage < power; stage++) {
-            double* x0p = data;
-            //group loop
-            for (unsigned int group = 0; group < num_groups; group++) {
-
-                double* c_ptr = cstable.data();
-                //butterfly loop
-                for (unsigned int bflys = 0; bflys < bflys_per_group; bflys++) {
-                    
-                    double twidf[2] = {
-                        (*c_ptr) * *(x0p + node_space) - (*(c_ptr+1)) * *(x0p + node_space+1),
-                        (*c_ptr) * *(x0p + node_space+1) + (*(c_ptr+1)) * *(x0p + node_space)
-                    };
-                    
-                    *(x0p + node_space)   = *(x0p) - twidf[0];
-                    *(x0p + node_space+1) = *(x0p+1) - twidf[1];
-                    *(x0p) += twidf[0];
-                    *(x0p+1) += twidf[1];
-
-                    x0p += 2;
-                    c_ptr += 2*num_groups;
-                }                   //end butterfly loop
-                x0p += node_space;
-            }                       //end group loop
-            num_groups >>= 1;
-            bflys_per_group = node_space;
-            node_space <<= 1;
-            
-        }                           //end stage loop
-    }
-
-    
-    void realfft(double *data) {
-        forward(data);
-        
-        double* sp = cstab.data() + 2;
-        
-        for (int i=1; i < n/2; i++) {
-            int k = 2*i;
-            int ik = 2*(n/2 - i);
-            
-            double cr = (data[k] + data[ik]);
-            double ci = (data[k+1] - data[ik + 1]);
-            
-            double br = (data[k] - data[ik]);
-            double bi = (data[k+1] + data[ik + 1]);
-            
-            cr += br*(*sp) + bi*(*(sp+1));
-            ci += (*sp)*bi - (*(sp+1))*br;
-            data[k] = 0.5*cr;
-            data[k+1] = 0.5*ci;
-            sp += 2;
+        // length 2 butterflies have special twiddle factors, do them first
+        double* xp = x + 1;
+        double* xp_sent = x + n;
+        for (; xp <= xp_sent; xp += 2) {
+            double xt = *xp;
+            *(xp)   = xt + *(xp+1);
+            *(xp+1) = xt - *(xp+1);
         }
-        // TODO: deal with data[N/2]
-        // TODO: deal with data[0]
+        
+        // other stages
+        int n2 = 1;
+        for (unsigned int k=2; k <= power; k++) {
+            int n4 = n2;
+            n2 = n4 << 1;
+            int n1 = n2 << 1;
+            double* cs_ptr = cstab[k].data();
+            
+            double* xp = x + 1; // start at x[1]
+            double* xp_sent = xp + n; // stage sentinel
+            
+            for (;xp < xp_sent;) { 
+                double xt = *xp;
+                *(xp)    = xt + *(xp+n2);
+                *(xp+n2) = xt - *(xp+n2);
+                *(xp+n4+n2) = -*(xp+n4+n2);
+                
+                for (int j=1; j <= (n4 - 1); j++) { 
+                    double* i1 = xp + j;      
+                    double* i2 = xp - j + n2;
+                    double* i3 = i1 + n2;
+                    double* i4 = i2 + n2;
+                    
+                    double t1 = *(i1+n2)*(*(cs_ptr))  +  *(i2+n2)*(*(cs_ptr+1));
+                    double t2 = *(i1+n2)*(*(cs_ptr+1)) - *(i2+n2)*(*(cs_ptr));
+                    *i4 =  *i2 - t2;
+                    *i3 = -*i2 - t2;
+                    
+                    *i2 =  *i1 - t1;
+                    *i1 += t1;
+                    cs_ptr += 2;
+                }
+                xp += n1;
+            }
+        }
     }
     
-    
-  
-    vector<double> cstab;
     vector< pair<int,int> > bitrev;
-    vector<double> cstable;
+    vector< vector<double> > cstab;
     unsigned int power;
 };
 

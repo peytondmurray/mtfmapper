@@ -251,13 +251,13 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
 
     double quad = angle_reduce(best_angle);
     
-    double n0 = sqrt(SQR(fft_out_buffer[0]) + SQR(fft_out_buffer[1]));
+    double n0 = fabs(fft_out_buffer[0]);
     vector<double> magnitude(NYQUIST_FREQ*2+9);
     double sfr_area = 0;
     double prev=0;
     double alpha=0.25;
     for (int i=0; i < NYQUIST_FREQ*2+9; i++) {
-        magnitude[i] = sqrt(SQR(fft_out_buffer[2*i]) + SQR(fft_out_buffer[2*i+1])) / n0;
+        magnitude[i] = sqrt(SQR(fft_out_buffer[i]) + SQR(fft_out_buffer[FFT_SIZE - i])) / n0;
         if (i <= NYQUIST_FREQ) {
             sfr_area += magnitude[i];
         }
