@@ -55,7 +55,8 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         
         vector<double> resolution;
         for (size_t i=0; i < std::min(size_t(3), in_resolution.size()); i++) {
-            resolution.push_back(in_resolution[i] * 2 / pixel_size);
+            resolution.push_back(in_resolution[i] / pixel_size);
+            printf("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
         }
         
         vector< vector<Ordered_point> > sagittal(resolution.size());
@@ -119,7 +120,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             lsfit(sagittal[j], s_fitted[j], s_spread[j]);
             lsfit(meridional[j], m_fitted[j], m_spread[j]);
             
-            fprintf(fout, "distance  contrast(%.1flp/mm)  ", resolution[j] * pixel_size / 2.0);
+            fprintf(fout, "distance  contrast(%.1flp/mm)  ", resolution[j] * pixel_size);
         }
         fprintf(fout, "\n");
         
@@ -201,12 +202,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         
         fprintf(gpf, "plot [][-0.05:1] ");
         for (size_t j=0; j < resolution.size(); j++) {
-            double res = lpmm_mode ? resolution[j]*pixel_size*0.5 : resolution[j] * 2 * NYQUIST_FREQ;
+            double res = lpmm_mode ? resolution[j]*pixel_size : resolution[j] ;
             fprintf(gpf,   
                 "\"%s\" index 2 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
                 "\"%s\" index 3 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
-                "\"%s\" index 0 u 1:%d w l lc rgb \"%s\" lw 2 lt 16 t \"S %.1lf %s\","
-                "\"%s\" index 1 u 1:%d w l lc rgb \"%s\" lt 12 lw 2 t \"M %.1lf %s\"",
+                "\"%s\" index 0 u 1:%d w l lc rgb \"%s\" lw 2 lt 16 t \"S %.2lf %s\","
+                "\"%s\" index 1 u 1:%d w l lc rgb \"%s\" lt 12 lw 2 t \"M %.2lf %s\"",
                 (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j].c_str(),
                 (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j+1].c_str(),
                 (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), res, resmode.c_str(),
