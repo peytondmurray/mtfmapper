@@ -102,6 +102,14 @@ using std::make_pair;
 
 #define SQR(x) ((x)*(x))
 
+// stat functions
+#include <sys/stat.h>
+#ifndef _WIN32
+#define STAT stat
+#else
+#define STAT _stat
+#endif
+
 #endif //COMMON_TYPES_H
 
 

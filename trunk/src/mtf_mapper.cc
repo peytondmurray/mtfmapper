@@ -154,6 +154,17 @@ int main(int argc, char** argv) {
 		printf("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
 		return -2;
 	}
+	
+	struct STAT sb;
+	if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {
+	    printf("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
+	    return -3;
+	} else {
+	    if (!S_ISDIR(sb.st_mode)) {
+	        printf("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
+	        return -3;
+	    }
+	}
     
     if (cvimg.type() == CV_8UC3 || cvimg.type() == CV_16UC3) {
         printf("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
@@ -354,9 +365,15 @@ int main(int argc, char** argv) {
         vector<double> resolutions;
         // try to infer what resolutions the user wants
         if (!(tc_lp1.isSet() || tc_lp2.isSet() || tc_lp3.isSet())) {
-            // if nothing is specified explicitly, use the first two defaults
-            resolutions.push_back(tc_lp1.getValue());
-            resolutions.push_back(tc_lp2.getValue());
+            if (lpmm_mode) {
+                // if nothing is specified explicitly, use the first two defaults
+                resolutions.push_back(tc_lp1.getValue());
+                resolutions.push_back(tc_lp2.getValue());
+            } else {
+                // otherwise just pick some arbitrary values
+                resolutions.push_back(0.1);
+                resolutions.push_back(0.2);
+            }
         } else {
             if (tc_lp1.isSet()) {
                 resolutions.push_back(tc_lp1.getValue());
