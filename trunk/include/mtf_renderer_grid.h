@@ -110,13 +110,23 @@ class Mtf_renderer_grid : public Mtf_renderer {
             fprintf(file, "\n");
         }
         fclose(file);
+        
+        string img_name_clean;
+        for (size_t i=0; i < img_filename.length(); i++) {
+            if (img_name_clean.length() > 0 && img_name_clean[img_name_clean.length()-1] == '\\' &&
+                img_filename[i] == '\\') {
+                // skip
+            } else {
+                img_name_clean.push_back(img_filename[i]);
+            }
+        }
 
         const int width_in_pixels = 600;
         const int width_in_pixels_3d = 900;
         const int height_in_pixels_3d = 1200;
         FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
         if (img_filename.length() > 0) {
-            fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \",14\"\n", img_filename.c_str());
+            fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \",14\"\n", img_name_clean.c_str());
             fprintf(gpf, "set bmargin 5\n");
         }
         fprintf(gpf, "set yrange [] reverse\n");

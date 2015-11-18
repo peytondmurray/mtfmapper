@@ -200,6 +200,7 @@ int main(int argc, char** argv) {
         wdir = tc_wdir.getValue() + "/";
     }
 
+    char slashchar='/';
 	#ifdef _WIN32
 	// on windows, mangle the '/' into a '\\'
 	std::string wdm;
@@ -212,7 +213,34 @@ int main(int argc, char** argv) {
 		}
 	}
 	wdir = wdm;
+	slashchar='\\';
 	#endif
+	
+	// strip off supposed extention suffix,
+	// and supposed path prefix
+	int ext_idx=-1;
+	int path_idx=0;
+	for (int idx=tc_in_name.getValue().length()-1; idx >= 0 && path_idx == 0; idx--) {
+	    if (tc_in_name.getValue()[idx] == '.' && ext_idx < 0) {
+	        ext_idx = idx;
+        }
+	    if (tc_in_name.getValue()[idx] == slashchar && path_idx == 0) {
+	        path_idx = idx;
+	    }
+    }
+    if (ext_idx < 0) {
+        ext_idx = tc_in_name.getValue().length();
+    }
+    std::string img_filename;
+    for (int idx=path_idx; idx < ext_idx; idx++) {
+        char c = tc_in_name.getValue()[idx];
+        if (c == slashchar) continue;
+        if (c == '_') {
+            img_filename.push_back('\\');
+            img_filename.push_back('\\');
+        }
+        img_filename.push_back(c);
+    }
 	
 	// initialize the global apodization filter
 	global_apodization_instance = new Apodization(512);
@@ -328,7 +356,7 @@ int main(int argc, char** argv) {
             }
         } else {
             Mtf_renderer_grid grid(
-                tc_in_name.getValue(),
+                img_filename,
                 wdir, 
                 string("grid.txt"),
                 tc_gnuplot.getValue(),
@@ -390,7 +418,7 @@ int main(int argc, char** argv) {
         sort(resolutions.begin(), resolutions.end());
         
         Mtf_renderer_lensprofile printer(
-            tc_in_name.getValue(),
+            img_filename,
             wdir, 
             string("lensprofile.txt"),
             tc_gnuplot.getValue(),
