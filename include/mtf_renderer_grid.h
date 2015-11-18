@@ -35,10 +35,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_grid : public Mtf_renderer {
   public:
-    Mtf_renderer_grid(const std::string& wdir, const std::string& in_fname, 
+    Mtf_renderer_grid(
+        const std::string& img_filename,
+        const std::string& wdir, const std::string& in_fname, 
         const std::string& gnuplot_binary, const cv::Mat& img,
         bool lpmm_mode, double pixel_size)
-      :  wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
+      :  Mtf_renderer(img_filename),
+         wdir(wdir), fname(in_fname), gnuplot_binary(gnuplot_binary), 
          img_y(img.rows), img_x(img.cols), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
@@ -112,6 +115,10 @@ class Mtf_renderer_grid : public Mtf_renderer {
         const int width_in_pixels_3d = 900;
         const int height_in_pixels_3d = 1200;
         FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
+        if (img_filename.length() > 0) {
+            fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \",14\"\n", img_filename.c_str());
+            fprintf(gpf, "set bmargin 5\n");
+        }
         fprintf(gpf, "set yrange [] reverse\n");
         fprintf(gpf, "set palette defined (0 1 1 1, 1 0 0 1, 3 1 1 0, 4 1 0 0, 6 0 1 0)\n");
         fprintf(gpf, "set pm3d at bs depthorder interpolate 2,2\n");
@@ -137,6 +144,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                 lpmm_mode ? "lp/mm" : "c/p"
         );
         fprintf(gpf, "unset multiplot\n");
+        fprintf(gpf, "unset label 11\n");
         fprintf(gpf, "set term png size %d, %d font \"arial,9\"\n", width_in_pixels_3d, height_in_pixels_3d);
         fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
         fprintf(gpf, "unset xlab\n");
@@ -162,6 +170,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                 img.rows/pixel_size
         );
         fprintf(gpf, "unset multiplot\n");
+        
         fclose(gpf);
         
         char* buffer = new char[1024];

@@ -328,6 +328,7 @@ int main(int argc, char** argv) {
             }
         } else {
             Mtf_renderer_grid grid(
+                tc_in_name.getValue(),
                 wdir, 
                 string("grid.txt"),
                 tc_gnuplot.getValue(),
@@ -389,6 +390,7 @@ int main(int argc, char** argv) {
         sort(resolutions.begin(), resolutions.end());
         
         Mtf_renderer_lensprofile printer(
+            tc_in_name.getValue(),
             wdir, 
             string("lensprofile.txt"),
             tc_gnuplot.getValue(),
