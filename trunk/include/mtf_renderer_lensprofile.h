@@ -35,13 +35,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_lensprofile : public Mtf_renderer {
   public:
-    Mtf_renderer_lensprofile(const std::string& wdir, 
+    Mtf_renderer_lensprofile(
+        const std::string& img_filename,
+        const std::string& wdir, 
         const std::string& prof_fname, 
         const std::string& gnuplot_binary,
         const cv::Mat& img, 
         const vector<double>& in_resolution,
         bool lpmm_mode=false, double pixel_size=1.0) 
-      :  wdir(wdir), prname(prof_fname), 
+      :  Mtf_renderer(img_filename),
+         wdir(wdir), prname(prof_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
@@ -199,6 +202,9 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fprintf(gpf, "set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb \"white\" behind\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
         //fprintf(gpf, "set linetype 5 dashtype 2 linewidth 2\n"); // Use this with gnuplot 5 onwards, later.
+        if (img_filename.length() > 0) {
+            fprintf(gpf, "set title \"%s\" font \",14\"\n", img_filename.c_str());
+        }
         
         fprintf(gpf, "plot [][-0.05:1] ");
         for (size_t j=0; j < resolution.size(); j++) {

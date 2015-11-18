@@ -33,10 +33,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer {
   public:
-    Mtf_renderer(void) {}
+    Mtf_renderer(string img_filename="") : img_filename(img_filename) {}
     virtual ~Mtf_renderer(void) {}
     
     virtual void render(const vector<Block>& blocks) = 0;
+    
+    string img_filename;
 };
 
 #endif
