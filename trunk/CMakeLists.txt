@@ -22,7 +22,7 @@ set(genrectangle_VERSION_MINOR 0)
 # Turn all compiler warnings on when building with GCC
 if(CMAKE_COMPILER_IS_GNUCXX)
   message(STATUS "Using a g++ compiler variant --- additional compiler warnings turned on")
-  add_definitions(-Wall -W)
+  add_definitions(-Wall -W -Wno-unused-local-typedefs)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 # Turn all compiler warnings on when building with the Intel compiler
@@ -69,12 +69,16 @@ endif (NOT OpenCV_VERSION)
 find_package(TBB REQUIRED)
 find_package(TCLAP REQUIRED)
 find_package(Qt4)
+find_package(Eigen3 REQUIRED)
 
 include_directories("${OpenCV_INCLUDE_DIRS}")
 include_directories("${TCLAP_INCLUDE_DIR}")
 include_directories("${TBB_INCLUDE_DIR}")
+include_directories("${EIGEN3_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${PROJECT_BINARY_DIR}/bin")
+
+message(STATUS "Eigen path is" ${EIGEN3_INCLUDE_DIR})
 
 #optional
 if (BUILD_DOC)

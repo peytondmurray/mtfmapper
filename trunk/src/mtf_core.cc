@@ -44,6 +44,37 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     bool valid = extract_rectangle(cent, label, rrect);
     
     if (!valid) {
+        // this may be an ellipse. check it ...
+        printf("At (%lf, %lf): checking if this is an ellipse\n", cent.x, cent.y);
+        Boundarylist::const_iterator it = cl.get_boundaries().find(label);
+        Ellipse_detector e;
+        int valid = e.fit(cl, g, it->second, 0, 0, 2);
+        if (valid) {
+            {
+                tbb::mutex::scoped_lock lock(global_mutex);
+                ellipses.push_back(e);
+                if (e.solid) {
+                    solid_ellipses.push_back(Point(e.centroid_x, e.centroid_y));
+                }
+            }
+            for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
+                double synth_x = e.major_axis * cos(theta);
+                double synth_y = e.minor_axis * sin(theta);
+                double rot_x = cos(e.angle)*synth_x - sin(e.angle)*synth_y + e.centroid_x;
+                double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
+
+                // clip to image size, just in case
+                rot_x = std::max(rot_x, 0.0);
+                rot_x = std::min(rot_x, (double)(od_img.cols-1));
+                rot_y = std::max(rot_y, 0.0);
+                rot_y = std::min(rot_y, (double)(od_img.rows-1));
+
+                cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
+                color[0] = 255;
+                color[1] = 255;
+                color[2] = 0;
+            }
+        }
         return;
     }
     
