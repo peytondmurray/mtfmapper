@@ -176,6 +176,11 @@ class Block {
         return quality[it->second];
     }
     
+    int get_edge_index(edge_position ep) const {
+        map<edge_position, size_t>::const_iterator it = edge_lut.find(ep);
+        return it->second;
+    }
+    
     
     Mrectangle rect;
     vector<double> mtf50;

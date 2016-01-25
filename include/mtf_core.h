@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/gradient.h"
 #include "include/block.h"
 #include "include/rectangle.h"
+#include "include/ellipse.h"
 #include "include/edge_record.h"
 #include "include/loess_fit.h"
 #include "include/afft.h"
@@ -83,9 +84,14 @@ class Mtf_core {
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
         }
+        
+        cv::Mat temp;
+        in_img.convertTo(temp, CV_8U, 256.0/16384.0);
+        cv::cvtColor(temp, od_img, CV_GRAY2RGB);
     }
     
     ~Mtf_core(void) {
+        cv::imwrite(string("detections.png"), od_img);
     }
     
     size_t num_objects(void) {
@@ -134,7 +140,10 @@ class Mtf_core {
     
     vector<Block> detected_blocks;  
     map<int, Block> shared_blocks_map;
-
+    vector<Point> solid_ellipses;
+    vector<Ellipse_detector> ellipses;
+    
+    cv::Mat od_img;
   private:
     bool absolute_sfr;
     bool snap_to;
