@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "svg_page_grid.h"
 #include "svg_page_perspective.h"
 #include "svg_page_lensgrid.h"
+#include "svg_page_manualperspective.h"
 #include "config.h"
 
 #include <tclap/CmdLine.h>
@@ -48,6 +49,7 @@ int main(int argc, char** argv) {
     allowed_types.push_back("halfgrid");
     allowed_types.push_back("thirdgrid");
     allowed_types.push_back("lensgrid");
+    allowed_types.push_back("mfperspective");
     TCLAP::ValuesConstraint<string> type_constraints(allowed_types);
     
     vector<string> allowed_sizes;
@@ -100,6 +102,17 @@ int main(int argc, char** argv) {
             if (tc_type.getValue().compare("lensgrid") == 0) {
                 Svg_page_lensgrid p(tc_size.getValue(), tc_ofname.getValue());
                 p.render();
+            } 
+            
+            if (tc_type.getValue().compare("mfperspective") == 0) {
+                if (tc_size.getValue() == "A3" || tc_size.getValue() == "a3"){
+                    Svg_page_manualperspective p(tc_size.getValue(), tc_ofname.getValue());
+                    p.set_viewing_parameters(tc_distance.getValue(), -45/180.0*M_PI);
+                    p.render();
+                } else {
+                    printf("Sorry, only A3 size supported for this chart type at the moment\n");
+                    exit(-1);
+                }
             } else {
                 printf("Illegal chart type %s\n", tc_type.getValue().c_str());
             }
