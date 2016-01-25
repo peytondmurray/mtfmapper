@@ -49,8 +49,8 @@ typedef cv::Point_<int> iPoint;
 
 class Svg_page {
   public:
-    Svg_page(const string& page_spec, const string& fname) 
-      : fname(fname), page_size(page_spec)  {
+    Svg_page(const string& page_spec, const string& fname, double pscale=100) 
+      : fname(fname), page_size(page_spec), sscale(pscale)  {
         
         if (page_spec == "A4" || page_spec == "a4") {
             width_mm = 210;
@@ -73,8 +73,8 @@ class Svg_page {
             height_mm = 1189;
         }
         
-        width  = width_mm * 100;
-        height = height_mm * 100;
+        width  = width_mm * sscale;
+        height = height_mm * sscale;
         
         fout = fopen(fname.c_str(), "wt");
         emit_header();
@@ -155,6 +155,7 @@ class Svg_page {
     size_t height;  // in svg units
     std::string page_size;
     
+    double sscale;
 };
 
 #endif
