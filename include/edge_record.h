@@ -30,289 +30,239 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "common_types.h"
 
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 
 class Edge_record {
   public:
     Edge_record(void) : pooled(false) {
     }
 
-    // constructor for merging two data sets
-    Edge_record(const Edge_record& a, const Edge_record& b) {
-        double cx = a.centroid.x;
-        double cy = a.centroid.y;
-        if (a.orientation == HORIZONTAL) {
-            double temp = cx;
-            cx = cy;
-            cy = temp;
-        }
+    static void pool_edges(Edge_record& a, Edge_record& b) {
+        Edge_record m;
+        m.points.resize(a.points.size() + b.points.size());
+        m.weights.resize(a.weights.size() + b.weights.size());
+        
         for (size_t i=0; i < a.points.size(); i++) {
-            points.push_back(
-                make_pair(
-                    a.points[i].first - cx, 
-                    a.points[i].second - cy
-                )
-            );
-            weights.push_back(a.weights[i]);
+            m.points[i].first = a.points[i].first - a.centroid.x;
+            m.points[i].second = a.points[i].second - a.centroid.y;
+            m.weights[i] = a.weights[i];
         }
-
-        cx = b.centroid.x;
-        cy = b.centroid.y;
-        if (b.orientation == HORIZONTAL) {
-            double temp = cx;
-            cx = cy;
-            cy = temp;
-        }
+        size_t as = a.points.size();
         for (size_t i=0; i < b.points.size(); i++) {
-            points.push_back(
-                make_pair(
-                    b.points[i].first - cx, 
-                    b.points[i].second - cy
-                )
-            );
-            weights.push_back(b.weights[i]);
+            m.points[i+as].first = b.points[i].first - b.centroid.x;
+            m.points[i+as].second = b.points[i].second - b.centroid.y;
+            m.weights[i+as] = b.weights[i];
         }
-
-        rsq = lsq_fit(points, weights, slope, offset);
-        //printf("got %d points in merged sample, rsq=%lf\n", (int)points.size(), rsq);
-
-        const double il_thresh = rsq*1.1;
-        int omitted = 0;
-        for (size_t i=0; i < points.size(); i++) {
-            double ey = fabs(offset + slope*points[i].first - points[i].second);
-            if (ey > il_thresh) {
-                weights[i] = 0;
-                omitted++;
-            }
-        }
-        if (omitted < 0.6*points.size()) {
-            rsq = lsq_fit(points, weights, slope, offset);
-        }
-
-        //printf("slope=%lf, offset=%lf\n", slope, offset);
-        //printf("*got %d points in merged sample, rsq=%lf\n", (int)points.size() - omitted, rsq);
+        
+        m.compute_eigenvector_angle();
+        a.angle = m.angle;
+        b.angle = m.angle;
+        a.pooled = true;
+        b.pooled = true;
     }
 
-    typedef enum {HORIZONTAL, VERTICAL} orientation_t;
-
     bool compatible(const Edge_record& b) {
-        double Z = (slope - b.slope)/sqrt(sB*sB + b.sB*b.sB);
+        double Z;
+        
+        if (fabs(slope) > 2) {
+            Z = (1.0/slope - 1.0/b.slope)/sqrt(sB*sB + b.sB*b.sB);
+        } else {
+            Z = (slope - b.slope)/sqrt(sB*sB + b.sB*b.sB);
+        }
 
         return fabs(Z) < 1.66; // ~90% confidence interval on t-distribution with ~80 dof
     }
-
+    
+    inline double relative_orientation(const Edge_record& b) {
+        Point d1(cos(angle), sin(angle));
+        Point d2(cos(b.angle), sin(b.angle));
+        
+        return fabs(d1.x*d2.x + d1.y*d2.y);
+    }
+    
     void add_point(int x, int y, double gx, double gy) {
-        if (col_mean.find(x) == col_mean.end()) {
-            col_mean[x] = y * gy;
-            col_weight[x] = gy;
-        } else {
-            col_mean[x] += y * gy;
-            col_weight[x] += gy;
+        points.push_back(make_pair(x, y));
+        double mag = (gx*gx + gy*gy);
+        weights.push_back(mag);
+    }
+    
+    pair<double, double> compute_eigenvector_angle(void) {
+        double covxx = 0;
+        double covxy = 0;
+        double covyy = 0;
+        
+        centroid.x = 0;
+        centroid.y = 0;
+        wsum = 0;
+        for (size_t i=0; i < points.size(); i++) {
+            double w = weights[i];
+            
+            if (w > 0) {
+                double temp = w + wsum;
+                double delta_x = points[i].first - centroid.x;
+                double delta_y = points[i].second - centroid.y;
+                double rx = delta_x * w / temp;
+                double ry = delta_y * w / temp;
+                centroid.x += rx;
+                centroid.y += ry;
+                
+                covxx += wsum * delta_x * rx;
+                covyy += wsum * delta_y * ry;
+                covxy += wsum * delta_x * ry;
+                
+                wsum = temp;
+            }
         }
-
-        if (row_mean.find(y) == row_mean.end()) {
-            row_mean[y] = x * gx;
-            row_weight[y] = gx;
+        covxx /= wsum;
+        covxy /= wsum;
+        covyy /= wsum;
+        
+        
+        // char. poly: l^2 - (a+d)l + (ad-bc) = 0
+        // thus l^2 -(tr)l + det = 0
+        double tr = covxx + covyy;
+        double det = covxx*covyy - covxy*covxy;
+        
+        double pa=1.0;
+        double pb=-tr;
+        double pc=det;
+        
+        double q = -0.5 * (pb + sgn(pb)*sqrt(pb*pb - 4*pa*pc) );
+        double l1 = q/pa;
+        double l2 = pc / q;
+        
+        double l = std::max(l1,l2);
+        assert(l > 0);
+        
+        double ev[2];
+        if (fabs(covxy) > 1e-10) {
+            ev[0] = l - covyy;
+            ev[1] = covxy;
+            slope = ev[0] / ev[1]; // TODO: check this?
         } else {
-            row_mean[y] += x * gx;
-            row_weight[y] += gx;
+            printf("Warning: edge is perfectly horizontal / vertical\n");
+            ev[0] = 0;
+            ev[1] = 1;
+            slope = 0;
         }
+        
+        angle = atan2(-ev[0], ev[1]);
+        
+        return make_pair(
+            sqrt(std::max(fabs(l1), fabs(l2))),
+            sqrt(std::min(fabs(l1), fabs(l2)))
+        );
     }
 
-    void reduce(void) { // compute orientation, and remove weak points
-
-        map<int, double>* mean = 0;
-        map<int, double>* weight = 0;
-        map<int, double>* other_mean = 0;
-        map<int, double>* other_weight = 0;
-        if (col_mean.size() > row_mean.size()) {
-            mean = &col_mean;
-            weight = &col_weight;
-            other_mean = &row_mean;
-            other_weight = &row_weight;
-            orientation = VERTICAL;
-        } else {
-            mean = &row_mean;
-            weight = &row_weight;
-            other_mean = &col_mean;
-            other_weight = &col_weight;
-            orientation = HORIZONTAL;
-        }
-
-        vector<double> sweight;
-        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); ++it) {
-            if (it->second > 0) {
-                sweight.push_back(it->second);
-            }
-        }
-        sort(sweight.begin(), sweight.end());
-
-        if (sweight.size() == 0) {
-            printf("Major error: no edge points found!\n");
-            return;
-        }
-
-        double weight_thresh = 0;
-        if (sweight.size() > 5) {
-            weight_thresh = sweight[int(0.2*sweight.size())];
-        } else {
-            weight_thresh = sweight[0];
-        }
-
-        for (map<int, double>::const_iterator it=weight->begin(); it != weight->end(); ++it) {
-            if (it->second >= weight_thresh) {
-                points.push_back(make_pair(it->first, (*mean)[it->first] / it->second));
-                weights.push_back(it->second);
-            }
-        }
-
-        double ratio = double(mean->size())/double(other_mean->size());
-        if (ratio < 1.6) {
-            for (map<int, double>::const_iterator it=other_weight->begin(); it != other_weight->end(); ++it) {
-                if (it->second >= weight_thresh) {
-                    points.push_back(make_pair((*other_mean)[it->first] / it->second, it->first));
-                    weights.push_back(it->second/ratio);
+    bool reduce(void) { // compute orientation, and remove weak points
+    
+        renormalize_weights();
+        vector<double> inweights(weights);
+        pair<double,double> dims = compute_eigenvector_angle();
+        Point dir(cos(angle), sin(angle));
+        
+        double lwidth = dims.second;
+        for (size_t i=0; i < points.size(); i++) {
+            double dx = points[i].first - centroid.x;
+            double dy = points[i].second - centroid.y;
+            
+            double dot = dx * dir.x + dy * dir.y;
+            
+            double gw = 1.0;
+            double dw = 2;
+            
+            if (dims.first < 10) {
+                dw = 4;
+                double dotp = dx * (-dir.y) + dy*dir.x;
+                if (fabs(dotp) > dims.first) {
+                    gw *= 0.1;
                 }
             }
+            
+            gw *= exp(-dot*dot/(dw*lwidth*lwidth));
+            if (gw < 1e-10) gw = 0;
+            
+            weights[i] = inweights[i] * gw;
         }
-
         
-        rsq = lsq_fit(points, weights, slope, offset);
-
-        const double il_thresh = 2;
-        centroid = Point(0,0);
-        int c_count = 0;
-        for (size_t i=0; i < points.size(); i++) {
-            double ey = fabs(offset + slope*points[i].first - points[i].second);
-            if (ey > il_thresh) {
-                weights[i] /= 100000;
-            } else {
-                centroid.x += points[i].first;
-                centroid.y += points[i].second;
-                c_count++;
-            }
-        }
-        rsq = lsq_fit(points, weights, slope, offset);
-        //printf("n=%d, slope=%lf, offset=%lf, rsq=%lf\n", (int)points.size(), slope, offset, rsq);
-        centroid.x /= double(c_count);
-        centroid.y /= double(c_count);
-        mse = 0;
-        double ss_x = 0;
-        int e_count = 0;
-        for (size_t i=0; i < points.size(); i++) {
-            double ey = fabs(offset + slope*points[i].first - points[i].second);
-            if (ey <= il_thresh) {
-                mse += ey*ey;
-                ss_x += (points[i].first - centroid.x)*(points[i].first - centroid.x);
-                e_count++;
-            }
-        }
-        mse /= e_count - 2;
-        sB = sqrt(mse/ss_x);
-
-        dx = points[0].first - points[points.size()-1].first;
-        dy = points[0].second - points[points.size()-1].second;
-
-        if (orientation == VERTICAL) {
-            double temp = dx;
-            dx = dy;
-            dy = temp;
-        } else {
-            double temp = centroid.x;
-            centroid.x = centroid.y;
-            centroid.y = temp;
-        }
-
-        set_angle_from_slope(slope);
+        lwidth = compute_eigenvector_angle().second;
         
-        //printf("slope estimate is %lf, %lf degrees, rsq = %lf, offset=%lf\n", slope, angle/M_PI*180, rsq, offset);
-    }
-
-    inline orientation_t get_orientation(void) const {
-        return orientation;
+        dir = Point(cos(angle), sin(angle));
+        for (size_t i=0; i < points.size(); i++) {
+            double dx = points[i].first - centroid.x;
+            double dy = points[i].second - centroid.y;
+            
+            double dot = dx * dir.x + dy * dir.y;
+            
+            double gw = exp(-dot*dot/(2*lwidth*lwidth));
+            if (gw < 1e-10) gw = 0;
+            
+            
+            double dotp = dx * (-dir.y) + dy*dir.x;
+            if (dims.first < 10 && fabs(dotp) > 2*dims.first) {
+                gw *= 0.1;
+            }
+            
+            weights[i] = inweights[i] * gw;            
+            
+        }
+        lwidth = compute_eigenvector_angle().second;
+        
+        dir = Point(cos(angle), sin(angle));
+        for (size_t i=0; i < points.size(); i++) {
+            double dx = points[i].first - centroid.x;
+            double dy = points[i].second - centroid.y;
+            
+            double dot = dx * dir.x + dy * dir.y;
+            
+            double gw = exp(-dot*dot/(4*lwidth*lwidth)); // increase width slightly 
+            if (gw < 1e-10) gw = 0;
+            
+            double dotp = dx * (-dir.y) + dy*dir.x;
+            if (dims.first < 10 && fabs(dotp) > 2*dims.first) {
+                gw *= 0.1;
+            }
+            
+            weights[i] = inweights[i] * gw;            
+            
+        }
+        pair<double, double> radii =  compute_eigenvector_angle();
+        
+        sB = radii.second / (radii.first*sqrt(wsum));
+        
+        return true;
     }
 
     inline bool is_pooled(void) {
         return pooled;
     }
 
-    inline void set_angle_from_slope(double slope, bool is_pooled=false) {
-        if (orientation == VERTICAL) {
-            slope = 1.0/slope;
-        }
-
-        if (dx > 0) {
-            angle = -atan(slope);
-        } else {
-            if (dy >= 0) {
-                angle = -atan(slope) + M_PI;
-            } else {
-                angle = -atan(slope) - M_PI;
-            }
-        }
-        if (angle < -M_PI) {
-            angle += M_PI;
-        }
-        if (angle > M_PI) {
-            angle -= M_PI;
-        }
-
-        pooled = is_pooled;
-    }
-
     double slope;
-    double offset;
     double angle;
     double rsq;
     Point  centroid;
 
   private:
-
-    double lsq_fit(const vector< pair<double, double> >& points,
-        const vector< double >& weights, double& slope, double& offset) {
-
-        double rsq = 0;
-    
-        int n = weights.size();
-        
-        double sx  = 0;
-        double sy  = 0;
-        double ss  = 0;
-        
-        for (int i=0; i < n; i++) {
-            double weight = SQR(weights[i]);
-            ss += weight;
-            sx += points[i].first * weight;
-            sy += points[i].second * weight;
+  
+    void renormalize_weights(void) {
+        double maxw = 0;
+        for (size_t i=0; i < weights.size(); i++) {
+            maxw = std::max(weights[i], maxw);
         }
-        double sxoss = sx / ss;
-        
-        double st2 = 0;
-        double b = 0;
-        for (int i=0; i < n; i++) {
-            double t = (points[i].first - sxoss) * weights[i];
-            st2 += t*t;
-            b += t*points[i].second * weights[i];
+        if (maxw > 0) {
+            for (size_t i=0; i < weights.size(); i++) {
+                weights[i] /= maxw;
+            }
         }
-        b /= st2;
-        double a = (sy - sx*b)/ss;
-        offset = a;
-        slope = b;
-        for (int i=0; i < n; i++) {
-            double r = (points[i].first*slope + offset) - points[i].second;
-            rsq += fabs(r); // m-estimate of goodness-of-fit
-        }
-        return rsq/double(n);
     }
-
-    orientation_t orientation;
 
     vector< pair<double, double> > points;
     vector< double > weights;
-
-    map<int, double> row_mean;
-    map<int, double> row_weight;
-    map<int, double> col_mean;
-    map<int, double> col_weight;
+    
+    double wsum;
 
     double mse;
     double sB; // standard error in slope estimate
@@ -322,6 +272,7 @@ class Edge_record {
 
     bool pooled;
 };
+
 
 #endif 
 

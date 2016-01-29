@@ -90,6 +90,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     vector<Point>& centroids = rrect.centroids;
     vector<Edge_record> edge_record(4);
     vector< map<int, scanline> > scansets(4); 
+    bool reduce_success = true;
     for (size_t k=0; k < 4; k++) {
         Point mid_dir = average_dir(g, int(centroids[k].x), int(centroids[k].y));
         
@@ -122,32 +123,32 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             }
         }
 
-        edge_record[k].reduce();
+        reduce_success &= edge_record[k].reduce();
     }
-
-    size_t first_edge = 0;
-    vector<int> orientation_a;
-    vector<int> orientation_b;
-    for (size_t k=1; k < 4; k++) {
-        if (edge_record[k].get_orientation() == edge_record[first_edge].get_orientation()) {
-            orientation_a.push_back(first_edge);
-            orientation_a.push_back(k);
-        } else {
-            orientation_b.push_back(k);
+    
+    if (!reduce_success) {
+        printf("reduce failed, probably not a rectangle/quadrangle\n");
+        return;
+    }
+    
+    vector< pair<double, pair<int,int> > > pairs;
+    for (size_t k=0; k < 3; k++) {
+        for (size_t l=k+1; l < 4; l++) {
+            double rel_sim = edge_record[k].relative_orientation(edge_record[l]);
+            if (rel_sim > 0.80902) { // = cos(M_PI/5.0) ~ 36 degrees
+                pairs.push_back( make_pair(1-rel_sim, make_pair(k, l)) );
+            }
         }
     }
-    // if we have two clear pairs of matched edges, attempt to merge them
-    if (orientation_a.size() == 2 && orientation_b.size() == 2) {
-        if (edge_record[orientation_a[0]].compatible(edge_record[orientation_a[1]])) {
-            Edge_record merged(edge_record[orientation_a[0]], edge_record[orientation_a[1]]);
-            edge_record[orientation_a[0]].set_angle_from_slope(merged.slope, true);
-            edge_record[orientation_a[1]].set_angle_from_slope(merged.slope, true);
-        }
-        if (edge_record[orientation_b[0]].compatible(edge_record[orientation_b[1]])) {
-            Edge_record merged(edge_record[orientation_b[0]], edge_record[orientation_b[1]]);
-            edge_record[orientation_b[0]].set_angle_from_slope(merged.slope, true);
-            edge_record[orientation_b[1]].set_angle_from_slope(merged.slope, true);
-        }
+    sort(pairs.begin(), pairs.end());
+    for (size_t i=0; i < pairs.size(); i++) {
+        int e1 = pairs[i].second.first;
+        int e2 = pairs[i].second.second; 
+        if (edge_record[e1].compatible(edge_record[e2])) {
+            if (!edge_record[e1].is_pooled() && !edge_record[e2].is_pooled()) {
+                Edge_record::pool_edges(edge_record[e1], edge_record[e2]);
+            } 
+        } 
     }
     
     for (size_t k=0; k < 4; k++) {
