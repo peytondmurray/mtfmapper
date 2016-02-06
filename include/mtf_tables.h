@@ -79,7 +79,11 @@ class Mtf_correction {
         for (int i=1; i < NYQUIST_FREQ*2; i++) {
             double dc_x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
             double lp_x = M_PI*i/double(NYQUIST_FREQ*2);
-            w[i] = (sin(dc_x)/dc_x) * exp(-2*sdev*sdev*lp_x*lp_x);
+            double boost = 1.0;
+            if (i > NYQUIST_FREQ*2 - 18) {
+                boost = 1 + (i - (NYQUIST_FREQ*2 - 18))/18.0*1.0;
+            }
+            w[i] = (sin(dc_x)/dc_x) * exp(-2*sdev*sdev*lp_x*lp_x) * boost;
         }
     }
     

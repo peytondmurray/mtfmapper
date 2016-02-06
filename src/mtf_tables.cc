@@ -30,4 +30,4 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 Apodization* global_apodization_instance;
 Mtf_correction* global_mtf_correction_instance;
 
-const double Mtf_correction::sdev = 0.2;
+const double Mtf_correction::sdev = 0.1;
