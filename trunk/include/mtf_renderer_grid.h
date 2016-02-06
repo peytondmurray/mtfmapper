@@ -297,17 +297,21 @@ class Mtf_renderer_grid : public Mtf_renderer {
         // replace indices with actual mtf50 values
         for (size_t y=0; y < grid_y; y++) {
             for (size_t x=0; x < grid_x; x++) {
-                grid.at<float>(y,x) = vals[int(flood_labels.at<float>(y,x))-1];
+                if (int(flood_labels.at<float>(y,x)) >= 1) {
+                    grid.at<float>(y,x) = vals[int(flood_labels.at<float>(y,x))-1];
+                }
             }
         }
-
+        
+        if (vals.size() > 1) {
         sort(vals.begin(), vals.end());
         double thresh95 = vals[95*vals.size()/100];
-        // suppress upper 5% of values (to filter outliers)
-        for (size_t y=0; y < grid_y; y++) {
-            for (size_t x=0; x < grid_x; x++) {
-                if (grid.at<float>(y,x) > thresh95) {
-                    grid.at<float>(y,x) = thresh95;
+            // suppress upper 5% of values (to filter outliers)
+            for (size_t y=0; y < grid_y; y++) {
+                for (size_t x=0; x < grid_x; x++) {
+                    if (grid.at<float>(y,x) > thresh95) {
+                        grid.at<float>(y,x) = thresh95;
+                    }
                 }
             }
         }
