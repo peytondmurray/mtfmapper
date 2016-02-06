@@ -91,7 +91,7 @@ class Mtf_core {
     }
     
     ~Mtf_core(void) {
-        cv::imwrite(string("detections.png"), od_img);
+        //cv::imwrite(string("detections.png"), od_img);
     }
     
     size_t num_objects(void) {
