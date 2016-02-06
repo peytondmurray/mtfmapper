@@ -33,56 +33,61 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Airy_sampler {
   public:
     Airy_sampler(double lambda, double pitch, double N) 
-      : lambda(lambda), pitch(pitch), N(N),
-        nsamples(3*7000), x(nsamples, 0), y(nsamples, 0) {
+      : lambda(lambda), pitch(pitch), N(N) {
         
-        // first point is replicated to allow interpolation later
-        x[0] = 0;
-        y[0] = 0;
-        for (size_t n=1; n < nsamples; n++) {
-            x[n] = ((n-1)/double(nsamples))*diam;
-            y[n] = y[n-1] + 4*jinc(x[n])*jinc(x[n]) * ((M_PI*x[n]*x[n] - M_PI*x[n-1]*x[n-1])); // correct PRASA line
-            // We can bias the edges a little to ensure more samples are taken there, but these samples
-            // have very low weights, thus contribute vary little. Potentially they may help to ensure the early 
-            // convergence tests function better ...
-            //y[n] = y[n-1] + (4*jinc(x[n])*jinc(x[n])*(1-1e-5) + (1e-5)) * ((M_PI*x[n]*x[n] - M_PI*x[n-1]*x[n-1]));  
-        }
-        for (size_t n=0; n < nsamples; n++) {
-            y[n] /= y[nsamples-1];
-        }
+        diam_prob = 1 - j0(diam*M_PI)*j0(diam*M_PI) - j1(diam*M_PI)*j1(diam*M_PI);
     }
     
     double rairy2d(double& sx, double& sy, normal_sampler& sampler) {
         double px;
         double py;
-        sampler.runif2d(px, py, 0.5, 0.5);
-        px += 0.5; // undo the scaling of runif2d
-        py += 0.5;
-        py *= 2*M_PI;
-        size_t xidx = upper_bound(y.begin(), y.end(), px) - y.begin();
-        double xp;
-        // interpolate to prevent stratification
-        if (xidx < nsamples - 1) {
-            double alpha = (px - y[xidx])/(y[xidx+1] - y[xidx]);
-            xp = x[xidx]*(1-alpha) + x[xidx+1]*alpha;
-        } else {
-            xp = x[xidx];
+        
+        do {
+            sampler.runif2d(px, py, 0.5, 0.5);
+            px += 0.5; // undo the scaling of runif2d
+            py += 0.5;
+            py *= 2*M_PI;
+        } while (px > diam_prob);
+        
+        const double tol = 1e-11;
+        double gr = (sqrt(5.0)-1.0)*0.5;
+        double a = 0;
+        double b = diam; // larger?
+        double c = b - gr*(b - a);
+        double d = a + gr*(b - a);
+        while (fabs(c - d) > tol) {
+            double fc = jinc_p(c, px);
+            double fd = jinc_p(d, px);
+            if (fc < fd) {
+                b = d;
+                d = c;
+                c = b - gr*(b - a);
+            } else {
+                a = c;
+                c = d;
+                d = a + gr*(b - a);
+            }
         }
-        double rad = (xp) * (lambda/pitch)*N;
+        double rad = (0.5*(a+b)) * (lambda/pitch)*N;
         sx = rad*cos(py);
         sy = rad*sin(py);
-        if (xidx == 0) return 1e-6;
-        return (y[xidx] - y[xidx-1]) / ((M_PI*x[xidx]*x[xidx] - M_PI*x[xidx-1]*x[xidx-1])); 
+        
+        return 4*jinc(rad*pitch/(lambda*N))*jinc(rad*pitch/(lambda*N));
     }
     
-    inline static double jinc(double x) {
-        if (fabs(x) == 0) {
+    inline static double jinc(double v) {
+        if (fabs(v) == 0) {
             return 0.5;
         }
-        return j1(x*M_PI)/(x*M_PI);
+        return j1(v*M_PI)/(v*M_PI);
+    }
+    
+    inline double jinc_p(double v, double target) {
+        return fabs((1 - j0(v*M_PI)*j0(v*M_PI) - j1(v*M_PI)*j1(v*M_PI)) - target);
     }
     
     static const double diam;
+    double diam_prob;
     
     double lambda;
     double pitch;
@@ -93,7 +98,7 @@ class Airy_sampler {
     vector<double> y;
 };
 
-const double Airy_sampler::diam = 45.0;
+const double Airy_sampler::diam = 55.0;
 
 #endif
 
