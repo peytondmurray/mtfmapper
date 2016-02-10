@@ -90,6 +90,10 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
+inline double tri(double x) {
+    return fabs(x) < 1 ? 1 - fabs(x) : 0;
+}
+
 
 double bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double lower, double upper, vector<double>& esf) {
@@ -117,7 +121,7 @@ double bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         
         for (int b=left; b <= right; b++) {
             double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
-            double w = exp( -SQR(ordered[i].first - mid)/(2*SQR(Mtf_correction::sdev))  );
+            double w = exp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
             mean[b] += ordered[i].second * w;
             weights[b] += w;
         }
