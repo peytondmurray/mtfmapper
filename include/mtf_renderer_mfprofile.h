@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
+#include "mtf_profile_sample.h"
 
 #include <stdlib.h>
 #include <vector>
@@ -52,12 +53,11 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         const Point& zero, const Point& transverse, const Point& longitudinal,
         double chart_scale,
         const std::string& wdir, const std::string& prof_fname, 
-        const std::string& gnuplot_binary,
         const cv::Mat& img, const vector<cv::Point3d>& distance_scale,
         bool lpmm_mode=false, double pixel_size=1.0) 
       :  zero(zero), transverse(transverse), longitudinal(longitudinal),
          wdir(wdir), prname(prof_fname),
-         gnuplot_binary(gnuplot_binary), img(img), 
+         img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          chart_scale(chart_scale), distance_scale(distance_scale),
          gnuplot_failure(false), gnuplot_warning(true) {
@@ -75,21 +75,43 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         
         
         
-        vector< pair<Point, double> > points;
+        vector< Mtf_profile_sample > points;
         double max_trans = 0;
         vector<double> mtf50;
-        //FILE* rf = fopen("rawpoints.txt", "wt");
         for (size_t i=0; i < blocks.size(); i++) {
-            const double angle_thresh = 20.0;
+            const double angle_thresh = 10.0;
+            
+            double diam = 0;
+            for (size_t k=0; k < 3; k++) {
+                for (size_t j=k+1; j < 4; j++) {
+                    double d = norm(blocks[i].get_edge_centroid(k) - blocks[i].get_edge_centroid(j));
+                    diam = std::max(diam, d);
+                }
+            }
+            
+            double maxmtf = 0;
+            for (size_t k=0; k < 4; k++) {
+                Point norm = blocks[i].get_normal(k);
+                double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
+                
+                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh) { // edge perp to tangent
+                    maxmtf = std::max(blocks[i].get_mtf50_value(k), maxmtf);
+                }
+            }
             
             for (size_t k=0; k < 4; k++) {
                 Point ec = blocks[i].get_edge_centroid(k);
                 Point norm = blocks[i].get_normal(k);
-                double delta = transverse.x*norm.x + transverse.y*norm.y;
+                double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
-                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh) { // edge perp to tangent
-                    //fprintf(rf, "%lf %lf %lf\n", ec.x, ec.y, blocks[i].get_mtf50_value(k));
-                    points.push_back(make_pair(ec, blocks[i].get_mtf50_value(k)));
+                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh &&
+                    blocks[i].get_mtf50_value(k) == maxmtf) { // edge perp to tangent
+                
+                    for (int ti=-1; ti <= 1; ti++) {
+                        Point mec = ec + ti*diam/4.0*Point(-norm.y, norm.x);
+                        points.push_back(Mtf_profile_sample(mec, maxmtf, blocks[i].get_edge_angle(k)));
+                    }
+                    
                     if (fabs(ec.y - zero.y) > max_trans) {
                         max_trans = fabs(ec.y - zero.y);
                     }
@@ -97,87 +119,124 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 } 
             }
         }
-        //fclose(rf);
         
         sort(mtf50.begin(), mtf50.end());
         double p5 = mtf50[0.05*mtf50.size()];
         double p95 = mtf50[0.95*mtf50.size()];
         
-        FILE* ap = fopen("axis_projected.txt", "wt");
-        vector< pair<Point, double> > ap_points; // axis projected points
+        vector< Mtf_profile_sample > ap_points; // axis projected points
         for (size_t i=0; i < points.size(); i++) {
-            Point d = points[i].first - zero;
+            Point d = points[i].p - zero;
             Point coord(
                 d.x*longitudinal.x + d.y*longitudinal.y,
                 d.x*transverse.x + d.y*transverse.y
             );
-            double val = (points[i].second - p5)/(p95-p5);
+            double val = (points[i].mtf - p5)/(p95-p5);
+            //double val = clamp((points[i].second - p5)/(p99-p5)) * 0.99 + 0.01; // TODO: must still check if this helps, or not
             
             // TODO: we can clip the values here to [0,1]
-            
-            ap_points.push_back(make_pair(coord, val));
-            fprintf(ap, "%lf %lf %lf\n", coord.x, coord.y, val);
-        }
-        fclose(ap);
-        
-        Focus_surface pf(ap_points, 3, 2, chart_scale, distance_scale);
-
-        /*
-        FILE* prfile = fopen((wdir+prname).c_str(), "wt");
-        i=0;
-        double max_med_filt = 0;
-        int max_med_filt_coord = 0;
-        for (map<int, double>::const_iterator it = row_max.begin(); it != row_max.end(); ++it) {
-            if (med_filt_mtf[i] >= max_med_filt) {
-                max_med_filt = med_filt_mtf[i];
-                max_med_filt_coord = it->first;
+            if (!(isnan(coord.x) || isnan(coord.y) || isnan(val))) {
+                ap_points.push_back(Mtf_profile_sample(coord, val, points[i].angle));
+            } else {
+                printf("element %d has nans: %lf, %lf, %lf\n", (int)i, coord.x, coord.y, val);
             }
-            fprintf(prfile, "%lf %lf %lf\n", 
-                it->first/pixel_size, 
-                it->second*pixel_size, 
-                med_filt_mtf[i++]*pixel_size
+        }
+        
+        
+        double wsum = 0;
+        double covxx = 0;
+        double covxy = 0;
+        double covyy = 0;
+        double cpx = 0;
+        double cpy = 0;
+        const double w = 1.0;
+        for (size_t i=0; i < ap_points.size(); i++) {
+            double temp = w + wsum;
+            double delta_x = ap_points[i].p.x - cpx;
+            double delta_y = ap_points[i].p.y - cpy;
+            double rx = delta_x * w / temp;
+            double ry = delta_y * w / temp;
+            cpx += rx;
+            cpy += ry;
+            
+            if (isnan(rx) || isnan(ry) || isnan(delta_x) || isnan(delta_y)) {
+                printf("element (i=%d) : (%lf, %lf) produced nans: %lf %lf %lf %lf\n",
+                    (int)i, ap_points[i].p.x, ap_points[i].p.y, 
+                    rx, ry, delta_x, delta_y
+                );
+            }
+                
+            covxx += wsum * delta_x * rx;
+            covyy += wsum * delta_y * ry;
+            covxy += wsum * delta_x * ry;
+                
+            wsum = temp;
+        }
+        covxx /= wsum;
+        covxy /= wsum;
+        covyy /= wsum;
+        covxx = sqrt(covxx);
+        covyy = sqrt(covyy);
+        vector< Mtf_profile_sample > ap_keep;
+        for (size_t i=0; i < ap_points.size(); i++) {
+            if (fabs(ap_points[i].p.x - cpx) > covxx*2 ||
+                fabs(ap_points[i].p.y - cpy) > covyy*1.5) {
+            } else {
+                ap_keep.push_back(ap_points[i]);
+            }
+        }
+        
+        Focus_surface pf(ap_keep, 3, 2, chart_scale, distance_scale);
+        
+        cv::Mat channel(img.rows, img.cols, CV_8UC1);
+        double imin;
+        double imax;
+        cv::minMaxLoc(img, &imin, &imax);
+        img.convertTo(channel, CV_8U, 255.0/(imax - imin), 0);
+        
+        vector<cv::Mat> channels;
+        channels.push_back(channel);
+        channels.push_back(channel);
+        channels.push_back(channel);
+        cv::Mat merged;
+        merge(channels, merged);
+        int initial_rows = merged.rows;
+        merged.resize(merged.rows + 100);
+        
+        for (size_t i=1; i < points.size(); i+=3) {
+            int baseline = 0;
+            char buffer[1024];
+            sprintf(buffer, "%03d", (int)lrint(points[i].mtf*1000));
+            cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+            cv::Point to(-ts.width/2,  ts.height/2);
+            to.x += points[i].p.x;
+            to.y += points[i].p.y;
+            cv::putText(merged, buffer, to, 
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                CV_RGB(20, 20, 20), 2.5, CV_AA
+            );
+            cv::putText(merged, buffer, to, 
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                CV_RGB(50, 255, 255), 1, CV_AA
             );
         }
         
+        draw_curve(merged, pf.ridge_peaks, cv::Scalar(30, 30, 255), 2, true);
+        draw_curve(merged, pf.ridge, cv::Scalar(30, 255, 30), 3);
+        draw_curve(merged, pf.ridge_p05, cv::Scalar(100, 100, 200), 1);
+        draw_curve(merged, pf.ridge_p95, cv::Scalar(100, 100, 200), 1);
         
-        fprintf(prfile, "\n\n%lf %lf %lf\n", 
-            transpose ? 
-                 blocks[largest_block].get_edge_centroid(peak_idx).x/pixel_size :
-                 blocks[largest_block].get_edge_centroid(peak_idx).y/pixel_size , 
-            peak_mtf50*pixel_size,
-            peak_mtf50*3*pixel_size
-        );
-        fclose(prfile);
-        */
-		       
-        FILE* gpf = fopen( (wdir + string("mfprofile.gnuplot")).c_str(), "wt");
-        fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
-        fprintf(gpf, "set ylab \"MTF50 (%s)\"\n", lpmm_mode ? "line pairs per mm" : "cycles/pixel");
-        fprintf(gpf, "set term png size 1024, 768\n");
-        fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [][0:%lf]\"%s\" index 0 u 1:2 t \"MTF50 (%s) raw\" w p ps 0.25, \"%s\" index 0 u 1:3 t \"MTF50 (%s) smoothed\" w l lw 3, \"%s\" index 1 u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
-            1*pixel_size, // TODO: compute effective max (95%?)
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
-            (wdir+prname).c_str(), 3); // supposed to be peak quality
-        fclose(gpf);
+       
         
-        char* buffer = new char[1024];
-        #ifdef _WIN32
-        sprintf(buffer, "\"\"%s\" \"%smfprofile.gnuplot\"\"", gnuplot_binary.c_str(), wdir.c_str());
-        #else
-        sprintf(buffer, "\"%s\" \"%smfprofile.gnuplot\"", gnuplot_binary.c_str(), wdir.c_str());
-        #endif
-        int rval = system(buffer);
-        if (rval != 0) {
-            printf("Failed to execute gnuplot (error code %d)\n", rval);
-            printf("You can try to execute [%s] to render the plots manually\n", buffer);
-            gnuplot_failure = true;
-        } else {
-            printf("Gnuplot plot completed successfully. Look for profile_image.png\n");
-        }
+        rectangle(merged, Point(0, initial_rows), Point(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
-        delete [] buffer;
+        int font = cv::FONT_HERSHEY_DUPLEX; 
+        char tbuffer[1024];
+        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin", pf.focus_peak, pf.focus_peak_p05, pf.focus_peak_p95);
+        cv::putText(merged, tbuffer, Point(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        
+        imwrite(wdir + prname, merged);
         
     }
 
@@ -190,14 +249,41 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     }
 
   private:
+  
+    void draw_curve(cv::Mat& image, const vector<Point>& data, cv::Scalar col, double width, bool points=false) {
+        int prevx = 0;
+        int prevy = 0;
+        // p95 ridge curve
+        for (size_t i=0; i < data.size(); i++) {
+            double px = data[i].x*longitudinal.x + data[i].y*longitudinal.y + zero.x;
+            double py = data[i].x*transverse.x + data[i].y*transverse.y + zero.y;
+            
+            int ix = lrint(px);
+            int iy = lrint(py);
+            if (ix >= 0 && ix < image.cols &&
+                iy >= 0 && iy < image.rows && i > 0) {
+                
+                if (points) {
+                    cv::line(image, Point(ix, iy), Point(ix, iy), col, width, CV_AA);
+                } else {
+                    cv::line(image, Point(prevx, prevy), Point(ix, iy), col, width, CV_AA);
+                }
+            }
+            
+            prevx = ix;
+            prevy = iy;
+        }
+    }
+  
+    double clamp(double x) const {
+        return (x < 0) ? 0 : ((x > 1) ? 1 : x);
+    }
 
     Point zero;
     Point transverse;
     Point longitudinal;
     std::string wdir;
     std::string prname;
-    std::string pfname;
-    std::string gnuplot_binary;
     const cv::Mat& img;
     bool    lpmm_mode;
     double  pixel_size;

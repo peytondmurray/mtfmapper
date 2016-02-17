@@ -29,188 +29,140 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define FOCUS_SURFACE_H
 
 #include "ratpoly_fit.h"
+#include "mtf_profile_sample.h"
 
 class Focus_surface  {
   public:
   
-    Focus_surface(vector< pair<Point, double> >& data, int order_n, int order_m, double cscale,
+    Focus_surface(vector< Mtf_profile_sample >& data, int order_n, int order_m, double cscale,
         const vector<cv::Point3d>& distance_scale) 
     : data(data), order_n(order_n), order_m(order_m), maxy(-1e50), maxx(-1e50), cscale(cscale) {
     
         double miny = 1e50;
         for (size_t i=0; i < data.size(); i++) {
-            maxx = std::max(fabs(data[i].first.x), maxx);
-            maxy = std::max(fabs(data[i].first.y), maxy);
-            miny = std::min(fabs(data[i].first.y), miny);
+            maxx = std::max(fabs(data[i].p.x), maxx);
+            maxy = std::max(fabs(data[i].p.y), maxy);
+            miny = std::min(fabs(data[i].p.y), miny);
         }
         
         
-        map<double, double> peaks;
-        
-        FILE* fpeaks = fopen("fpeaks.txt", "wt");
-        
-        FILE* pfile = fopen("profiles.txt", "wt");
-        FILE* reconf = fopen("recon.txt", "wt");
-        int pindex = 0;
+        // TODO: this loop is a great candidate for OpenMP, but some care must be taken
+        // to protect the (few) shared structures (like "peaks")
         
         vector<Sample> peak_pts;
         // |15 to 110| in steps of 2.5, width=5 ??
         for (int s=-1; s <= 1; s+=2) {
-            for (double d=15; d <= maxy*cscale; d += 1.0) {
+            for (double d=10; d <= maxy*cscale; d += 1.0) {
                 double midy = s*d;
+                
+                double mean_x = 0;
+                double wsum = 0;
+                
                 vector<Sample> pts_row;
-                vector<double> real_y;
                 for (size_t i=0; i < data.size(); i++) {
-                    double dy = midy - data[i].first.y*cscale;
-                    if (fabs(dy) < 15 && fabs(data[i].first.y*cscale) > 10 ) { // at least 10 mm from centre of chart
-                        double yw = exp(-dy*dy/(2*10*10)); // sdev of 3 mm in y direction
-                        pts_row.push_back( Sample(data[i].first.x * cscale, data[i].second, yw, 0.4 + 0.6*std::max(0.01, data[i].second)) );
-                        real_y.push_back(data[i].first.y*cscale);
+                    double dy = midy - data[i].p.y*cscale;
+                    if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5 ) { // at least 5 mm from centre of chart
+                        
+                        double yw = exp(-dy*dy/(2*5*5)); // sdev of 7 mm in y direction
+                        pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.4 + 0.6*std::max(0.01, data[i].mtf)) );
+                        mean_x += pts_row.back().weight * data[i].p.y * cscale;
+                        wsum += pts_row.back().weight;
                     } 
                 }
                 
-                if (pts_row.size() < 50) continue;
+                if (pts_row.size() < 50) {
+                    printf("only got %d points at distance %lf\n", (int)pts_row.size(), midy);
+                    continue; 
+                }
                 
                 VectorXd sol;
                 double lpeak;
-                double peak_mtf;
                 
+                mean_x /= wsum;
                 
-                // TODO: get rid of the rep loop (and overheads)
-                for (int rep=0; rep < 1; rep++) {
-                    double mean_x = 0;
-                    double wsum = 0;
-                    fprintf(pfile, "#rep=%d\n", rep);
-                    
-                    vector<Sample> sample;
-                    if (rep == 0) {
-                        sample=pts_row;
-                        for (size_t j=0; j < sample.size(); j++) {
-                            mean_x += pts_row[j].weight * real_y[j];
-                            wsum += pts_row[j].weight;
-                        }
-                    } else {
-                        
-                        while (sample.size() < pts_row.size()) {
-                            int rindex = double(rand() * pts_row.size()) / double(RAND_MAX);
-                            sample.push_back(pts_row[rindex]);
-                            mean_x += pts_row[rindex].weight * real_y[rindex];
-                            wsum += pts_row[rindex].weight;
-                        }
-                        
-                    }
-                    mean_x /= wsum;
-                    
-                    Ratpoly_fit cf(sample, order_n, order_m);
+                Ratpoly_fit cf(pts_row, order_n, order_m);
+                sol = rpfit(cf, false, true);
+                while (cf.order_n > 1 && cf.order_m > 0 && cf.has_poles(sol)) {
+                    cf.order_m--;
                     sol = rpfit(cf, false, true);
-                    while (cf.order_n > 1 && cf.order_m > 0 && cf.has_poles(sol)) {
-                        cf.order_m--;
+                    if (cf.has_poles(sol)) {
+                        cf.order_n--;
                         sol = rpfit(cf, false, true);
-                        printf("reducing order_m to %d\n", cf.order_m);
-                        if (cf.has_poles(sol)) {
-                            cf.order_n--;
-                            printf("reducing order_n to %d\n", cf.order_n);
-                            sol = rpfit(cf, false, true);
-                        }
                     }
-                    if (cf.has_poles(sol)) { 
-                        // no solution without poles, give up, skip this sample?
-                        printf("Warning: no viable RP fit. Skipping curve centred at y=%lf\n", mean_x);
-                        continue;
-                    }
-                    printf("final: (%d, %d)\n", cf.order_n, cf.order_m);
-                    double err = cf.evaluate(sol);
-                    fprintf(stderr, "%lf\n", err);
-                    lpeak = cf.peak(sol);
-                    peak_mtf = cf.rpeval(sol, lpeak);
-                    
-                    #if 0
-                    if (true) {
-                        fprintf(pfile, "#index=%d\n", pindex);
-                        for (size_t j=0; j < sample.size(); j++) {
-                            fprintf(pfile, "%lf %lf %lf\n", sample[j].x, sample[j].y, sample[j].weight);
-                        }
-                        fprintf(pfile, "\n\n");
-                        printf("index %d: lpeak=%lf (%lf mm)\n", pindex, lpeak/cscale, lpeak);
-                        printf("error=%lf\n", err);
-                        
-                        fprintf(reconf, "#index=%d\n", pindex);
-                        for (double x=-maxx*cscale; x < maxx*cscale; x += 0.1) {
-                            double y = cf.rpeval(sol, x);
-                            fprintf(reconf, "%lf %lf\n", x, y);
-                        }
-                        fprintf(reconf, "\n\n");
-                        
-                        
-                        pindex++;
-                    }
-                    #endif
-                    
-                    
-                    peaks[midy] = lpeak;
-                    rpolys[midy] = sol;
-                    
-                    // TODO: we could weight each peak by its uncertainty ...
-                    
-                    
-                    double pw = 0.1;
-                    double xw = fabs(midy)/(0.7*maxy*cscale);
-                    if (xw < 1) {
-                        pw = 0.1 + 0.9*(1 - xw*xw*xw)*(1 - xw*xw*xw)*(1 - xw*xw*xw);
-                    }
-                    peak_pts.push_back( Sample(mean_x/cscale, lpeak/cscale, pw, 1.0/(1e-4 + err)) );
-                    
-                    fprintf(fpeaks, "%lf %lf %lf\n", peak_pts.back().y, peak_pts.back().x, 1.0);
                 }
+                if (cf.has_poles(sol)) { 
+                    // no solution without poles, give up, skip this sample?
+                    printf("Warning: no viable RP fit. Skipping curve centred at y=%lf\n", mean_x);
+                    continue;
+                }
+                double err = cf.evaluate(sol);
+                lpeak = cf.peak(sol);
+                
+                double pw = 0.1;
+                double xw = fabs(midy)/(0.7*maxy*cscale);
+                if (xw < 1) {
+                    pw = 0.1 + 0.9*(1 - xw*xw*xw)*(1 - xw*xw*xw)*(1 - xw*xw*xw);
+                }
+                
+                peak_pts.push_back( Sample(mean_x/cscale, lpeak/cscale, pw, 1.0/(1e-4 + err)) );
+                ridge_peaks.push_back(Point(lpeak/cscale, mean_x/cscale));
+                
             }
         }
-        fclose(fpeaks);
-        fclose(pfile);
-        fclose(reconf);
         
-        Ratpoly_fit cf(peak_pts, 2,1);
+        Ratpoly_fit cf(peak_pts, 2,2);
         cf.base_value = 1;
         cf.pscale = 0;
         VectorXd sol = rpfit(cf, true, true);
-        std::cout << "sol = " << sol.transpose() << std::endl;
-        printf("evaluations=%d\n", (int)cf.evaluations());
-        
-        while (cf.order_n > 1 && cf.order_m > 0 && cf.has_poles(sol)) {
+        while (cf.order_m > 0 && cf.has_poles(sol)) {
             cf.order_m--;
             printf("reducing order_m to %d\n", cf.order_m);
             sol = rpfit(cf, true, true);
-            if (cf.has_poles(sol)) {
-                cf.order_n--;
-                printf("reducing order_n to %d\n", cf.order_n);
-                sol = rpfit(cf, true, true);
-            }
         }
         if (cf.has_poles(sol)) { 
             // no solution without poles, give up, skip this sample?
             printf("Warning: no viable RP fit to fpeaks data\n");
         }
-        printf("final: (%d, %d)\n", cf.order_n, cf.order_m);
         
+        // now perform some bootstrapping to obtain bounds on the peak focus curve:
+        vector<double> mc_pf;
+        map<double, vector<double> > mc_curve;
+        for (int iters=0; iters < 30; iters++) {
+            vector<Sample> sampled_peak_pts;
+            for (int j=0; j < peak_pts.size()*0.5; j++) {
+                int idx = (int)floor(peak_pts.size()*double(rand())/double(RAND_MAX));
+                sampled_peak_pts.push_back(peak_pts[idx]);
+            }
+            Ratpoly_fit mc_cf(sampled_peak_pts, cf.order_n, cf.order_m);
+            mc_cf.base_value = 1;
+            mc_cf.pscale = 0;
+            VectorXd mc_sol = rpfit(mc_cf, true, true);
+            mc_pf.push_back(mc_cf.rpeval(mc_sol, 0)/mc_cf.ysf);
+            
+            for (double y=-maxy; y < maxy; y += 10) {
+                double x = mc_cf.rpeval(mc_sol, y*mc_cf.xsf)/mc_cf.ysf;
+                mc_curve[y].push_back(x);
+            }
+            
+        }
+        sort(mc_pf.begin(), mc_pf.end());
+        for (map<double, vector<double> >::iterator it = mc_curve.begin(); it != mc_curve.end(); it++) {
+            sort(it->second.begin(), it->second.end());
+            ridge_p05.push_back(Point(it->second[0.05*it->second.size()], it->first));
+            ridge_p95.push_back(Point(it->second[0.95*it->second.size()], it->first));
+        }
         
-        FILE* ridgef = fopen("ridge.txt", "wt");
-        
-        double cmax = -1e50;
-        double cmin = 1e50;
         for (double y=-maxy; y < maxy; y += 1) {
             double x = cf.rpeval(sol, y*cf.xsf)/cf.ysf;
-            if (fabs(y) < maxy/4.0) { // to avoid poles near the edges
-                cmax = std::max(cmax, x);
-                cmin = std::min(cmin, x);
-            }
-            fprintf(ridgef, "%lf %lf %lf\n", x, y, 1.0);
+            ridge.push_back(Point(x, y));
         }
-        fclose(ridgef);
         
-        // TODO: if the extremum is on one of the edge, then the chart is skew
-        
-        printf("ridge extrema: %lf %lf\n", cmin, cmax);
         double x_inter = cf.rpeval(sol, 0)/cf.ysf;
-        printf("intercept %lg %lg\n", x_inter * cscale, x_inter);
+        
+        int x_inter_index = lower_bound(mc_pf.begin(), mc_pf.end(), x_inter) - mc_pf.begin();
+        printf("x_inter percentile: %.3lf\n", x_inter_index*100 / double(mc_pf.size()));
+        printf("x_inter 95%% confidence interval: [%lf, %lf]\n", mc_pf[0.05*mc_pf.size()], mc_pf[0.95*mc_pf.size()]);
+        
         
         if (distance_scale.size() > 0) {
             printf("distance scale is:\n");
@@ -220,7 +172,7 @@ class Focus_surface  {
             
             // find the two centre-most scale markers, average their distance to estimate chart angle
             int middle = 0;
-            for (int i=1; i < distance_scale.size(); i++) {
+            for (int i=1; i < (int)distance_scale.size(); i++) {
                 if (fabs(distance_scale[i].x) < fabs(distance_scale[middle].x)) {
                     middle = i;
                 }
@@ -230,7 +182,7 @@ class Focus_surface  {
             
             // x_inter is in pixels, relative to centre of chart
             int scale_lower=0;
-            while (scale_lower < distance_scale.size() - 1 &&
+            while (scale_lower < (int)distance_scale.size() - 1 &&
                    distance_scale[scale_lower].x < x_inter) {
                 scale_lower++;
             }
@@ -239,6 +191,7 @@ class Focus_surface  {
                 distance_scale[scale_lower].x, distance_scale[scale_lower+1].x
             );
             
+            // TODO: we can perform an LS fit here to improve matters a bit
             const cv::Point3d& p0 = distance_scale[scale_lower];
             const cv::Point3d& p1 = distance_scale[scale_lower+1];
             
@@ -247,6 +200,23 @@ class Focus_surface  {
             double focus_plane_position = offset + x_inter * slope;
             printf("foreshortening=%lf\n", foreshortening);
             printf("focus_plane %lg\n", focus_plane_position * foreshortening);
+            
+            double fp_05 = mc_pf[0.05*mc_pf.size()] * slope + offset;
+            double fp_95 = mc_pf[0.95*mc_pf.size()] * slope + offset;
+            printf("fp_interval: [%lf, %lf]\n", fp_05 * foreshortening, fp_95 * foreshortening);
+            
+            focus_peak = focus_plane_position * foreshortening;
+            focus_peak_p05 = fp_05 * foreshortening;
+            focus_peak_p95 = fp_95 * foreshortening;
+        } else {
+            double foreshortening = cscale * sqrt(0.5);
+            double fp_05 = mc_pf[0.05*mc_pf.size()];
+            double fp_95 = mc_pf[0.95*mc_pf.size()];
+            printf("fp_interval: [%lf, %lf]\n", fp_05 * foreshortening, fp_95 * foreshortening);
+            
+            focus_peak = x_inter * foreshortening; // assume 45 degree chart if no scale is provided
+            focus_peak_p05 = fp_05 * foreshortening;
+            focus_peak_p95 = fp_95 * foreshortening;
         }
     }
     
@@ -323,13 +293,19 @@ class Focus_surface  {
         return (order_n+1 + order_m);
     }
     
-    vector< pair<Point, double> >& data;
+    vector< Mtf_profile_sample >& data;
     int order_n;
     int order_m;
     double maxy;
     double maxx;
     double cscale;
-    map<double, VectorXd> rpolys;
+    vector<Point> ridge;
+    vector<Point> ridge_peaks;
+    vector<Point> ridge_p05;
+    vector<Point> ridge_p95;
+    double focus_peak;
+    double focus_peak_p05;
+    double focus_peak_p95;
 };
 
 #endif

@@ -96,6 +96,7 @@ class Mrectangle {
             if (c.y < tl.y) tl.y = c.y;
             if (c.y > br.y) br.y = c.y;
         }
+        
         tl.x = floor(tl.x);
         br.x = ceil(br.x);
         tl.y = floor(tl.y);
@@ -115,26 +116,27 @@ class Mrectangle {
     }
   
     Mrectangle(const vector<double>& in_thetas, const vector<double>& data_thetas, 
-        const vector<Point>& points, double thresh=5.0/180.0*M_PI) 
+        const vector<Point>& points, const Gradient& g, double thresh=5.0/180.0*M_PI) 
       : thetas(in_thetas), centroids(4, Point(0.0,0.0)), valid(false), 
         corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 
         normals(4, Point(0.0,0.0)), corner_map(4) {
       
         if (thetas.size() == 4) {
     
-            vector<size_t> c_count(4);
+            vector<double> c_weight(4, 0);
             for (size_t i=0; i < points.size(); i++) { 
                 for (size_t k=0; k < 4; k++) {
                     if (Peak_detector::angular_diff(data_thetas[i], thetas[k]) < thresh) {
-                        c_count[k]++;
-                        centroids[k].x += points[i].x;
-                        centroids[k].y += points[i].y;
+                        double w = g.grad_magnitude(points[i].x, points[i].y);
+                        centroids[k].x += points[i].x * w;
+                        centroids[k].y += points[i].y * w;
+                        c_weight[k] += w;
                     } 
                 }
             }
             for (size_t k=0; k < 4; k++) {
-                centroids[k].x /= double(c_count[k]);
-                centroids[k].y /= double(c_count[k]);
+                centroids[k].x /= c_weight[k];
+                centroids[k].y /= c_weight[k];
             }
             
             for (size_t k=0; k < 4; k++) {

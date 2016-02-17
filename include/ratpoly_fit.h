@@ -48,7 +48,8 @@ class Ratpoly_fit  {
   public:
     
     Ratpoly_fit(const vector<Sample>& data, int order_n, int order_m)
-    : data(data), order_n(order_n), order_m(order_m), base_value(1.0), xsf(1), ysf(1), pscale(0.1) {}
+    : data(data), order_n(order_n), order_m(order_m), base_value(1.0), 
+      xsf(1), ysf(1), pscale(0.1), evaluation_count(0) {}
     
     double evaluate(VectorXd& v) {
         double err = 0;
@@ -134,12 +135,10 @@ class Ratpoly_fit  {
             
             double stepsize = pk.array().abs().maxCoeff()*fabs(alpha);
             if (stepsize < 5e-8) {
-                printf("stopping because improvement is only %le (at iter=%d)\n", stepsize, k);
                 break;
             }
             v = next;
         }
-        printf("final fx=%lf at %d evals\n", evaluate(v), (int)evaluations());
         return v;
     }
     
@@ -303,9 +302,11 @@ class Ratpoly_fit  {
             {
                 double pole = -1 / v[order_n+1];
                 
+                /*
                 if (pole >= xmin && pole <= xmax) {
                     printf("pole at %lf (v=%lf)\n", -1/v[order_n+1], v[order_n+1]);
                 }
+                */
                 
                 return pole >= xmin && pole <= xmax;
             }
@@ -319,11 +320,13 @@ class Ratpoly_fit  {
                 double pole1 = q/a;
                 double pole2 = c/q;
                 
+                /*
                 if ((pole1 >= xmin && pole1 <= xmax) ||
                        (pole2 >= xmin && pole2 <= xmax)) {
                        
                        printf("poles at %lf, %lf\n", pole1, pole2);
                 }
+                */
                 
                 return (pole1 >= xmin && pole1 <= xmax) ||
                        (pole2 >= xmin && pole2 <= xmax);
