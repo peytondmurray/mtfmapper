@@ -92,8 +92,6 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     vector< map<int, scanline> > scansets(4); 
     bool reduce_success = true;
     for (size_t k=0; k < 4; k++) {
-        Point mid_dir = average_dir(g, int(centroids[k].x), int(centroids[k].y));
-        
         // now construct buffer around centroid, aligned with direction, of width max_dot
         Mrectangle nr(rrect, k, max_dot);
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
@@ -105,7 +103,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     int ix = lrint(x);
                     if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
 
-                        edge_record[k].add_point(ix, iy, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                        edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
 
                         map<int, scanline>::iterator it = scansets[k].find(iy);
                         if (it == scansets[k].end()) {
@@ -197,7 +195,7 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     pd.select_best_n(main_thetas, 4);
     sort(main_thetas.begin(), main_thetas.end());
     
-    Mrectangle rrect(main_thetas, thetas, points);
+    Mrectangle rrect(main_thetas, thetas, points, g);
     rect = rrect;
     
     return rrect.valid;

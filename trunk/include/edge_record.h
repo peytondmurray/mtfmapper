@@ -83,7 +83,7 @@ class Edge_record {
         return fabs(d1.x*d2.x + d1.y*d2.y);
     }
     
-    void add_point(int x, int y, double gx, double gy) {
+    void add_point(double x, double y, double gx, double gy) {
         points.push_back(make_pair(x, y));
         double mag = (gx*gx + gy*gy);
         weights.push_back(mag);
@@ -116,6 +116,7 @@ class Edge_record {
                 wsum = temp;
             }
         }
+        
         covxx /= wsum;
         covxy /= wsum;
         covyy /= wsum;
@@ -135,7 +136,7 @@ class Edge_record {
         double l2 = pc / q;
         
         double l = std::max(l1,l2);
-        assert(l > 0);
+        assert(l >= 0);
         
         double ev[2];
         if (fabs(covxy) > 1e-10) {
@@ -158,7 +159,12 @@ class Edge_record {
     }
 
     bool reduce(void) { // compute orientation, and remove weak points
-    
+        if (weights.size() < 20) { // not enough points to really extract an edge here
+            angle = 0;
+            rsq = 1.0;
+            return false;
+        }
+        
         renormalize_weights();
         vector<double> inweights(weights);
         pair<double,double> dims = compute_eigenvector_angle();
@@ -172,7 +178,7 @@ class Edge_record {
             double dot = dx * dir.x + dy * dir.y;
             
             double gw = 1.0;
-            double dw = 2;
+            double dw = 2; 
             
             if (dims.first < 10) {
                 dw = 4;
@@ -232,6 +238,8 @@ class Edge_record {
         pair<double, double> radii =  compute_eigenvector_angle();
         
         sB = radii.second / (radii.first*sqrt(wsum));
+        
+        rsq = 0.0;  // TODO: what is the appropriate measure of uncertainty in the angle estimate?
         
         return true;
     }

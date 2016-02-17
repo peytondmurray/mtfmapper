@@ -361,7 +361,7 @@ int main(int argc, char** argv) {
                 }
             }
             Point base = first - last;
-            chart_scale = 20.0 / sqrt(base.x*base.x + base.y*base.y);
+            chart_scale = 91.0 / sqrt(base.x*base.x + base.y*base.y);
             zero = Point(0.5*(first.x+last.x), 0.5*(first.y+last.y));
             printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
             transverse = normalize(first - last);
@@ -507,7 +507,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 transverse = normalize(lblock.get_edge_centroid(right_i) - lblock.get_edge_centroid(left_i));
-                longitudinal = normalize(lblock.get_edge_centroid(top_i) - lblock.get_edge_centroid(bot_i));
+                longitudinal = normalize(lblock.get_edge_centroid(bot_i) - lblock.get_edge_centroid(top_i));
                 zero = lblock.get_edge_centroid(bot_i);
                 chart_scale = 0.15;
                 printf("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
@@ -559,8 +559,7 @@ int main(int argc, char** argv) {
             longitudinal,
             chart_scale, 
             wdir, 
-            string("mfprofile.txt"),
-            tc_gnuplot.getValue(),
+            string("focus_peak.png"),
             cvimg,
             distance_scale,
             lpmm_mode,
