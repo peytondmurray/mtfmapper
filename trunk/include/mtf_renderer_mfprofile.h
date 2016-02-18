@@ -39,30 +39,23 @@ using std::vector;
 using std::pair;
 using std::make_pair;
 
-/*
-#ifndef SQR 
-#define SQR(x) ((x)*(x))
-#endif
-*/
-
 #include "focus_surface.h"
+#include "distance_scale.h"
 
 class Mtf_renderer_mfprofile : public Mtf_renderer {
   public:
-    Mtf_renderer_mfprofile(
-        const Point& zero, const Point& transverse, const Point& longitudinal,
-        double chart_scale,
+    Mtf_renderer_mfprofile(Distance_scale& distance_scale,
         const std::string& wdir, const std::string& prof_fname, 
-        const cv::Mat& img, const vector<cv::Point3d>& distance_scale,
-        bool lpmm_mode=false, double pixel_size=1.0,
-        int largest_block_index=-1) 
-      :  zero(zero), transverse(transverse), longitudinal(longitudinal),
+        const cv::Mat& img, 
+        bool lpmm_mode=false, double pixel_size=1.0) 
+      :  zero(distance_scale.zero), 
+         transverse(distance_scale.transverse), 
+         longitudinal(distance_scale.longitudinal),
          wdir(wdir), prname(prof_fname),
          img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         chart_scale(chart_scale), distance_scale(distance_scale),
-         largest_block_index(largest_block_index) {
-      
+         distance_scale(distance_scale) {
+         
     }
     
     
@@ -82,7 +75,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         for (size_t i=0; i < blocks.size(); i++) {
             const double angle_thresh = 25.0;
             
-            if (int(i) == largest_block_index) {
+            if (int(i) == distance_scale.largest_block_index) {
                 continue; // ignore the largest block
             }
             
@@ -98,8 +91,6 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             for (size_t k=0; k < 4; k++) {
                 Point norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
-                
-                
                 
                 if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && // edge roughly aligned with long axis
                     blocks[i].get_mtf50_value(k) < 1) {            // and not a problematic edge
@@ -199,7 +190,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             }
         }
         
-        Focus_surface pf(ap_keep, 3, 2, chart_scale, distance_scale);
+        Focus_surface pf(ap_keep, 3, 2, distance_scale);
         
         cv::Mat channel(img.rows, img.cols, CV_8UC1);
         double imin;
@@ -287,17 +278,15 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         return s < 0 ? 0 : s;
     }
 
-    Point zero;
-    Point transverse;
-    Point longitudinal;
+    Point& zero;
+    Point& transverse;
+    Point& longitudinal;
     std::string wdir;
     std::string prname;
     const cv::Mat& img;
     bool    lpmm_mode;
     double  pixel_size;
-    double  chart_scale;
-    const vector<cv::Point3d>& distance_scale;
-    int largest_block_index;
+    Distance_scale& distance_scale;
 };
 
 #endif

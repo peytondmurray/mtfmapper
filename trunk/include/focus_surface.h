@@ -30,13 +30,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "ratpoly_fit.h"
 #include "mtf_profile_sample.h"
+#include "distance_scale.h"
 
 class Focus_surface  {
   public:
   
-    Focus_surface(vector< Mtf_profile_sample >& data, int order_n, int order_m, double cscale,
-        const vector<cv::Point3d>& distance_scale) 
-    : data(data), order_n(order_n), order_m(order_m), maxy(-1e50), maxx(-1e50), cscale(cscale) {
+    Focus_surface(vector< Mtf_profile_sample >& data, int order_n, int order_m, Distance_scale& distance_scale) 
+    : data(data), order_n(order_n), order_m(order_m), maxy(-1e50), maxx(-1e50), cscale(distance_scale.chart_scale) {
     
         double miny = 1e50;
         for (size_t i=0; i < data.size(); i++) {
@@ -63,7 +63,7 @@ class Focus_surface  {
                     double dy = midy - data[i].p.y*cscale;
                     if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5 ) { // at least 5 mm from centre of chart
                         
-                        double yw = exp(-dy*dy/(2*5*5)); // sdev of 7 mm in y direction
+                        double yw = exp(-dy*dy/(2*5*5)); // sdev of 5 mm in y direction
                         pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.1 + 0.9*data[i].mtf) );
                         mean_x += pts_row.back().weight * data[i].p.y * cscale;
                         wsum += pts_row.back().weight;
@@ -71,7 +71,6 @@ class Focus_surface  {
                 }
                 
                 if (pts_row.size() < 3*14) {
-                    printf("only got %d points at distance %lf\n", (int)pts_row.size(), midy);
                     continue; 
                 }
                 
@@ -168,61 +167,12 @@ class Focus_surface  {
         printf("x_inter percentile: %.3lf\n", x_inter_index*100 / double(mc_pf.size()));
         printf("x_inter 95%% confidence interval: [%lf, %lf]\n", mc_pf[0.05*mc_pf.size()], mc_pf[0.95*mc_pf.size()]);
         
+        distance_scale.estimate_depth(x_inter, focus_peak);
+        distance_scale.estimate_depth(mc_pf[0.05*mc_pf.size()], focus_peak_p05);
+        distance_scale.estimate_depth(mc_pf[0.95*mc_pf.size()], focus_peak_p95);
         
-        if (distance_scale.size() > 0) {
-            printf("distance scale is:\n");
-            for (size_t i=0; i < distance_scale.size(); i++) {
-                printf("pix %lf -> dist %lf\n", distance_scale[i].x, distance_scale[i].y);
-            }
-            
-            // find the two centre-most scale markers, average their distance to estimate chart angle
-            int middle = 0;
-            for (int i=1; i < (int)distance_scale.size(); i++) {
-                if (fabs(distance_scale[i].x) < fabs(distance_scale[middle].x)) {
-                    middle = i;
-                }
-            }
-            double foreshortening = 0.5*(fabs(distance_scale[middle-1].x) + fabs(distance_scale[middle+1].x));
-            foreshortening *= cscale/fabs(distance_scale[middle-1].y);
-            
-            // x_inter is in pixels, relative to centre of chart
-            int scale_lower=0;
-            while (scale_lower < (int)distance_scale.size() - 1 &&
-                   distance_scale[scale_lower].x < x_inter) {
-                scale_lower++;
-            }
-            printf("scale limits: %d, %d : %lf, %lf\n", 
-                scale_lower, scale_lower+1, 
-                distance_scale[scale_lower].x, distance_scale[scale_lower+1].x
-            );
-            
-            // TODO: we can perform an LS fit here to improve matters a bit
-            const cv::Point3d& p0 = distance_scale[scale_lower];
-            const cv::Point3d& p1 = distance_scale[scale_lower+1];
-            
-            double slope = (p1.y - p0.y) / (p1.x - p0.x);
-            double offset = p0.y - slope*p0.x;
-            double focus_plane_position = offset + x_inter * slope;
-            printf("foreshortening=%lf\n", foreshortening);
-            printf("focus_plane %lg\n", focus_plane_position * foreshortening);
-            
-            double fp_05 = mc_pf[0.05*mc_pf.size()] * slope + offset;
-            double fp_95 = mc_pf[0.95*mc_pf.size()] * slope + offset;
-            printf("fp_interval: [%lf, %lf]\n", fp_05 * foreshortening, fp_95 * foreshortening);
-            
-            focus_peak = focus_plane_position * foreshortening;
-            focus_peak_p05 = fp_05 * foreshortening;
-            focus_peak_p95 = fp_95 * foreshortening;
-        } else {
-            double foreshortening = cscale * sqrt(0.5);
-            double fp_05 = mc_pf[0.05*mc_pf.size()];
-            double fp_95 = mc_pf[0.95*mc_pf.size()];
-            printf("fp_interval: [%lf, %lf]\n", fp_05 * foreshortening, fp_95 * foreshortening);
-            
-            focus_peak = x_inter * foreshortening; // assume 45 degree chart if no scale is provided
-            focus_peak_p05 = fp_05 * foreshortening;
-            focus_peak_p95 = fp_95 * foreshortening;
-        }
+        printf("focus_plane %lg\n", focus_peak);
+        printf("fp_interval: [%lf, %lf]\n", focus_peak_p05, focus_peak_p95);
     }
     
     VectorXd rpfit(Ratpoly_fit& cf, bool scale=false, bool refine=false) {

@@ -53,7 +53,7 @@ using std::stringstream;
 #include "include/mtf_renderer_lensprofile.h"
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
-#include "include/ellipse_decoder.h"
+#include "include/distance_scale.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -323,207 +323,9 @@ int main(int argc, char** argv) {
     printf("Parallel MTF50 calculation\n");
     parallel_for(blocked_range<size_t>(size_t(0), mtf_core.num_objects()), ca); 
     
-    Point zero;
-    Point transverse;
-    Point longitudinal;
-    double chart_scale=1.0;
-    vector<cv::Point3d> distance_scale;
-    int largest_block_index = -1;
+    Distance_scale distance_scale;
     if (tc_mf_profile.getValue()) {
-    
-        // TODO: move all this out of main program
-        
-        // define reference frame from three solid circular dots in centre of chart
-        printf("#solid ellipses: %d\n", (int)mtf_core.solid_ellipses.size());
-        for (size_t j=0; j < mtf_core.solid_ellipses.size(); j++) {
-            printf("(%lf %lf)\n", mtf_core.solid_ellipses[j].x, mtf_core.solid_ellipses[j].y);
-        }
-        printf("\n\n");
-        if (mtf_core.solid_ellipses.size() >= 3) {
-            printf("got all three solid ellipses\n");
-            double maxdelta = 0;
-            Point first;
-            Point last;
-            for (int i=0; i <= 1; i++) {
-                for (int j=i+1; j < 3; j++) {
-                    Point d = mtf_core.solid_ellipses[i] - mtf_core.solid_ellipses[j];
-                    double dist = sqrt(d.x*d.x + d.y*d.y);
-                    printf("considering (%lf, %lf) vs (%lf, %lf), dist=%lf ",
-                        mtf_core.solid_ellipses[i].x, mtf_core.solid_ellipses[i].y,
-                        mtf_core.solid_ellipses[j].x, mtf_core.solid_ellipses[j].y,
-                        dist
-                    );
-                    if (dist > maxdelta) {
-                        first = mtf_core.solid_ellipses[i];
-                        last  = mtf_core.solid_ellipses[j];
-                        maxdelta = dist;
-                        printf("<- keeping this one\n");
-                    } else printf("\n");
-                }
-            }
-            Point base = first - last;
-            chart_scale = 91.0 / sqrt(base.x*base.x + base.y*base.y);
-            zero = Point(0.5*(first.x+last.x), 0.5*(first.y+last.y));
-            printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
-            transverse = normalize(first - last);
-            printf("transverse vector: (%lf, %lf)\n", transverse.x, transverse.y);
-            // sign of transverse unknown at this stage
-            longitudinal = Point(-transverse.y, transverse.x);
-            printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
-            printf("chart scale is %lf mm per pixels\n", chart_scale);
-            
-            // now try to decode the ellipses
-            vector< pair<double, int> > dist_by_idx;
-            for (size_t i=0; i < mtf_core.ellipses.size(); i++) {
-                //Ellipse_decoder ed(mtf_core.ellipses[i], mtf_core.cl, transverse);
-                Ellipse_decoder ed(mtf_core.ellipses[i], mtf_core.img, transverse);
-                mtf_core.ellipses[i].set_code(ed.code);
-                if (!mtf_core.ellipses[i].solid) {
-                    Point d(mtf_core.ellipses[i].centroid_x - zero.x, mtf_core.ellipses[i].centroid_y - zero.y);
-                    dist_by_idx.push_back(make_pair(sqrt(d.x*d.x + d.y*d.y), i));
-                }
-            }
-            sort(dist_by_idx.begin(), dist_by_idx.end());
-            int up = dist_by_idx[0].second;
-            int down = dist_by_idx[1].second;
-            if (mtf_core.ellipses[up].code > 3 || mtf_core.ellipses[down].code > 3) {
-                for (size_t i=0; i < mtf_core.ellipses.size(); i++) {
-                    mtf_core.ellipses[i].set_code(Ellipse_decoder::reverse(mtf_core.ellipses[i].code));
-                }
-                transverse = -transverse;
-                printf("flipping transverse direction\n");
-            }
-            if (mtf_core.ellipses[up].code > 3 || mtf_core.ellipses[down].code > 3) {
-                printf("Warning: Ellipse targets closest to zero appear to have incorrect codes %d, %d\n",
-                    mtf_core.ellipses[up].code, mtf_core.ellipses[down].code
-                );
-            } else {
-                if (mtf_core.ellipses[up].code != 1) {
-                    std::swap(up, down);
-                }
-                if (mtf_core.ellipses[up].code == 1) {
-                    printf("up ellipse identified\n");
-                } else {
-                    printf("Warning: could not identify 'up' ellipse (codes are up=%d, down=%d)\n", 
-                        mtf_core.ellipses[up].code, mtf_core.ellipses[down].code
-                    );
-                }
-                Point dv(mtf_core.ellipses[up].centroid_x - zero.x, mtf_core.ellipses[up].centroid_y - zero.y);
-                double dot = longitudinal.x * dv.x + longitudinal.y * dv.y;
-                if (dot < 0) {
-                    longitudinal = -longitudinal;
-                }
-                printf("Oriented transverse vector: (%lf, %lf)\n", transverse.x, transverse.y);
-                printf("Oriented longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
-                
-                // project ellipses onto longitudinal vector
-                dist_by_idx.clear();
-                for (size_t i=0; i < mtf_core.ellipses.size(); i++) {
-                    Point delta(mtf_core.ellipses[i].centroid_x - zero.x, mtf_core.ellipses[i].centroid_y - zero.y);
-                    double dot = longitudinal.x * delta.x + longitudinal.y * delta.y;
-                    dist_by_idx.push_back(make_pair(dot, i));
-                }
-                sort(dist_by_idx.begin(), dist_by_idx.end());
-                bool centre_done = false;
-                for (size_t i=0; i < dist_by_idx.size(); i++) {
-                    int j=dist_by_idx[i].second;
-                    printf("(%lf, %lf), dist=%lf -> code=%d\n",
-                        mtf_core.ellipses[j].centroid_x, mtf_core.ellipses[j].centroid_y,
-                        dist_by_idx[i].first,
-                        mtf_core.ellipses[j].code
-                    );
-                    if (fabs(dist_by_idx[i].first) < 5) {
-                        if (!centre_done) { 
-                            distance_scale.push_back(cv::Point3d(0,0,0));
-                            centre_done = true;
-                        }
-                    } else {
-                        distance_scale.push_back(
-                            cv::Point3d(
-                                dist_by_idx[i].first, 
-                                (((dist_by_idx[i].first < 0) ? -2 : 0) + mtf_core.ellipses[j].code) * (1.5*5) * 
-                                 (dist_by_idx[i].first < 0 ? -1 : 1),
-                                mtf_core.ellipses[j].minor_axis/mtf_core.ellipses[j].major_axis
-                            )
-                        );
-                    }
-                }
-            }
-            
-            // construct a distance scale
-            
-        } else {
-            printf("Warning: Manual focus profile chart mode requested, but central dots not found\n");
-            const vector<Block>& blocks = mtf_core.get_blocks();
-            // find largest block
-            vector< pair<double, int> > by_size;
-            for (size_t i=0; i < blocks.size(); i++) {
-                by_size.push_back(make_pair(blocks[i].get_area(), i));
-            }
-            sort(by_size.begin(), by_size.end());
-            double delta_1 = by_size[by_size.size()-1].first / by_size[by_size.size()-2].first;
-            double delta_2 = by_size[by_size.size()-2].first / by_size[by_size.size()-3].first;
-            if (delta_1/delta_2 > 100) {
-                largest_block_index = by_size.back().second;
-                const Block& lblock = blocks[by_size.back().second];
-                // we have a clear largest block. now determine its orientation
-                vector<double> xp;
-                vector<double> yp;
-                for (size_t i=0; i < blocks.size(); i++) {
-                    xp.push_back(blocks[i].centroid.x);
-                    yp.push_back(blocks[i].centroid.y);
-                }
-                sort(xp.begin(), xp.end());
-                sort(yp.begin(), yp.end());
-                double idx_x = (find(xp.begin(), xp.end(), lblock.centroid.x) - xp.begin())/double(xp.size());
-                double idx_y = (find(yp.begin(), yp.end(), lblock.centroid.y) - yp.begin())/double(yp.size());
-                printf("xfrac=%lf, yfrac=%lf\n", idx_x, idx_y);
-                
-                Point median(xp[xp.size()/2], yp[yp.size()/2]); 
-                
-                // orientations relative to chart, not image
-                int top_i=lblock.get_edge_index(Block::TOP);
-                int bot_i=lblock.get_edge_index(Block::BOTTOM);
-                int left_i=lblock.get_edge_index(Block::LEFT);
-                int right_i=lblock.get_edge_index(Block::RIGHT);
-                if (fabs(idx_x - 0.5) < fabs(idx_y - 0.5)) {
-                    // outer rows arranged in columns
-                    if (fabs(lblock.get_edge_centroid(top_i).y - median.y) <
-                        fabs(lblock.get_edge_centroid(bot_i).y - median.y) ) {
-                        
-                        // chart is upside down
-                        std::swap(top_i, bot_i);
-                        std::swap(left_i, right_i);
-                    }
-                } else {
-                    // outer rows arranged in rows
-                    std::swap(bot_i, right_i);
-                    std::swap(top_i, left_i);
-                    
-                    if (fabs(lblock.get_edge_centroid(top_i).x - median.x) <
-                        fabs(lblock.get_edge_centroid(bot_i).x - median.x) ) {
-                        
-                        // chart is upside down
-                        std::swap(top_i, bot_i);
-                        std::swap(left_i, right_i);
-                    }
-                }
-                transverse = normalize(lblock.get_edge_centroid(right_i) - lblock.get_edge_centroid(left_i));
-                longitudinal = normalize(lblock.get_edge_centroid(bot_i) - lblock.get_edge_centroid(top_i));
-                zero = lblock.get_edge_centroid(bot_i);
-                chart_scale = 0.15;
-                printf("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
-            } else { 
-                printf("Warning: Could not identify largest block, choosing poor defaults\n");
-                chart_scale = 0.15;
-                zero = Point(932, 710);
-                transverse = Point(1,0);
-                longitudinal = Point(0,1);
-            }
-            printf("zero: %lf %lf\n", zero.x, zero.y);
-            printf("transverse: %lf %lf\nlongitudinal: %lf %lf\n", transverse.x, transverse.y, longitudinal.x, longitudinal.y);
-            
-        }
+        distance_scale.construct(mtf_core);
     }
     
     // now render the computed MTF values
@@ -556,17 +358,12 @@ int main(int argc, char** argv) {
     
     if (tc_mf_profile.getValue()) {
         Mtf_renderer_mfprofile profile(
-            zero,
-            transverse,
-            longitudinal,
-            chart_scale, 
+            distance_scale,
             wdir, 
             string("focus_peak.png"),
             cvimg,
-            distance_scale,
             lpmm_mode,
-            pixel_size,
-            largest_block_index
+            pixel_size
         );
         profile.render(mtf_core.get_blocks());
     }
