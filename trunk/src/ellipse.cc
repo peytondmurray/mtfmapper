@@ -80,7 +80,6 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     }
     mean_dist /= counter;
     double iso_scale = sqrt(2.0) / mean_dist;
-    printf("iso_scale scale = %lf\n", iso_scale);
 
     size_t idx = 0;
     for (set<iPoint>::const_iterator it=boundary.begin(); it != boundary.end(); it++) {
@@ -172,10 +171,6 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     centre_uncertainty[0] = sqrt(w[0]) * 0.25;
     centre_uncertainty[1] = sqrt(w[1]) * 0.25;
 
-    printf("uncertainty: %le %le\n", centre_uncertainty[0], centre_uncertainty[1]);
-    printf("angle uncertainty: %lg rad, %lg deg\n", atan2(V(1,0), V(0,0)),
-        atan2(V(1,0), V(0,0))/M_PI*180.0);
-
     // shift the ellipse back to the original pixel coordinate system
     Matrix3d S;
     S.setIdentity();
@@ -186,9 +181,6 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     S(0, 2) = -(tl_x + mx);
     S(1, 2) = -(tl_y + my);
     C = _C = S.transpose()*C*S;
-
-    printf("scaled C :\n");
-    cout << C/C(2,2) << endl;
 
     int result = _matrix_to_ellipse(C);
 
@@ -211,14 +203,6 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
 
     printf("centre (%.2lf, %.2lf), major = %lf, minor = %lf, angle = %lf, is_circle = %d\n",
         centroid_x, centroid_y, major_axis, minor_axis, angle/M_PI*180.0, is_circle);
-    fprintf(stderr, "%.6lf %.6lf\n", centroid_x, centroid_y);
-    
-    // 95th percentile of ED: 0.01295968  (ISO400, f/4, noaa)
-    // 95th percentile of ED: 0.02141153  (ISO400, f/16, noaa)
-    // 95th percentile of ED: 0.02341516  (ISO400, f/16, 4dot)
-    // 95th percentile of ED: 0.04663376  (ISO400, f/32, 4dot)
-    // 95th percentile of ED: 0.07973685  (ISO400, mtf50=0.07)
-    //                        0.06369561  (same as ^, but 1.5 larger diameter
 
     if (isnan(centroid_x) || isnan(centroid_y) || isnan(major_axis) || isnan(minor_axis)) {
         is_circle = 0;
@@ -254,10 +238,8 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
                 total++;
             }
         }
-        printf("fg=%d, total=%d, ratio=%lf\n", foreground, total, foreground/double(total));
         if (foreground >= total - 1) {
             solid = true;
-            printf("ellipse is solid\n");
         }
     }
     
@@ -434,8 +416,6 @@ bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradie
     
     sort(phi_diff.begin(), phi_diff.end());
     const double phi_percentile = 0.9;
-    printf("phi_diff 90%%=%lf, 97%%=%lf\n", phi_diff[0.9*phi_diff.size()], phi_diff[0.97*phi_diff.size()]);
-    printf("not fg fraction: %lf\n", not_fg_count/double(raw_points.size()));
     
     double phi_delta = phi_diff[phi_percentile*phi_diff.size()];
     

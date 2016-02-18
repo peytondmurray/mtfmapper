@@ -45,7 +45,6 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     
     if (!valid) {
         // this may be an ellipse. check it ...
-        printf("At (%lf, %lf): checking if this is an ellipse\n", cent.x, cent.y);
         Boundarylist::const_iterator it = cl.get_boundaries().find(label);
         Ellipse_detector e;
         int valid = e.fit(cl, g, it->second, 0, 0, 2);

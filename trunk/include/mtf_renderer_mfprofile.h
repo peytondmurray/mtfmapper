@@ -54,13 +54,14 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         double chart_scale,
         const std::string& wdir, const std::string& prof_fname, 
         const cv::Mat& img, const vector<cv::Point3d>& distance_scale,
-        bool lpmm_mode=false, double pixel_size=1.0) 
+        bool lpmm_mode=false, double pixel_size=1.0,
+        int largest_block_index=-1) 
       :  zero(zero), transverse(transverse), longitudinal(longitudinal),
          wdir(wdir), prname(prof_fname),
          img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          chart_scale(chart_scale), distance_scale(distance_scale),
-         gnuplot_failure(false), gnuplot_warning(true) {
+         largest_block_index(largest_block_index) {
       
     }
     
@@ -79,7 +80,11 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         double max_trans = 0;
         vector<double> mtf50;
         for (size_t i=0; i < blocks.size(); i++) {
-            const double angle_thresh = 10.0;
+            const double angle_thresh = 25.0;
+            
+            if (int(i) == largest_block_index) {
+                continue; // ignore the largest block
+            }
             
             double diam = 0;
             for (size_t k=0; k < 3; k++) {
@@ -94,7 +99,11 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 Point norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
-                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh) { // edge perp to tangent
+                
+                
+                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && // edge roughly aligned with long axis
+                    blocks[i].get_mtf50_value(k) < 1) {            // and not a problematic edge
+                    
                     maxmtf = std::max(blocks[i].get_mtf50_value(k), maxmtf);
                 }
             }
@@ -105,7 +114,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
                 if (acos(fabs(delta))/M_PI*180.0 < angle_thresh &&
-                    blocks[i].get_mtf50_value(k) == maxmtf) { // edge perp to tangent
+                    blocks[i].get_mtf50_value(k) == maxmtf ) {
                 
                     for (int ti=-1; ti <= 1; ti++) {
                         Point mec = ec + ti*diam/4.0*Point(-norm.y, norm.x);
@@ -120,9 +129,14 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             }
         }
         
+        if (mtf50.size() == 0) {
+            printf("No usable edges found. Aborting manual focus peak evaluation.\n");
+            return;
+        }
+        
         sort(mtf50.begin(), mtf50.end());
-        double p5 = mtf50[0.05*mtf50.size()];
-        double p95 = mtf50[0.95*mtf50.size()];
+        double p2 = mtf50[0.02*mtf50.size()];
+        double p98 = mtf50[0.98*mtf50.size()];
         
         vector< Mtf_profile_sample > ap_points; // axis projected points
         for (size_t i=0; i < points.size(); i++) {
@@ -131,8 +145,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 d.x*longitudinal.x + d.y*longitudinal.y,
                 d.x*transverse.x + d.y*transverse.y
             );
-            double val = (points[i].mtf - p5)/(p95-p5);
-            //double val = clamp((points[i].second - p5)/(p99-p5)) * 0.99 + 0.01; // TODO: must still check if this helps, or not
+            double val = softclamp(points[i].mtf, p2, p98);
             
             // TODO: we can clip the values here to [0,1]
             if (!(isnan(coord.x) || isnan(coord.y) || isnan(val))) {
@@ -240,20 +253,11 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         
     }
 
-    void set_gnuplot_warning(bool gnuplot) {
-        gnuplot_warning = gnuplot;
-    }
-    
-    bool gnuplot_failed(void) {
-        return gnuplot_failure;
-    }
-
   private:
   
     void draw_curve(cv::Mat& image, const vector<Point>& data, cv::Scalar col, double width, bool points=false) {
         int prevx = 0;
         int prevy = 0;
-        // p95 ridge curve
         for (size_t i=0; i < data.size(); i++) {
             double px = data[i].x*longitudinal.x + data[i].y*longitudinal.y + zero.x;
             double py = data[i].x*transverse.x + data[i].y*transverse.y + zero.y;
@@ -275,8 +279,12 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         }
     }
   
-    double clamp(double x) const {
-        return (x < 0) ? 0 : ((x > 1) ? 1 : x);
+    double softclamp(double x, double lower, double upper, double p=0.98) {
+        double s = (x - lower) / (upper - lower);
+        if (s > p) {
+            return 1.0/(1.0 + exp(-3.89182*s));
+        }
+        return s < 0 ? 0 : s;
     }
 
     Point zero;
@@ -289,8 +297,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     double  pixel_size;
     double  chart_scale;
     const vector<cv::Point3d>& distance_scale;
-    bool gnuplot_failure;
-    bool gnuplot_warning;
+    int largest_block_index;
 };
 
 #endif

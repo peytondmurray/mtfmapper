@@ -12,17 +12,6 @@ const int bitreverse4[16] = {
 
 class Ellipse_decoder {
   public:
-    /*
-    Ellipse_decoder(const Ellipse_detector& e, const Component_labeller& cl, 
-        const Point& trans) : origin(e.centroid_x, e.centroid_y), 
-        trans(trans), code(-1), valid(false) {
-        
-        
-        string bitvec;
-        extract_bitvector(e, cl, bitvec);
-        decode_bitvector(bitvec);
-    }
-    */
     
     Ellipse_decoder(const Ellipse_detector& e, const cv::Mat& img, 
         const Point& trans) : origin(e.centroid_x, e.centroid_y), 
