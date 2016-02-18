@@ -328,6 +328,7 @@ int main(int argc, char** argv) {
     Point longitudinal;
     double chart_scale=1.0;
     vector<cv::Point3d> distance_scale;
+    int largest_block_index = -1;
     if (tc_mf_profile.getValue()) {
     
         // TODO: move all this out of main program
@@ -463,6 +464,7 @@ int main(int argc, char** argv) {
             double delta_1 = by_size[by_size.size()-1].first / by_size[by_size.size()-2].first;
             double delta_2 = by_size[by_size.size()-2].first / by_size[by_size.size()-3].first;
             if (delta_1/delta_2 > 100) {
+                largest_block_index = by_size.back().second;
                 const Block& lblock = blocks[by_size.back().second];
                 // we have a clear largest block. now determine its orientation
                 vector<double> xp;
@@ -563,7 +565,8 @@ int main(int argc, char** argv) {
             cvimg,
             distance_scale,
             lpmm_mode,
-            pixel_size
+            pixel_size,
+            largest_block_index
         );
         profile.render(mtf_core.get_blocks());
     }

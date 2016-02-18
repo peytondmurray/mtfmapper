@@ -64,13 +64,13 @@ class Focus_surface  {
                     if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5 ) { // at least 5 mm from centre of chart
                         
                         double yw = exp(-dy*dy/(2*5*5)); // sdev of 7 mm in y direction
-                        pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.4 + 0.6*std::max(0.01, data[i].mtf)) );
+                        pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.1 + 0.9*data[i].mtf) );
                         mean_x += pts_row.back().weight * data[i].p.y * cscale;
                         wsum += pts_row.back().weight;
                     } 
                 }
                 
-                if (pts_row.size() < 50) {
+                if (pts_row.size() < 3*14) {
                     printf("only got %d points at distance %lf\n", (int)pts_row.size(), midy);
                     continue; 
                 }
@@ -108,6 +108,11 @@ class Focus_surface  {
                 ridge_peaks.push_back(Point(lpeak/cscale, mean_x/cscale));
                 
             }
+        }
+        
+        if (peak_pts.size() < 10) {
+            printf("Not enough peak points to construct peak focus curve.\n");
+            return;
         }
         
         Ratpoly_fit cf(peak_pts, 2,2);
