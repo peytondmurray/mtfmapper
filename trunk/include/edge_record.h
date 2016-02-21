@@ -178,10 +178,10 @@ class Edge_record {
             double dot = dx * dir.x + dy * dir.y;
             
             double gw = 1.0;
-            double dw = 2; 
+            double dw = 2*2; 
             
             if (dims.first < 10) {
-                dw = 4;
+                dw = 4*2;
                 double dotp = dx * (-dir.y) + dy*dir.x;
                 if (fabs(dotp) > dims.first) {
                     gw *= 0.1;

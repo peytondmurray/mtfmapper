@@ -197,6 +197,17 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     Mrectangle rrect(main_thetas, thetas, points, g);
     rect = rrect;
     
+    for (int ci=0; ci < 4; ci++) {
+        if (cl(lrint(0.5*(ix+rrect.centroids[0].x)), lrint(0.5*(iy+rrect.centroids[0].y))) != label) {
+            //printf("block with centroid (%d, %d) failed interior check\n", ix, iy);a
+            return false;
+        }
+        if (cl(lrint(0.5*(ix+rrect.corners[0].x)), lrint(0.5*(iy+rrect.corners[0].y))) != label) {
+            //printf("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
+            return false;
+        }
+    }
+    
     return rrect.valid;
 }
 
