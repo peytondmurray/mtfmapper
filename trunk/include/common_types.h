@@ -110,6 +110,12 @@ using std::make_pair;
 #define STAT _stat
 #endif
 
+#ifdef _WIN32
+    #ifndef S_ISDIR
+        #define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+    #endif
+#endif
+
 #endif //COMMON_TYPES_H
 
 
