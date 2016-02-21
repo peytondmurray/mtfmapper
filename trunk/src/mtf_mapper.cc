@@ -54,6 +54,7 @@ using std::stringstream;
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
+#include "include/autocrop.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -113,6 +114,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
+    TCLAP::SwitchArg tc_autocrop("","autocrop","Automatically crop image to the chart area", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
@@ -251,6 +253,11 @@ int main(int argc, char** argv) {
 	global_mtf_correction_instance = new Mtf_correction();
 
     cv::Mat masked_img;
+    
+    if (tc_autocrop.getValue()) {
+        Autocropper ac(cvimg);
+        cvimg = ac.subset(cvimg);
+    }
     
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
