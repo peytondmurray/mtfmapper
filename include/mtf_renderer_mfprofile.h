@@ -104,12 +104,12 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 Point norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
-                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh &&
-                    blocks[i].get_mtf50_value(k) == maxmtf ) {
+                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && maxmtf > 0 &&
+                    fabs(blocks[i].get_mtf50_value(k) - maxmtf)/maxmtf < 0.01 ) {
                 
                     for (int ti=-1; ti <= 1; ti++) {
                         Point mec = ec + ti*diam/4.0*Point(-norm.y, norm.x);
-                        points.push_back(Mtf_profile_sample(mec, maxmtf, blocks[i].get_edge_angle(k)));
+                        points.push_back(Mtf_profile_sample(mec, blocks[i].get_mtf50_value(k), blocks[i].get_edge_angle(k)));
                     }
                     
                     if (fabs(ec.y - zero.y) > max_trans) {
@@ -146,6 +146,8 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             }
         }
         
+        const double radxf = 1.8;
+        const double radyf = 1.8;
         
         double wsum = 0;
         double covxx = 0;
@@ -183,13 +185,13 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         covyy = sqrt(covyy);
         vector< Mtf_profile_sample > ap_keep;
         for (size_t i=0; i < ap_points.size(); i++) {
-            if (fabs(ap_points[i].p.x - cpx) > covxx*2 ||
-                fabs(ap_points[i].p.y - cpy) > covyy*1.5) {
+            if (fabs(ap_points[i].p.x - cpx) > covxx*radxf ||
+                fabs(ap_points[i].p.y - cpy) > covyy*radyf) {
             } else {
                 ap_keep.push_back(ap_points[i]);
             }
         }
-        
+        printf("Keeping %d points out of %d\n", (int)ap_keep.size(), (int)ap_points.size());
         Focus_surface pf(ap_keep, 3, 2, distance_scale);
         
         cv::Mat channel(img.rows, img.cols, CV_8UC1);
@@ -208,6 +210,18 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         merged.resize(merged.rows + 100);
         
         for (size_t i=1; i < points.size(); i+=3) {
+            Point d = points[i].p - zero;
+            Point coord(
+                d.x*longitudinal.x + d.y*longitudinal.y,
+                d.x*transverse.x + d.y*transverse.y
+            );
+            
+            if (fabs(coord.x - cpx) > covxx*radxf ||
+                fabs(coord.y - cpy) > covyy*radyf) {
+                
+                continue; // point was excluded
+            }
+            
             int baseline = 0;
             char buffer[1024];
             sprintf(buffer, "%03d", (int)lrint(points[i].mtf*1000));
@@ -229,8 +243,6 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         draw_curve(merged, pf.ridge, cv::Scalar(30, 255, 30), 3);
         draw_curve(merged, pf.ridge_p05, cv::Scalar(100, 100, 200), 1);
         draw_curve(merged, pf.ridge_p95, cv::Scalar(100, 100, 200), 1);
-        
-       
         
         rectangle(merged, Point(0, initial_rows), Point(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
