@@ -94,11 +94,13 @@ class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
         double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
-        int buffer_border=30, int& crc=dummy_crc, double analogue_scale=1.0)
+        int buffer_border=30, int& crc=dummy_crc, double analogue_scale=1.0,
+        int offset_x=0, int offset_y=0)
      : img(in_img), rect(in_r), noise_source(noise_source),
        gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
        use_16bit(use_16bit), buffer_border(buffer_border),
-       crc(crc), analogue_scale(analogue_scale) {
+       crc(crc), analogue_scale(analogue_scale),
+       offset_x(offset_x), offset_y(offset_y) {
      
         
     }
@@ -148,7 +150,7 @@ class Render_rows {
                 for (int col = buffer_border; col < img.cols-buffer_border; col++) {
                     
                     double rval = 0;
-                    rval = rect.evaluate(col*analogue_scale, row*analogue_scale, object_value, background_value);
+                    rval = rect.evaluate(col*analogue_scale + offset_x, row*analogue_scale + offset_y, object_value, background_value);
                     
                     putpixel(row, col, rval);
                 }
@@ -172,6 +174,8 @@ class Render_rows {
     int buffer_border;
     int& crc;
     double analogue_scale;
+    int offset_x;
+    int offset_y;
 };
 
 
@@ -265,6 +269,11 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<std::string> tc_target_name("", "target-poly", "Target polygon file name", false, "poly.txt", "filename", cmd);
     TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, "factor", cmd);
     TCLAP::ValueArg<double> tc_ascale("", "analogue-scale", "Analogue scaling factor", false, 1.0, "factor", cmd);
+    TCLAP::ValueArg<int> tc_roi_start_row("", "roi-row", "Region Of Interest (ROI) starting row", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<int> tc_roi_start_col("", "roi-col", "Region Of Interest (ROI) starting column", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<int> tc_roi_width("", "roi-width", "Region Of Interest (ROI) width", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<int> tc_roi_height("", "roi-height", "Region Of Interest (ROI) height", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<std::string> tc_photosite_poly("", "photosite-poly", "Photosite polygon file name", false, "photo.txt", "filename", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -280,7 +289,6 @@ int main(int argc, char** argv) {
     photosite_names.push_back("square");
     photosite_names.push_back("circle");
     photosite_names.push_back("rounded-square");
-    photosite_names.push_back("spare");
     TCLAP::ValuesConstraint<string> photosite_constraints(photosite_names);
     TCLAP::ValueArg<std::string> tc_photosite_geom("", "photosite-geom", "Photosite aperture geometry", false, "square", &photosite_constraints );
     cmd.add(tc_photosite_geom);
@@ -547,32 +555,42 @@ int main(int argc, char** argv) {
         
         photosite_geom = new Polygon_geom(verts);
         
-        /*
-        FILE* fout = fopen("aperture.txt", "wt");
-        for (size_t i=0; i < verts.size(); i++) {
-            fprintf(fout, "%lf %lf\n", verts[i][0], verts[i][1]);
-        }
-        fprintf(fout, "%lf %lf\n", verts[0][0], verts[0][1]);
-        fclose(fout);
-        */
-        
         printf("rounded-square photosite area = %lf\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
     }
     
-    if (tc_photosite_geom.getValue().compare("spare") == 0) {
-        vector<cv::Vec2d> verts(4);
-        
-        verts[3][0] = 0.5;
-        verts[3][1] = 0.01;
-        
-        verts[2][0] = 0.5;
-        verts[2][1] = -0.01;
-        
-        verts[1][0] = -0.5;
-        verts[1][1] = -0.01;
-        
-        verts[0][0] = -0.5;
-        verts[0][1] = 0.01;
+    if (tc_photosite_poly.isSet()) {
+        if (tc_photosite_geom.isSet()) {
+            printf("Warning: --photosite-poly overrides the --photosite-geom option %s that was specified.\n", tc_photosite_geom.getValue().c_str());
+        }
+        FILE* poly = fopen(tc_photosite_poly.getValue().c_str(), "rt");
+        if (!poly) {
+            printf("Error: Could not open specified photosite polygon file %s. Aborting\n", tc_photosite_poly.getValue().c_str());
+            exit(-1);
+        }
+        int nverts;
+        int nread = fscanf(poly, "%d", &nverts);
+        const char poly_format[] =
+            "Could not parse specified photosite polygon file. Expected format is:\n "
+            "\t<number_of_vertices>\n"
+            "\t<x1> <y1>\n"
+            "\t<x2> <y2>\n"
+            "\t...\n"
+            "\t<xn> <yn>\n"
+            "where vertices are specified in clockwise order. Only one polygon allowed\n";
+        if (nread != 1 || nverts <= 2) {
+            printf("%s", poly_format);
+            exit(-1);
+        }
+        vector<cv::Vec2d> verts(nverts);
+        for (int i = 0; i < nverts; i++) {
+            nread = fscanf(poly, "%lf %lf", &verts[i][0], &verts[i][1]);
+            if (nread != 2) {
+                printf("%s", poly_format);
+                exit(-1);
+            }
+        }
+        fclose(poly);
+        printf("successfully read in user-specified photosite polygon with %d vertices\n", nverts);
         
         photosite_geom = new Polygon_geom(verts);
     }
@@ -602,9 +620,17 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "       Please specify one of the Airy PSFs, or gaussian-sampled (see -p option).\n");
                 return -1;
             }
+            if (tc_photosite_geom.isSet() || tc_photosite_poly.isSet()) {
+                printf("Warning: photosite geometry (--photosite-geom or --photosite-poly) NOT used when rendering Gaussian PSF. Use airy/airy-box/airy-4dot-olpf PSF instead.\n");
+                printf("Continuing to render using pure Gaussian PSF.\n");
+            }
             rect = new Render_rectangle_integral(*dynamic_cast<Polygon_geom*>(target_geom), sigma);
             break;
         case Render_polygon::GAUSSIAN_SAMPLED:
+            if (tc_photosite_geom.isSet() || tc_photosite_poly.isSet()) {
+                printf("Warning: photosite geometry (--photosite-geom or --photosite-poly) NOT used when rendering Gaussian PSF. Use airy/airy-box/airy-4dot-olpf PSF instead.\n");
+                printf("Continuing to render using pure Gaussian PSF.\n");
+            }
             rect = &default_target;
             if (tc_samples.isSet()) {
                 rect->initialize_samples(tc_samples.getValue());
@@ -614,6 +640,30 @@ int main(int argc, char** argv) {
     rect->set_img_dimensions(height, width);
     if (tc_psf_ratio.isSet()) {
         rect->set_psf_ratio(tc_psf_ratio.getValue());
+    }
+
+    if ((tc_roi_start_row.isSet() || tc_roi_start_col.isSet()) &&
+        !(tc_roi_width.isSet() && tc_roi_height.isSet())) {
+        printf("Error: You must specify --roi-width and --roi-height if you use the --roi-row or --roi-col options.\n");
+        exit(-1);
+    }
+    if ((tc_roi_width.isSet() && !tc_roi_height.isSet()) ||
+        (!tc_roi_width.isSet() && tc_roi_height.isSet())) {
+        printf("Error: You must specify both --roi-width and --roi-height.\n");
+        exit(-1);
+    }
+    int x_origin = 0;
+    int y_origin = 0;
+    if (tc_roi_width.isSet() && tc_roi_height.isSet()) {
+        width = tc_roi_width.getValue();
+        height = tc_roi_height.getValue();
+        x_origin = tc_roi_start_col.getValue();
+        y_origin = tc_roi_start_row.getValue();
+        if (x_origin < 0 || y_origin < 0) {
+            printf("Error: ROI origin must be non-negative.\n");
+            exit(-1);
+        }
+        printf("User-specified ROI (row,col): (%d, %d) to (%d, %d)\n.", y_origin, x_origin, y_origin + height, x_origin + width);
     }
     
     cv::Mat img;
@@ -640,7 +690,10 @@ int main(int argc, char** argv) {
     
     if (!tc_profile.getValue()) {
         int crc = 0;
-        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, border, crc, tc_ascale.getValue());
+        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, 
+            tc_roi_width.isSet() ? 0 : border,
+            crc, tc_ascale.getValue(), x_origin, y_origin
+        );
         printf("progress: 0%% ");
         fflush(stdout);
         parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
