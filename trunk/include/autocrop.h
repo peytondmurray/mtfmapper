@@ -71,11 +71,11 @@ class Autocropper {
         upper = 0;
         lower = grad_cs.size();
         for (int c=0; c < (int)grad_cs.size(); c++) {
-            if (grad_cs[c] > ot1 && c > upper) {
+            if (grad_cs[c] > ot2 && c > upper) {
                 upper = c;
             }
             int complement = grad_cs.size() - 1 - c;
-            if (grad_cs[c] > ot1 && complement < lower) {
+            if (grad_cs[c] > ot2 && complement < lower) {
                 lower = complement;
             }
         }
