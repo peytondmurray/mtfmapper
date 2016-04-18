@@ -47,9 +47,9 @@ typedef vector<Block> block_vector;
 
 // global constants for ESF-fourier MTF method
 // TODO: these can be dynamic parameters, with some effort
-const double max_dot = 16;
+const double max_dot = 28;
 const int SAMPLES_PER_PIXEL = 32;
-const size_t FFT_SIZE = int(max_dot)*SAMPLES_PER_PIXEL;
+const size_t FFT_SIZE = int(16)*SAMPLES_PER_PIXEL;
 const int NYQUIST_FREQ = FFT_SIZE/16;
 const double max_edge_length = 200;
 

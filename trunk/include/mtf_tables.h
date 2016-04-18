@@ -34,39 +34,6 @@ using std::vector;
 
 #include "mtf_core.h"
 
-class Apodization;
-
-extern Apodization* global_apodization_instance;
-
-class Apodization {
-
-  public:
-    Apodization(int fft_size=512) : w(fft_size, 0.0) {
-        const double alpha = 0.6;
-        const int tukey_w = fft_size/2;
-        
-        for (int idx=fft_size/4; idx <= 3*fft_size/4; idx++) {
-            double lx = idx - fft_size/4;
-            w[idx] = 1.0;
-            if (lx < alpha*(tukey_w-1)/2.0) {
-                w[idx] = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 1));
-            }
-            if (lx > (tukey_w - 1)*(1 - alpha/2)) {
-                w[idx] = 0.5 + 0.5*cos(M_PI*(2*lx/(alpha * (tukey_w-1)) - 2/alpha + 1));
-            }
-        }
-    }
-    
-    static Apodization* get_instance(void) {
-        return global_apodization_instance;
-    }
-    
-    vector<double> w;
-private:
-
-    
-};
-
 class Mtf_correction;
 
 extern Mtf_correction* global_mtf_correction_instance;
