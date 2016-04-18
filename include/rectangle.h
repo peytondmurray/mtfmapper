@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "common_types.h"
 #include "peak_detector.h"
+#include "edge_record.h"
 
 const double rect_il_thresh = 3.75;
 const double adjust = 0.15;
@@ -57,7 +58,7 @@ class Mrectangle {
         double len = sqrt(diff1.ddot(diff1));
         Point pn(-n.y, n.x);
         double e_adj = std::min(len*adjust, 4.0)/len;
-        e_adj = std::max(e_adj, 0.05);
+        e_adj = std::max(e_adj, 0.08); // TODO: this must probably be larger on wider PSFs
         Point delta(-pn.x*len*e_adj, -pn.y*len*e_adj);
         
         if (ndiff(avg(c1,c2), c1).ddot(pn) > 0) {
@@ -101,6 +102,81 @@ class Mrectangle {
         br.x = ceil(br.x);
         tl.y = floor(tl.y);
         br.y = ceil(br.y);
+    }
+    
+    // reposition a rectangle using new estimates of the centroids and normals
+    Mrectangle(const Mrectangle& b, const vector<Edge_record>& edge_records) 
+      : thetas(4, .0), centroids(4, Point(0.0,0.0)), valid(true), 
+        corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 
+        normals(4, Point(0.0,0.0)), boundary_length(0) {
+        
+        Point sq_centre(0,0);
+        for (int k=0; k < 4; k++) {
+            sq_centre += edge_records[k].centroid;
+        }
+        sq_centre *= 0.25;
+        
+        for (int k=0; k < 4; k++) {
+            centroids[k] = edge_records[k].centroid;
+            normals[k] = Point(cos(edge_records[k].angle), sin(edge_records[k].angle)); // TODO: normal could be flipped ?
+            Point delta = centroids[k] - sq_centre;
+            delta *= 1.0/(norm(delta));
+            double dot = normals[k].x*delta.x + normals[k].y*delta.y;
+            if (dot < 0) {
+                normals[k] = -normals[k];
+            }
+            //printf("old centroids [%d] : (%lf, %lf), normals(%lf, %lf)\n", k, b.centroids[k].x, b.centroids[k].y, b.normals[k].x, b.normals[k].y);
+            //printf("nr  centroids [%d] : (%lf, %lf), normals(%lf, %lf)\n", k, centroids[k].x, centroids[k].y, normals[k].x, normals[k].y);
+        }
+        
+        boundary_length = b.boundary_length;
+        corner_map = vector< vector<int> >(4);
+        
+        int corner_idx = 0;
+        for (size_t k1=0; k1 < 3; k1++) {
+            for (size_t k2=k1+1; k2 < 4; k2++) {
+                // check if edges are approximately normal
+                double dot = normals[k1].x*normals[k2].x + normals[k1].y*normals[k2].y;
+                if ( fabs(fabs(dot)) < M_PI/6.0 ) {
+                    // edges are approximately normal, find intersection
+                    Point isect(0.0,0.0);
+                    intersect(centroids[k1], normals[k1], centroids[k2], normals[k2], isect);
+                    corner_map[k1].push_back(corner_idx);
+                    corner_map[k2].push_back(corner_idx);
+                    corners[corner_idx++] = isect;
+                }
+            }
+        }
+        //printf("corner map sizes: %lu %lu %lu %lu\n", corner_map[0].size(), corner_map[1].size(), corner_map[2].size(), corner_map[3].size());
+        
+        tl.x = 1e50;
+        br.x = -1e50;
+        tl.y = 1e50;
+        br.y = -1e50;
+        for (size_t k=0; k < 4; k++) {
+            Point& c = corners[k];
+            if (c.x < tl.x) tl.x = c.x;
+            if (c.x > br.x) br.x = c.x;
+            if (c.y < tl.y) tl.y = c.y;
+            if (c.y > br.y) br.y = c.y;
+        }
+        
+        tl.x = floor(tl.x);
+        br.x = ceil(br.x);
+        tl.y = floor(tl.y);
+        br.y = ceil(br.y);
+        
+    }
+    
+    bool corners_ok(void) const {
+        bool ok = true;
+        if (corner_map.size() != 4) {
+            return false;
+        }
+        for (int k=0; k < 4; k++) {
+            ok &= corner_map[k].size() == 2;
+        }
+        return ok;
     }
   
     Point ndiff(const Point& a, const Point& b) {

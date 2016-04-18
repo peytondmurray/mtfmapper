@@ -86,13 +86,18 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         return;
     }
     
-    vector<Point>& centroids = rrect.centroids;
+    if (!rrect.corners_ok()) {
+        printf("discarding broken square (early)\n");
+        return;
+    }
+    
+    
     vector<Edge_record> edge_record(4);
     vector< map<int, scanline> > scansets(4); 
     bool reduce_success = true;
     for (size_t k=0; k < 4; k++) {
         // now construct buffer around centroid, aligned with direction, of width max_dot
-        Mrectangle nr(rrect, k, max_dot);
+        Mrectangle nr(rrect, k, max_dot+0.5);
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                 Point p(x,y);
@@ -101,26 +106,52 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     int iy = lrint(y);
                     int ix = lrint(x);
                     if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
-
                         edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                    }
+                }
+            }
+        }
+        reduce_success &= edge_record[k].reduce();
+    }
+    
+    if (reduce_success) {
+        // re-calculate the ROI after we have refined the edge centroid above
+        Mrectangle newrect(rrect, edge_record);
+        
+        if (!newrect.corners_ok()) {
+            printf("discarding broken square (after updates)\n");
+            return;
+        }
+        
+        scansets = vector< map<int, scanline> >(4); // re-initialise
+        for (size_t k=0; k < 4; k++) {
+            // now construct buffer around centroid, aligned with direction, of width max_dot
+            Mrectangle nr(newrect, k, max_dot+0.5);
+            for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
+                for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
+                    Point p(x,y);
+                    if (nr.is_inside(p)) {
+                    
+                        int iy = lrint(y);
+                        int ix = lrint(x);
+                        if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
 
-                        map<int, scanline>::iterator it = scansets[k].find(iy);
-                        if (it == scansets[k].end()) {
-                            scanline sl(ix,ix);
-                            scansets[k].insert(make_pair(iy, sl));
-                        }
-                        if (ix < scansets[k][iy].start) {
-                            scansets[k][iy].start = ix;
-                        }
-                        if (ix > scansets[k][iy].end) {
-                            scansets[k][iy].end = ix;
+                            map<int, scanline>::iterator it = scansets[k].find(iy);
+                            if (it == scansets[k].end()) {
+                                scanline sl(ix,ix);
+                                scansets[k].insert(make_pair(iy, sl));
+                            }
+                            if (ix < scansets[k][iy].start) {
+                                scansets[k][iy].start = ix;
+                            }
+                            if (ix > scansets[k][iy].end) {
+                                scansets[k][iy].end = ix;
+                            }
                         }
                     }
                 }
             }
         }
-
-        reduce_success &= edge_record[k].reduce();
     }
     
     if (!reduce_success) {
@@ -271,22 +302,22 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
         }
     }
     
-    //printf("optimized angle estimate: %lf %lf\n", best_angle/M_PI*180, angle_reduce(best_angle));
-    sample_at_angle(best_angle, ordered, scanset, cent, edge_length);
-    sort(ordered.begin(), ordered.end());
+    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
     
     mean_grad.x = cos(best_angle);
     mean_grad.y = sin(best_angle);
     rgrad = mean_grad;
+    
+    sample_at_angle(best_angle, ordered, scanset, cent, edge_length);
+    sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
         quality = 0; // this edge is not usable in any way
         return 0;
     }
     
-    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
-
-    double SNR = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+        
+    bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
     afft.realfft(fft_out_buffer.data());
 
     double quad = angle_reduce(best_angle);

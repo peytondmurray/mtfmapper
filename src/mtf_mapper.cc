@@ -247,8 +247,6 @@ int main(int argc, char** argv) {
         img_filename.push_back(c);
     }
 	
-	// initialize the global apodization filter
-	global_apodization_instance = new Apodization(512);
 	// initialize the global mtf correction instance
 	global_mtf_correction_instance = new Mtf_correction();
 
