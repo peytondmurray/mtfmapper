@@ -98,6 +98,8 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int i=0; i < fft_size; i++) {
         sampled[i] = missing;
     }
+    
+    // TODO: find a way to trim the ROI whenever the edges of the ROI change slope?
 
     const double scale = 2 * 16.0 / 28.0; // 0.8 = 16/20, maxdot relative to 16
     double rightsum = 0;
@@ -109,8 +111,12 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     vector<double> weights(fft_size, 0);
     vector<double> mean(fft_size, 0);
     
-    const int fft_left = fft_size/2 + 8*lower;
-    const int fft_right = fft_size/2 + 8*upper;
+    int clipped_count = 0;
+    
+    int fft_left = fft_size/2 + 8*lower;
+    int fft_right = fft_size/2 + 8*upper;
+    
+    retry:
     
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = floor(ordered[i].first*8 + fft_size/2);
@@ -145,12 +151,118 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    
     // now just pad out the ends of the sequences with the last non-missing values
-    for (int idx=left_non_missing-1; idx >= fft_left-16; idx--) {
+    for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
     }
-    for (int idx=right_non_missing+1; idx < fft_right + 16; idx++) {
+    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
+    }
+    
+    
+    vector<double> slopes(fft_size, 0);
+    int peak_slope_idx = 0;
+    const int pw = 16;
+    for (int idx=0; idx < fft_size; idx++) {
+        double sx2 = 0;
+        double sxy = 0;
+        // sx == 0 because the window is symmetric
+        double a = 0;
+        if (idx > pw && idx < (fft_size-1-pw)) {
+            for (int j=-pw; j <= pw; j++) {
+                sxy += sampled[idx+j] * j;
+                sx2 += j*j;
+            }
+            a = sxy/(sx2);
+            slopes[idx] = a;
+            if (idx > fft_left+pw && idx < fft_right-pw-1 && fabs(a) > fabs(slopes[peak_slope_idx])) {
+                peak_slope_idx = idx;
+            } 
+        }
+    }
+    
+    if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
+        abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
+        printf("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
+        return false;
+    }
+    
+    // compute central peak magnitude and sign
+    double central_peak = 0;
+    for (int w=-16; w <= 16; w++) {
+        if (fabs(slopes[fft_size/2+w]) > fabs(central_peak)) {
+            central_peak = slopes[fft_size/2+w];
+        }
+    }
+    
+    double peak_threshold = fabs(central_peak * 0.0001); // must be negative by at least a little bit
+    // scan for significant slope sign change
+    bool clipped = false;
+    for (int idx=fft_size/2-16; idx >= fft_left+4; idx--) {
+        if (slopes[idx]*central_peak < 0 && fabs(slopes[idx]) > peak_threshold) {
+            // check if a fair number of the remaining slopes are also negative (relative to peak)
+            int below = 0;
+            double maxdev = 0;
+            int scount = 0;
+            for (int j=idx; j >= fft_left; j--) {
+                if (slopes[j]*central_peak < 0) {
+                    below++;
+                    maxdev = std::max(maxdev, fabs(slopes[j]));
+                }
+                scount++;
+            }
+            if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
+                fft_left = std::min(idx, fft_size/2 - 2*8);
+                clipped = true;
+                break;
+            } 
+        }
+    }
+    for (int idx=fft_size/2+16; idx < fft_right-4; idx++) {
+        if (slopes[idx]*central_peak < 0 && fabs(slopes[idx]) > peak_threshold) {
+            // check if a fair number of the remaining slopes are also negative (relative to peak)
+            int below = 0;
+            double maxdev = 0;
+            int scount=0;
+            for (int j=idx; j < fft_right; j++) {
+                if (slopes[j]*central_peak < 0) {
+                    below++;
+                    maxdev = std::max(maxdev, fabs(slopes[j]));
+                }
+                scount++;
+            }
+            if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
+                fft_right = std::max(idx, fft_size/2 + 2*8);
+                clipped = true;
+                break;
+            } 
+        }
+    }
+    
+    
+    if (clipped) {
+        if (fft_size/2 - fft_left < 4*8 ||
+            fft_right  - fft_size/2 < 4*8) {
+            
+            printf("probably contamination. tagging edge as failed\n");
+            //return false;
+        }
+    }
+   
+    if (clipped && clipped_count < 2) {
+        for (size_t idx=0; idx < weights.size(); idx++) {
+            sampled[idx] = 0;
+            weights[idx] = 0;
+        }
+        leftsum = 0;
+        rightsum = 0;
+        rightcount = 0;
+        leftcount = 0;
+        left_non_missing = 0;
+        right_non_missing = 0;
+        clipped_count++;
+        goto retry;
     }
     
     leftsum /= double(leftcount);
@@ -248,10 +360,10 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     
     // now just pad out the ends of the sequences with the last non-missing values
-    for (int idx=left_non_missing-1; idx >= fft_left-16; idx--) {
+    for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
     }
-    for (int idx=right_non_missing+1; idx < fft_right + 16; idx++) {
+    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
     }
     
@@ -327,6 +439,8 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_trans+1-16; idx < right_trans; idx++) {
         sampled[idx] = 0.5*(smoothed[idx] + sampled[idx]);
     }
+    
+    
     
     return true;
 }
