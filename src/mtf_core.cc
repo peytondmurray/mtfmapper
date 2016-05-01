@@ -101,7 +101,9 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                 Point p(x,y);
-                if (nr.is_inside(p)) {
+                Point d = p - rrect.centroids[k];
+                double dot = d.x*rrect.normals[k].x + d.y*rrect.normals[k].y;
+                if (nr.is_inside(p) && fabs(dot) < 16) {
                 
                     int iy = lrint(y);
                     int ix = lrint(x);
@@ -118,10 +120,12 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         
+        
         if (!newrect.corners_ok()) {
             printf("discarding broken square (after updates)\n");
             return;
         }
+        
         
         scansets = vector< map<int, scanline> >(4); // re-initialise
         for (size_t k=0; k < 4; k++) {
@@ -317,7 +321,12 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
     
         
-    bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    bool success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    if (!success) {
+        quality = poor_quality;
+        printf("failed edge\n");
+        return 1.0;
+    }
     afft.realfft(fft_out_buffer.data());
 
     double quad = angle_reduce(best_angle);
