@@ -106,7 +106,7 @@ class Mrectangle {
     
     // reposition a rectangle using new estimates of the centroids and normals
     Mrectangle(const Mrectangle& b, const vector<Edge_record>& edge_records) 
-      : thetas(4, .0), centroids(4, Point(0.0,0.0)), valid(true), 
+      : thetas(4, 0.0), centroids(4, Point(0.0,0.0)), valid(true), 
         corners(4, Point(0.0,0.0)), edges(4, Point(0.0,0.0)), 
         normals(4, Point(0.0,0.0)), boundary_length(0) {
         
@@ -115,18 +115,19 @@ class Mrectangle {
             sq_centre += edge_records[k].centroid;
         }
         sq_centre *= 0.25;
-        
+    
         for (int k=0; k < 4; k++) {
             centroids[k] = edge_records[k].centroid;
-            normals[k] = Point(cos(edge_records[k].angle), sin(edge_records[k].angle)); // TODO: normal could be flipped ?
+            normals[k] = Point(cos(edge_records[k].angle), sin(edge_records[k].angle)); 
             Point delta = centroids[k] - sq_centre;
             delta *= 1.0/(norm(delta));
             double dot = normals[k].x*delta.x + normals[k].y*delta.y;
             if (dot < 0) {
                 normals[k] = -normals[k];
             }
-            //printf("old centroids [%d] : (%lf, %lf), normals(%lf, %lf)\n", k, b.centroids[k].x, b.centroids[k].y, b.normals[k].x, b.normals[k].y);
-            //printf("nr  centroids [%d] : (%lf, %lf), normals(%lf, %lf)\n", k, centroids[k].x, centroids[k].y, normals[k].x, normals[k].y);
+            edges[k].x = normals[k].y;
+            edges[k].y = normals[k].x;
+            thetas[k] = atan2(normals[k].y, normals[k].x);
         }
         
         boundary_length = b.boundary_length;
@@ -147,7 +148,6 @@ class Mrectangle {
                 }
             }
         }
-        //printf("corner map sizes: %lu %lu %lu %lu\n", corner_map[0].size(), corner_map[1].size(), corner_map[2].size(), corner_map[3].size());
         
         tl.x = 1e50;
         br.x = -1e50;
@@ -165,7 +165,6 @@ class Mrectangle {
         br.x = ceil(br.x);
         tl.y = floor(tl.y);
         br.y = ceil(br.y);
-        
     }
     
     bool corners_ok(void) const {
@@ -309,6 +308,20 @@ class Mrectangle {
     
     Point get_centroid(size_t i) const {
         return centroids[i];
+    }
+    
+    void print(void) const {
+        for (int k=0; k < 4; k++) {
+            printf("c(%lf, %lf), e(%lf, %lf), n(%lf, %lf), t(%lf), cr(%lf, %lf), map(%d, %d)\n",
+                centroids[k].x, centroids[k].y,
+                edges[k].x, edges[k].y,
+                normals[k].x, normals[k].x,
+                thetas[k],
+                corners[k].x, corners[k].y,
+                corner_map[k][0], corner_map[k][1]
+            );
+            
+        }
     }
     
     vector<double> thetas;

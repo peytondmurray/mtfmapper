@@ -37,10 +37,13 @@ Gradient::Gradient(const cv::Mat& in_img, bool snapshot)
 {
     
     cv::Mat in_float;
-    in_img.convertTo(in_float, CV_32FC1, 1.0/65536.0);
+    double min_val = 0;
+    double max_val = 0;
+    minMaxLoc(in_img, &min_val, &max_val);
+    in_img.convertTo(in_float, CV_32FC1, 1.0/max_val);
     
     cv::Mat smoothed;
-    cv::GaussianBlur(in_float, smoothed, cv::Size(5,5), 1.0, 1.0);
+    cv::GaussianBlur(in_float, smoothed, cv::Size(5,5), 1.2, 1.2);
     
     _compute_gradients(smoothed);
 

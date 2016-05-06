@@ -41,6 +41,7 @@ using std::make_pair;
 
 #include "focus_surface.h"
 #include "distance_scale.h"
+#include "mtf50_edge_quality_rating.h"
 
 class Mtf_renderer_mfprofile : public Mtf_renderer {
   public:
@@ -104,8 +105,8 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 Point norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
-                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && maxmtf > 0 &&
-                    fabs(blocks[i].get_mtf50_value(k) - maxmtf)/maxmtf < 0.01 ) {
+                if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && maxmtf > 0 && blocks[i].get_mtf50_value(k) < 1 &&
+                    blocks[i].get_quality(k) > very_poor_quality) {
                 
                     for (int ti=-1; ti <= 1; ti++) {
                         Point mec = ec + ti*diam/4.0*Point(-norm.y, norm.x);

@@ -61,9 +61,9 @@ class Focus_surface  {
                 vector<Sample> pts_row;
                 for (size_t i=0; i < data.size(); i++) {
                     double dy = midy - data[i].p.y*cscale;
-                    if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5 ) { // at least 5 mm from centre of chart
+                    if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5) { // at least 5 mm from centre of chart
                         
-                        double yw = exp(-dy*dy/(2*5*5)); // sdev of 5 mm in y direction
+                        double yw = exp(-dy*dy/(2*3*3)); // sdev of 5 mm in y direction
                         pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.1 + 0.9*exp(2*data[i].mtf)));
                         mean_x += pts_row.back().weight * data[i].p.y * cscale;
                         wsum += pts_row.back().weight;
@@ -240,7 +240,7 @@ class Focus_surface  {
         return sol;
     }
 
-    double evaluate(VectorXd& v) {
+    double evaluate(VectorXd&) {
         return 0;
     }
     

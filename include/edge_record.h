@@ -165,77 +165,77 @@ class Edge_record {
             return false;
         }
         
+        // TODO: could look for peaks etc. here?
+        
         renormalize_weights();
         vector<double> inweights(weights);
         pair<double,double> dims = compute_eigenvector_angle();
         Point dir(cos(angle), sin(angle));
         
-        double lwidth = dims.second;
+        vector<double> histo(2*16*8, 0);
+        double total_weight = 0;
+        
         for (size_t i=0; i < points.size(); i++) {
             double dx = points[i].first - centroid.x;
             double dy = points[i].second - centroid.y;
             
             double dot = dx * dir.x + dy * dir.y;
             
-            double gw = 1.0;
-            double dw = 2*2; 
-            
-            if (dims.first < 10) {
-                dw = 4*2;
-                double dotp = dx * (-dir.y) + dy*dir.x;
-                if (fabs(dotp) > dims.first) {
-                    gw *= 0.1;
-                }
+            // dot is "across edge" direction
+            // histogram of dot vs weight?
+            double idot = lrint(dot * 8 + 16*8);
+            if (idot >= 3 && idot < (int)histo.size() - 3) {
+                histo[idot] += weights[i];
+                histo[idot-1] += weights[i];
+                histo[idot+1] += weights[i];
+                histo[idot-2] += weights[i];
+                histo[idot+2] += weights[i];
+                histo[idot-3] += weights[i];
+                histo[idot+3] += weights[i];
+                
+                total_weight += weights[i]*7;
             }
-            
-            gw *= exp(-dot*dot/(dw*lwidth*lwidth));
-            if (gw < 1e-10) gw = 0;
-            
-            weights[i] = inweights[i] * gw;
+        }
+        double csum = 0;
+        for (size_t i = 0; i < histo.size(); i++) {
+            csum += histo[i];
+            histo[i] = csum;
+        }
+        total_weight = csum;
+        int p10idx = 0;
+        for (size_t i = 1; i < histo.size(); i++) {
+            if (fabs(histo[i] - 0.1*csum) < fabs(histo[p10idx] - 0.1*csum)) {
+                p10idx = i;
+            }
+        }
+        int p90idx = histo.size()-1;
+        for (size_t i = histo.size() - 2; i > 0; i--) {
+            if (fabs(histo[i] - 0.9*csum) < fabs(histo[p90idx] - 0.9*csum)) {
+                p90idx = i;
+            }
         }
         
-        lwidth = compute_eigenvector_angle().second;
+        double lower = p10idx / 8.0 - 16.0;
+        double upper = p90idx / 8.0 - 16.0;
+        double span = upper - lower;
         
-        dir = Point(cos(angle), sin(angle));
+        lower -= span * 0.7;
+        upper += span * 0.7;
+        
+        // trim weights to 10%-90% region?
         for (size_t i=0; i < points.size(); i++) {
             double dx = points[i].first - centroid.x;
             double dy = points[i].second - centroid.y;
             
             double dot = dx * dir.x + dy * dir.y;
-            
-            double gw = exp(-dot*dot/(2*lwidth*lwidth));
-            if (gw < 1e-10) gw = 0;
-            
-            
-            double dotp = dx * (-dir.y) + dy*dir.x;
-            if (dims.first < 10 && fabs(dotp) > 2*dims.first) {
-                gw *= 0.1;
+            weights[i] = 0;
+            if (dot >= lower && dot <= upper) {
+                weights[i] =  SQR(SQR(inweights[i])) * (1.0 / (10.0 + fabs(dot)));
             }
-            
-            weights[i] = inweights[i] * gw;            
-            
         }
-        lwidth = compute_eigenvector_angle().second;
+        dims = compute_eigenvector_angle();
         
-        dir = Point(cos(angle), sin(angle));
-        for (size_t i=0; i < points.size(); i++) {
-            double dx = points[i].first - centroid.x;
-            double dy = points[i].second - centroid.y;
-            
-            double dot = dx * dir.x + dy * dir.y;
-            
-            double gw = exp(-dot*dot/(4*lwidth*lwidth)); // increase width slightly 
-            if (gw < 1e-10) gw = 0;
-            
-            double dotp = dx * (-dir.y) + dy*dir.x;
-            if (dims.first < 10 && fabs(dotp) > 2*dims.first) {
-                gw *= 0.1;
-            }
-            
-            weights[i] = inweights[i] * gw;            
-            
-        }
-        pair<double, double> radii =  compute_eigenvector_angle();
+        radii = dims;
         
         sB = radii.second / (radii.first*sqrt(wsum));
         
@@ -247,11 +247,17 @@ class Edge_record {
     inline bool is_pooled(void) {
         return pooled;
     }
+    
+    void clear(void) {
+        weights.clear();
+        points.clear();
+    }
 
     double slope;
     double angle;
     double rsq;
     Point  centroid;
+    pair<double, double>  radii;
 
   private:
   
