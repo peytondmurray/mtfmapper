@@ -52,6 +52,7 @@ class Mtf_renderer_stats : public Mtf_renderer {
         vector<double> unfiltered;
         vector<double> filtered;
         for (size_t i=0; i < blocks.size(); i++) {
+            if (!blocks[i].valid) continue;
             for (size_t k=0; k < 4; k++) {
             
                 double val = blocks[i].get_mtf50_value(k);
@@ -70,8 +71,8 @@ class Mtf_renderer_stats : public Mtf_renderer {
         sort(filtered.begin(), filtered.end());
         sort(unfiltered.begin(), unfiltered.end());
         
-        printf("    Quantiles ->                   %4d%% %4d%% %4d%% %4d%% %4d%%\n", 5, 25, 50, 75, 95);
-        printf("Statistics on all edges:           %5.2lf %5.2lf %5.2lf %5.2lf %5.2lf  (total=%u)\n", 
+        printf("    Quantiles ->                   %5d%% %5d%% %5d%% %5d%% %5d%%\n", 5, 25, 50, 75, 95);
+        printf("Statistics on all edges:           %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
             quantile(unfiltered, 0.05)*pixel_size,
             quantile(unfiltered, 0.25)*pixel_size,
             quantile(unfiltered, 0.5)*pixel_size,
@@ -84,7 +85,7 @@ class Mtf_renderer_stats : public Mtf_renderer {
             return;
         }
         
-        printf("Statistics on all filtered edges : %5.2lf %5.2lf %5.2lf %5.2lf %5.2lf  (total=%u)\n", 
+        printf("Statistics on all filtered edges : %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
             quantile(filtered, 0.05)*pixel_size,
             quantile(filtered, 0.25)*pixel_size,
             quantile(filtered, 0.5)*pixel_size,

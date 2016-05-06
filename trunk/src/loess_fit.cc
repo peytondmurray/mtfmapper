@@ -90,7 +90,16 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
-bool bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
+inline double sgn(double x) {
+    return x < 0 ? -1 : 1;
+}
+
+inline double tri(double x) {
+    const double alpha = 0.95;
+    return alpha*(1 - fabs(x*8))*0.5*(sgn(x+0.125) - sgn(x-0.125)) + (1-alpha)*(1 - fabs(x*1.5))*0.5*(sgn(x+0.6666666) - sgn(x-0.6666666));
+}
+
+int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double lower, double upper, vector<double>& esf) {
 
     const double missing = -1e7;
@@ -99,9 +108,9 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[i] = missing;
     }
     
-    // TODO: find a way to trim the ROI whenever the edges of the ROI change slope?
-
-    const double scale = 2 * 16.0 / 28.0; // 0.8 = 16/20, maxdot relative to 16
+    int rval = 0;
+    
+    const double scale = 2 * 16.0 / 28.0; // maxdot relative to 16
     double rightsum = 0;
     int rightcount = 0;
     double leftsum = 0;
@@ -185,7 +194,7 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
         abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
         printf("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
-        return false;
+        return -1;
     }
     
     // compute central peak magnitude and sign
@@ -196,7 +205,7 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    double peak_threshold = fabs(central_peak * 0.0001); // must be negative by at least a little bit
+    double peak_threshold = fabs(central_peak * 0.001); // must be negative by at least a little bit
     // scan for significant slope sign change
     bool clipped = false;
     for (int idx=fft_size/2-16; idx >= fft_left+4; idx--) {
@@ -245,11 +254,11 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         if (fft_size/2 - fft_left < 4*8 ||
             fft_right  - fft_size/2 < 4*8) {
             
-            printf("probably contamination. tagging edge as failed\n");
-            //return false;
+            printf("probably contamination. tagging edge as dodgy\n");
+            rval = 1;
         }
     }
-   
+    
     if (clipped && clipped_count < 2) {
         for (size_t idx=0; idx < weights.size(); idx++) {
             sampled[idx] = 0;
@@ -442,5 +451,5 @@ bool bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     
     
-    return true;
+    return rval;
 }

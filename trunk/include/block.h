@@ -40,12 +40,12 @@ class Block {
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
-        centroid(0,0), area(0.0) {
+        centroid(0,0), area(0.0), valid(true) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4, vector<double>(32,0)), 
-        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0) {
+        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0), valid(true) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -190,6 +190,7 @@ class Block {
     map<edge_position, size_t> edge_lut;
     Point centroid;
     double area;
+    bool valid;
 };
 
 #endif

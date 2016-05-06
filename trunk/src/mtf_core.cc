@@ -103,7 +103,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                 Point p(x,y);
                 Point d = p - rrect.centroids[k];
                 double dot = d.x*rrect.normals[k].x + d.y*rrect.normals[k].y;
-                if (nr.is_inside(p) && fabs(dot) < 16) {
+                if (nr.is_inside(p) && fabs(dot) < 14) {
                 
                     int iy = lrint(y);
                     int ix = lrint(x);
@@ -113,14 +113,14 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                 }
             }
         }
+        
         reduce_success &= edge_record[k].reduce();
     }
     
+    double max_shift = 0;
     if (reduce_success) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
-        
-        
         if (!newrect.corners_ok()) {
             printf("discarding broken square (after updates)\n");
             return;
@@ -131,6 +131,8 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         for (size_t k=0; k < 4; k++) {
             // now construct buffer around centroid, aligned with direction, of width max_dot
             Mrectangle nr(newrect, k, max_dot+0.5);
+            edge_record[k].clear();
+            
             for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
                 for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                     Point p(x,y);
@@ -139,6 +141,70 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                         int iy = lrint(y);
                         int ix = lrint(x);
                         if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+                        
+                            Point d = p - newrect.centroids[k];
+                            double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
+                        
+                            if (fabs(dot) < 12) {
+                                edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                            }
+                            
+                            map<int, scanline>::iterator it = scansets[k].find(iy);
+                            if (it == scansets[k].end()) {
+                                scanline sl(ix,ix);
+                                scansets[k].insert(make_pair(iy, sl));
+                            }
+                            if (ix < scansets[k][iy].start) {
+                                scansets[k][iy].start = ix;
+                            }
+                            if (ix > scansets[k][iy].end) {
+                                scansets[k][iy].end = ix;
+                            }
+                        }
+                    }
+                }
+            }
+            Point ocx = edge_record[k].centroid;
+            reduce_success &= edge_record[k].reduce();
+            Point ncx = edge_record[k].centroid;
+            double shift = sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y));
+            printf("ndeltaA %lf\n", shift);
+            max_shift = std::max(max_shift, shift);
+        }
+        rrect = newrect;
+    }
+    
+    if (reduce_success && max_shift > 1) {
+        // re-calculate the ROI after we have refined the edge centroid above
+        Mrectangle newrect(rrect, edge_record);
+        if (!newrect.corners_ok()) {
+            printf("discarding broken square (after updates)\n");
+            return;
+        }
+        
+        
+        scansets = vector< map<int, scanline> >(4); // re-initialise
+        for (size_t k=0; k < 4; k++) {
+            // now construct buffer around centroid, aligned with direction, of width max_dot
+            Mrectangle nr(newrect, k, max_dot+0.5);
+            edge_record[k].clear();
+            scansets[k].clear();
+            
+            for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
+                for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
+                    Point p(x,y);
+                    if (nr.is_inside(p)) {
+                    
+                        int iy = lrint(y);
+                        int ix = lrint(x);
+                        if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+                        
+                            Point d = p - newrect.centroids[k];
+                            double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
+                        
+                            if (fabs(dot) < 12) {
+                                edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                            }
 
                             map<int, scanline>::iterator it = scansets[k].find(iy);
                             if (it == scansets[k].end()) {
@@ -155,6 +221,10 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     }
                 }
             }
+            Point ocx = edge_record[k].centroid;
+            reduce_success &= edge_record[k].reduce();
+            Point ncx = edge_record[k].centroid;
+            printf("ndeltaB %lf\n", sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y)));
         }
     }
     
@@ -183,12 +253,15 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         } 
     }
     
+    bool allzero = true;
     for (size_t k=0; k < 4; k++) {
         double quality = 0;
         Point rgrad;
         vector <double> sfr(NYQUIST_FREQ*2, 0);
         vector <double> esf(FFT_SIZE/2, 0);
         double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, rgrad, sfr, esf);
+        
+        allzero &= fabs(mtf50) < 1e-6;
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
@@ -198,7 +271,10 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             shared_blocks_map[label].set_esf(k, esf);
         }
     }
-    
+    if (allzero) {
+        tbb::mutex::scoped_lock lock(global_mutex);
+        shared_blocks_map[label].valid = false;
+    }
 }
 
 bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect) {
@@ -321,8 +397,8 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
     
         
-    bool success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
-    if (!success) {
+    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    if (success < 0) {
         quality = poor_quality;
         printf("failed edge\n");
         return 1.0;
@@ -503,6 +579,10 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     
     if (edge_length < 25) {  // derate short edges
         quality *= poor_quality;
+    }
+    
+    if (success > 0) {  // possibly contaminated edge
+        quality = very_poor_quality;
     }
     
     return mtf50;

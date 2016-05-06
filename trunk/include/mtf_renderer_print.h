@@ -44,6 +44,7 @@ class Mtf_renderer_print : public Mtf_renderer {
     void render(const vector<Block>& blocks) {
         FILE* fout = fopen(ofname.c_str(), "wt");
         for (size_t i=0; i < blocks.size(); i++) {
+            if (!blocks[i].valid) continue;
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
                 if (filter) {
