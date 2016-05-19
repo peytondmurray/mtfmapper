@@ -72,8 +72,8 @@ public:
     inline int operator()(int x, int y) const {
         if (!(x >= 0 && x < _width && y >= 0 && y < _height)) {
             printf("trying to access %d, %d (size is %d,%d)\n", x, y, _width, _height);
+            return -1;
         }
-        //assert(x >= 0 && x < _width && y >= 0 && y < _height);
         return _labels[y * _width + x];
     }
 

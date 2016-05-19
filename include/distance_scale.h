@@ -226,7 +226,8 @@ class Distance_scale {
                 transverse = normalize(lblock.get_edge_centroid(right_i) - lblock.get_edge_centroid(left_i));
                 longitudinal = normalize(lblock.get_edge_centroid(bot_i) - lblock.get_edge_centroid(top_i));
                 zero = lblock.get_edge_centroid(bot_i);
-                chart_scale = 0.15;
+                double block_width = norm(lblock.get_edge_centroid(right_i) - lblock.get_edge_centroid(left_i));
+                chart_scale = 62.0 / block_width; // assume central block is 62 mm wide
                 printf("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
             } else { 
                 printf("Warning: Could not identify largest block, choosing poor defaults\n");
