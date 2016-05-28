@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 2.4)
+if(COMMAND cmake_policy)
+    cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
 
 # set the extension used for C++ files here
 # this is used to find all sources using a GLOB
@@ -123,4 +126,12 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/html DESTINATION ${HTML_HELP_DIR})
 endif(HTML_HELP_DIR)
 
 
+# Time to require c++11 features
+set_property(TARGET mtfmapper_bin PROPERTY CXX_STANDARD 11)
+set_property(TARGET mtfmapper_bin PROPERTY CXX_STANDARD_REQUIRED ON)
 
+set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD 11)
+set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD_REQUIRED ON)
+
+set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 11)
+set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD_REQUIRED ON)
