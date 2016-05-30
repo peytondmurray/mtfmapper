@@ -36,7 +36,7 @@ class Ellipse_detector {
 
     ~Ellipse_detector(void) {}
     
-    static Point calculate_centroid(Pointlist& p);
+    static Point2d calculate_centroid(Pointlist& p);
     
     int fit(const Component_labeller& cl, const Gradient& gradient,
         const Pointlist& raw_points, int tl_x, int tl_y, int dilate=1);
@@ -48,9 +48,12 @@ class Ellipse_detector {
     void set_code(int incode) {
         code = incode;
     }
+    
+    Eigen::Vector3d pose(int imgrows, int imgcols, double circle_diameter=5, double f=10000, Eigen::Vector3d ext_norm=Eigen::Vector3d::Zero());
                                       
     int _matrix_to_ellipse(Eigen::Matrix3d& C);
     void _dilate(set<iPoint>& s, int width, int height, int iters);
+    void _dilate_outer_only(set<iPoint>& s, int width, int height);
     void _correct_eccentricity(double major_scale, double bp_x, double bp_y);
 
     double centroid_x;
@@ -63,6 +66,12 @@ class Ellipse_detector {
     int code;
     
     map<int, scanline> scanset;
+    
+    Eigen::Vector3d pos1;
+    Eigen::Vector3d pos2;
+    
+    Eigen::Vector3d n1;
+    Eigen::Vector3d n2;
 
   private:
     Eigen::Matrix3d _C;

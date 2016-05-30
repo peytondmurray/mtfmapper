@@ -36,6 +36,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/edge_record.h"
 #include "include/loess_fit.h"
 #include "include/afft.h"
+#include "include/mtf_profile_sample.h"
 
 #include <map>
 using std::map;
@@ -63,9 +64,10 @@ class Mtf_core {
     } bayer_t;
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
-             const cv::Mat& in_img, std::string bayer_subset)
-      : cl(in_cl), g(in_g), img(in_img), absolute_sfr(false),
-        snap_to(false), snap_to_angle(0), sfr_smoothing(true) {
+             const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
+      : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
+        snap_to(false), snap_to_angle(0), sfr_smoothing(true),
+        sliding(false) {
 
         if (bayer_subset.compare("none") == 0) {
             bayer = NONE;
@@ -91,18 +93,18 @@ class Mtf_core {
     }
     
     ~Mtf_core(void) {
-        //cv::imwrite(string("detections.png"), od_img);
+        cv::imwrite(string("detections.png"), od_img);
     }
     
     size_t num_objects(void) {
         return valid_obj.size();
     }
     
-    void search_borders(const Point& cent, int label);
-    bool extract_rectangle(const Point& cent, int label, Mrectangle& rect);
-    double compute_mtf(const Point& in_cent, const map<int, scanline>& scanset, 
+    void search_borders(const Point2d& cent, int label);
+    bool extract_rectangle(const Point2d& cent, int label, Mrectangle& rect);
+    double compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset, 
                        Edge_record& er,
-                       double& poor, Point& rgrad, 
+                       double& poor, 
                        vector<double>& sfr, vector<double>& esf);
     
     vector<Block>& get_blocks(void) {
@@ -117,12 +119,20 @@ class Mtf_core {
         return detected_blocks;
     }
     
+    vector<Mtf_profile_sample>& get_samples(void) {
+        return samples;
+    }
+    
     void set_absolute_sfr(bool val) {
         absolute_sfr = val;
     }
     
     void set_sfr_smoothing(bool val) {
         sfr_smoothing = val;
+    }
+    
+    void set_sliding(bool val) {
+        sliding = val;
     }
     
     void set_snap_angle(double angle) {
@@ -133,6 +143,7 @@ class Mtf_core {
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
+    const cv::Mat&            bayer_img;
     bayer_t bayer;
     
     AFFT<512> afft; // FFT_SIZE = 512 ??
@@ -140,8 +151,10 @@ class Mtf_core {
     
     vector<Block> detected_blocks;  
     map<int, Block> shared_blocks_map;
-    vector<Point> solid_ellipses;
+    vector<Point2d> solid_ellipses;
     vector<Ellipse_detector> ellipses;
+    
+    vector<Mtf_profile_sample> samples;
     
     cv::Mat od_img;
   private:
@@ -149,9 +162,12 @@ class Mtf_core {
     bool snap_to;
     double snap_to_angle;
     bool sfr_smoothing;
+    bool sliding;
+    
+    void process_with_sliding_window(Mrectangle& rrect);
   
     void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
-        const map<int, scanline>& scanset, const Point& cent,
+        const map<int, scanline>& scanset, const Point2d& cent,
         double& edge_length) {
 
         double max_along_edge = -1e50;
@@ -178,15 +194,15 @@ class Mtf_core {
             ea = max_dot_angle;
         }
 
-        Point mean_grad(cos(ea), sin(ea));
-        Point edge_direction(-sin(ea), cos(ea));
+        Point2d mean_grad(cos(ea), sin(ea));
+        Point2d edge_direction(-sin(ea), cos(ea));
 
         if (bayer == NONE) {
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
                 for (int x=it->second.start; x <= it->second.end; ++x) {
 
-                    Point d((x) - cent.x, (y) - cent.y);
+                    Point2d d((x) - cent.x, (y) - cent.y);
                     double dot = d.ddot(mean_grad); 
                     double dist_along_edge = d.ddot(edge_direction);
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
@@ -214,11 +230,11 @@ class Mtf_core {
                         continue;
                     }
 
-                    Point d((x) - cent.x, (y) - cent.y);
+                    Point2d d((x) - cent.x, (y) - cent.y);
                     double dot = d.ddot(mean_grad); 
                     double dist_along_edge = d.ddot(edge_direction);
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                        local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
                         max_along_edge = std::max(max_along_edge, dist_along_edge);
                         min_along_edge = std::min(min_along_edge, dist_along_edge);
                     }
@@ -229,40 +245,6 @@ class Mtf_core {
         
         edge_length = max_along_edge - min_along_edge;
         //printf("edge length = %lf\n", edge_length);
-    }
-
-    inline double bin_at_angle(double ea, const map<int, scanline>& scanset, const Point& cent,
-        vector<double>& sum_a, vector<double>& sum_q, vector<int>& count) {
-
-        Point mean_grad(cos(ea), sin(ea));
-        Point edge_direction(sin(ea), cos(ea));
-
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
-            int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; ++x) {
-                Point d((x) - cent.x, (y) - cent.y);
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
-                if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                    int idot = lrint(dot*4 + max_dot*4);
-                    double data = img.at<uint16_t>(y,x)/256.0;
-                    count[idot]++;
-                    double old_sum_a = sum_a[idot];
-                    sum_a[idot] += (data - sum_a[idot])/double(count[idot]);
-                    sum_q[idot] += (data - old_sum_a)*(data - sum_a[idot]);
-                }
-            }
-        }
-        double varsum = 0;
-        int used = 0;
-        for (size_t k=0; k < count.size(); k++) {
-            if (count[k] > 2) {
-                used++;
-                varsum += sum_q[k] / double(count[k]-1);
-            }
-        }
-        varsum *= sum_a.size() / double(used);
-        return varsum;
     }
 
 };

@@ -211,7 +211,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
     typedef enum {MERIDIONAL, SAGITTAL, NEITHER} Edge_type;
 
     void extract_mtf_grid(Edge_type target_edge_type, cv::Mat& grid, const vector<Block>& blocks) {
-        Point centr(0,0);
+        Point2d centr(0,0);
         for (size_t i=0; i < blocks.size(); i++) {
             centr += blocks[i].get_centroid();
         }
@@ -224,12 +224,12 @@ class Mtf_renderer_grid : public Mtf_renderer {
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
                 if (val > 0 && blocks[i].get_quality(k) >= 0.2) {
-                    Point cent = blocks[i].get_edge_centroid(k);
+                    Point2d cent = blocks[i].get_edge_centroid(k);
 
-                    Point dir = cent - centr;
+                    Point2d dir = cent - centr;
                     dir = dir * (1.0/norm(dir));
 
-                    Point norm = blocks[i].get_normal(k);
+                    Point2d norm = blocks[i].get_normal(k);
                     double delta = dir.x*norm.x + dir.y*norm.y;
 
                     Edge_type edge_type = NEITHER;
@@ -269,11 +269,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         cv::Mat element = cv::getStructuringElement( 
             cv::MORPH_ELLIPSE,
             cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-            cv::Point( erosion_size, erosion_size ) 
+            cv::Point2d( erosion_size, erosion_size ) 
         );
         
         cv::Mat dest(grid);
-        cv::dilate(grid, grid, element, cv::Point(-1,-1), 1);
+        cv::dilate(grid, grid, element, cv::Point2d(-1,-1), 1);
         cv::blur(grid, dest, cv::Size(5,5));
         grid = dest;
         #else
@@ -290,7 +290,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
             for (size_t x=0; x < grid_x; x++) {
                 int val = grid_indices.at<int32_t>(y,x);
                 if (val > 1) {
-                    cv::floodFill(flood_labels, Point(x,y), cv::Scalar::all((float)val), 0, cv::Scalar(), cv::Scalar(), 4);
+                    cv::floodFill(flood_labels, Point2d(x,y), cv::Scalar::all((float)val), 0, cv::Scalar(), cv::Scalar(), 4);
                 }
             }
         }
@@ -368,12 +368,12 @@ class Mtf_renderer_grid : public Mtf_renderer {
             cv::Mat element = cv::getStructuringElement( 
                 cv::MORPH_ELLIPSE,
                 cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-                cv::Point( erosion_size, erosion_size ) 
+                cv::Point2d( erosion_size, erosion_size ) 
             );
             cv::Mat dilated;
             cv::Mat eroded;
-            cv::dilate(thresh, dilated, element, cv::Point(-1,-1), 1);
-            cv::erode(thresh, eroded, element, cv::Point(-1,-1), 1);
+            cv::dilate(thresh, dilated, element, cv::Point2d(-1,-1), 1);
+            cv::erode(thresh, eroded, element, cv::Point2d(-1,-1), 1);
             thresh = dilated - eroded;
 
             smoothed.copyTo(grid, thresh);

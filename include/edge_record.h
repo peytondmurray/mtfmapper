@@ -77,8 +77,8 @@ class Edge_record {
     }
     
     inline double relative_orientation(const Edge_record& b) {
-        Point d1(cos(angle), sin(angle));
-        Point d2(cos(b.angle), sin(b.angle));
+        Point2d d1(cos(angle), sin(angle));
+        Point2d d2(cos(b.angle), sin(b.angle));
         
         return fabs(d1.x*d2.x + d1.y*d2.y);
     }
@@ -170,7 +170,7 @@ class Edge_record {
         renormalize_weights();
         vector<double> inweights(weights);
         pair<double,double> dims = compute_eigenvector_angle();
-        Point dir(cos(angle), sin(angle));
+        Point2d dir(cos(angle), sin(angle));
         
         vector<double> histo(2*16*8, 0);
         double total_weight = 0;
@@ -256,7 +256,7 @@ class Edge_record {
     double slope;
     double angle;
     double rsq;
-    Point  centroid;
+    Point2d  centroid;
     pair<double, double>  radii;
 
   private:

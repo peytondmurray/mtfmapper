@@ -50,7 +50,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
     
     void render(const vector<Block>& blocks) {
         size_t largest_block = 0;
-        Point centroid(0,0);
+        Point2d centroid(0,0);
         
         if (blocks.size() < 10) { // probably not a valid image for profiles
             return;
@@ -117,7 +117,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // drops below 5% (which seems to provide relatively oscillation-free curves)
         for (size_t w2=5; w2 < std::max(ordered.size()/10, size_t(6)); w2+=3) {
             for (size_t i=0; i < ordered.size() - 1; i++) {
-                Point sol;
+                Point2d sol;
                 
                 size_t start = std::max(0, int(i) - int(w2));
                 size_t end   = std::min(ordered.size() - 1, i + w2);
@@ -343,7 +343,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 }
 
                 if (val > 0 && blocks[i].get_quality(k) >= 0.5 && mindiff < 30) {
-                    Point cent = blocks[i].get_edge_centroid(k);
+                    Point2d cent = blocks[i].get_edge_centroid(k);
                     
                     int y = 0;
 

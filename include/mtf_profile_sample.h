@@ -32,12 +32,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_profile_sample {
   public:
-    Mtf_profile_sample(const Point& p, double mtf, double angle)
-    : p(p), mtf(mtf), angle(angle) {}
+    Mtf_profile_sample(const Point2d& p, double mtf, double angle, double quality=1.0)
+    : p(p), mtf(mtf), angle(angle), quality(quality) {}
     
-    Point p;
+    Point2d p;
     double mtf;
     double angle;
+    double quality;
 };
 
 #endif

@@ -54,7 +54,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     }
     
     void render(const vector<Block>& blocks) {
-        Point centr(img.cols/2, img.rows/2);
+        Point2d centr(img.cols/2, img.rows/2);
         
         vector<double> resolution;
         for (size_t i=0; i < std::min(size_t(3), in_resolution.size()); i++) {
@@ -69,13 +69,13 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             const double angle_thresh = 10.0;
             
             for (size_t k=0; k < 4; k++) {
-                Point ec = blocks[i].get_edge_centroid(k);
+                Point2d ec = blocks[i].get_edge_centroid(k);
                 
-                Point udir = ec - centr;
+                Point2d udir = ec - centr;
                 double radial_len = norm(udir);
-                Point dir = udir * (1.0/radial_len);
+                Point2d dir = udir * (1.0/radial_len);
 
-                Point norm = blocks[i].get_normal(k);
+                Point2d norm = blocks[i].get_normal(k);
                 double delta = dir.x*norm.x + dir.y*norm.y;
                 
                 const vector<double>& sfr = blocks[i].get_sfr(k);

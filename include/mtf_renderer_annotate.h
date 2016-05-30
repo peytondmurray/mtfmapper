@@ -55,7 +55,7 @@ class Mtf_renderer_annotate : public Mtf_renderer {
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
                 if (val > 0) {
-                    Point cent = blocks[i].get_edge_centroid(k);
+                    Point2d cent = blocks[i].get_edge_centroid(k);
                     write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
                 }
             }
@@ -75,17 +75,17 @@ class Mtf_renderer_annotate : public Mtf_renderer {
         ts.width -= 8;  // tweak box size slightly
         ts.height += 6; // tweak box height slighly
         
-        cv::Point to( px - ts.width/2, py + ts.height/2 );
+        cv::Point2d to( px - ts.width/2, py + ts.height/2 );
         
         cv::rectangle(img, 
-            cv::Point( px - ts.width, py - ts.height), 
-            cv::Point( px + ts.width, py + ts.height),
+            cv::Point2d( px - ts.width, py - ts.height), 
+            cv::Point2d( px + ts.width, py + ts.height),
             CV_RGB(0,0,0), CV_FILLED
         );
         
         cv::rectangle(img, 
-            cv::Point( px - ts.width + 1, py - ts.height + 1), 
-            cv::Point( px + ts.width - 1, py + ts.height - 1 ),
+            cv::Point2d( px - ts.width + 1, py - ts.height + 1), 
+            cv::Point2d( px + ts.width - 1, py + ts.height - 1 ),
             CV_RGB(255,255,255), 1
         );
         

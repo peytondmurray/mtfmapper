@@ -42,7 +42,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     }
     
     void render(const vector<Block>& blocks) {
-        Point centr(0,0);
+        Point2d centr(0,0);
         for (size_t i=0; i < blocks.size(); i++) {
             centr += blocks[i].get_centroid();
         }
@@ -58,7 +58,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
         
             // start with first corner that is left of 12:00
             for (size_t k=0; k < 4; k++) {
-                Point dir = blocks[i].get_corner(k) - blocks[i].get_centroid();
+                Point2d dir = blocks[i].get_corner(k) - blocks[i].get_centroid();
                 if (dir.x <= 0 && dir.y <= 0) {
                     corder[0] = k;
                 }
@@ -75,10 +75,10 @@ class Mtf_renderer_edges : public Mtf_renderer {
             
             // now find the first edge centroid going clockwise
             for (size_t k=0; k < 4; k++) {
-                Point cdir = blocks[i].get_corner(corder[k]) - blocks[i].get_centroid();
+                Point2d cdir = blocks[i].get_corner(corder[k]) - blocks[i].get_centroid();
                 double maxcross = -1;
                 for (size_t j=0; j < 4; j++) {
-                    Point edir = blocks[i].get_edge_centroid(j) - blocks[i].get_centroid();
+                    Point2d edir = blocks[i].get_edge_centroid(j) - blocks[i].get_centroid();
                     double n = cdir.x*edir.y - cdir.y*edir.x;
                     double dot = cdir.x*edir.x + cdir.y*edir.y;
                     if (n > maxcross && dot >= 0) {
@@ -92,8 +92,8 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 int j = corder[k];
                 int l = eorder[k];
                 double val = blocks[i].get_mtf50_value(l);
-                Point ec = blocks[i].get_edge_centroid(l);
-                Point cr = blocks[i].get_corner(j);
+                Point2d ec = blocks[i].get_edge_centroid(l);
+                Point2d cr = blocks[i].get_corner(j);
                 fprintf(fout, "%d %lf %lf %lf %lf %lf\n",
                     int(i),
                     ec.x, ec.y,
@@ -106,12 +106,12 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 double edge_angle = atan2(-blocks[i].get_normal(l).x, blocks[i].get_normal(l).y);
                 fprintf(sfrout, "%lf ", angle_reduce(edge_angle));
                 
-                Point cent = blocks[i].get_edge_centroid(l);
+                Point2d cent = blocks[i].get_edge_centroid(l);
 
-                Point dir = cent - centr;
+                Point2d dir = cent - centr;
                 dir = dir * (1.0/norm(dir));
 
-                Point norm = blocks[i].get_normal(l);
+                Point2d norm = blocks[i].get_normal(l);
                 double delta = dir.x*norm.x + dir.y*norm.y;
                 
                 fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);

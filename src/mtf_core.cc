@@ -38,7 +38,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 // global lock to prevent race conditions on detected_blocks
 static tbb::mutex global_mutex;
 
-void Mtf_core::search_borders(const Point& cent, int label) {
+void Mtf_core::search_borders(const Point2d& cent, int label) {
     
     Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
@@ -50,10 +50,11 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         int valid = e.fit(cl, g, it->second, 0, 0, 2);
         if (valid) {
             {
+                Eigen::Vector3d pos = e.pose(img.rows, img.cols);
                 tbb::mutex::scoped_lock lock(global_mutex);
                 ellipses.push_back(e);
                 if (e.solid) {
-                    solid_ellipses.push_back(Point(e.centroid_x, e.centroid_y));
+                    solid_ellipses.push_back(Point2d(e.centroid_x, e.centroid_y));
                 }
             }
             for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
@@ -91,6 +92,10 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         return;
     }
     
+    if (sliding) {
+        process_with_sliding_window(rrect);
+        return;
+    }
     
     vector<Edge_record> edge_record(4);
     vector< map<int, scanline> > scansets(4); 
@@ -100,8 +105,8 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         Mrectangle nr(rrect, k, max_dot+0.5);
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
-                Point p(x,y);
-                Point d = p - rrect.centroids[k];
+                Point2d p(x,y);
+                Point2d d = p - rrect.centroids[k];
                 double dot = d.x*rrect.normals[k].x + d.y*rrect.normals[k].y;
                 if (nr.is_inside(p) && fabs(dot) < 14) {
                 
@@ -135,14 +140,14 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             
             for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
                 for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
-                    Point p(x,y);
+                    Point2d p(x,y);
                     if (nr.is_inside(p)) {
                     
                         int iy = lrint(y);
                         int ix = lrint(x);
                         if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
                         
-                            Point d = p - newrect.centroids[k];
+                            Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
                         
                             if (fabs(dot) < 12) {
@@ -164,9 +169,9 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     }
                 }
             }
-            Point ocx = edge_record[k].centroid;
+            Point2d ocx = edge_record[k].centroid;
             reduce_success &= edge_record[k].reduce();
-            Point ncx = edge_record[k].centroid;
+            Point2d ncx = edge_record[k].centroid;
             double shift = sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y));
             printf("ndeltaA %lf\n", shift);
             max_shift = std::max(max_shift, shift);
@@ -192,14 +197,14 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             
             for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
                 for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
-                    Point p(x,y);
+                    Point2d p(x,y);
                     if (nr.is_inside(p)) {
                     
                         int iy = lrint(y);
                         int ix = lrint(x);
                         if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
                         
-                            Point d = p - newrect.centroids[k];
+                            Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
                         
                             if (fabs(dot) < 12) {
@@ -221,9 +226,9 @@ void Mtf_core::search_borders(const Point& cent, int label) {
                     }
                 }
             }
-            Point ocx = edge_record[k].centroid;
+            Point2d ocx = edge_record[k].centroid;
             reduce_success &= edge_record[k].reduce();
-            Point ncx = edge_record[k].centroid;
+            Point2d ncx = edge_record[k].centroid;
             printf("ndeltaB %lf\n", sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y)));
         }
     }
@@ -233,6 +238,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
         return;
     }
     
+    #if 1
     vector< pair<double, pair<int,int> > > pairs;
     for (size_t k=0; k < 3; k++) {
         for (size_t l=k+1; l < 4; l++) {
@@ -252,21 +258,21 @@ void Mtf_core::search_borders(const Point& cent, int label) {
             } 
         } 
     }
+    #endif
     
     bool allzero = true;
     for (size_t k=0; k < 4; k++) {
         double quality = 0;
-        Point rgrad;
         vector <double> sfr(NYQUIST_FREQ*2, 0);
         vector <double> esf(FFT_SIZE/2, 0);
-        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, rgrad, sfr, esf);
+        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, sfr, esf);
         
         allzero &= fabs(mtf50) < 1e-6;
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
             shared_blocks_map[label].set_mtf50_value(k, mtf50, quality);
-            shared_blocks_map[label].set_normal(k, rgrad);
+            shared_blocks_map[label].set_normal(k, Point2d(cos(edge_record[k].angle), sin(edge_record[k].angle)));
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
         }
@@ -277,7 +283,7 @@ void Mtf_core::search_borders(const Point& cent, int label) {
     }
 }
 
-bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect) {
+bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rect) {
     
     int ix = lrint(cent.x);
     int iy = lrint(cent.y);
@@ -296,7 +302,7 @@ bool Mtf_core::extract_rectangle(const Point& cent, int label, Mrectangle& rect)
     
     vector<double> thetas(points.size(), 0);
     for (size_t i=0; i < points.size(); i++) { 
-        Point dir = average_dir(g, lrint(points[i].x), lrint(points[i].y));
+        Point2d dir = average_dir(g, lrint(points[i].x), lrint(points[i].y));
         thetas[i] = atan2(-dir.x, dir.y); // funny ordering and signs because of average_dir conventions
     }
     vector<double> main_thetas(4,0.0);
@@ -331,64 +337,27 @@ static double angle_reduce(double x) {
     return quad1;
 }
 
-double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& scanset,
-    Edge_record& er, double& quality, Point& rgrad, 
+double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset,
+    Edge_record& er, double& quality,  
     vector<double>& sfr, vector<double>& esf) {
     
     quality = 1.0; // assume this is a good edge
     
-    Point cent(in_cent);
+    Point2d cent(in_cent);
     
-    Point mean_grad(0,0);
+    Point2d mean_grad(0,0);
    
 
     double angle = er.angle;
     mean_grad.x = cos(angle);
     mean_grad.y = sin(angle);
 
-    //printf("original angle estimate: %lf %lf\n", angle/M_PI*180, angle_reduce(angle));
-
     vector<Ordered_point> ordered;
-    double best_angle = angle;
     double edge_length = 0;
 
-    // if there appears to be significant noise, refine the edge orientation estimate
-    if (er.rsq >= 0.05 && angle_reduce(angle) > 0.5 && angle_reduce(angle) < 44.2 && bayer == NONE) { 
-        double min_sum = 1e50;
-
-        vector<double> sum_x(32*4+1, 0);
-        vector<double> sum_xx(32*4+1, 0);
-        vector<int>    count(32*4+1, 0);
-
-        double span = 1.0/180.0*M_PI;
-        double step = 0.1/180.0*M_PI;
-
-        if (er.is_pooled()) {
-            span /= 3;
-            step /= 3;
-        }
-    
-        for (double ea=angle-span; ea < angle + span; ea += step) {
-            for (size_t k=0; k < sum_x.size(); k++) {
-                sum_x[k]  = 0;
-                sum_xx[k] = 0;
-                count[k]  = 0;
-            }
-            double varsum = bin_at_angle(ea, scanset, cent, sum_x, sum_xx, count);
-            if (varsum < min_sum || (varsum == min_sum && fabs(ea-angle) < fabs(best_angle-angle)) ) {
-                min_sum = varsum;
-                best_angle = ea;
-            }
-        }
-    }
-    
     vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
     
-    mean_grad.x = cos(best_angle);
-    mean_grad.y = sin(best_angle);
-    rgrad = mean_grad;
-    
-    sample_at_angle(best_angle, ordered, scanset, cent, edge_length);
+    sample_at_angle(angle, ordered, scanset, cent, edge_length);
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
@@ -405,7 +374,7 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     }
     afft.realfft(fft_out_buffer.data());
 
-    double quad = angle_reduce(best_angle);
+    double quad = angle_reduce(angle);
     
     double n0 = fabs(fft_out_buffer[0]);
     vector<double> magnitude(NYQUIST_FREQ*2+9);
@@ -588,4 +557,280 @@ double Mtf_core::compute_mtf(const Point& in_cent, const map<int, scanline>& sca
     return mtf50;
 }
 
+void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
 
+    const double winlen = 40; // desired length of ROI along edge direction
+
+    const vector< vector<int> >& corner_map = rrect.corner_map;
+    const vector<Point2d>& corners = rrect.corners;
+    
+    vector<Mtf_profile_sample> local_samples;
+
+    vector< pair<double, int> > dims;
+    for (int k=0; k < 4; k++) {
+        dims.push_back(make_pair(norm(corners[corner_map[k][0]] - corners[corner_map[k][1]]), k));
+    }
+    sort(dims.begin(), dims.end());
+    
+    printf("width=%lf (%d), height=%lf (%d)\n", dims.front().first, dims.front().second, dims.back().first, dims.back().second);
+    
+    int v1 = dims[3].second;
+    int v2 = dims[2].second;
+    
+    vector<Point2d> b(2);
+    vector<Point2d> d(2);
+    
+    double angle[2] = {0,0};
+    
+    b[0] = corners[corner_map[v1][0]];
+    d[0] = corners[corner_map[v1][1]] - corners[corner_map[v1][0]];
+    
+    b[1] = corners[corner_map[v2][0]];
+    d[1] = corners[corner_map[v2][1]] - corners[corner_map[v2][0]];
+    
+    if (dims[2].first < winlen) {
+        printf("Rectangle not really long enough for sliding mode. Skipping.\n");
+        return;
+    }
+    
+    // first, refine edge orientation using (most) of the edge
+    for (int side=0; side < 1; side++) {
+        Point2d dir(d[side]);
+        double edge_len = norm(dir);
+        Point2d start(b[side]);
+        dir *= 1.0/edge_len;
+        
+        Point2d n(-d[side].y, d[side].x);
+        n *= 1.0/norm(n);
+        double cross = dir.x*n.y - dir.y*n.x;
+        if (cross < 0) {
+            n = -n;
+        }
+        
+        Point2d end(b[side] + edge_len*dir);
+        
+        Point2d tl(start + 16*n);
+        Point2d br(end - 16*n);
+        if (tl.x > br.x) {
+            std::swap(tl.x, br.x);
+        }
+        if (tl.y > br.y) {
+            std::swap(tl.y, br.y);
+        }
+        
+        Point2d tl2(start - 16*n);
+        Point2d br2(end + 16*n);
+        if (tl2.x > br2.x) {
+            std::swap(tl2.x, br2.x);
+        }
+        if (tl2.y > br2.y) {
+            std::swap(tl2.y, br2.y);
+        }
+        tl.x = std::min(tl.x, tl2.x);
+        tl.y = std::min(tl.y, tl2.y);
+        br.x = std::max(br.x, br2.x);
+        br.y = std::max(br.y, br2.y);
+        
+        Edge_record edge_record;
+        
+        for (double y=tl.y; y < br.y; y += 1.0) {
+            for (double x=tl.x; x < br.x; x += 1.0) {
+            
+                Point2d p(x,y);
+                Point2d gd = p - b[side];
+                double dot = gd.x*n.x + gd.y*n.y;
+                double pdot = gd.x*dir.x + gd.y*dir.y;
+                
+                if (fabs(dot) < 16 && pdot > 5 && pdot < (edge_len - 5)) {
+                    int iy = lrint(y); 
+                    int ix = lrint(x);
+                    edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                }
+            }
+        }
+        
+        edge_record.reduce(); // we can now move the ROI if we have to ...
+        
+        angle[side] = edge_record.angle;
+        
+        Point2d nd(sin(edge_record.angle), -cos(edge_record.angle));
+        double dot = nd.x * dir.x + nd.y * dir.y;
+        if (dot < 0) {
+            nd = -nd;
+        }
+        
+        double delta = acos(nd.x * dir.x + nd.y * dir.y);
+        
+        // use angle to set d[], keep orientation
+        d[side] = nd * edge_len;
+        // TODO: should we update b[] as well?
+    }
+    
+    // now process all the windows
+    for (int side=0; side < 2; side++) {
+    
+        const double buffer = 2; // pixels to ignore near edge of block?
+        const double steplen = 4; 
+        Point2d dir(d[side]);
+        double edge_len = norm(dir);
+        
+        int steps = floor((edge_len - winlen)/steplen) + 1;
+        
+        Point2d start(b[side]);
+        dir *= 1.0/edge_len;
+        
+        
+        for (int step=0; step < steps; step++) {
+            Point2d n(-d[side].y, d[side].x);
+            n *= 1.0/norm(n);
+            double cross = dir.x*n.y - dir.y*n.x;
+            if (cross < 0) {
+                n = -n;
+            }
+            
+            Point2d end(b[side] + (step*steplen + winlen)*dir);
+            
+            Point2d tl(start + 16*n);
+            Point2d br(end - 16*n);
+            if (tl.x > br.x) {
+                std::swap(tl.x, br.x);
+            }
+            if (tl.y > br.y) {
+                std::swap(tl.y, br.y);
+            }
+            
+            Point2d tl2(start - 16*n);
+            Point2d br2(end + 16*n);
+            if (tl2.x > br2.x) {
+                std::swap(tl2.x, br2.x);
+            }
+            if (tl2.y > br2.y) {
+                std::swap(tl2.y, br2.y);
+            }
+            tl.x = std::min(tl.x, tl2.x);
+            tl.y = std::min(tl.y, tl2.y);
+            br.x = std::max(br.x, br2.x);
+            br.y = std::max(br.y, br2.y);
+            
+            map<int, scanline> scanset;
+            Edge_record edge_record;
+            
+            double min_p = 1e50;
+            double max_p = -1e50;
+            
+            for (double y=tl.y; y < br.y; y += 1.0) {
+                for (double x=tl.x; x < br.x; x += 1.0) {
+                
+                    Point2d p(x,y);
+                    Point2d gd = p - b[side];
+                    double dot = gd.x*n.x + gd.y*n.y;
+                    double pdot = gd.x*dir.x + gd.y*dir.y;
+                    Point2d ld = p - start;
+                    double ldot = (ld.x*dir.x + ld.y*dir.y) / winlen;
+                    
+                    if (pdot > buffer && pdot < (edge_len - buffer) && ldot > 0 && ldot < 1) {
+                    
+                        int iy = lrint(y); 
+                        int ix = lrint(x);
+                        if (fabs(dot) < 14) {
+                            edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                        }
+                        
+                        /*
+                        if (fabs(dot) < (max_dot + 1)) {
+                            map<int, scanline>::iterator it = scanset.find(iy);
+                            if (it == scanset.end()) {
+                                scanline sl(ix,ix);
+                                scanset.insert(make_pair(iy, sl));
+                            }
+                            if (ix < scanset[iy].start) {
+                                scanset[iy].start = ix;
+                            }
+                            if (ix > scanset[iy].end) {
+                                scanset[iy].end = ix;
+                            }
+                        }
+                        */
+                        
+                        min_p = std::min(min_p, pdot);
+                        max_p = std::max(max_p, pdot);
+                    }
+                }
+            }
+            
+            edge_record.reduce(); // we can now move the ROI if we have to ... (usually we iterate a bit here...)
+            
+            #if 1
+            Point2d newcent(edge_record.centroid.x, edge_record.centroid.y);
+            edge_record.clear();
+            
+            for (double y=tl.y; y < br.y; y += 1.0) {
+                for (double x=tl.x; x < br.x; x += 1.0) {
+                
+                    Point2d p(x,y);
+                    Point2d wd = p - newcent;
+                    double dot = wd.x*n.x + wd.y*n.y;
+                    
+                    Point2d ld = p - start;
+                    double ldot = (ld.x*dir.x + ld.y*dir.y) / winlen;
+                    
+                    Point2d gd = p - b[side];
+                    double pdot = gd.x*dir.x + gd.y*dir.y;
+                    
+                    if (pdot > buffer && pdot < (edge_len - buffer) && ldot > 0 && ldot < 1) {
+                    
+                        int iy = lrint(y); 
+                        int ix = lrint(x);
+                        
+                        if (fabs(dot) < 12) {
+                            edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
+                        }
+                        
+                        if (fabs(dot) < (max_dot + 1)) {
+                            map<int, scanline>::iterator it = scanset.find(iy);
+                            if (it == scanset.end()) {
+                                scanline sl(ix,ix);
+                                scanset.insert(make_pair(iy, sl));
+                            }
+                            if (ix < scanset[iy].start) {
+                                scanset[iy].start = ix;
+                            }
+                            if (ix > scanset[iy].end) {
+                                scanset[iy].end = ix;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            edge_record.reduce();
+            
+            //double cshift = norm(newcent - edge_record.centroid);
+            //printf("centroid_shift %lf\n", cshift);
+            #endif
+            
+            cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(edge_record.centroid.y), lrint(edge_record.centroid.x));
+            color[0] = 255;
+            color[1] = 255;
+            color[2] = 0;
+            
+            double delta = acos(fabs(-sin(edge_record.angle) * dir.x + cos(edge_record.angle) * dir.y));
+            
+            double quality = 0;
+            vector <double> sfr(NYQUIST_FREQ*2, 0);
+            vector <double> esf(FFT_SIZE/2, 0);
+            double mtf50 = compute_mtf(edge_record.centroid, scanset, edge_record, quality, sfr, esf);
+            
+            if (mtf50 < 1.0 && quality > very_poor_quality) {
+                local_samples.push_back(Mtf_profile_sample(edge_record.centroid, mtf50, edge_record.angle, quality));
+            }
+            
+            start = b[side] + (step+1)*steplen*dir;
+        }
+    }
+    
+    if (local_samples.size() > 0) {
+        tbb::mutex::scoped_lock lock(global_mutex);
+        samples.insert(samples.end(), local_samples.begin(), local_samples.end());
+    }
+}

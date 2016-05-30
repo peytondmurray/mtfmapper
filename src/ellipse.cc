@@ -32,7 +32,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     for (size_t i=0; i < raw_points.size(); i++) {
         mx += raw_points[i].x;
         my += raw_points[i].y;
-        boundary.insert(iPoint(int(raw_points[i].x + 0.5), int(raw_points[i].y + 0.5)) );
+        boundary.insert(iPoint(lrint(raw_points[i].x), lrint(raw_points[i].y)) );
         
         if (raw_points[i].x <= border || raw_points[i].x >= width - 1 - border ||
             raw_points[i].y <= border || raw_points[i].y >= height - 1 - border) {
@@ -51,10 +51,13 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     }
 
     _dilate(boundary, width, height, dilate);
+    _dilate_outer_only(boundary, width, height);
 
     Matrix<double, 5, 5> wK;
     Matrix<double, 5, 1> K; 
+    K.setZero();
     Vector3d l;
+    l.setZero();
     Matrix<double, 5, 1> rhs;
     rhs.setZero();
 
@@ -63,6 +66,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     wK.setZero();
     int count = (int)boundary.size();
     Matrix<double, Eigen::Dynamic, 3> L(count, 3);
+    L.setZero();
 
     double mean_dist = 0;
     int counter = 0;
@@ -70,7 +74,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         const int& x_pos = it->first;
         const int& y_pos = it->second;
 
-        if (grad_m.at<float>(y_pos, x_pos) > 1e-5) {
+        if (grad_m.at<float>(y_pos, x_pos) > 1e-7) {
             Vector3d v;
             v << x_pos,y_pos,1;
             double dist = sqrt( SQR(x_pos-mx) + SQR(y_pos-my) );
@@ -86,7 +90,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         const int& x_pos = it->first;
         const int& y_pos = it->second;
         
-        if (grad_m.at<float>(y_pos, x_pos) > 1e-6) {
+        if (grad_m.at<float>(y_pos, x_pos) > 1e-7) {
 
 
             l[0] = grad_x.at<float>(y_pos, x_pos);
@@ -116,7 +120,12 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
 
         rhs -= weight * K*(l[2]*l[2]);
     }
-
+    
+    if (rhs.rows() != 5 || rhs.cols() != 1) {
+        printf("rhs undefined\n");
+        exit(1);
+    }
+    
     bool has_nans = false;
     for (size_t ri=0; ri < rhs.rows(); ri++) {
         if (isnan(rhs(ri,0))) {
@@ -280,6 +289,44 @@ void Ellipse_detector::_dilate(set<iPoint>& s, int width, int height, int iters)
     }
 }
 
+void Ellipse_detector::_dilate_outer_only(set<iPoint>& s, int width, int height) {
+    const int border = 1;
+    
+    double cx = 0;
+    double cy = 0;
+    for (set<iPoint>::const_iterator it=s.begin(); it != s.end(); it++) {
+        cx += it->first;
+        cy += it->second;
+    }
+    cx /= s.size();
+    cy /= s.size();
+
+    set<iPoint> gen_s;
+
+    for (set<iPoint>::const_iterator it=s.begin(); it != s.end(); it++) {
+
+        gen_s.insert(*it);
+        
+        Point2d dir(it->first - cx, it->second - cy); // current radial direction
+
+        int left = std::max(border, it->first-1);
+        int right = std::min(width-1-border, it->first+1);
+        int top = std::max(border, it->second-1);
+        int bottom = std::min(height-1-border, it->second+1);
+
+        if ((right - it->first)*dir.x >= 0) gen_s.insert(iPoint(right, it->second));
+        if ((right - it->first)*dir.x >= 0 && (bottom - it->second)*dir.y >= 0) gen_s.insert(iPoint(right, bottom));
+        if ((bottom - it->second)*dir.y >= 0) gen_s.insert(iPoint(it->first, bottom));
+        if ((left - it->first)*dir.x >= 0 && (bottom - it->second)*dir.y >= 0) gen_s.insert(iPoint(left, bottom));
+        if ((left - it->first)*dir.x >= 0) gen_s.insert(iPoint(left, it->second));
+        if ((left - it->first)*dir.x >= 0 && (top - it->second)*dir.y >= 0) gen_s.insert(iPoint(left, top));
+        if ((top - it->second)*dir.y >= 0) gen_s.insert(iPoint(it->first, top));
+        if ((right - it->first)*dir.x >= 0 && (top - it->second)*dir.y >= 0) gen_s.insert(iPoint(right, top));
+
+    }
+    s = gen_s; // copy it back
+}
+
 int Ellipse_detector::_matrix_to_ellipse(Matrix3d& C) {
 
     double a = C(0,0);
@@ -392,18 +439,18 @@ bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradie
         // points just outside ellipse should have labels of 0 or -1 (not foreground)
         not_fg_count += cl(px, py) <= 0 ? 1 : 0;
         
-        Point d(raw_points[i].x - centroid_x, raw_points[i].y - centroid_y);
+        Point2d d(raw_points[i].x - centroid_x, raw_points[i].y - centroid_y);
         double rx = cosa*d.x - sina*d.y;
         double ry = sina*d.x + cosa*d.y;
         double theta = atan2(ry, rx); // ellipse curve parameter theta
-        Point tangent = normalize(Point(-major_axis*sin(theta), minor_axis*cos(theta))); 
+        Point2d tangent = normalize(Point2d(-major_axis*sin(theta), minor_axis*cos(theta))); 
         // rotate the tangent vector back to image coordinates
         rx = cosa*tangent.x + sina*tangent.y;
         ry = (-sina)*tangent.x + cosa*tangent.y;
         tangent.x = rx; 
         tangent.y = ry; 
         
-        Point grad = normalize(Point(gradient.grad_x().at<float>(py, px), gradient.grad_y().at<float>(py, px)));
+        Point2d grad = normalize(Point2d(gradient.grad_x().at<float>(py, px), gradient.grad_y().at<float>(py, px)));
         
         double dot = tangent.x*grad.x + tangent.y*grad.y;
         double phi = acos(dot);
@@ -420,4 +467,144 @@ bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradie
     double phi_delta = phi_diff[phi_percentile*phi_diff.size()];
     
     return (phi_delta < max_ellipse_gradient_error) && phi_delta >= 0;
+}
+
+Vector3d Ellipse_detector::pose(int imgrows, int imgcols, double circle_diameter, double f, Eigen::Vector3d ext_norm) {
+    Matrix3d A(_C);
+     
+    double fc_x = f;
+    double fc_y = f;
+    double cc_x = imgcols/2;
+    double cc_y = imgrows/2;
+    
+                     
+    Matrix3d K;
+    K.setZero();
+    K(0, 0) = fc_x;
+    K(1, 1) = fc_y;
+    K(2, 2) = 1;   
+    K(0, 2) = cc_x;
+    K(1, 2) = cc_y;
+
+    Matrix3d Cn = (K.transpose()*A*K);
+
+    Cn = -Cn; // ?
+
+    SelfAdjointEigenSolver<Matrix3d> Eeig(Cn);
+    Matrix3d Ae = Eeig.eigenvectors();
+    Vector3d Aeigs = Eeig.eigenvalues();
+
+    //printf("eigenvector matrix\n");
+    //cout << Ae << endl;
+    //printf("\neigvals: %lg %lg %lg\n", Aeigs[0], Aeigs[1], Aeigs[2]);
+
+    double l1 = Aeigs[0];
+    double l2 = Aeigs[1];
+    double l3 = Aeigs[2];
+
+    Matrix3d eigenvectors;
+    Vector3d z_axis;
+    z_axis << 0.0, 0.0, 1.0;
+
+    int signs[3] = {
+        Aeigs[0] < 0 ? 1 : 0,
+        Aeigs[1] < 0 ? 1 : 0,
+        Aeigs[2] < 0 ? 1 : 0,
+    };
+    
+
+    if (signs[0] != signs[1]) {
+        // last two eigenvalues have same sign
+        l3 = Aeigs[0];
+        if (z_axis.dot(Ae.col(0)) < 0) {
+            eigenvectors.col(2) = -Ae.col(0);
+        } else {
+            eigenvectors.col(2) = Ae.col(0);
+        }
+        if (fabs(Aeigs[1]) > fabs(Aeigs[2])) {
+            l1 = Aeigs[1];
+            l2 = Aeigs[2];
+            eigenvectors.col(1) = Ae.col(2);
+            eigenvectors.col(0) = eigenvectors.col(1).cross(eigenvectors.col(2));
+        } else {
+            l1 = Aeigs[2];
+            l2 = Aeigs[1];
+            eigenvectors.col(1) = Ae.col(1);
+            eigenvectors.col(0) = eigenvectors.col(1).cross(eigenvectors.col(2));
+        }
+    } else {
+        // first two eigenvalues have same sign
+        l3 = Aeigs[2];
+        if (z_axis.dot(Ae.col(2)) < 0) {
+            eigenvectors.col(2) = -Ae.col(2);
+        } else {
+            eigenvectors.col(2) = Ae.col(2);
+        }
+        if (fabs(Aeigs[0]) > fabs(Aeigs[1])) {
+            l1 = Aeigs[0];
+            l2 = Aeigs[1];
+            eigenvectors.col(1) = Ae.col(1);
+            eigenvectors.col(0) = eigenvectors.col(1).cross(eigenvectors.col(2));
+        } else {
+            l1 = Aeigs[1];
+            l2 = Aeigs[0];
+            eigenvectors.col(1) = Ae.col(0);
+            eigenvectors.col(0) = eigenvectors.col(1).cross(eigenvectors.col(2));
+        }
+    }
+    // l3 contains smallest eigenvalue, eigenvectors.col(2) contains corresponding z-axis
+    // l2 contains the middle eigenvalue, plus ev(1) as its eigenvector
+    // l1 contains the largest eigenvalue, plut ev(0) as the cross of ev(1) and ev(2)
+
+    Matrix3d R1 = eigenvectors;
+
+    double al1 = fabs(l1);
+    double al2 = fabs(l2);
+    double al3 = fabs(l3);
+
+    Vector3d s1, v1;
+    s1 << sqrt( (al3*(al1 - al2)) / (al1*(al1 + al3)) ),
+          0,
+          sqrt( (al1*(al2 + al3)) / (al3*(al1 + al3)) );
+    v1 << sqrt( (al1 - al2) / (al1 + al3) ),
+          0,
+          -sqrt( (al2 + al3) / (al1 + al3) );
+
+    Vector3d s2, v2;
+    s2 << -sqrt( (al3*(al1 - al2)) / (al1*(al1 + al3)) ),
+          0,
+          sqrt( (al1*(al2 + al3)) / (al3*(al1 + al3)) );
+    v2 << -sqrt( (al1 - al2) / (al1 + al3) ),
+          0,
+          -sqrt( (al2 + al3) / (al1 + al3) );
+
+
+    s1 = (0.5 * circle_diameter * s1.transpose()) * R1.transpose();
+    v1 = v1.transpose() * R1.transpose();
+    s2 = (0.5 * circle_diameter * s2.transpose()) * R1.transpose();
+    v2 = v2.transpose() * R1.transpose();
+    
+    if (ext_norm.norm() > 0.1) { // valid external norm was provided
+        if (fabs(v2.dot(ext_norm)) > fabs(v1.dot(ext_norm))) {
+            std::swap(s1, s2);
+            std::swap(v1, v2);
+        }
+    } else {
+        // use a fixed heuristic instead
+        if (v1[0] > 0 && v2[0] < 0) {
+            std::swap(s1, s2);
+            std::swap(v1, v2);
+        }
+    }
+
+    //cout << "pos 1 : " << s1.transpose() << " norm 1 : " << v1.transpose() << endl;
+    //cout << "pos 2 : " << s2.transpose() << " norm 2 : " << v2.transpose() << endl;
+
+    pos1 = s1;
+    pos2 = s2;
+    
+    n1 = v1;
+    n2 = v2;
+
+    return s1;
 }

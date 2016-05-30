@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "svg_page_perspective.h"
 #include "svg_page_lensgrid.h"
 #include "svg_page_manualperspective.h"
+#include "svg_page_focus.h"
 #include "config.h"
 
 #include <tclap/CmdLine.h>
@@ -50,6 +51,7 @@ int main(int argc, char** argv) {
     allowed_types.push_back("thirdgrid");
     allowed_types.push_back("lensgrid");
     allowed_types.push_back("mfperspective");
+    allowed_types.push_back("focus");
     TCLAP::ValuesConstraint<string> type_constraints(allowed_types);
     
     vector<string> allowed_sizes;
@@ -114,7 +116,13 @@ int main(int argc, char** argv) {
                     exit(-1);
                 }
             } else {
-                printf("Illegal chart type %s\n", tc_type.getValue().c_str());
+                if (tc_type.getValue().compare("focus") == 0) {
+                    Svg_page_focus p(tc_size.getValue(), tc_ofname.getValue());
+                    p.set_viewing_parameters(tc_distance.getValue(), -45/180.0*M_PI);      
+                    p.render(); 
+                } else {
+                    printf("Illegal chart type %s\n", tc_type.getValue().c_str());
+                }
             }
         }
     } 
