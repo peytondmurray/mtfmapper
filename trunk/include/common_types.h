@@ -48,8 +48,9 @@ using std::endl;
 #include <cv.h>
 #include <highgui.h>
 
-typedef cv::Point_<double> Point;
-typedef vector<Point> Pointlist;
+using cv::Point2d;
+
+typedef vector<Point2d> Pointlist;
 typedef map<int, Pointlist> Boundarylist;
 
 using std::make_pair;

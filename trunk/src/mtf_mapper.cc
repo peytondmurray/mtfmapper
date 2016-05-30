@@ -51,6 +51,7 @@ using std::stringstream;
 #include "include/mtf_renderer_esf.h"
 #include "include/mtf_renderer_edges.h"
 #include "include/mtf_renderer_lensprofile.h"
+#include "include/mtf_renderer_focus.h"
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
@@ -115,6 +116,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
     TCLAP::SwitchArg tc_autocrop("","autocrop","Automatically crop image to the chart area", cmd, false);
+    TCLAP::SwitchArg tc_sliding("","sliding","Compute MTF in sliding windows along edges", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
@@ -257,6 +259,116 @@ int main(int argc, char** argv) {
         cvimg = ac.subset(cvimg);
     }
     
+    cv::Mat rawimg = cvimg;
+    if (tc_bayer.isSet()) {
+        printf("Bayer subset specified, performing quick-and-dirty WB\n");
+        rawimg = cvimg.clone();
+        
+        vector < vector<int> > hist(4, vector<int>(65536, 0));
+        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+            for (int col=0; col < cvimg.cols; col++) {
+                int val = cvimg.at<uint16_t>(row, col);
+                int subset = ((row & 1) << 1) | (col & 1);
+                if (subset > 3 || subset < 0) {
+                    printf("subset = %d\n", subset);
+                }
+                if (val < 0 || val > 65535) {
+                    printf("val = %d\n", val);
+                }
+                hist[subset][val]++;
+            }
+        }
+        // convert histograms to cumulative histograms
+        for (int subset=0; subset < 4; subset++) {
+            int acc = 0;
+            for (size_t i=0; i < hist[subset].size(); i++) {
+                acc += hist[subset][i];
+                hist[subset][i] = acc;
+            }
+        }
+        
+        // find 90% centre
+        vector<double> l5(4, 0);
+        vector<double> u5(4, 0);
+        vector<double> mean(4, 0);
+        for (int subset=0; subset < 4; subset++) {
+            int lower = 0;
+            int upper = hist[subset].size() - 1;
+            while (hist[subset][lower] < 0.05*hist[subset].back() && lower < upper) lower++;
+            while (hist[subset][upper] > 0.95*hist[subset].back() && upper > lower) upper--;
+            l5[subset] = lower;
+            u5[subset] = upper;
+            
+            mean[subset] = upper - lower;
+            
+            printf("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
+        }
+        const int targ = 1;
+        for (int i=0; i < 4; i++) {
+            if (i != targ) {
+                mean[i] = mean[targ] / mean[i];
+            }
+        }
+        
+        // bilnear interpolation to get rid op R and B channels?
+        for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
+            for (int col=4; col < cvimg.cols-4; col++) {
+                int subset = ((row & 1) << 1) | (col & 1);
+                
+                if (subset == 0 || subset == 3) {
+                
+                    #if 0
+                    double hgrad = fabs(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1));
+                    double vgrad = fabs(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col));
+                    #else
+                    double hgrad = fabs(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
+                                        3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3));
+                    double vgrad = fabs(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
+                                        3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col));
+                    #endif
+                    
+                    if (std::max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/std::max(hgrad, vgrad) < 0.001) {
+                        cvimg.at<uint16_t>(row, col) = 
+                            (cvimg.at<uint16_t>(row-1, col) + 
+                            cvimg.at<uint16_t>(row+1, col) + 
+                            cvimg.at<uint16_t>(row, col-1) + 
+                            cvimg.at<uint16_t>(row, col+1)) / 4;
+                    } else {
+                        #if 0
+                        if (hgrad > vgrad) {
+                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
+                        } else {
+                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
+                        }
+                        #else
+                        double l = sqrt(hgrad*hgrad + vgrad*vgrad);
+                        if (hgrad > vgrad) {
+                            l = hgrad / l;
+                            if (l > 0.92388) { // more horizontal than not
+                                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
+                            } else { // in between, blend it
+                                cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) +
+                                    (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) ) / 6.0;
+                            }
+                        } else {
+                            l = vgrad / l;
+                            if (l > 0.92388) {
+                                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
+                            } else {
+                                cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) +
+                                    (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) ) / 6.0;
+                            }    
+                        }
+                        #endif
+                    }
+                }
+            }
+        }
+        
+        //imwrite(string("prewhite.png"), rawimg);
+        //imwrite(string("white.png"), cvimg);
+    }
+    
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
     
@@ -267,7 +379,7 @@ int main(int argc, char** argv) {
     
     printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 60, false, 8000);
+    Component_labeller cl(masked_img, 60, false, 20000);
 
     #if 0
     // blank out the largest block
@@ -275,12 +387,12 @@ int main(int argc, char** argv) {
     Boundarylist bl = cl.get_boundaries();
     for (Boundarylist::const_iterator it=bl.begin(); it != bl.end(); it++) {
         if (it->second.size() > 3000) {
-            Point cent = centroid(it->second);
+            Point2d cent = centroid(it->second);
             printf("found a big one: %d (%lf,%lf)\n", (int)it->second.size(), cent.x, cent.y); 
 
             map<int, scanline> scanset;
             for (size_t i=0; i < it->second.size(); i++) {
-                Point p = it->second[i];
+                Point2d p = it->second[i];
                 int iy = lrint(p.y);
                 int ix = lrint(p.x);
                 if (iy > 0 && iy < cvimg.rows && ix > 0 && ix < cvimg.cols) {
@@ -316,21 +428,26 @@ int main(int argc, char** argv) {
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
     
-    Mtf_core mtf_core(cl, gradient, cvimg, tc_bayer.getValue());
+    Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
     mtf_core.set_absolute_sfr(tc_absolute.getValue());
     mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
+    
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
+    }
+    if (tc_sliding.isSet()) {
+        mtf_core.set_sliding(true);
     }
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
     printf("Parallel MTF50 calculation\n");
     parallel_for(blocked_range<size_t>(size_t(0), mtf_core.num_objects()), ca); 
+    //ca(blocked_range<size_t>(size_t(0), mtf_core.num_objects()));
     
     Distance_scale distance_scale;
-    if (tc_mf_profile.getValue()) {
-        distance_scale.construct(mtf_core);
+    if (tc_mf_profile.getValue() || tc_sliding.getValue()) {
+        distance_scale.construct(mtf_core, tc_sliding.getValue());
     }
     
     // now render the computed MTF values
@@ -469,6 +586,18 @@ int main(int argc, char** argv) {
             wdir + string("raw_psf_values.txt")
         );
         esf_writer.render(mtf_core.get_blocks());
+    }
+    
+    if (tc_sliding.getValue()) {
+        Mtf_renderer_focus profile(
+            distance_scale,
+            wdir, 
+            string("focus_peak.png"),
+            cvimg,
+            lpmm_mode,
+            pixel_size
+        );
+        profile.render(mtf_core.get_samples());
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);

@@ -37,7 +37,7 @@ using std::upper_bound;
 const int MIN_POINTS_TO_FIT = 8;
 
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point& sol) {
+    double mid,  Point2d& sol) {
 
     double rsq = 0;
 

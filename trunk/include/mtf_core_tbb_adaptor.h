@@ -39,7 +39,7 @@ class Mtf_core_tbb_adaptor {
     void operator()(const blocked_range<size_t>& r) const {
         for (size_t i=r.begin(); i != r.end(); ++i) {
             Boundarylist::const_iterator it = mtf_core->cl.get_boundaries().find(mtf_core->valid_obj[i]);
-            Point cent = centroid(it->second);
+            Point2d cent = centroid(it->second);
             mtf_core->search_borders(cent, mtf_core->valid_obj[i]);
         }
     }

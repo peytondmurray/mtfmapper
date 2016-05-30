@@ -62,7 +62,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     
     
     void render(const vector<Block>& blocks) {
-        Point centroid(0,0);
+        Point2d centroid(0,0);
         
         if (blocks.size() < 10) { // probably not a valid image for profiles
             return;
@@ -90,7 +90,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             
             double maxmtf = 0;
             for (size_t k=0; k < 4; k++) {
-                Point norm = blocks[i].get_normal(k);
+                Point2d norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
                 if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && // edge roughly aligned with long axis
@@ -101,15 +101,16 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             }
             
             for (size_t k=0; k < 4; k++) {
-                Point ec = blocks[i].get_edge_centroid(k);
-                Point norm = blocks[i].get_normal(k);
+                Point2d ec = blocks[i].get_edge_centroid(k);
+                Point2d norm = blocks[i].get_normal(k);
                 double delta = longitudinal.x*norm.x + longitudinal.y*norm.y;
                 
                 if (acos(fabs(delta))/M_PI*180.0 < angle_thresh && maxmtf > 0 && blocks[i].get_mtf50_value(k) < 1 &&
-                    blocks[i].get_quality(k) > very_poor_quality) {
+                    blocks[i].get_quality(k) > very_poor_quality /*&&
+                    fabs(maxmtf - blocks[i].get_mtf50_value(k)) / maxmtf < 0.1*/) {
                 
                     for (int ti=-1; ti <= 1; ti++) {
-                        Point mec = ec + ti*diam/4.0*Point(-norm.y, norm.x);
+                        Point2d mec = ec + ti*diam/4.0*Point2d(-norm.y, norm.x);
                         points.push_back(Mtf_profile_sample(mec, blocks[i].get_mtf50_value(k), blocks[i].get_edge_angle(k)));
                     }
                     
@@ -132,12 +133,12 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         
         vector< Mtf_profile_sample > ap_points; // axis projected points
         for (size_t i=0; i < points.size(); i++) {
-            Point d = points[i].p - zero;
-            Point coord(
+            Point2d d = points[i].p - zero;
+            Point2d coord(
                 d.x*longitudinal.x + d.y*longitudinal.y,
                 d.x*transverse.x + d.y*transverse.y
             );
-            double val = softclamp(points[i].mtf, p2, p98);
+            double val = points[i].mtf;
             
             // TODO: we can clip the values here to [0,1]
             if (!(isnan(coord.x) || isnan(coord.y) || isnan(val))) {
@@ -193,7 +194,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             }
         }
         printf("Keeping %d points out of %d\n", (int)ap_keep.size(), (int)ap_points.size());
-        Focus_surface pf(ap_keep, 3, 2, distance_scale);
+        Focus_surface pf(ap_keep, 3, 2, distance_scale, p2, p98);
         
         cv::Mat channel(img.rows, img.cols, CV_8UC1);
         double imin;
@@ -211,8 +212,8 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         merged.resize(merged.rows + 100);
         
         for (size_t i=1; i < points.size(); i+=3) {
-            Point d = points[i].p - zero;
-            Point coord(
+            Point2d d = points[i].p - zero;
+            Point2d coord(
                 d.x*longitudinal.x + d.y*longitudinal.y,
                 d.x*transverse.x + d.y*transverse.y
             );
@@ -245,12 +246,12 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         draw_curve(merged, pf.ridge_p05, cv::Scalar(100, 100, 200), 1);
         draw_curve(merged, pf.ridge_p95, cv::Scalar(100, 100, 200), 1);
         
-        rectangle(merged, Point(0, initial_rows), Point(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
         int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[1024];
         sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin", pf.focus_peak, pf.focus_peak_p05, pf.focus_peak_p95);
-        cv::putText(merged, tbuffer, Point(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
         
         
         imwrite(wdir + prname, merged);
@@ -259,7 +260,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
 
   private:
   
-    void draw_curve(cv::Mat& image, const vector<Point>& data, cv::Scalar col, double width, bool points=false) {
+    void draw_curve(cv::Mat& image, const vector<Point2d>& data, cv::Scalar col, double width, bool points=false) {
         int prevx = 0;
         int prevy = 0;
         for (size_t i=0; i < data.size(); i++) {
@@ -272,9 +273,9 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 iy >= 0 && iy < image.rows && i > 0) {
                 
                 if (points) {
-                    cv::line(image, Point(ix, iy), Point(ix, iy), col, width, CV_AA);
+                    cv::line(image, Point2d(ix, iy), Point2d(ix, iy), col, width, CV_AA);
                 } else {
-                    cv::line(image, Point(prevx, prevy), Point(ix, iy), col, width, CV_AA);
+                    cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), col, width, CV_AA);
                 }
             }
             
@@ -283,17 +284,10 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         }
     }
   
-    double softclamp(double x, double lower, double upper, double p=0.98) {
-        double s = (x - lower) / (upper - lower);
-        if (s > p) {
-            return 1.0/(1.0 + exp(-3.89182*s));
-        }
-        return s < 0 ? 0 : s;
-    }
 
-    Point& zero;
-    Point& transverse;
-    Point& longitudinal;
+    Point2d& zero;
+    Point2d& transverse;
+    Point2d& longitudinal;
     std::string wdir;
     std::string prname;
     const cv::Mat& img;

@@ -25,57 +25,33 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include "include/common_types.h"
-#include "include/gradient.h"
+#ifndef FIDUCIAL_POSITIONS_H
+#define FIDUCIAL_POSITIONS_H
 
-Point2d centroid(const Pointlist& p) {
-    double mx = 0;
-    double my = 0;
-    
-    for (size_t i=0; i < p.size(); i++) {
-        mx += p[i].x;
-        my += p[i].y;
-    }
-    mx /= p.size();
-    my /= p.size();
-    
-    return Point2d(mx, my);
-}
+#include "common_types.h"
 
-Point2d average_dir(const Gradient& g, int x, int y) {
-    double mx = 0;
-    double my = 0;
-    
-    double wsum = 0;
-    
-    int offsets[9][2] = { {0,0}, {-1,0}, {1,0}, {0,-1}, {0,1},
-                                 {-1,1}, {1,1}, {1,-1}, {-1,-1} };
-    
-    for (int k=0; k < 9; k++) {
-    
-        int lx = x + offsets[k][0];
-        int ly = y + offsets[k][1];
-        
-        
-        if (lx >= 0 && lx < g.width() &&
-            ly >= 0 && ly < g.height()) {
-    
-            mx += g.grad_x(lx,ly) * g.grad_magnitude(lx,ly);
-            my += g.grad_y(lx,ly) * g.grad_magnitude(lx,ly);
-            wsum += g.grad_magnitude(lx,ly);
-        }
-        
-    }
-    
-    mx /= wsum;
-    my /= wsum;
-    return Point2d(-my, mx);
-}
+class Fiducial {
+  public:
+    Fiducial(double img_x=0, double img_y=0, double real_x=0, double real_y=0, int code=0, int quadrant=0) 
+    : icoords(img_x, img_y), rcoords(real_x, real_y), code(code), quadrant(quadrant) {}
 
-Point2d normalize(const Point2d& p) {
-    Point2d q;
-    double norm = sqrt(p.ddot(p));
-    q.x = p.x / norm;
-    q.y = p.y / norm;
-    return q; 
-}
+    Point2d icoords;
+    Point2d rcoords;
+    int code;
+    int quadrant;
+};
+
+const int n_fiducials = 8;
+
+const Fiducial main_fiducials[n_fiducials] = {
+    {0, 0, 52.130517, 36.502181, 13, 2},
+    {0, 0, 52.130517, -36.502181, 14, 1},
+    {0, 0, 36.502181, -52.130517, 13, 1},
+    {0, 0, -36.502181, -52.130517, 14, 0},
+    {0, 0, -52.130517, -36.502181, 13, 0},
+    {0, 0, -52.130517, 36.502181, 14, 3}, 
+    {0, 0, -36.502181, 52.130517, 13, 3},
+    {0, 0, 36.502181, 52.130517, 14, 2}
+};
+
+#endif

@@ -41,7 +41,7 @@ class Ellipse_decoder {
   public:
     
     Ellipse_decoder(const Ellipse_detector& e, const cv::Mat& img, 
-        const Point& trans) : origin(e.centroid_x, e.centroid_y), 
+        const Point2d& trans) : origin(e.centroid_x, e.centroid_y), 
         trans(trans), code(-1), valid(false), ratio(e.minor_axis/e.major_axis) {
         
         if (e.solid) {
@@ -191,7 +191,7 @@ class Ellipse_decoder {
         
     }
     
-    inline int sample(const Point& p, const Component_labeller& cl) {
+    inline int sample(const Point2d& p, const Component_labeller& cl) {
         return cl(lrint(p.x), lrint(p.y)) <= 0 ? 0 : 1;
     }
     
@@ -211,8 +211,8 @@ class Ellipse_decoder {
         return -1;
     }
     
-    Point origin;
-    Point trans;
+    Point2d origin;
+    Point2d trans;
     
     int code;
     bool valid;

@@ -238,7 +238,7 @@ void Component_labeller::_contour_tracing(int x, int y, int label, mode_type mod
     bool done = false;
 
     Pointlist boundary;
-    boundary.push_back(Point(nx,ny));
+    boundary.push_back(Point2d(nx,ny));
 
     while (!done) {
         x = nx;
@@ -246,7 +246,7 @@ void Component_labeller::_contour_tracing(int x, int y, int label, mode_type mod
         // call tracer
         _tracer(x, y, nx, ny, from, mode, true);
 
-        boundary.push_back(Point(nx,ny));
+        boundary.push_back(Point2d(nx,ny));
 
         if (nx < 0) {
             break;

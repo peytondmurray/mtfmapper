@@ -188,8 +188,8 @@ class Render_esf {
        p(rect.t_geom.cx+xoff, rect.t_geom.cy+yoff), 
        sample_pos(Render_esf::n_samples(length, oversampling_factor)),
        esf(esf) {
-        Point_<double> cur(p);
-        Point_<double> d(cos(-theta)/oversampling_factor, sin(-theta)/oversampling_factor);
+        Point2d cur(p);
+        Point2d d(cos(-theta)/oversampling_factor, sin(-theta)/oversampling_factor);
         cur = cur + (0.25+0.125)*length*oversampling_factor*d;
         for (int i=0; i < (int)sample_pos.size(); i++) {
             sample_pos[i] = cur;
@@ -224,8 +224,8 @@ class Render_esf {
     const Render_polygon& rect;
     double length;
     int    oversampling_factor;
-    Point_<double> p;
-    vector< Point_<double> > sample_pos;
+    Point2d  p;
+    vector< Point2d > sample_pos;
     vector< pair<double, double> >& esf;
 };
 

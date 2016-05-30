@@ -38,6 +38,10 @@ class Sample {
     Sample(double x, double y, double weight, double yweight=1) 
     :x(x), y(y), weight(weight), yweight(yweight) {}
     
+    bool operator< (const Sample& b) const {
+        return x < b.x;
+    }
+    
     double x;
     double y;
     double weight;
@@ -248,7 +252,7 @@ class Ratpoly_fit  {
         double peak_x = (xmin + xmax)*0.5;
         double step = (xmax - xmin)/20.0;
         for (double x=xmin; x <= xmax; x += step) {
-            double z = rpeval(v, x);
+            double z = rpeval(v, x*xsf);
             if (z > peak_z) {
                 peak_x = x;
                 peak_z = z;
@@ -263,8 +267,8 @@ class Ratpoly_fit  {
         double d = lower + phi*(upper - lower);
         const double tol = 1e-10;
         while ((upper - lower) > tol) {
-            double fc = rpeval(v, c);
-            double fd = rpeval(v, d);
+            double fc = rpeval(v, c*xsf);
+            double fd = rpeval(v, d*xsf);
             if (fc > fd) {
                 upper = d;
                 d = c;

@@ -80,12 +80,12 @@ class Block {
         edge_lut[LEFT]   = left_edge_idx;
         edge_lut[RIGHT]  = right_edge_idx;
         
-        Point e1(
+        Point2d e1(
             get_edge_centroid(edge_lut[BOTTOM]).x - get_edge_centroid(edge_lut[TOP]).x,
             get_edge_centroid(edge_lut[BOTTOM]).y - get_edge_centroid(edge_lut[TOP]).y
         );
         
-        Point e2(
+        Point2d e2(
             get_edge_centroid(edge_lut[RIGHT]).x - get_edge_centroid(edge_lut[LEFT]).x,
             get_edge_centroid(edge_lut[RIGHT]).y - get_edge_centroid(edge_lut[LEFT]).y
         );
@@ -109,20 +109,20 @@ class Block {
         return esf[edge_number];
     }
 
-    void set_normal(size_t edge_number, const Point& rgrad) {
+    void set_normal(size_t edge_number, const Point2d& rgrad) {
         rect.normals[edge_number] = rgrad;
     }
 
-    Point get_normal(size_t edge_number) const {
+    Point2d get_normal(size_t edge_number) const {
         return rect.normals[edge_number];
     }
 
-    Point get_edge(size_t edge_number) const {
+    Point2d get_edge(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.edges[edge_number];
     }
     
-    Point get_corner(size_t edge_number) const {
+    Point2d get_corner(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.corners[edge_number];
     }
@@ -132,12 +132,12 @@ class Block {
         return rect.thetas[edge_number];
     }
     
-    Point get_edge_centroid(size_t edge_number) const {
+    Point2d get_edge_centroid(size_t edge_number) const {
         assert(edge_number < 4);
         return rect.centroids[edge_number];
     }
     
-    Point get_edge_centroid(edge_position ep) const {
+    Point2d get_edge_centroid(edge_position ep) const {
         map<edge_position, size_t>::const_iterator it = edge_lut.find(ep);
         return rect.centroids[it->second];
     }
@@ -159,7 +159,7 @@ class Block {
         return get_mtf50_value(it->second);
     }
     
-    Point get_centroid(void) const {
+    Point2d get_centroid(void) const {
         return centroid;
     }
     
@@ -188,7 +188,7 @@ class Block {
     vector< vector<double> > sfr;
     vector< vector<double> > esf;
     map<edge_position, size_t> edge_lut;
-    Point centroid;
+    Point2d centroid;
     double area;
     bool valid;
 };
