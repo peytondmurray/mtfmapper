@@ -113,8 +113,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         mean_y /= double(data.size());
         
-        const int sh = 2;
-        const double sgw[] = {-0.085714285714286,0.342857142857143,0.485714285714286,0.342857142857143,-0.085714285714286};
+        const int sh = 4;
+        const double sgw[] = {-21/231.0, 14/231.0, 39/231.0, 54/231.0, 59/231.0, 54/231.0, 39/231.0, 14/231.0, -21/231.0};
         sort(data.begin(), data.end());
         
         // just pretend our samples are equally spaced
@@ -126,7 +126,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
             
             
-            if (fabs(val - data[i].y)/val < 0.05) {
+            if (fabs(val - data[i].y)/val < 0.04) {
                 ndata.push_back(data[i]);
             }
             
@@ -137,7 +137,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         Ratpoly_fit cf(data, 4, 2);
         VectorXd sol = rpfit(cf);
         
-        #if 1
         // perform a few steps of IRLS
         double prev_err = 1e50;
         int dccount;
@@ -150,7 +149,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 double e = fabs(y - data[k].y);
                 errsum += e * data[k].yweight;
                 wsum += data[k].yweight;
-                data[k].yweight = 1.0 / std::max(0.0001, e);
+                data[k].yweight = 1.0; 
                 if (e/y > 0.05) { // kill really poor outliers
                     data[k].yweight = 0;
                     dccount++;
@@ -176,7 +175,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         errsum /= wsum;
         printf("final err(weighted): %lg\n", errsum);
-        #endif
         
         FILE* fraw = fopen("rprofile.txt", "wt");
         for (size_t i=0; i < data.size(); i++) {
