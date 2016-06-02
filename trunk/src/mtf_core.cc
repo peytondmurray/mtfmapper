@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/point_helpers.h"
 #include "include/mtf50_edge_quality_rating.h"
 #include "include/mtf_tables.h"
+#include "include/ellipse_decoder.h"
 
 // global lock to prevent race conditions on detected_blocks
 static tbb::mutex global_mutex;
@@ -50,12 +51,10 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         int valid = e.fit(cl, g, it->second, 0, 0, 2);
         if (valid) {
             {
-                Eigen::Vector3d pos = e.pose(img.rows, img.cols);
+                Ellipse_decoder ed(e, img);
                 tbb::mutex::scoped_lock lock(global_mutex);
+                e.set_code(ed.code);
                 ellipses.push_back(e);
-                if (e.solid) {
-                    solid_ellipses.push_back(Point2d(e.centroid_x, e.centroid_y));
-                }
             }
             for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
                 double synth_x = e.major_axis * cos(theta);

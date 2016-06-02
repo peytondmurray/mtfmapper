@@ -214,7 +214,7 @@ class Bundle_adjuster {
         const double rho_lower_bound = 1e-6;
         
         
-        FILE* fout = fopen("bundle.txt", "wt");
+        //FILE* fout = fopen("bundle.txt", "wt");
         for (int iter=0; iter < 100000; iter++) {
             for (int r=0; r < p.rows(); r++) {
                 vel[r] = dist(mt)*rho*scale[r];
@@ -259,9 +259,9 @@ class Bundle_adjuster {
                 rho = rho_lower_bound;
             }
             
-            fprintf(fout, "%lf %lf %lf\n", f, fbest, p[7]);
+            //fprintf(fout, "%lf %lf %lf\n", f, fbest, p[7]);
         }
-        fclose(fout);
+        //fclose(fout);
         
         printf("final f=%lf, distortion=%le, delta=(%lf, %lf) RMSE=%lf\n", 
             1.0/p[7], p[6], p[8], p[9], fbest
