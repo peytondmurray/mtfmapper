@@ -31,6 +31,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "Eigen/Dense"
 #include <random>
+#include <limits>
+#include <cmath>
+
 
 class Bundle_adjuster {
   public:
@@ -40,7 +43,6 @@ class Bundle_adjuster {
         Eigen::Vector3d& t,
         cv::Mat in_rod_angles,
         double distortion,
-        double gscale,
         double w,
         double px, double py) 
          : img_points(img_points), world_points(world_points) {
@@ -49,7 +51,7 @@ class Bundle_adjuster {
         rod_angles = cv::Mat(3, 1, CV_64FC1);
         
         // pack initial parameters
-        Eigen::VectorXd init(11);
+        Eigen::VectorXd init(10);
         
         init[0] = t[0];
         init[1] = t[1];
@@ -58,16 +60,128 @@ class Bundle_adjuster {
         init[4] = in_rod_angles.at<double>(1,0);
         init[5] = in_rod_angles.at<double>(2,0);
         init[6] = distortion;
-        init[7] = gscale;
-        init[8] = w;
-        init[9] = px;
-        init[10] = py;
         
+        init[7] = w;
+        init[8] = px;
+        init[9] = py;
+        
+        #if 1
+        FILE* bal = fopen("bal.txt", "wt");
+        fprintf(bal, "1 %lu %lu\n", world_points.size(), world_points.size());
+        for (size_t i=0; i < img_points.size(); i++) {
+            fprintf(bal, "%d %lu %le %le\n", 0, i, img_points[i][0], -img_points[i][1]);
+        }
+        fprintf(bal, "%le\n%le\n%le\n", init[3], init[4], init[5]);
+        fprintf(bal, "%le\n%le\n%le\n", init[0], init[1], init[2]);
+        fprintf(bal, "%le\n%le\n%le\n", 1.0/init[7], init[6], 0.0);
+        for (size_t i=0; i < world_points.size(); i++) {
+            fprintf(bal, "%le\n%le\n%le\n", world_points[i][0], world_points[i][1], world_points[i][2]);
+        }
+        fclose(bal);
+        #endif
+        
+        best_sol = solve_random_search(init);
+    }
+    
+    void unpack(Eigen::Matrix3d& R, Eigen::Vector3d& t, double& distortion, double& w, double& px, double &py) {
+        Eigen::VectorXd& v = best_sol;
+        rod_angles.at<double>(0,0) = v[3];
+        rod_angles.at<double>(1,0) = v[4];
+        rod_angles.at<double>(2,0) = v[5];
+        cv::Rodrigues(rod_angles, rot_mat);
+        
+        // global_scale * K * R | t
+        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
+             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
+             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
+        
+        t = Eigen::Vector3d(v[0], v[1], v[2]);
+        
+        distortion = v[6];
+        w = v[7];
+        px = v[8];
+        py = v[9];
+    }
+    
+    double evaluate(const Eigen::VectorXd& v) {
+        rod_angles.at<double>(0,0) = v[3];
+        rod_angles.at<double>(1,0) = v[4];
+        rod_angles.at<double>(2,0) = v[5];
+        cv::Rodrigues(rod_angles, rot_mat);
+        
+        // global_scale * K * R | t
+        Eigen::Matrix3d R;
+        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
+             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
+             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
+             
+        // we could orthogonalize R here using [U S V] = svd(R) -> Ro = U*V'
+        
+        R.row(2) *= v[7]; // multiply by 1/f
+        Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
+        
+        double bpsse = 0;
+        for (size_t i=0; i < world_points.size(); i++) {
+            Eigen::Vector3d bp = R*world_points[i] + t;
+            bp /= bp[2];
+            
+            bp[0] += v[8];
+            bp[1] += v[9];
+            
+            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
+            bp /= rad;
+                        
+            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
+            bpsse += bpe*bpe;
+        }
+        return sqrt(bpsse/double(world_points.size()));
+    }
+    
+    double backproj(const Eigen::VectorXd& v) {
+        rod_angles.at<double>(0,0) = v[3];
+        rod_angles.at<double>(1,0) = v[4];
+        rod_angles.at<double>(2,0) = v[5];
+        cv::Rodrigues(rod_angles, rot_mat);
+        
+        // global_scale * K * R | t
+        Eigen::Matrix3d R;
+        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
+             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
+             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
+        
+        R.row(2) *= v[7]; // multiply by 1/f
+        Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
+        
+        double f5 = 0;
+        double bpsse = 0;
+        for (size_t i=0; i < world_points.size(); i++) {
+            Eigen::Vector3d bp = R*world_points[i] + t;
+            
+            bp /= bp[2];
+            
+            bp[0] += v[8];
+            bp[1] += v[9];
+            
+            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
+            bp /= rad;
+            
+            printf("pt[%lu], expect (%lf %lf), got (%lf %lf)\n", i,
+                img_points[i][0], img_points[i][1],
+                bp[0], bp[1]
+            );
+            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
+            bpsse += bpe;
+            if (i < 5) f5 += bpe;
+        }
+        printf("MAD error : %lf, first 5: %lf\n", bpsse/double(world_points.size()), f5/double(world_points.size()));
+        return sqrt(bpsse);
+    }
+    
+    Eigen::VectorXd solve_random_search(const Eigen::VectorXd& init) {
         Eigen::VectorXd scale(init.rows());
         scale << 0.01, 0.01, 0.01,    // origin
                  0.001, 0.001, 0.001, // angles
                  1e-5,                // distortion
-                 1e-4,                // global scale
                  1e-2,                // focal length
                  10, 10;            // principal point
         
@@ -82,8 +196,8 @@ class Bundle_adjuster {
         double fbest = evaluate(p);
         
         backproj(p);
-        printf("initial f=%lf, scale=%lf, distortion=%le, delta(%lf, %lf), RMSE=%lf\n", 
-            1.0/init[8], init[7], init[6], px, py, fbest
+        printf("initial f=%lf, distortion=%le, delta(%lf, %lf), RMSE=%lf\n", 
+            1.0/init[7], init[6], init[8], init[9], fbest
         );
         
         double rho = 0.1;
@@ -145,112 +259,16 @@ class Bundle_adjuster {
                 rho = rho_lower_bound;
             }
             
-            fprintf(fout, "%lf %lf %lf\n", f, fbest, p[8]);
+            fprintf(fout, "%lf %lf %lf\n", f, fbest, p[7]);
         }
         fclose(fout);
         
-        printf("final f=%lf, scale=%lf, distortion=%le, delta=(%lf, %lf) RMSE=%lf\n", 
-            1.0/p[8], p[7], p[6], p[9], p[10], fbest
+        printf("final f=%lf, distortion=%le, delta=(%lf, %lf) RMSE=%lf\n", 
+            1.0/p[7], p[6], p[8], p[9], fbest
         );
         backproj(p);
-        best_sol = p;
-    }
-    
-    void unpack(Eigen::Matrix3d& R, Eigen::Vector3d& t, double& gscale, double& distortion, double& w, double& px, double &py) {
-        Eigen::VectorXd& v = best_sol;
-        rod_angles.at<double>(0,0) = v[3];
-        rod_angles.at<double>(1,0) = v[4];
-        rod_angles.at<double>(2,0) = v[5];
-        cv::Rodrigues(rod_angles, rot_mat);
         
-        // global_scale * K * R | t
-        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
-             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
-             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
-        
-        t = Eigen::Vector3d(v[0], v[1], v[2]);
-        
-        gscale = v[7];
-        distortion = v[6];
-        w = v[8];
-        px = v[9];
-        py = v[10];
-    }
-    
-    double evaluate(const Eigen::VectorXd& v) {
-        rod_angles.at<double>(0,0) = v[3];
-        rod_angles.at<double>(1,0) = v[4];
-        rod_angles.at<double>(2,0) = v[5];
-        cv::Rodrigues(rod_angles, rot_mat);
-        
-        // global_scale * K * R | t
-        Eigen::Matrix3d R;
-        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
-             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
-             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
-             
-        // we could orthogonalize R here using [U S V] = svd(R) -> Ro = U*V'
-        
-        R *= v[7]; // apply global scale
-        R.row(2) *= v[8]; // multiply by 1/f
-        Eigen::Vector3d t(v[0], v[1], v[2]*v[8]);
-        
-        double bpsse = 0;
-        for (size_t i=0; i < world_points.size(); i++) {
-            Eigen::Vector3d bp = R*world_points[i] + t;
-            bp /= bp[2];
-            
-            bp[0] += v[9];
-            bp[1] += v[10];
-            
-            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
-            bp /= rad;
-                        
-            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            bpsse += bpe*bpe;
-        }
-        return sqrt(bpsse/double(world_points.size()));
-    }
-    
-    double backproj(const Eigen::VectorXd& v) {
-        rod_angles.at<double>(0,0) = v[3];
-        rod_angles.at<double>(1,0) = v[4];
-        rod_angles.at<double>(2,0) = v[5];
-        cv::Rodrigues(rod_angles, rot_mat);
-        
-        // global_scale * K * R | t
-        Eigen::Matrix3d R;
-        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
-             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
-             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
-        
-        R *= v[7]; // apply global scale
-        R.row(2) *= v[8]; // multiply by 1/f
-        Eigen::Vector3d t(v[0], v[1], v[2]*v[8]);
-        
-        double f5 = 0;
-        double bpsse = 0;
-        for (size_t i=0; i < world_points.size(); i++) {
-            Eigen::Vector3d bp = R*world_points[i] + t;
-            
-            bp /= bp[2];
-            
-            bp[0] += v[9];
-            bp[1] += v[10];
-            
-            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
-            bp /= rad;
-            
-            printf("pt[%lu], expect (%lf %lf), got (%lf %lf)\n", i,
-                img_points[i][0], img_points[i][1],
-                bp[0], bp[1]
-            );
-            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            bpsse += bpe;
-            if (i < 5) f5 += bpe;
-        }
-        printf("MAD error : %lf, first 5: %lf\n", bpsse/double(world_points.size()), f5/double(world_points.size()));
-        return sqrt(bpsse);
+        return p;
     }
     
     vector<Eigen::Vector2d>& img_points;

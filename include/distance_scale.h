@@ -335,13 +335,11 @@ class Distance_scale {
                 double w = sqrt( (r3n*r3n)/(r1n*r1n) );
                 focal_length = 1.0/w;
                 
-                Eigen::MatrixXd RM = P.block(0,0,3,3);
-                RM.row(2) /= w;
-                global_scale = RM.row(0).norm();
-                RM /= global_scale;
+                P /= P.block(0,0,1,3).norm(); // remove the arbitrary scaling factor
+                P.row(2) /= w; // remove focal length from last row
                 
+                Eigen::MatrixXd RM = P.block(0,0,3,3);
                 Eigen::Vector3d Pcop = P.col(3);
-                Pcop(2) /= w;
                 
                 for (int rr=0; rr < 3; rr++) {
                     for (int cc=0; cc < 3; cc++) {
@@ -376,12 +374,11 @@ class Distance_scale {
                     Pcop, 
                     rod_angles,
                     distortion,
-                    global_scale,
                     w,
                     delta_principal.x, delta_principal.y
                 );
                 
-                ba.unpack(rotation, translation, global_scale, distortion, w, delta_principal.x, delta_principal.y);
+                ba.unpack(rotation, translation, distortion, w, delta_principal.x, delta_principal.y);
                 focal_length = 1.0/w;
                 
                 prin.x -= delta_principal.x;
@@ -389,9 +386,9 @@ class Distance_scale {
                 
                 // prepare for backprojection
                 Eigen::Matrix3d K;
-                K << global_scale, 0, 0,
-                    0, global_scale, 0,
-                    0, 0, global_scale / focal_length;
+                K << 1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1.0 / focal_length;
                     
                 invP = (K*rotation).inverse();
                 
@@ -510,7 +507,7 @@ class Distance_scale {
         // coordinates
         
         // weird hack to (apparently) fix up z-axis
-        ip = rotation*ip + Eigen::Vector3d(translation[0], translation[1], -translation[2]/global_scale);
+        ip = rotation*ip + Eigen::Vector3d(translation[0], translation[1], -translation[2]);
         
         return ip;
     }
@@ -581,7 +578,6 @@ class Distance_scale {
     double distortion;
     Eigen::Matrix3d rotation;
     Eigen::Vector3d translation;
-    double global_scale;
     
     Eigen::Matrix3d invP; // from image to world coords
     Eigen::Vector3d cop;  // centre of projection (i.e., camera)
