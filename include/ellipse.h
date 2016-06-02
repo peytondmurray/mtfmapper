@@ -49,8 +49,6 @@ class Ellipse_detector {
         code = incode;
     }
     
-    Eigen::Vector3d pose(int imgrows, int imgcols, double circle_diameter=5, double f=10000, Eigen::Vector3d ext_norm=Eigen::Vector3d::Zero());
-                                      
     int _matrix_to_ellipse(Eigen::Matrix3d& C);
     void _dilate(set<iPoint>& s, int width, int height, int iters);
     void _dilate_outer_only(set<iPoint>& s, int width, int height);

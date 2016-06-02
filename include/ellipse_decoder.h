@@ -32,30 +32,17 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/ellipse.h"
 #include "include/component_labelling.h"
 
-const int bitreverse4[16] = {
-    0, 8, 4, 12, 2, 10, 6, 14,
-    1, 9, 5, 13, 3, 11, 7, 15
-};
 
 class Ellipse_decoder {
   public:
     
-    Ellipse_decoder(const Ellipse_detector& e, const cv::Mat& img, 
-        const Point2d& trans) : origin(e.centroid_x, e.centroid_y), 
-        trans(trans), code(-1), valid(false), ratio(e.minor_axis/e.major_axis) {
+    Ellipse_decoder(const Ellipse_detector& e, const cv::Mat& img) 
+      : code(-1), valid(false), ratio(e.minor_axis/e.major_axis) {
         
-        if (e.solid) {
-            valid = true;
-            code = 0;
-        } else {
-            string bitvec;
-            extract_bitvector(e, img, bitvec);
-            decode_bitvector(bitvec);
-        }
+        extract_code(e, img);
     }
     
-    void extract_bitvector(const Ellipse_detector&e, 
-        const cv::Mat& img, string& bitvec) {
+    void extract_code(const Ellipse_detector&e, const cv::Mat& img) {
         
         // collect histogram stats inside ellipse
         map<int, int> histo;
@@ -102,117 +89,43 @@ class Ellipse_decoder {
         }
         int otsu = lrint((thresh1 + thresh2) * 0.5);
         
-        int first_one = -1;
-        int last_one = -1;
-        for (double du=-e.major_axis-1; du <= e.major_axis+1; du += 1) {
-            int sx = lrint(origin.x - du*trans.x);
-            int sy = lrint(origin.y - du*trans.y);
-            int bit = img.at<uint16_t>(sy, sx) < otsu ? 1 : 0;
-            if (first_one < 0 && bit) {
-                first_one = 0;
-            }
-            if (first_one >= 0) {
-                bitvec.push_back(bit + '0');
-                first_one++;
-            }
-            if (bit) {
-                last_one = first_one;
-            }
+        // take 30 samples along inner track
+        int steps = 30;
+        int ones = 0;
+        for (int i=0; i < steps; i++) {
+            double theta = i*2.0*M_PI/double(steps);
+            double px = e.centroid_x + 0.3*e.minor_axis*cos(theta+e.angle);
+            double py = e.centroid_y + 0.3*e.major_axis*sin(theta+e.angle);
+            // would be nice to render the tracks ...
+            fprintf(stderr, "%lf %lf\n", px, py);
+            int bit = img.at<uint16_t>(lrint(py), lrint(px)) > otsu ? 1 : 0;
+            ones += bit;
         }
-        bitvec = bitvec.substr(0, last_one);    
-    }
-    
-    void extract_bitvector(const Ellipse_detector&e, 
-        const Component_labeller& cl, string& bitvec) {
+        double inner_ratio = ones/double(steps);
         
-        int first_one = -1;
-        int last_one = -1;
-        for (double du=-e.major_axis-1; du <= e.major_axis+1; du += 1) {
-            int bit = sample(origin - du*trans, cl);
-            if (first_one < 0 && bit) {
-                first_one = 0;
-            }
-            if (first_one >= 0) {
-                bitvec.push_back(bit + '0');
-                first_one++;
-            }
-            if (bit) {
-                last_one = first_one;
-            }
-        }
-        bitvec = bitvec.substr(0, last_one);    
-    }
-    
-    void decode_bitvector(const string& bitvec) {
-        vector<int> bits(4,1);
-        // synthesize all the codes, pick one with minimum hamming distance
-        int rad = bitvec.size()/2;
-        int inner_lim = lrint(0.5*bitvec.size()/1.4);
-        int outer_lim = lrint(0.5*bitvec.size()*0.6);
-        int segments[7] = {
-            0,
-            rad - outer_lim,
-            inner_lim,
-            (int)bitvec.size()/2,
-            (int)bitvec.size() - inner_lim,
-            (int)bitvec.size() - (rad - outer_lim),
-            (int)bitvec.size()
-        };
+        fprintf(stderr, "\n\n");
         
-        int mindist = bitvec.size() + 1;
-        int bestcode = 15; // all ones
-        for (int i=0; i < 16; i++) {
-            int dist = 0;
-            int total = 0;
-            for (int j=0; j < 6; j++) {
-                char match = '1';
-                if (j >= 1 && j < 5) {
-                    match = (i & (1 << (3 - (j-1)))) ? '0' : '1';
-                }
-                for (int k=segments[j]; k < segments[j+1]; k++) {
-                    total++;
-                    dist += (bitvec[k] == match) ? 0 : 1;
-                }
-            }
-            if (dist < mindist) {
-                bestcode = i;
-                mindist = dist;
-            }
+        steps = 50;
+        ones = 0;
+        for (int i=0; i < steps; i++) {
+            double theta = i*2.0*M_PI/double(steps);
+            double px = e.centroid_x + 0.5*e.minor_axis*cos(theta+e.angle);
+            double py = e.centroid_y + 0.5*e.major_axis*sin(theta+e.angle);
+            // would be nice to render the tracks ...
+            fprintf(stderr, "%lf %lf\n", px, py);
+            int bit = img.at<uint16_t>(lrint(py), lrint(px)) > otsu ? 1 : 0;
+            ones += bit;
         }
-        for (int i=0; i < 4; i++) {
-            bits[i] = ((1 << i) & bestcode) ? 1 : 0;
-        }
+        double outer_ratio = ones/double(steps);
         
-        code = bestcode;
-        valid = mindist < 0.15*bitvec.size(); 
-                    
-        printf("%lf (%lf %lf) -> bits=[%d%d%d%d] / %d, mindist=%d/%d, valid=%d, ratio=%lf\n", origin.y, origin.x, origin.y, 
-            bits[0], bits[1], bits[2], bits[3], bestcode, mindist, (int)bitvec.size(), valid, ratio);
+        fprintf(stderr, "\n\n");
         
+        int inner_code = lrint(inner_ratio*3);
+        int outer_code = lrint(outer_ratio*5);
+        int final_code = outer_code*4 + inner_code;
+        printf("inner ratio = %lf, outer ratio = %lf, %d, %d, code=%d\n", inner_ratio, outer_ratio, inner_code, outer_code, final_code);
+        code = final_code;
     }
-    
-    inline int sample(const Point2d& p, const Component_labeller& cl) {
-        return cl(lrint(p.x), lrint(p.y)) <= 0 ? 0 : 1;
-    }
-    
-    void reverse(void) {
-        if (code >= 0 && code <= 15) {
-            code = bitreverse4[code];
-        } else {
-            printf("Error: tried to reverse a value outside of the valid range (ellipse decoder): %d\n", code);
-        }
-    }
-    
-    static int reverse(int incode) {
-        if (incode >= 0 && incode <= 15) {
-            return bitreverse4[incode];
-        } 
-        printf("Error: tried to reverse a value outside of the valid range (ellipse decoder): %d\n", incode);
-        return -1;
-    }
-    
-    Point2d origin;
-    Point2d trans;
     
     int code;
     bool valid;

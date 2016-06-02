@@ -55,7 +55,9 @@ class Svg_page_focus : public Svg_page {
         //strip(-5, -150, 10, 60, 7, 1, -ang); // for direct blocks, non-perspective
         //strip(-5, -150, 45, 9, 25, 1, -ang); // for direct blocks
         strip(-5*bsize, -0.8, 45*bsize, 5*bsize, 44, 1, -ang); // for perspective blocks
-        codedcircles(5);
+        //codedcircles(5);
+        
+        coded_sector_circles(10);
         
         chevrons();
         
@@ -265,6 +267,153 @@ class Svg_page_focus : public Svg_page {
         p = scale(cx, cy);
         fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"white\" clip-path=\"url(#f%04d)\" />\n", p.x, p.y, int(0.6*rad*sscale), clipid);
         clipid++;
+    }
+    
+    void wedge(double cx, double cy, double inner_rad, double outer_rad, double xangle, double fraction, int depth=1) {
+        double epsilon = 0;
+        double epsilon2 = 0;
+        
+        if (fraction >= 0.999999) {
+            iPoint p = scale(cx, cy);
+            fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"black\" z-index=\"%d\"/>\n", p.x, p.y, int(outer_rad*sscale), depth);
+            fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"white\" z-index=\"%d\"/>\n", p.x, p.y, int(inner_rad*sscale), depth+1);
+        } else {
+        
+            int lf = fraction > 0.5 ? 1 : 0;
+            double x = cx - outer_rad * cos((xangle-epsilon2)/180.0*M_PI);
+            double y = cy - outer_rad * sin((xangle-epsilon2)/180.0*M_PI);
+            iPoint p = scale(x, y);
+            fprintf(fout, "  <path \n");
+            fprintf(fout, "\td=\"M %d,%d ", p.x, p.y);
+            x = cx - outer_rad * cos((xangle + 360*fraction+epsilon2)/180.0*M_PI);
+            y = cy - outer_rad * sin((xangle + 360*fraction+epsilon2)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "A %lf %lf 0 %d,1 %d,%d ", sscale*(outer_rad+epsilon), sscale*(outer_rad+epsilon), lf, p.x, p.y);
+            x = cx - inner_rad * cos((xangle + 360*fraction+epsilon2)/180.0*M_PI);
+            y = cy - inner_rad * sin((xangle + 360*fraction+epsilon2)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "L %d,%d ", p.x, p.y);
+            x = cx - inner_rad * cos((xangle-epsilon2)/180.0*M_PI);
+            y = cy - inner_rad * sin((xangle-epsilon2)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "A %lf,%lf 0 %d,0 %d,%d ", sscale*inner_rad, sscale*inner_rad, lf, p.x, p.y);
+            fprintf(fout, "z\" \n\tstyle=\"%s\"\n z-index=\"%d\" />\n", style.c_str(), depth);
+        }
+    }
+
+    
+    void sector_circle(double cx, double cy, double rad, int code) {
+        iPoint p = scale(cx, cy);
+        fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"black\" z-index=\"1\" />\n", p.x, p.y, int(rad*sscale));
+        
+        const int outer_step = 5;
+        const int inner_step = 3;
+        
+        const int outer_vals = outer_step + 1;
+        const int inner_vals = inner_step + 1;
+        
+        int inner_code = inner_step - code % inner_vals;
+        int outer_code = outer_step - (code / inner_vals) % outer_vals;
+        
+        if (outer_code > 0) {
+            fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"white\" z-index=\"2\" />\n", p.x, p.y, int(0.6*rad*sscale));
+            wedge(cx, cy, 0.4*rad, 0.6*rad, 90, outer_code*1.0/double(outer_step), 3);
+        }
+        if (inner_code > 0) {
+            if (outer_code == 0) {
+                fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"white\" z-index=\"2\" />\n", p.x, p.y, int(0.4*rad*sscale));
+            }
+            wedge(cx, cy, 0.1*rad, 0.4*rad, 270, inner_code*1.0/double(inner_step), 5);
+        }
+    }
+    
+    void coded_sector_circles(double swidth) {
+        const double hshift = 20;
+        
+        #if 1
+        
+        const double cdist = 30;
+        sector_circle(cdist, 0, swidth/2.0, 0);
+        fprintf(fout, "\n");
+        printf("{0, 0, %lf, %lf, 0, 0},\n", cdist, 0.0);
+        sector_circle(-cdist, 0, swidth/2.0, 0);
+        fprintf(fout, "\n");
+        printf("{0, 0, %lf, %lf, 0, 0},\n", -cdist, 0.0);
+        
+        const double theta = 35/180.0*M_PI;
+        const double radius = 90*sqrt(0.5);
+        int code = 2;
+        for (double phi=0; phi > -2*M_PI; phi -= M_PI/2.0) {
+            double cx = radius*cos(phi + theta);
+            double cy = radius*sin(phi + theta);
+            
+            sector_circle(cx, cy, swidth/2.0, code);
+            fprintf(fout, "\n");
+            
+            int quad = ((cx < 0) ? 1 : 0) | ((cy > 0) ? 2 : 0);
+            if (quad <= 1) { // ugly, but swap quadrants 0 and 1
+                quad = 1 - quad;
+            }
+            
+            printf("{0, 0, %lf, %lf, %d, %d}%c\n", cx, cy, code, quad, quad == 3 ? ' ' : ','); // don't actually need quadrants for these four
+            
+            quad++;
+            code += 2;
+        }
+        
+        vector<double> base_rad{100, 120, 130, 140};
+        vector<double> offset_angle{-35, 20, 70, 45};
+        for (size_t i=0; i < base_rad.size(); i++) {
+        
+            double rad=0;
+            for (double phi=0; phi > -2*M_PI; phi -= M_PI/2.0) {
+                double cx = (base_rad[i]+rad)*cos(phi + offset_angle[i]/180.0*M_PI);
+                double cy = (base_rad[i]+rad)*sin(phi + offset_angle[i]/180.0*M_PI);
+                
+                sector_circle(cx, cy, swidth/2.0, code);
+                
+                int quad = ((cx < 0) ? 1 : 0) | ((cy > 0) ? 2 : 0);
+                if (quad <= 1) { // ugly, but swap quadrants 0 and 1
+                    quad = 1 - quad;
+                }
+                
+                printf("{0, 0, %lf, %lf, %d, %d}%c\n", cx, cy, code, quad, quad == 3 ? ' ' : ','); // don't actually need quadrants for these four
+                
+                quad++;
+                rad += 2.5;
+            }
+            
+            code += 2;
+        }
+        
+        #else 
+        // just use what we have in fiducials include ...
+        for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
+            coded_poly(main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y, swidth, main_fiducials[i].code);
+            fprintf(fout, "\n");
+        }
+        #endif
+        
+        for (int y=-80; y < 80; y++) {
+            iPoint c1 = scale(swidth-1 + hshift/2, 2*y);
+            iPoint c2 = scale(swidth+1 + hshift/2, 2*y+1);
+            fprintf(fout, "\n");
+            rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+        }
+        
+        const double rwidth = 2;
+        for (int x=0; x < 25; x++) {
+            iPoint c1 = scale( (4*x-1)*rwidth*0.5 + 2*hshift, -0.25);
+            iPoint c2 = scale( (4*x+1)*rwidth*0.5 + 2*hshift,  0.25);
+            fprintf(fout, "\n");
+            rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+        }
+        for (int x=0; x < 25; x++) {
+            iPoint c1 = scale( (4*(-x)-1)*rwidth*0.5 - 2*hshift, -0.25);
+            iPoint c2 = scale( (4*(-x)+1)*rwidth*0.5 - 2*hshift, 0.25);
+            fprintf(fout, "\n");
+            rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+        }
     }
     
     void codedcircles(double swidth) {
