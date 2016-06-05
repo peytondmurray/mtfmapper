@@ -44,8 +44,9 @@ class Bundle_adjuster {
         cv::Mat in_rod_angles,
         double distortion,
         double w,
-        double px, double py) 
-         : img_points(img_points), world_points(world_points) {
+        double px, double py,
+        double img_scale=1.0) 
+         : img_points(img_points), world_points(world_points), img_scale(img_scale) {
         
         rot_mat = cv::Mat(3, 3, CV_64FC1);
         rod_angles = cv::Mat(3, 1, CV_64FC1);
@@ -166,14 +167,14 @@ class Bundle_adjuster {
             bp /= rad;
             
             printf("pt[%lu], expect (%lf %lf), got (%lf %lf)\n", i,
-                img_points[i][0], img_points[i][1],
-                bp[0], bp[1]
+                img_points[i][0]*img_scale, img_points[i][1]*img_scale,
+                bp[0]*img_scale, bp[1]*img_scale
             );
             double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
             bpsse += bpe;
             if (i < 5) f5 += bpe;
         }
-        printf("MAD error : %lf, first 5: %lf\n", bpsse/double(world_points.size()), f5/double(world_points.size()));
+        printf("MAD error : %lf, first 5: %lf\n", img_scale*bpsse/double(world_points.size()), img_scale*f5/double(world_points.size()));
         return sqrt(bpsse);
     }
     
@@ -181,9 +182,9 @@ class Bundle_adjuster {
         Eigen::VectorXd scale(init.rows());
         scale << 0.01, 0.01, 0.01,    // origin
                  0.001, 0.001, 0.001, // angles
-                 1e-5,                // distortion
-                 1e-2,                // focal length
-                 10, 10;            // principal point
+                 1e-1,                // distortion
+                 1e-3,                // focal length
+                 1e-4, 1e-4;        // principal point
         
         Eigen::VectorXd p = init;
         Eigen::VectorXd pp = init;
@@ -197,7 +198,7 @@ class Bundle_adjuster {
         
         backproj(p);
         printf("initial f=%lf, distortion=%le, delta(%lf, %lf), RMSE=%lf\n", 
-            1.0/init[7], init[6], init[8], init[9], fbest
+            img_scale/init[7], init[6], init[8]*img_scale, init[9]*img_scale, fbest*img_scale
         );
         
         double rho = 0.1;
@@ -258,13 +259,12 @@ class Bundle_adjuster {
             if (rho < rho_lower_bound) {
                 rho = rho_lower_bound;
             }
-            
-            //fprintf(fout, "%lf %lf %lf\n", f, fbest, p[7]);
+            //fprintf(fout, "%lf %lf %lf\n", f*img_scale, fbest*img_scale, p[7]);
         }
         //fclose(fout);
         
         printf("final f=%lf, distortion=%le, delta=(%lf, %lf) RMSE=%lf\n", 
-            1.0/p[7], p[6], p[8], p[9], fbest
+            img_scale/p[7], p[6], p[8]*img_scale, p[9]*img_scale, fbest*img_scale
         );
         backproj(p);
         
@@ -276,6 +276,7 @@ class Bundle_adjuster {
     cv::Mat rot_mat;
     cv::Mat rod_angles;
     Eigen::VectorXd best_sol;
+    double img_scale;
 };
 
 #endif

@@ -103,6 +103,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     const int fft_size, double lower, double upper, vector<double>& esf) {
 
     const double missing = -1e7;
+    const double shift_tolerance = 4;
 
     for (int i=0; i < fft_size; i++) {
         sampled[i] = missing;
@@ -251,8 +252,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     
     if (clipped) {
-        if (fft_size/2 - fft_left < 4*8 ||
-            fft_right  - fft_size/2 < 4*8) {
+        if (fft_size/2 - fft_left < shift_tolerance*8 ||
+            fft_right  - fft_size/2 < shift_tolerance*8) {
             
             printf("probably contamination. tagging edge as dodgy\n");
             rval = 1;

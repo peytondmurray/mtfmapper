@@ -73,6 +73,8 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                 color[1] = 255;
                 color[2] = 0;
             }
+        } else {
+            printf("object at %lf %lf not an ellipse, or apparently a rectangle\n", cent.x, cent.y);
         }
         return;
     }
@@ -172,7 +174,6 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             reduce_success &= edge_record[k].reduce();
             Point2d ncx = edge_record[k].centroid;
             double shift = sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y));
-            printf("ndeltaA %lf\n", shift);
             max_shift = std::max(max_shift, shift);
         }
         rrect = newrect;
@@ -225,10 +226,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     }
                 }
             }
-            Point2d ocx = edge_record[k].centroid;
             reduce_success &= edge_record[k].reduce();
-            Point2d ncx = edge_record[k].centroid;
-            printf("ndeltaB %lf\n", sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y)));
         }
     }
     
@@ -313,16 +311,19 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     Mrectangle rrect(main_thetas, thetas, points, g);
     rect = rrect;
     
+    /*
+    // TODO: rethink this test
     for (int ci=0; ci < 4; ci++) {
         if (cl(lrint(0.5*(ix+rrect.centroids[0].x)), lrint(0.5*(iy+rrect.centroids[0].y))) != label) {
-            //printf("block with centroid (%d, %d) failed interior check\n", ix, iy);a
+            printf("block with centroid (%d, %d) failed interior check\n", ix, iy);
             return false;
         }
         if (cl(lrint(0.5*(ix+rrect.corners[0].x)), lrint(0.5*(iy+rrect.corners[0].y))) != label) {
-            //printf("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
+            printf("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
             return false;
         }
     }
+    */
     
     return rrect.valid;
 }
@@ -364,7 +365,6 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         return 0;
     }
     
-        
     int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
@@ -558,7 +558,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
 
 void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
 
-    const double winlen = 40; // desired length of ROI along edge direction
+    double winlen = 40; // desired length of ROI along edge direction
 
     const vector< vector<int> >& corner_map = rrect.corner_map;
     const vector<Point2d>& corners = rrect.corners;
@@ -571,15 +571,11 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     }
     sort(dims.begin(), dims.end());
     
-    printf("width=%lf (%d), height=%lf (%d)\n", dims.front().first, dims.front().second, dims.back().first, dims.back().second);
-    
     int v1 = dims[3].second;
     int v2 = dims[2].second;
     
     vector<Point2d> b(2);
     vector<Point2d> d(2);
-    
-    double angle[2] = {0,0};
     
     b[0] = corners[corner_map[v1][0]];
     d[0] = corners[corner_map[v1][1]] - corners[corner_map[v1][0]];
@@ -640,7 +636,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
                 double dot = gd.x*n.x + gd.y*n.y;
                 double pdot = gd.x*dir.x + gd.y*dir.y;
                 
-                if (fabs(dot) < 16 && pdot > 5 && pdot < (edge_len - 5)) {
+                if (fabs(dot) < 12 && pdot > 5 && pdot < (edge_len - 5)) { // TODO: making the window narrow here helps a bit ...
                     int iy = lrint(y); 
                     int ix = lrint(x);
                     edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
@@ -650,15 +646,11 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         
         edge_record.reduce(); // we can now move the ROI if we have to ...
         
-        angle[side] = edge_record.angle;
-        
         Point2d nd(sin(edge_record.angle), -cos(edge_record.angle));
         double dot = nd.x * dir.x + nd.y * dir.y;
         if (dot < 0) {
             nd = -nd;
         }
-        
-        double delta = acos(nd.x * dir.x + nd.y * dir.y);
         
         // use angle to set d[], keep orientation
         d[side] = nd * edge_len;
@@ -668,12 +660,17 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     // now process all the windows
     for (int side=0; side < 2; side++) {
     
-        const double buffer = 2; // pixels to ignore near edge of block?
-        const double steplen = 4; 
+        const double buffer = 5; // pixels to ignore near edge of block?
+        double steplen = 4;
         Point2d dir(d[side]);
         double edge_len = norm(dir);
         
         int steps = floor((edge_len - winlen)/steplen) + 1;
+        
+        if (samples_per_edge != 0) {
+            steps = std::max(2, std::min(steps, samples_per_edge));
+            steplen = (edge_len - winlen) / double(steps-1);
+        }
         
         Point2d start(b[side]);
         dir *= 1.0/edge_len;
@@ -735,22 +732,6 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
                             edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                         }
                         
-                        /*
-                        if (fabs(dot) < (max_dot + 1)) {
-                            map<int, scanline>::iterator it = scanset.find(iy);
-                            if (it == scanset.end()) {
-                                scanline sl(ix,ix);
-                                scanset.insert(make_pair(iy, sl));
-                            }
-                            if (ix < scanset[iy].start) {
-                                scanset[iy].start = ix;
-                            }
-                            if (ix > scanset[iy].end) {
-                                scanset[iy].end = ix;
-                            }
-                        }
-                        */
-                        
                         min_p = std::min(min_p, pdot);
                         max_p = std::max(max_p, pdot);
                     }
@@ -804,16 +785,12 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             
             edge_record.reduce();
             
-            //double cshift = norm(newcent - edge_record.centroid);
-            //printf("centroid_shift %lf\n", cshift);
             #endif
             
             cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(edge_record.centroid.y), lrint(edge_record.centroid.x));
             color[0] = 255;
             color[1] = 255;
             color[2] = 0;
-            
-            double delta = acos(fabs(-sin(edge_record.angle) * dir.x + cos(edge_record.angle) * dir.y));
             
             double quality = 0;
             vector <double> sfr(NYQUIST_FREQ*2, 0);

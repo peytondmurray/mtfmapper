@@ -89,30 +89,34 @@ class Ellipse_decoder {
         }
         int otsu = lrint((thresh1 + thresh2) * 0.5);
         
+        double cs = cos(e.angle);
+        double ss = sin(e.angle);
+        
         // take 30 samples along inner track
         int steps = 30;
         int ones = 0;
         for (int i=0; i < steps; i++) {
             double theta = i*2.0*M_PI/double(steps);
-            double px = e.centroid_x + 0.3*e.minor_axis*cos(theta+e.angle);
-            double py = e.centroid_y + 0.3*e.major_axis*sin(theta+e.angle);
-            // would be nice to render the tracks ...
-            fprintf(stderr, "%lf %lf\n", px, py);
+            
+            double synth_x = 0.3*e.major_axis * cos(theta);
+            double synth_y = 0.3*e.minor_axis * sin(theta);
+            double px = cs*synth_x - ss*synth_y + e.centroid_x;
+            double py = ss*synth_x + cs*synth_y + e.centroid_y;
+            
             int bit = img.at<uint16_t>(lrint(py), lrint(px)) > otsu ? 1 : 0;
             ones += bit;
         }
         double inner_ratio = ones/double(steps);
         
-        fprintf(stderr, "\n\n");
-        
         steps = 50;
         ones = 0;
         for (int i=0; i < steps; i++) {
             double theta = i*2.0*M_PI/double(steps);
-            double px = e.centroid_x + 0.5*e.minor_axis*cos(theta+e.angle);
-            double py = e.centroid_y + 0.5*e.major_axis*sin(theta+e.angle);
-            // would be nice to render the tracks ...
-            fprintf(stderr, "%lf %lf\n", px, py);
+            double synth_x = 0.5*e.major_axis * cos(theta);
+            double synth_y = 0.5*e.minor_axis * sin(theta);
+            double px = cs*synth_x - ss*synth_y + e.centroid_x;
+            double py = ss*synth_x + cs*synth_y + e.centroid_y;
+            
             int bit = img.at<uint16_t>(lrint(py), lrint(px)) > otsu ? 1 : 0;
             ones += bit;
         }

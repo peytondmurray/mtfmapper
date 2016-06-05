@@ -50,7 +50,7 @@ typedef cv::Point_<int> iPoint;
 class Svg_page {
   public:
     Svg_page(const string& page_spec, const string& fname, double pscale=100) 
-      : fname(fname), page_size(page_spec), sscale(pscale)  {
+      : fname(fname), page_size(page_spec), sscale(pscale), outside_limits(false), clipid(1)  {
         
         if (page_spec == "A4" || page_spec == "a4") {
             width_mm = 210;
@@ -89,7 +89,6 @@ class Svg_page {
     }
     
     
-    
     virtual void render(void) = 0;
     
     
@@ -126,6 +125,22 @@ class Svg_page {
         return iPoint(int(x), int(y));
     }
     
+    virtual iPoint scale(double x, double y) {
+    
+        dPoint p(x,y);
+        
+        p.x = floor(p.x*sscale + 0.5*width);
+        p.y = floor(p.y*sscale + 0.5*height);
+        
+        if (p.x < 0 || p.x > width ||
+            p.y < 0 || p.y > height) {
+            
+            outside_limits = true;
+        }
+        
+        return iPoint(int(p.x), int(p.y));
+    }
+    
     
     void rotated_square(double tlx, double tly, double bwidth, double angle) {
         iPoint p = project(tlx + bwidth*cos(angle), tly + bwidth*sin(angle));
@@ -144,6 +159,101 @@ class Svg_page {
         );   
     }
     
+    void wedge_hole(double cx, double cy, double inner_rad, double outer_rad, double xangle, double fraction) {
+        
+        if (fraction >= 0.999999) {
+            ring(cx, cy, inner_rad, outer_rad);
+        } else {
+            int lf = fraction > 0.5 ? 1 : 0;
+            double x = cx - outer_rad * cos((xangle)/180.0*M_PI);
+            double y = cy - outer_rad * sin((xangle)/180.0*M_PI);
+            iPoint p = scale(x, y);
+            fprintf(fout, "M %d,%d ", p.x, p.y);
+            x = cx - outer_rad * cos((xangle + 360*fraction)/180.0*M_PI);
+            y = cy - outer_rad * sin((xangle + 360*fraction)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "A %ld %ld 0 %d,1 %d,%d ", lrint(sscale*(outer_rad)), lrint(sscale*(outer_rad)), lf, p.x, p.y);
+            x = cx - inner_rad * cos((xangle + 360*fraction)/180.0*M_PI);
+            y = cy - inner_rad * sin((xangle + 360*fraction)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "L %d,%d ", p.x, p.y);
+            x = cx - inner_rad * cos((xangle)/180.0*M_PI);
+            y = cy - inner_rad * sin((xangle)/180.0*M_PI);
+            p = scale(x, y);
+            fprintf(fout, "A %ld,%ld 0 %d,0 %d,%d z\n", lrint(sscale*inner_rad), lrint(sscale*inner_rad), lf, p.x, p.y);
+        }
+    }
+    
+    void ring_open(double cx, double cy, double outer_rad) {
+        int ior = lrint(sscale*outer_rad);
+        iPoint p;
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, " <path \n");
+        fprintf(fout, "\td=\"M %d,%d ", p.x, p.y);
+        p = scale(cx - outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d ", ior, ior, p.x, p.y);
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d z", ior, ior, p.x, p.y);
+    }
+    
+    void hole(double cx, double cy, double outer_rad) {
+        int ior = lrint(sscale*outer_rad);
+        iPoint p;
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, "M %d,%d ", p.x, p.y);
+        p = scale(cx - outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d ", ior, ior, p.x, p.y);
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d z", ior, ior, p.x, p.y);
+    }
+
+    void ring(double cx, double cy, double inner_rad, double outer_rad) {
+        int ior = lrint(sscale*outer_rad);
+        int iir = lrint(sscale*inner_rad);
+        iPoint p;
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, " <path \n");
+        fprintf(fout, "\td=\"M %d,%d ", p.x, p.y);
+        p = scale(cx - outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d ", ior, ior, p.x, p.y);
+        p = scale(cx + outer_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d z", ior, ior, p.x, p.y);
+        p = scale(cx + inner_rad, cy);
+        fprintf(fout, "M %d,%d \n", p.x, p.y);
+        p = scale(cx - inner_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d ", iir, iir, p.x, p.y);
+        p = scale(cx + inner_rad, cy);
+        fprintf(fout, "A %d %d 0 0,1 %d,%d z", iir, iir, p.x, p.y);
+        fprintf(fout, "\" fill-rule=\"evenodd\" />\n");
+    }
+    
+    void sector_circle(double cx, double cy, double rad, int code) {
+        
+        if (code == 0) {
+            ring(cx, cy, 0.1*rad, rad);
+            return;
+        }
+        
+        const int outer_step = 5;
+        const int inner_step = 3;
+        
+        const int outer_vals = outer_step + 1;
+        const int inner_vals = inner_step + 1;
+        
+        int inner_code = inner_step - code % inner_vals;
+        int outer_code = outer_step - (code / inner_vals) % outer_vals;
+        
+        ring_open(cx, cy, rad);
+        if (outer_code > 0) {
+            wedge_hole(cx, cy, 0.4*rad, 0.6*rad, 90, 1 - outer_code*1.0/double(outer_step));
+        }
+        if (inner_code > 0) {
+            wedge_hole(cx, cy, 0.1*rad, 0.4*rad, 270, 1 - inner_code*1.0/double(inner_step));
+        }
+        hole(cx, cy, 0.1*rad);
+        fprintf(fout, "\" fill-rule=\"evenodd\" />\n");
+    }
+    
     
     string fname;
     string style;
@@ -156,6 +266,8 @@ class Svg_page {
     std::string page_size;
     
     double sscale;
+    bool outside_limits;
+    int clipid;
 };
 
 #endif

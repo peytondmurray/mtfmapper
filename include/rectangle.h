@@ -134,8 +134,8 @@ class Mrectangle {
         corner_map = vector< vector<int> >(4);
         
         int corner_idx = 0;
-        for (size_t k1=0; k1 < 3; k1++) {
-            for (size_t k2=k1+1; k2 < 4; k2++) {
+        for (size_t k1=0; k1 < 3 && corner_idx < 4; k1++) {
+            for (size_t k2=k1+1; k2 < 4 && corner_idx < 4; k2++) {
                 // check if edges are approximately normal
                 double dot = normals[k1].x*normals[k2].x + normals[k1].y*normals[k2].y;
                 if ( fabs(fabs(dot)) < M_PI/6.0 ) {
@@ -244,12 +244,12 @@ class Mrectangle {
                 valid = true;
                 boundary_length = points.size();
                 
-                for (size_t k1=0; k1 < 3; k1++) {
-                    for (size_t k2=k1+1; k2 < 4; k2++) {
+                for (size_t k1=0; k1 < 3 && corner_idx < 4; k1++) {
+                    for (size_t k2=k1+1; k2 < 4 && corner_idx < 4; k2++) {
                         // check if edges are approximately normal
                         
                         double dot = acos(edges[k1].ddot(edges[k2]));
-                        if ( fabs(fabs(dot) - M_PI/2.0) < M_PI/6.0 ) {
+                        if ( fabs(fabs(dot) - M_PI/2.0) < M_PI/5.1429 ) { // about 35 degrees
                             // edges are approximately normal, find intersection
                             Point2d isect(0.0,0.0);
                             intersect(centroids[k1], normals[k1], centroids[k2], normals[k2], isect);
@@ -257,7 +257,7 @@ class Mrectangle {
                             corner_map[k1].push_back(corner_idx);
                             corner_map[k2].push_back(corner_idx);
                             corners[corner_idx++] = isect;
-                        }
+                        } 
                     }
                 }
             }
