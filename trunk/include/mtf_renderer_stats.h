@@ -68,6 +68,35 @@ class Mtf_renderer_stats : public Mtf_renderer {
             return;
         }
         
+        print_stats(unfiltered, filtered);
+    }
+    
+    void render(const vector<Mtf_profile_sample>& samples) {
+        
+        if (samples.size() == 0) {
+            return;
+        }
+    
+        vector<double> unfiltered;
+        vector<double> filtered;
+        for (size_t i=0; i < samples.size(); i++) {
+            
+            double val = samples[i].mtf;
+            unfiltered.push_back(val);
+            
+            if (samples[i].quality >= 0.5) {
+                filtered.push_back(val);
+            }
+        }
+        
+        if (unfiltered.size() < 2) {
+            return;
+        }
+        
+        print_stats(unfiltered, filtered);
+    }
+    
+    void print_stats(vector<double>& unfiltered, vector<double>& filtered) {
         sort(filtered.begin(), filtered.end());
         sort(unfiltered.begin(), unfiltered.end());
         

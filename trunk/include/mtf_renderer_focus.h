@@ -72,8 +72,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
             return;
         }
         
-        
-        
         double lmin = 0;
         double lmax = 0;
         double step = 0;
@@ -101,7 +99,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     mean_y += coord.y;
                     
                     double depth = 0;
-                    distance_scale.estimate_depth(samples[i].p.x, samples[i].p.y, depth);
+                    distance_scale.estimate_depth_img_coords(samples[i].p.x, samples[i].p.y, depth);
                     coord.x = depth;
                     
                     // coord is now projected into the surface

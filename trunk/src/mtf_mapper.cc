@@ -369,6 +369,7 @@ int main(int argc, char** argv) {
         //imwrite(string("white.png"), cvimg);
     }
     
+    
     printf("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
     
@@ -435,19 +436,21 @@ int main(int argc, char** argv) {
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
     }
-    if (tc_sliding.isSet()) {
+    if (tc_sliding.isSet() || tc_mf_profile.getValue()) {
         mtf_core.set_sliding(true);
+        if (tc_mf_profile.getValue()) {
+            mtf_core.set_samples_per_edge(5);
+        }
     }
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
     printf("Parallel MTF50 calculation\n");
     parallel_for(blocked_range<size_t>(size_t(0), mtf_core.num_objects()), ca); 
-    //ca(blocked_range<size_t>(size_t(0), mtf_core.num_objects()));
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_sliding.getValue()) {
-        distance_scale.construct(mtf_core, tc_sliding.getValue());
+        distance_scale.construct(mtf_core, true);
     }
     
     // now render the computed MTF values
@@ -487,7 +490,7 @@ int main(int argc, char** argv) {
             lpmm_mode,
             pixel_size
         );
-        profile.render(mtf_core.get_blocks());
+        profile.render(mtf_core.get_samples());
     }
 
     if (tc_surface.getValue()) {
@@ -601,7 +604,11 @@ int main(int argc, char** argv) {
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);
-    stats.render(mtf_core.get_blocks());
+    if (tc_sliding.getValue() || tc_mf_profile.getValue()) {
+        stats.render(mtf_core.get_samples());
+    } else {
+        stats.render(mtf_core.get_blocks());
+    }
     
     return 0;
 }

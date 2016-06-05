@@ -67,7 +67,7 @@ class Mtf_core {
              const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false) {
+        sliding(false), samples_per_edge(0) {
 
         if (bayer_subset.compare("none") == 0) {
             bayer = NONE;
@@ -135,6 +135,10 @@ class Mtf_core {
         sliding = val;
     }
     
+    void set_samples_per_edge(int s) {
+        samples_per_edge = s;
+    }
+    
     void set_snap_angle(double angle) {
         snap_to = true;
         snap_to_angle = angle;
@@ -163,6 +167,7 @@ class Mtf_core {
     double snap_to_angle;
     bool sfr_smoothing;
     bool sliding;
+    int samples_per_edge;
     
     void process_with_sliding_window(Mrectangle& rrect);
   

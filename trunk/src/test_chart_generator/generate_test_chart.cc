@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
             if (tc_type.getValue().compare("lensgrid") == 0) {
                 Svg_page_lensgrid p(tc_size.getValue(), tc_ofname.getValue());
                 p.render();
+                return 0;
             } 
             
             if (tc_type.getValue().compare("mfperspective") == 0) {

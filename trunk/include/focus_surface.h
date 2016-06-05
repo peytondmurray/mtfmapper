@@ -31,12 +31,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "ratpoly_fit.h"
 #include "mtf_profile_sample.h"
 #include "distance_scale.h"
+#include "mtf50_edge_quality_rating.h"
 
 class Focus_surface  {
   public:
   
-    Focus_surface(vector< Mtf_profile_sample >& data, int order_n, int order_m, Distance_scale& distance_scale, double p2=0, double p98=1) 
-    : data(data), order_n(order_n), order_m(order_m), maxy(-1e50), maxx(-1e50), cscale(distance_scale.chart_scale), p2(p2), p98(p98) {
+    Focus_surface(vector< Mtf_profile_sample >& data, int order_n, int order_m, Distance_scale& distance_scale) 
+    : data(data), order_n(order_n), order_m(order_m), maxy(-1e50), maxx(-1e50) {
     
         double miny = 1e50;
         for (size_t i=0; i < data.size(); i++) {
@@ -45,35 +46,39 @@ class Focus_surface  {
             miny = std::min(fabs(data[i].p.y), miny);
         }
         
-        printf("chart extents: y:(%lf, %lf), x:(%lf), strips start at y=%lf mm\n", miny, maxy, maxx, miny*cscale);
+        printf("chart extents: y:(%lf, %lf) mm, x:(%lf) mm\n", miny, maxy, maxx);
         
         // TODO: this loop is a great candidate for OpenMP, but some care must be taken
         // to protect the (few) shared structures (like "peaks")
         
         double min_fit_err = 1e50;
-        double min_midy = maxy*cscale;
+        double min_midy = maxy;
         VectorXd best_sol;
         vector<Sample> dummy_data;
         Ratpoly_fit best_fit(dummy_data, 5, 5);
         
+        FILE* ffout = fopen("peaks.txt", "wt");
+        
+        maxy = 136; // empirical?
+        
         vector<Sample> peak_pts;
         // |15 to 110| in steps of 2.5, width=5 ??
         for (int s=-1; s <= 1; s+=2) {
-            for (double d=std::max(10.0, 1.2*miny*cscale); d <= 0.95*maxy*cscale; d += 1.0) {
+            //for (double d=std::max(10.0, 1.2*miny*cscale); d <= 0.95*maxy*cscale; d += 1.0) {
+            for (double d=10.0; d <= 0.9*maxy; d += 2.0) {
                 double midy = s*d;
                 
                 double mean_x = 0;
                 double wsum = 0;
                 
                 vector<Sample> pts_row;
-                for (size_t i=0; i < data.size(); i++) {
-                    double dy = midy - data[i].p.y*cscale;
-                    if (fabs(dy) < 15 && fabs(data[i].p.y*cscale) > 5) { // at least 5 mm from centre of chart
+                for (size_t i=0; i < data.size(); i++) { // TODO: this may become a little slow with many points
+                    double dy = midy - data[i].p.y;
+                    if (fabs(dy) < 15 && fabs(data[i].p.y) > 5 && fabs(data[i].p.x) < 175 && fabs(data[i].p.y) < 136) { // at least 5 mm from centre of chart
                         
                         double yw = exp(-dy*dy/(2*3*3)); // sdev of 3 mm in y direction
-                        double cw = softclamp(data[i].mtf, p2, p98);
-                        pts_row.push_back( Sample(data[i].p.x*cscale, data[i].mtf, yw, 0.1 + 0.9*exp(2*cw)));
-                        mean_x += pts_row.back().weight * data[i].p.y * cscale;
+                        pts_row.push_back( Sample(data[i].p.x, data[i].mtf, yw, data[i].quality <= poor_quality ? 0.25 : 1) );
+                        mean_x += pts_row.back().weight * data[i].p.y;
                         wsum += pts_row.back().weight;
                     } 
                 }
@@ -82,13 +87,32 @@ class Focus_surface  {
                     continue; 
                 }
                 
+                // now filter out the really bad outliers
+                const int sh = 4;
+                const double sgw[] = {-21/231.0, 14/231.0, 39/231.0, 54/231.0, 59/231.0, 54/231.0, 39/231.0, 14/231.0, -21/231.0};
+                sort(pts_row.begin(), pts_row.end());
+                
+                // just pretend our samples are equally spaced
+                vector<Sample> ndata;
+                for (size_t i=sh; i < pts_row.size() - sh; i++) {
+                    double val = 0;
+                    for (int w=-sh; w <= sh; w++) {
+                        val += sgw[w+sh] * pts_row[i+w].y;    
+                    }
+                    
+                    if (fabs(val - pts_row[i].y)/val < 0.05) {
+                        ndata.push_back(pts_row[i]);
+                    }
+                    
+                }
+                pts_row = ndata;
+                
                 VectorXd sol;
                 double lpeak;
                 
                 mean_x /= wsum;
                 
-                Ratpoly_fit cf(pts_row, order_n, order_m);
-                //Ratpoly_fit cf(pts_row, 5, 2);
+                Ratpoly_fit cf(pts_row, 4, order_m);
                 sol = rpfit(cf, true, true); 
                 while (cf.order_n > 1 && cf.order_m > 0 && cf.has_poles(sol)) {
                     cf.order_m--;
@@ -104,38 +128,6 @@ class Focus_surface  {
                     continue;
                 }
                 
-                #if 0
-                // Attempt IRLS
-                double prev_err = 1e50;
-                for (int iter=0; iter < 30; iter++) {
-                    double errsum = 0;
-                    double wsum = 0;
-                    for (size_t i=0; i < pts_row.size(); i++) {
-                        double y = cf.rpeval(sol, pts_row[i].x*cf.xsf) / cf.ysf;
-                        double e = fabs(y - pts_row[i].y);
-                        
-                        //pts_row[i].yweight = (0.1 + 0.9*exp(2*pts_row[i].y)) / std::max(0.0001, e);
-                        pts_row[i].yweight = 1.0 / std::max(0.0001, e);
-                        errsum += e * pts_row[i].yweight;
-                        wsum += pts_row[i].yweight;
-                        
-                    }
-                    errsum /= wsum;
-                    printf("iter %d err: %lf\n", iter, errsum);
-                    VectorXd oldsol = sol;
-                    sol = rpfit(cf, true, true);
-                    if (iter > 0 && (prev_err - errsum)/prev_err < 0.0001) {
-                        printf("bailing out at iter %d\n", iter);
-                        if (errsum > prev_err) {
-                            printf("reverting to older solution\n");
-                            sol = oldsol;
-                        }
-                        break;
-                    }
-                    prev_err = errsum;
-                }
-                #endif
-                
                 double err = cf.evaluate(sol);
                 lpeak = cf.peak(sol); 
                 
@@ -144,10 +136,7 @@ class Focus_surface  {
                     printf("min fit err %lf at dist %lf\n", merr, midy);
                     min_fit_err = merr;
                 }
-                //if (fabs(midy*merr) < min_midy) {
-                if (fabs(midy - 40) < fabs(min_midy - 40) ) {
-                    printf("new closest point: %lf, eerr=%lf\n", midy, fabs(midy*merr));
-                    //min_midy = fabs(midy*merr);
+                if (fabs(midy) < 20 && fabs(merr - min_fit_err)/merr < 1) {
                     min_midy = midy;
                     best_sol = sol;
                     dummy_data = pts_row;
@@ -157,18 +146,14 @@ class Focus_surface  {
                     best_fit.ysf = cf.ysf;
                 }
                 
-                double pw = 0.1;
-                double xw = fabs(midy)/(0.7*maxy*cscale);
-                if (xw < 1) {
-                    pw = 0.1 + 0.9*(1 - xw*xw*xw)*(1 - xw*xw*xw)*(1 - xw*xw*xw);
-                }
+                peak_pts.push_back( Sample(mean_x, lpeak, 1, 1.0) );
+                ridge_peaks.push_back(Point2d(lpeak, mean_x));
                 
-                peak_pts.push_back( Sample(mean_x/cscale, lpeak/cscale, pw, 1.0/(1e-4 + err)) );
-                ridge_peaks.push_back(Point2d(lpeak/cscale, mean_x/cscale));
-                
-                //fprintf(stderr, "%lf %lf\n", mean_x/cscale, lpeak/cscale);
+                fprintf(ffout, "%lf %lf\n", mean_x, lpeak);
             }
         }
+        
+        fclose(ffout);
         
         if (peak_pts.size() < 10) {
             printf("Not enough peak points to construct peak focus curve.\n");
@@ -189,20 +174,25 @@ class Focus_surface  {
             printf("Warning: no viable RP fit to fpeaks data\n");
         }
         
-        #if 0
+        #if 1
         // attempt IRLS step
         vector<double> iweights(peak_pts.size(), 0);
         for (size_t i=0; i < peak_pts.size(); i++) {
             iweights[i] = peak_pts[i].yweight;
         }
         double prev_err = 1e50;
-        for (int iter=0; iter < 30; iter++) {
+        for (int iter=0; iter < 50; iter++) {
             double errsum = 0;
             double wsum = 0;
             for (size_t i=0; i < peak_pts.size(); i++) {
                 double y = cf.rpeval(sol, peak_pts[i].x*cf.xsf) / cf.ysf;
                 double e = fabs(y - peak_pts[i].y);
                 peak_pts[i].yweight = iweights[i] / std::max(0.0001, e);
+                
+                if (iter > 3 && e > 20) {
+                    printf("outlier at %lf mm, suppressing\n", e);
+                    peak_pts[i].yweight = 0;
+                }
                 
                 double w = peak_pts[i].yweight;
                 errsum += e*w;
@@ -264,11 +254,11 @@ class Focus_surface  {
         printf("x_inter percentile: %.3lf\n", x_inter_index*100 / double(mc_pf.size()));
         printf("x_inter 95%% confidence interval: [%lf, %lf]\n", mc_pf[0.05*mc_pf.size()], mc_pf[0.95*mc_pf.size()]);
         
-        distance_scale.estimate_depth(x_inter, focus_peak);
-        distance_scale.estimate_depth(mc_pf[0.05*mc_pf.size()], focus_peak_p05);
-        distance_scale.estimate_depth(mc_pf[0.95*mc_pf.size()], focus_peak_p95);
+        distance_scale.estimate_depth_world_coords(x_inter, 0.0, focus_peak);
+        distance_scale.estimate_depth_world_coords(mc_pf[0.05*mc_pf.size()], 0.0, focus_peak_p05);
+        distance_scale.estimate_depth_world_coords(mc_pf[0.95*mc_pf.size()], 0.0, focus_peak_p95);
         
-        printf("focus_pix %lg\n", x_inter);
+        printf("focus_mm (on chart x axis) %lg\n", x_inter);
         
         printf("focus_plane %lg\n", focus_peak);
         printf("fp_interval: [%lf, %lf]\n", focus_peak_p05, focus_peak_p95);
@@ -280,9 +270,14 @@ class Focus_surface  {
             curve_max = std::max(curve_max, dummy_data[i].x);
         }
         FILE* profile = fopen("nprofile.txt", "wt");
+        double curve_peak = best_fit.peak(best_sol);
+        double curve_offset = curve_peak - x_inter;
+        printf("curve peak = %lf, x_inter = %lf\n", curve_peak, x_inter);
         for (double cx=curve_min; cx <= curve_max; cx += 1) {
-            double x = best_fit.rpeval(best_sol, cx*best_fit.xsf)/best_fit.ysf;
-            fprintf(profile, "%lf %lf\n", cx, x);
+            double mtf = best_fit.rpeval(best_sol, cx*best_fit.xsf)/best_fit.ysf;
+            double depth = 0;
+            distance_scale.estimate_depth_world_coords(cx - curve_offset, 0.0, depth);
+            fprintf(profile, "%lf %lf\n", depth, mtf);
         }
         fclose(profile);
     }
@@ -373,7 +368,6 @@ class Focus_surface  {
     int order_m;
     double maxy;
     double maxx;
-    double cscale;
     vector<Point2d> ridge;
     vector<Point2d> ridge_peaks;
     vector<Point2d> ridge_p05;

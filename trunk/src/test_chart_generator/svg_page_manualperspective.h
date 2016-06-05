@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define SVG_PAGE_MANUALPERSPECTIVE_H
 
 #include "svg_page.h"
+#include "include/fiducial_positions.h"
 
 #include <string>
 
@@ -40,17 +41,27 @@ class Svg_page_manualperspective : public Svg_page {
     Svg_page_manualperspective(const string& page_spec, const string& fname) 
       : Svg_page(page_spec, fname, 10000), cop(0,0,0), pl(0,0,2000), 
         normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), 
-        sensor(15.6, 23.6), outside_limits(false), width_scale(1), clipid(1) {
+        sensor(15.6, 23.6), outside_limits(false), width_scale(1) {
         
         // must call set_viewing_parameters before render
     }
     
     void render(void) {
-        double ang=10.0/180.0*M_PI;
-        double bsize=0.0214; // block size ....
+        double ang=5.0/180.0*M_PI;
+        double bsize=0.005; // block size ....
         
-        strip(-7*2*1.5*2*bsize + 1.5*bsize, -30*bsize + 2.0*bsize, 2.5*bsize, 1.5*bsize, 20, 8, -ang, 1);
-        strip( 7*2*1.5*2*bsize - 1.5*bsize, -30*bsize + 2.0*bsize, 2.5*bsize, 1.5*bsize, 20, 8, -ang, 0);
+        const double cw = 25;
+        const int nc = 9;
+        const double cs = 1.1;
+        for (int col=0; col <= nc; col++) {
+            double offset = -0.75*cw*bsize;
+            if (col > nc/2) offset = -offset - 0.6*cw*bsize;
+            double cstart = -(nc/2.0+0.25)*(cw+5)*bsize*cs + col*(cw+5)*bsize*cs;
+            strip(offset + cstart, -0.8 + (col%2)*5*bsize, cw*bsize, 5*bsize, 35, 1, 
+                -ang * ((col > nc/2) ? -1 : 1)
+            ); // for perspective blocks
+        }
+        
         codedcircles(5);
         
         chevrons();
@@ -122,225 +133,130 @@ class Svg_page_manualperspective : public Svg_page {
     }
     
     
-    virtual iPoint scale(double x, double y) {
+    void perspective_rectangle(double tlx, double tly, double width, double height, double angle, bool right=false) {
     
-        dPoint p(x,y);
-        
-        p.x = floor(p.x*sscale + 0.5*width);
-        p.y = floor(p.y*sscale + 0.5*height);
-        
-        if (p.x < 0 || p.x > width ||
-            p.y < 0 || p.y > height) {
-            
-            outside_limits = true;
-        }
-        
-        return iPoint(int(p.x), int(p.y));
-    }
-    
-    
-    void perspective_rectangle(double tlx, double tly, double width, double height, double angle, bool right) {
-    
+        vector<iPoint> points;
         if (right) {
-            iPoint p = project(tlx, tly);
-            fprintf(fout, "  <polygon points=\"%d,%d ", p.x, p.y);
-            p = project(tlx - cos(angle)*width, tly + sin(angle)*height);
-            fprintf(fout, "%d,%d ", p.x, p.y);
-            p = project(tlx - sin(angle)*width - cos(angle)*width, tly - cos(angle)*height + sin(angle)*height);
-            fprintf(fout, "%d,%d ", p.x, p.y);
-            p = project(tlx - sin(angle)*width, tly - cos(angle)*height);
-            fprintf(fout, "%d,%d\" style=\"%s\"/>", p.x, p.y, style.c_str());
-          
+            points.push_back(project(tlx, tly));
+            points.push_back(project(tlx - cos(angle)*width, tly + sin(angle)*height));
+            points.push_back(project(tlx - sin(angle)*width - cos(angle)*width, tly - cos(angle)*height + sin(angle)*height));
+            points.push_back(project(tlx - sin(angle)*width, tly - cos(angle)*height));
         } else {
-            iPoint p = project(tlx, tly);
-            fprintf(fout, "  <polygon points=\"%d,%d ", p.x, p.y);
-            p = project(tlx + cos(angle)*width, tly + sin(angle)*height);
-            fprintf(fout, "%d,%d ", p.x, p.y);
-            p = project(tlx + sin(angle)*width + cos(angle)*width, tly - cos(angle)*height + sin(angle)*height);
-            fprintf(fout, "%d,%d ", p.x, p.y);
-            p = project(tlx + sin(angle)*width, tly - cos(angle)*height);
-            fprintf(fout, "%d,%d\" style=\"%s\"/>", p.x, p.y, style.c_str());
-          
+            points.push_back(project(tlx, tly));
+            points.push_back(project(tlx + cos(angle)*width, tly + sin(angle)*height));
+            points.push_back(project(tlx + sin(angle)*width + cos(angle)*width, tly - cos(angle)*height + sin(angle)*height));
+            points.push_back(project(tlx + sin(angle)*width, tly - cos(angle)*height));
+        }
+        
+        if (collision_free(points)) {
+            fprintf(fout, "  <polygon points=\"%d,%d ", points[0].x, points[0].y);
+            fprintf(fout, "%d,%d ", points[1].x, points[1].y);
+            fprintf(fout, "%d,%d ", points[2].x, points[2].y);
+            fprintf(fout, "%d,%d\" style=\"%s\"/>", points[3].x, points[3].y, style.c_str());
         }
     }
     
-    void strip(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols, double ang, bool left) {
-        
-        const double crang = 10.0/180.0*M_PI;
+    void strip(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols, double ang) {
         
         for (size_t ry=0; ry < nrows; ry++) {
             for (size_t rx=0; rx < ncols; rx++) {
-      
-                if (left) {
-                    double ypos = ry * 2.0 * sheight + tly;
-                    double xpos = rx * 2.0 * swidth  + tlx;
-              
-                    ang=atan2(ypos, xpos);
-                    if (fabs(ang) > crang) ang = ang/fabs(ang)*crang;
-                    ang = fabs(ang);
-                    perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 0);
-                    fprintf(fout, "\n");
-                    if (ry < nrows-1) {
-                        xpos += swidth;
-                        ypos += sheight;
-                        ang=atan2(ypos, xpos);
-                        if (fabs(ang) > crang) ang = ang/fabs(ang)*crang;
-                        ang = fabs(ang);
-                        if (rx < ncols-1) {
-                            perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 0);
-                            fprintf(fout, "\n");
-                        }
-                    }
-                } else {
-                    double ypos = ry * 2.0 * sheight + tly;
-                    double xpos = tlx - rx * 2.0 * swidth;
-              
-                    ang=atan2(ypos, -xpos);
-                    if (fabs(ang) > crang) ang = ang/fabs(ang)*crang;
-                    ang = fabs(ang);
-                    perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 1);
-                    fprintf(fout, "\n");
-                    if (ry < nrows-1) {
-                        xpos -= swidth;
-                        ypos += sheight;
-                        ang=atan2(ypos, -xpos);
-                        if (fabs(ang) > crang) ang = ang/fabs(ang)*crang;
-                        ang = fabs(ang);
-                        if (rx < ncols-1) {
-                            perspective_rectangle(xpos, ypos, swidth*0.8, sheight*0.8, ang, 1);
-                            fprintf(fout, "\n");
-                        }
-                    }
-                }
+                double ypos = ry * 1.8 * sheight + tly; // perspective
+                double xpos = tlx - rx * 2.0 * swidth;
+          
+                perspective_rectangle(xpos, ypos, swidth, sheight, -ang);
+                fprintf(fout, "\n");
       
             } // columns
         } // rows
     }
     
-    void perspective_poly(double cx, double cy, double rad, int sides=64) {
-            fprintf(fout, "  <polygon points=\"");
-            for (int i=0; i < sides; i++) {
-                double theta = 2*M_PI*i/double(sides+1);
-                iPoint p = project(cx + rad*cos(theta), cy + rad*sin(theta));
-                fprintf(fout, "%d,%d ", p.x, p.y);
+    bool collision_free(vector<iPoint>& points) {
+        bool clean = true;
+        const double rad = 7;
+        for (int i=0; i < n_fiducials && clean; i++) { // defined in "include/fiducial_positions.h"
+            iPoint rtl(points[0]);
+            iPoint rbr(points[0]);
+            for (size_t j=1; j < points.size(); j++) {
+                rtl.x = std::min(rtl.x, points[j].x);
+                rtl.y = std::min(rtl.y, points[j].y);
+                rbr.x = std::max(rbr.x, points[j].x);
+                rbr.y = std::max(rbr.y, points[j].y);
             }
-            fprintf(fout, "\" style=\"%s\"/>", style.c_str());
-          
-    }
-    
-    iPoint arc_poly_outer_hollow_bounds(double cx, double cy, double srad, double h, double xsign=1.0) {
-        if (xsign > 0) {
-            iPoint p = scale(cx + h, cy - srad);
-            return iPoint(p.x, int(srad*sscale));
-        } else {
-            iPoint p = scale(cx - srad, cy - srad);
-            iPoint p2 = scale(cx - h, cy + srad);
-            return iPoint(p.x, p2.x - p.x);
-        }
-    }
-    
-    iPoint arc_poly_inner_hollow_bounds(double cx, double cy, double srad, double h, double xsign=1.0) {
-        if (xsign > 0) {
-            iPoint p = scale(cx, cy - srad);
-            return iPoint(p.x, int(h*sscale));
-        } else {
-            iPoint p = scale(cx - h, cy - srad);
-            iPoint p2 = scale(cx, cy + srad);
-            return iPoint(p.x, p2.x - p.x);
-        }
-    }
-    
-    void emit_clipper(iPoint& current, iPoint range, const iPoint& ybounds) {
-        if (current.x >= 0) { 
-            fprintf(fout, " <rect x=\"%d\" y=\"%d\" width=\"%d\"  height=\"%d\"/>", current.x, ybounds.x, current.y, ybounds.y);
-        }
-        current = range;
-    }
-    
-    void coded_poly(double cx, double cy, double rad, int code) {
-    
-        // black dot
-        iPoint p = scale(cx, cy);
-        fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"black\" />\n", p.x, p.y, int(rad*sscale));
-        
-        if (code == 0) return; // no further clipping
-        
-        fprintf(fout, "  <defs> <clipPath id=\"f%04d\"> ", clipid);
-        double h = rad/1.4;
-        double htheta = acos(1 - h/rad);
-        
-        double xlim = rad*cos(htheta);
-        double srad = 0.6*rad;
-        
-        iPoint ybounds(int(scale(0, cy - srad).y), int(scale(0, cy + srad).y));
-        iPoint current(-100, -100);
-        if (code & 8) {
-            current = arc_poly_outer_hollow_bounds(cx, cy, srad, xlim, -1.0);
-        }
-        if (code & 4) {
-            iPoint range = arc_poly_inner_hollow_bounds(cx, cy, srad, xlim, -1.0);
-            if (range.x == (current.x + current.y)) {
-                current.y += range.y;
-            } else {
-                emit_clipper(current, range, ybounds);
+            for (size_t j=0; j < points.size() && clean; j++) {
+                iPoint tl = scale(main_fiducials[i].rcoords.x - rad, main_fiducials[i].rcoords.y - rad*0.9);
+                iPoint br = scale(main_fiducials[i].rcoords.x + rad, main_fiducials[i].rcoords.y + rad*0.9);
+                
+                bool lclean=false;
+                
+                if ((br.x) < rtl.x ||    // *this is left of b
+                    (tl.x) > rbr.x) {    // *this is right of b
+                      
+                    lclean = true;
+                }
+                  
+                if ((br.y) < rtl.y ||  // *this is above b
+                    (tl.y) > rbr.y) {  // *this is below b
+                  
+                    lclean |= true;
+                }
+                
+                // crop it to one side. but which side?
+                int nminx = rbr.x;
+                int nmaxx = rtl.x;
+                if (!lclean) {
+                    // is the circle centroid left or right of the rectangle centroid?
+                    int midx = (tl.x + br.x)/2;
+                    int rmidx = (rtl.x + rbr.x)/2;
+                    if (midx < rmidx) { // circle is left
+                        for (size_t k=0; k < points.size(); k++) {
+                            points[k].x = std::max(points[k].x, br.x);
+                            nminx = std::min(nminx, points[k].x);
+                            nmaxx = std::max(nmaxx, points[k].x);
+                        }
+                    } else { // circle is right
+                        for (size_t k=0; k < points.size(); k++) {
+                            points[k].x = std::min(points[k].x, tl.x);
+                            nminx = std::min(nminx, points[k].x);
+                            nmaxx = std::max(nmaxx, points[k].x);
+                        }
+                    }
+                    
+                    // drop it if too small...
+                    if ( fabs(nmaxx - nminx) < 0.2*fabs(rbr.x - rtl.x) ) {
+                        clean = false;
+                    }
+                }
             }
         }
-        if (code & 2) {
-            iPoint range = arc_poly_inner_hollow_bounds(cx, cy, srad, xlim);
-            if (range.x == (current.x + current.y)) {
-                current.y += range.y;
-            } else {
-                emit_clipper(current, range, ybounds);
-            }
-        }
-        if (code & 1) {
-            iPoint range = arc_poly_outer_hollow_bounds(cx, cy, srad, xlim);
-            if (range.x == (current.x + current.y)) {
-                current.y += range.y;
-            } else {
-                emit_clipper(current, range, ybounds);
-            }
-        }
-        emit_clipper(current, current, ybounds);
-        fprintf(fout, " </clipPath> </defs>\n");
-        
-        p = scale(cx, cy);
-        fprintf(fout, "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\" stroke=\"none\" fill=\"white\" clip-path=\"url(#f%04d)\" />\n", p.x, p.y, int(0.6*rad*sscale), clipid);
-        clipid++;
+        return clean;
     }
     
     void codedcircles(double swidth) {
         
-        
-        for (int rx=-1; rx <= 1; rx++) {
-            coded_poly(rx*9.1*swidth, 0, swidth/2.0, 0);
-        }
-        
-        for (int y=1; y <= 12; y++) {
-            coded_poly(0, -1.5*y*swidth, swidth/2.0, (y-1) % 15 + 1);
-        }
-        
-        for (int y=1; y <= 12; y++) {
-            coded_poly(0, 1.5*y*swidth, swidth/2.0, (y+1) % 15 + 1);
-        }
-        
-        // corner indicators
-        for (int rx=-1; rx <= 1; rx+=2) {
-            coded_poly(rx*27*swidth, 130, swidth/2.0, 14);
+        for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
+            sector_circle(main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y, swidth, main_fiducials[i].code);
             fprintf(fout, "\n");
         }
         
-        for (int rx=-1; rx <= 1; rx+=2) {
-            coded_poly(rx*27*swidth, -150, swidth/2.0, 13);
-            fprintf(fout, "\n");
-        }
+        const double shift = -2;
         
+        // strip of small boxes
         for (int y=-80; y < 80; y++) {
-            iPoint c1 = scale(swidth-1, 2*y);
-            iPoint c2 = scale(swidth+1, 2*y+1);
+            iPoint c1 = scale(swidth-1 + shift, 2*y);
+            iPoint c2 = scale(swidth+1 + shift, 2*y+1);
             fprintf(fout, "\n");
             rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
         }
+        
+        // focusing aids
+        iPoint c1 = scale(0 + shift - 1.5, -0.25);
+        iPoint c2 = scale(+1 + shift - 1.5,  0.25);
+        fprintf(fout, "\n");
+        rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
+        c1 = scale(-1 + shift + 1.5, -0.25);
+        c2 = scale(0 + shift + 1.5,  0.25);
+        fprintf(fout, "\n");
+        rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
     }
     
     void direct_rectangle(double cx, double cy, double width, double height, double angle) {
@@ -359,14 +275,15 @@ class Svg_page_manualperspective : public Svg_page {
     }
     
     void chevrons(void) {
+        const double shift = 0;
         const int fine_rows = 320;
         for (int row=0; row < fine_rows; row++) {
-            direct_rectangle(-7, row*1 - fine_rows/2, 3.5, 0.5, 45.0/180*M_PI);
+            direct_rectangle(-7 + shift, row*1 - fine_rows/2, 3.5, 0.5, 45.0/180*M_PI);
             fprintf(fout, "\n");
         }
         for (int row=0; row < fine_rows/4; row++) {
             for (int col=0; col < 3; col ++) {
-                direct_rectangle(col - 7, row*4 - fine_rows/2, 3.5, 0.5, -45.0/180*M_PI);
+                direct_rectangle(col - 7 + shift, row*4 - fine_rows/2, 3.5, 0.5, -45.0/180*M_PI);
                 fprintf(fout, "\n");
             }
         }
@@ -380,7 +297,6 @@ class Svg_page_manualperspective : public Svg_page {
     bool outside_limits;
     double width_scale;
     std::string chart_description;
-    int clipid;
 };
 
 #endif

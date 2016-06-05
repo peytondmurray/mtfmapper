@@ -39,10 +39,8 @@ class Svg_page_lensgrid : public Svg_page {
     
     }
     
-    
-    
     void render(void) {
-        grid(0.04, 17, 11); 
+        grid(0.04); 
     }
     
   protected:
@@ -115,7 +113,7 @@ class Svg_page_lensgrid : public Svg_page {
         fprintf(stderr, "%lf %lf\n", p.y*scale + off, p.x*scale + off);
     }
 
-    void grid(double swidth, size_t nrows, size_t ncols) {
+    void grid(double swidth) {
         const int nangles = 2;
         
         for (int a=0; a < nangles; a++) {

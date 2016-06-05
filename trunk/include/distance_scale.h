@@ -78,6 +78,7 @@ class Distance_scale {
                 zcount++;
             }
         }
+        
         if (zcount == 2 && pose_based) { // TODO: based on above check
         
             map<int, vector<Ellipse_detector*> > by_code;
@@ -201,13 +202,15 @@ class Distance_scale {
                 pix_centroid *= 1.0/double(totalcount);
                 printf("pix centroid =[%lf %lf]\n", pix_centroid.x, pix_centroid.y);
                 
+                img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
+                
                 vector<Eigen::Vector2d> ba_img_points;
                 vector<Eigen::Vector3d> ba_world_points;
                 vector<int> perm;
                 for (auto fidv: fiducials) {
                     for (auto fid: fidv.second) {
                         if (fid.icoords.x == 0 && fid.icoords.y == 0) continue;
-                        ba_img_points.push_back(Eigen::Vector2d(fid.icoords.x - prin.x, fid.icoords.y - prin.y));
+                        ba_img_points.push_back(Eigen::Vector2d((fid.icoords.x - prin.x)/img_scale, (fid.icoords.y - prin.y)/img_scale));
                         ba_world_points.push_back(Eigen::Vector3d(fid.rcoords.x, fid.rcoords.y, 1.0));
                         perm.push_back(perm.size());
                     }
@@ -296,7 +299,7 @@ class Distance_scale {
                                     global_bpr = bpr;
                                     P = projection_matrices[k];
                                     distortion = radial_distortions[k][0];
-                                    printf("%lu[%d]: rotation error: %lf, bpr=%lf, f=%lf\n", k, ri, rot_err, bpr, 1.0/w);
+                                    printf("%lu[%d]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels\n", k, ri, rot_err, bpr*img_scale, img_scale/w);
                                 }
                             }
                             
@@ -319,7 +322,7 @@ class Distance_scale {
                 
                 std::cout << "R=\n" << RM << std::endl;
                 std::cout << "T= " << Pcop.transpose() << std::endl;
-                printf("focal length = %lf\n", 1.0/w);
+                printf("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0/w, img_scale/w);
                 
                 for (int rr=0; rr < 3; rr++) {
                     for (int cc=0; cc < 3; cc++) {
@@ -336,7 +339,8 @@ class Distance_scale {
                     rod_angles,
                     distortion,
                     w,
-                    delta_principal.x, delta_principal.y
+                    delta_principal.x, delta_principal.y,
+                    img_scale
                 );
                 
                 ba.unpack(rotation, translation, distortion, w, delta_principal.x, delta_principal.y);
@@ -350,8 +354,13 @@ class Distance_scale {
                 K << 1, 0, 0,
                     0, 1, 0,
                     0, 0, 1.0 / focal_length;
-                    
+                
+                
                 invP = (K*rotation).inverse();
+                
+                // prepare for forward and backward projection transforms    
+                fwdP = K*rotation;
+                fwdT = Eigen::Vector3d(translation[0], translation[1], translation[2]/focal_length);
                 
                 cop = Eigen::Vector3d(translation[0], translation[1], translation[2]/focal_length);
                 cop = - invP * cop;
@@ -448,16 +457,42 @@ class Distance_scale {
         return false;
     }
     
+    inline Point2d normalize_img_coords(double pixel_x, double pixel_y) const {
+        double xs = (pixel_x - prin.x)/img_scale;
+        double ys = (pixel_y - prin.y)/img_scale;
+        
+        double rhat = sqrt(xs*xs + ys*ys);
+        double r = 0;
+        
+        if (rhat > 1e-10) {
+            double pa=distortion*rhat;
+            double pb=-1;
+            double pc=rhat;
+            
+            double q = -0.5 * (pb + sgn(pb)*sqrt(pb*pb - 4*pa*pc) );
+            double r1 = q/pa;
+            double r2 = pc / q;
+            
+            if (r1 > 0 && r2 > 0) {
+                r = std::min(r1, r2);
+            } else {
+                if (r1 <= 0) {
+                    r = r2;
+                } else {
+                    r = r1;
+                }
+            }
+            
+            xs = xs * rhat / r;
+            ys = ys * rhat / r;
+        }
+        return Point2d(xs, ys);
+    }
     
     Eigen::Vector3d backproject(double pixel_x, double pixel_y) const {
-        double xs = (pixel_x - prin.x);
-        double ys = (pixel_y - prin.y);
+        Point2d ic = normalize_img_coords(pixel_x, pixel_y);
         
-        //double rad = 1 + distortion*(xs*xs + ys*ys); // this won't actually work --- we have to use a fixed-point iteration to solve this
-        //xs *= rad;
-        //ys *= rad;
-        
-        Eigen::Vector3d dv(xs, ys, 1.0);
+        Eigen::Vector3d dv(ic.x, ic.y, 1.0);
         dv = invP*dv;
         dv /= dv.norm();
         
@@ -473,54 +508,50 @@ class Distance_scale {
         return ip;
     }
     
-    void estimate_depth(double pixel_x, double pixel_y, double& depth) const {
+    void estimate_depth_img_coords(double pixel_x, double pixel_y, double& depth) const {
         Eigen::Vector3d bp = backproject(pixel_x, pixel_y);
         depth = bp[2] - centre_depth;
     }
     
-    void estimate_depth(double pixel_offset, double& depth) {
-    
-        if (distance_scale.size() > 0) {
-            const int tdim = 3;
-            const int tpts = distance_scale.size();
-            MatrixXd design(tpts, tdim);
-            VectorXd zv(tpts);
-            VectorXd zsol;
-            VectorXd yv(tpts);
-            VectorXd ysol;
-            
-            for (int row=0; row < tpts; row++) {
-                double w = fabs(distance_scale[row].y) < 50.0 ? 1.1 : 1; // prefer centre points a little
-                design(row, 0) = 1*w;
-                double xval = distance_scale[row].x;
-                double xprod = 1.0;
-                for (int col=1; col < tdim; col++) {
-                    xprod *= xval;
-                    design(row, col) = xprod*w;
-                }
-                zv[row] = distance_scale[row].z*w;
-                yv[row] = distance_scale[row].y*w;
-            }
-            zsol = design.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(zv);
-            ysol = design.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(yv);
-            
-            double chart_z = 0;
-            double focus_plane_fs = 0; // TODO: if the values are unbalanced???
-            double xval = pixel_offset;
-            double xprod = 1.0;
-            for (int col=1; col < tdim; col++) {
-                xprod *= xval;
-                focus_plane_fs += zsol(col, 0) * xprod;
-                chart_z += ysol(col, 0) * xprod;
-            }
-            printf("interpolated focus plane position = %lf, chart scale = %lf\n", chart_z, chart_scale);
-            depth = focus_plane_fs;
-        } else {
-            double foreshortening = sqrt(0.5); // assume 45 degree chart if no scale is provided
-            depth = pixel_offset * chart_scale * foreshortening; 
-        }
+    void estimate_depth_world_coords(double world_x, double world_y, double& depth) const {
+        Eigen::Vector3d bp = rotation*Eigen::Vector3d(world_x, world_y, 0) + 
+            Eigen::Vector3d(translation[0], translation[1], -translation[2]);
+        
+        depth = bp[2] - centre_depth;
     }
     
+    Point2d estimate_world_coords(double pixel_x, double pixel_y) const {
+        Point2d ic = normalize_img_coords(pixel_x, pixel_y);
+        
+        Eigen::Vector3d dv(ic.x, ic.y, 1.0);
+        dv = invP*dv;
+        dv /= dv.norm();
+        
+        double s = (1 - cop[2])/dv[2];
+        Eigen::Vector3d ip = cop + s*dv;
+        
+        return Point2d(ip[0], ip[1]); // ip[2] (=z) will always be in the plane
+    }
+    
+    Point2d world_to_image(double world_x, double world_y) const {
+        Eigen::Matrix3d R = rotation;
+    
+        R.row(2) *= 1.0/focal_length; 
+        Eigen::Vector3d t(translation[0], translation[1], translation[2]/focal_length);
+        
+        Eigen::Vector3d bp = fwdP*Eigen::Vector3d(world_x, world_y, 1.0) + fwdT;
+            
+        bp /= bp[2];
+            
+        double rad = 1 + distortion*(bp[0]*bp[0] + bp[1]*bp[1]);
+        bp /= rad;
+        bp *= img_scale;
+        
+        bp[0] += prin.x;
+        bp[1] += prin.y;
+    
+        return Point2d(bp[0], bp[1]); 
+    }
     
     
     Point2d zero;
@@ -536,11 +567,19 @@ class Distance_scale {
     double focal_length;
     double centre_depth;
     double distortion;
+    double img_scale;
     Eigen::Matrix3d rotation;
     Eigen::Vector3d translation;
     
+    Eigen::Matrix3d fwdP;
+    Eigen::Vector3d fwdT;
     Eigen::Matrix3d invP; // from image to world coords
     Eigen::Vector3d cop;  // centre of projection (i.e., camera)
+    
+  private:
+    template <typename T> int sgn(T val) const {
+        return (T(0) < val) - (val < T(0));
+    }
 };
 
 #endif
