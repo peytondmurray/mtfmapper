@@ -226,6 +226,21 @@ class Distance_scale {
                 std::mt19937 mt(101);
                 std::uniform_real_distribution<double> dist(0, 1);
                         
+                class Cal_solution {
+                  public:
+                    Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0)
+                     : bpe(bpe), proj(proj), distort(distort) {};
+                     
+                    bool operator< (const Cal_solution& b) const {
+                        return bpe < b.bpe;
+                    }
+                                 
+                    double bpe;
+                    Eigen::MatrixXd proj;
+                    double distort;
+                };
+                
+                vector<Cal_solution> solutions;
                 
                 double global_bpr = 1e50;
                 for (int ri=0; ri < 20000; ri++) {
@@ -277,7 +292,7 @@ class Distance_scale {
                         }
                         
                         if (rot_err < 0.01) {
-                        
+                            vector<double> residuals;
                             double bpr = 0;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
                                 Eigen::VectorXd rp = projection_matrices[k]*Eigen::Vector4d(ba_world_points[i][0], ba_world_points[i][1], ba_world_points[i][2], 1.0);
@@ -286,14 +301,33 @@ class Distance_scale {
                                 rp /= rad;
                                 double err = (ba_img_points[i] - Eigen::Vector2d(rp[0], rp[1])).norm();
                                 bpr += fabs(err); // more robustness against outliers is appreciated here
+                                residuals.push_back(err);
                             }
                             bpr /= ba_img_points.size();
                         
-                            
+                            sort(residuals.begin(), residuals.end());
+                            bpr = 0;
+                            int actual_count = 0;
+                            for (int i=0; i < 0.9*residuals.size(); i++) {
+                                bpr += residuals[i]*residuals[i];
+                                actual_count ++;
+                            }
+                            bpr = sqrt(bpr/actual_count)*img_scale;
                             
                             // only keep a rotation matrix if it repeats with the Rodrigues angle convention
                             if (bpr <= min_bpr && rot_err < 0.01) { 
                                 min_bpr = bpr;
+                                
+                                if (solutions.size() < 5) {
+                                    solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0]));
+                                } else {
+                                    auto worst_sol = solutions.rbegin();
+                                    if (bpr < worst_sol->bpe) {
+                                        *worst_sol = Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0]);
+                                        sort(solutions.begin(), solutions.end());
+                                    }
+                                }
+                                
                                 
                                 if (bpr < global_bpr) {
                                     global_bpr = bpr;
@@ -309,9 +343,73 @@ class Distance_scale {
                     radial_distortions.clear();
                 }
                 
+                printf("Retained %lu promising solutions\n", solutions.size());
+                for (auto s: solutions) {
+                    printf("\t solution with bpe = %lf, dist=%le\n", s.bpe, s.distort);
+                }
+                
+                printf("picking second one from potential solutions\n");
+                
+                double w = 0;
+                ////
+                double min_rmse = 1e50;
+                int min_idx = 0;
+                for (size_t j=0; j < solutions.size(); j++) {
+                    P = solutions[j].proj;
+                    distortion = solutions[j].distort;
+                
+                    double r1n = (P.block(0,0,1,3)).norm();
+                    double r3n = (P.block(2,0,1,3)).norm();
+                    w = sqrt( (r3n*r3n)/(r1n*r1n) );
+                    focal_length = 1.0/w;
+                    
+                    P /= P.block(0,0,1,3).norm(); // remove the arbitrary scaling factor
+                    P.row(2) /= w; // remove focal length from last row
+                    
+                    Eigen::MatrixXd RM = P.block(0,0,3,3);
+                    Eigen::Vector3d Pcop = P.col(3);
+                    
+                    std::cout << "R=\n" << RM << std::endl;
+                    std::cout << "T= " << Pcop.transpose() << std::endl;
+                    printf("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0/w, img_scale/w);
+                    
+                    for (int rr=0; rr < 3; rr++) {
+                        for (int cc=0; cc < 3; cc++) {
+                            rot_matrix.at<double>(rr,cc) = RM(rr,cc);
+                        }
+                    }
+                    cv::Rodrigues(rot_matrix, rod_angles);
+                    
+                    
+                    Bundle_adjuster ba(
+                        ba_img_points, ba_world_points, 
+                        Pcop, 
+                        rod_angles,
+                        distortion,
+                        w,
+                        img_scale
+                    );
+                    double rmse = ba.evaluate(ba.best_sol)*img_scale;
+                    
+                    printf("solution %d has rmse=%lf\n", j, rmse);
+                    
+                    if (rmse < min_rmse) {
+                        min_rmse = rmse;
+                        min_idx = j;
+                        
+                        ba.unpack(rotation, translation, distortion, w);
+                    }
+                }
+                
+                /////
+                printf("best solution is %d\n", min_idx);
+                
+                P = solutions[min_idx].proj;
+                distortion = solutions[min_idx].distort;
+            
                 double r1n = (P.block(0,0,1,3)).norm();
                 double r3n = (P.block(2,0,1,3)).norm();
-                double w = sqrt( (r3n*r3n)/(r1n*r1n) );
+                w = sqrt( (r3n*r3n)/(r1n*r1n) );
                 focal_length = 1.0/w;
                 
                 P /= P.block(0,0,1,3).norm(); // remove the arbitrary scaling factor
@@ -332,22 +430,23 @@ class Distance_scale {
                 cv::Rodrigues(rot_matrix, rod_angles);
                 
                 
-                Point2d delta_principal(0,0);
                 Bundle_adjuster ba(
                     ba_img_points, ba_world_points, 
                     Pcop, 
                     rod_angles,
                     distortion,
                     w,
-                    delta_principal.x, delta_principal.y,
-                    img_scale
+                    img_scale,
+                    100000
                 );
+                double rmse = ba.evaluate(ba.best_sol)*img_scale;
                 
-                ba.unpack(rotation, translation, distortion, w, delta_principal.x, delta_principal.y);
+                printf("solution %d has rmse=%lf\n", min_idx, rmse);
+                
+                ba.unpack(rotation, translation, distortion, w);
                 focal_length = 1.0/w;
                 
-                prin.x -= delta_principal.x;
-                prin.y -= delta_principal.y;
+                printf("ultimate f=%lf\n", focal_length*img_scale);
                 
                 // prepare for backprojection
                 Eigen::Matrix3d K;

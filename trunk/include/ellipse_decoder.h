@@ -127,7 +127,6 @@ class Ellipse_decoder {
         int inner_code = lrint(inner_ratio*3);
         int outer_code = lrint(outer_ratio*5);
         int final_code = outer_code*4 + inner_code;
-        printf("inner ratio = %lf, outer ratio = %lf, %d, %d, code=%d\n", inner_ratio, outer_ratio, inner_code, outer_code, final_code);
         code = final_code;
     }
     

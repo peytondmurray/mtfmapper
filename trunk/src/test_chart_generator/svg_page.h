@@ -159,10 +159,15 @@ class Svg_page {
         );   
     }
     
-    void wedge_hole(double cx, double cy, double inner_rad, double outer_rad, double xangle, double fraction) {
+    void wedge_hole(double cx, double cy, double inner_rad, double outer_rad, double xangle, double fraction, bool double_hole=false) {
         
         if (fraction >= 0.999999) {
-            ring(cx, cy, inner_rad, outer_rad);
+            if (!double_hole) {
+                hole(cx, cy, outer_rad);
+            } else {
+                hole(cx, cy, outer_rad);
+                hole(cx, cy, inner_rad);
+            }
         } else {
             int lf = fraction > 0.5 ? 1 : 0;
             double x = cx - outer_rad * cos((xangle)/180.0*M_PI);
@@ -230,7 +235,7 @@ class Svg_page {
     void sector_circle(double cx, double cy, double rad, int code) {
         
         if (code == 0) {
-            ring(cx, cy, 0.1*rad, rad);
+            ring(cx, cy, 0.12*rad, rad);
             return;
         }
         
@@ -243,14 +248,17 @@ class Svg_page {
         int inner_code = inner_step - code % inner_vals;
         int outer_code = outer_step - (code / inner_vals) % outer_vals;
         
+        
         ring_open(cx, cy, rad);
-        if (outer_code > 0) {
-            wedge_hole(cx, cy, 0.4*rad, 0.6*rad, 90, 1 - outer_code*1.0/double(outer_step));
+        if (outer_code >= 0) {
+            wedge_hole(cx, cy, 0.4*rad, 0.6*rad, 90, 1 - outer_code*1.0/double(outer_step), true);
+        }
+        if (inner_code >= 0) {
+            wedge_hole(cx, cy, 0.12*rad, 0.4*rad, 270, 1 - inner_code*1.0/double(inner_step));
         }
         if (inner_code > 0) {
-            wedge_hole(cx, cy, 0.1*rad, 0.4*rad, 270, 1 - inner_code*1.0/double(inner_step));
+            hole(cx, cy, 0.12*rad);
         }
-        hole(cx, cy, 0.1*rad);
         fprintf(fout, "\" fill-rule=\"evenodd\" />\n");
     }
     

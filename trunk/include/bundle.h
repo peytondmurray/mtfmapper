@@ -43,16 +43,14 @@ class Bundle_adjuster {
         Eigen::Vector3d& t,
         cv::Mat in_rod_angles,
         double distortion,
-        double w,
-        double px, double py,
-        double img_scale=1.0) 
+        double w, double img_scale=1.0, int maxiters=1000) 
          : img_points(img_points), world_points(world_points), img_scale(img_scale) {
         
         rot_mat = cv::Mat(3, 3, CV_64FC1);
         rod_angles = cv::Mat(3, 1, CV_64FC1);
         
         // pack initial parameters
-        Eigen::VectorXd init(10);
+        Eigen::VectorXd init(8);
         
         init[0] = t[0];
         init[1] = t[1];
@@ -63,28 +61,12 @@ class Bundle_adjuster {
         init[6] = distortion;
         
         init[7] = w;
-        init[8] = px;
-        init[9] = py;
         
-        #if 1
-        FILE* bal = fopen("bal.txt", "wt");
-        fprintf(bal, "1 %lu %lu\n", world_points.size(), world_points.size());
-        for (size_t i=0; i < img_points.size(); i++) {
-            fprintf(bal, "%d %lu %le %le\n", 0, i, img_points[i][0], -img_points[i][1]);
-        }
-        fprintf(bal, "%le\n%le\n%le\n", init[3], init[4], init[5]);
-        fprintf(bal, "%le\n%le\n%le\n", init[0], init[1], init[2]);
-        fprintf(bal, "%le\n%le\n%le\n", 1.0/init[7], init[6], 0.0);
-        for (size_t i=0; i < world_points.size(); i++) {
-            fprintf(bal, "%le\n%le\n%le\n", world_points[i][0], world_points[i][1], world_points[i][2]);
-        }
-        fclose(bal);
-        #endif
-        
-        best_sol = solve_random_search(init);
+        best_sol = init;
+        best_sol = solve_random_search(best_sol, maxiters);
     }
     
-    void unpack(Eigen::Matrix3d& R, Eigen::Vector3d& t, double& distortion, double& w, double& px, double &py) {
+    void unpack(Eigen::Matrix3d& R, Eigen::Vector3d& t, double& distortion, double& w) {
         Eigen::VectorXd& v = best_sol;
         rod_angles.at<double>(0,0) = v[3];
         rod_angles.at<double>(1,0) = v[4];
@@ -100,8 +82,6 @@ class Bundle_adjuster {
         
         distortion = v[6];
         w = v[7];
-        px = v[8];
-        py = v[9];
     }
     
     double evaluate(const Eigen::VectorXd& v) {
@@ -126,16 +106,13 @@ class Bundle_adjuster {
             Eigen::Vector3d bp = R*world_points[i] + t;
             bp /= bp[2];
             
-            bp[0] += v[8];
-            bp[1] += v[9];
-            
             double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
             bp /= rad;
                         
             double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
             bpsse += bpe*bpe;
         }
-        return sqrt(bpsse/double(world_points.size()));
+        return sqrt(bpsse/img_points.size());
     }
     
     double backproj(const Eigen::VectorXd& v) {
@@ -160,8 +137,6 @@ class Bundle_adjuster {
             
             bp /= bp[2];
             
-            bp[0] += v[8];
-            bp[1] += v[9];
             
             double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
             bp /= rad;
@@ -171,20 +146,20 @@ class Bundle_adjuster {
                 bp[0]*img_scale, bp[1]*img_scale
             );
             double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            bpsse += bpe;
+            bpsse += bpe*bpe;
             if (i < 5) f5 += bpe;
         }
         printf("MAD error : %lf, first 5: %lf\n", img_scale*bpsse/double(world_points.size()), img_scale*f5/double(world_points.size()));
-        return sqrt(bpsse);
+        return 0.5*(bpsse/double(world_points.size()));
     }
     
-    Eigen::VectorXd solve_random_search(const Eigen::VectorXd& init) {
+    Eigen::VectorXd solve_random_search(const Eigen::VectorXd& init, int maxiter=10000) {
         Eigen::VectorXd scale(init.rows());
-        scale << 0.01, 0.01, 0.01,    // origin
-                 0.001, 0.001, 0.001, // angles
-                 1e-1,                // distortion
-                 1e-3,                // focal length
-                 1e-4, 1e-4;        // principal point
+        scale << 0.01, 0.01, 0.001,    // origin
+                 0.01, 0.01, 0.01,     // angles
+                 1e-2,                 // distortion
+                 1e-3;                 // 1/focal length
+
         
         Eigen::VectorXd p = init;
         Eigen::VectorXd pp = init;
@@ -192,13 +167,13 @@ class Bundle_adjuster {
         Eigen::VectorXd dir = Eigen::VectorXd::Zero(init.rows());
         
         std::mt19937 mt(100);
-        std::uniform_real_distribution<double> dist(-1, 1);
+        std::normal_distribution<double> dist(0, 3);
         
         double fbest = evaluate(p);
         
         backproj(p);
-        printf("initial f=%lf, distortion=%le, delta(%lf, %lf), RMSE=%lf\n", 
-            img_scale/init[7], init[6], init[8]*img_scale, init[9]*img_scale, fbest*img_scale
+        printf("initial f=%lf, distortion=%le, RMSE=%lf\n", 
+            img_scale/init[7], init[6], fbest*img_scale
         );
         
         double rho = 0.1;
@@ -212,11 +187,12 @@ class Bundle_adjuster {
         const double contract_coeff = 0.5;
         const double expand_coeff = 1.2;
         const double search_radius = 0.1;
-        const double rho_lower_bound = 1e-6;
+        const double rho_lower_bound = 1e-11;
         
+        double bestm500 = -1;
         
         //FILE* fout = fopen("bundle.txt", "wt");
-        for (int iter=0; iter < 100000; iter++) {
+        for (int iter=0; iter < maxiter; iter++) {
             for (int r=0; r < p.rows(); r++) {
                 vel[r] = dist(mt)*rho*scale[r];
             }
@@ -259,14 +235,29 @@ class Bundle_adjuster {
             if (rho < rho_lower_bound) {
                 rho = rho_lower_bound;
             }
+            
+            if (iter >= 500 && (iter % 500) == 0) {
+                if (iter > 500) {
+                    double improvement = (sqrt(bestm500/img_points.size()) - sqrt(fbest/img_points.size()))*img_scale;
+                    if (improvement  < 5e-5 ) { 
+                        printf("bailing at iteration %d : %le\n", iter, improvement);
+                        break;
+                    }
+                }
+                bestm500 = fbest;
+            }
+            
             //fprintf(fout, "%lf %lf %lf\n", f*img_scale, fbest*img_scale, p[7]);
         }
         //fclose(fout);
         
-        printf("final f=%lf, distortion=%le, delta=(%lf, %lf) RMSE=%lf\n", 
-            img_scale/p[7], p[6], p[8]*img_scale, p[9]*img_scale, fbest*img_scale
+        printf("final f=%lf, distortion=%le, RMSE=%lf\n", 
+            img_scale/p[7], p[6], fbest*img_scale
         );
         backproj(p);
+        
+        std::cout << "final solution= " << p.transpose() << std::endl;
+        std::cout << "delta from initial = " << (init-p).transpose() << std::endl;
         
         return p;
     }
