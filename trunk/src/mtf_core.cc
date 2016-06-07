@@ -50,32 +50,34 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         Ellipse_detector e;
         int valid = e.fit(cl, g, it->second, 0, 0, 2);
         if (valid) {
-            {
-                Ellipse_decoder ed(e, img);
-                tbb::mutex::scoped_lock lock(global_mutex);
-                e.set_code(ed.code);
-                ellipses.push_back(e);
-            }
-            for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
-                double synth_x = e.major_axis * cos(theta);
-                double synth_y = e.minor_axis * sin(theta);
-                double rot_x = cos(e.angle)*synth_x - sin(e.angle)*synth_y + e.centroid_x;
-                double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
+            Ellipse_decoder ed(e, img);
+            if (ed.valid && ed.code >= 0 && cl(lrint(e.centroid_x), lrint(e.centroid_y)) != label) {
+                {
+                    tbb::mutex::scoped_lock lock(global_mutex);
+                    e.set_code(ed.code);
+                    ellipses.push_back(e);
+                    printf("Fiducial with code %d extracted at (%.2lf %.2lf)\n", e.code, e.centroid_x, e.centroid_y);
+                }
+                
+                for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
+                    double synth_x = e.major_axis * cos(theta);
+                    double synth_y = e.minor_axis * sin(theta);
+                    double rot_x = cos(e.angle)*synth_x - sin(e.angle)*synth_y + e.centroid_x;
+                    double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
 
-                // clip to image size, just in case
-                rot_x = std::max(rot_x, 0.0);
-                rot_x = std::min(rot_x, (double)(od_img.cols-1));
-                rot_y = std::max(rot_y, 0.0);
-                rot_y = std::min(rot_y, (double)(od_img.rows-1));
+                    // clip to image size, just in case
+                    rot_x = std::max(rot_x, 0.0);
+                    rot_x = std::min(rot_x, (double)(od_img.cols-1));
+                    rot_y = std::max(rot_y, 0.0);
+                    rot_y = std::min(rot_y, (double)(od_img.rows-1));
 
-                cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
-                color[0] = 255;
-                color[1] = 255;
-                color[2] = 0;
+                    cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
+                    color[0] = 255;
+                    color[1] = 255;
+                    color[2] = 0;
+                }
             }
-        } else {
-            printf("object at %lf %lf not an ellipse, or apparently a rectangle\n", cent.x, cent.y);
-        }
+        } 
         return;
     }
     

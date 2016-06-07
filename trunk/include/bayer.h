@@ -25,15 +25,39 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#ifndef BAYER_H
+#define BAYER_H
 
-#ifndef DEMOSAIC_H
-#define DEMOSAIC_H
+#include <string>
+using std::string;
 
-#include "cv.h"
-#include "include/common_types.h"
-#include "include/bayer.h"
+class Bayer {
+  public:
+    typedef enum {
+        NONE,
+        RED,
+        GREEN,
+        BLUE
+    } bayer_t;
+    
+    Bayer(void) {}
+    
+    static bayer_t from_string(const string& bayer_subset) {
+        if (bayer_subset.compare("none") == 0) {
+            return NONE;
+        }
+        if (bayer_subset.compare("red") == 0) {
+            return RED;
+        }
+        if (bayer_subset.compare("blue") == 0) {
+            return BLUE;
+        }
+        if (bayer_subset.compare("green") == 0) {
+            return GREEN;
+        }
+        return NONE; // undefined strings too
+    }
 
-void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
-void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset=0);
+};
 
 #endif
