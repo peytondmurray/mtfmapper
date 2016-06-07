@@ -122,12 +122,35 @@ class Ellipse_decoder {
         }
         double outer_ratio = ones/double(steps);
         
-        fprintf(stderr, "\n\n");
+        steps = 10;
+        ones = 0;
+        for (int i=0; i < steps && !ones; i++) {
+            double theta = i*2.0*M_PI/double(steps);
+            
+            double synth_x = 0.07*e.major_axis * cos(theta);
+            double synth_y = 0.07*e.minor_axis * sin(theta);
+            double px = cs*synth_x - ss*synth_y + e.centroid_x;
+            double py = ss*synth_x + cs*synth_y + e.centroid_y;
+            
+            int bit = img.at<uint16_t>(lrint(py), lrint(px)) > otsu ? 1 : 0;
+            ones += bit;
+        }
+        
+        if (!ones && img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)) < otsu) {
+            printf("fiducial at (%.2lf %.2lf) rejected because of centre mislabelling: got %d, otsu is %d\n",
+                img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)),
+                otsu
+            );
+            code = -1;
+            valid = false;
+            return;
+        }
         
         int inner_code = lrint(inner_ratio*3);
         int outer_code = lrint(outer_ratio*5);
         int final_code = outer_code*4 + inner_code;
         code = final_code;
+        valid = true;
     }
     
     int code;

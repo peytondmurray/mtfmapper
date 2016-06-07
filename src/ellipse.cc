@@ -210,13 +210,14 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         is_circle = 1;
     }
 
-    printf("centre (%.2lf, %.2lf), major = %lf, minor = %lf, angle = %lf, is_circle = %d\n",
-        centroid_x, centroid_y, major_axis, minor_axis, angle/M_PI*180.0, is_circle);
 
     if (isnan(centroid_x) || isnan(centroid_y) || isnan(major_axis) || isnan(minor_axis)) {
         is_circle = 0;
     }
     
+    printf("centre (%.2lf, %.2lf), major = %lf, minor = %lf, angle = %lf, is_circle = %d\n",
+        centroid_x, centroid_y, major_axis, minor_axis, angle/M_PI*180.0, is_circle);
+        
     if (is_circle) {
         scanset.clear();
         for (size_t i=0; i < raw_points.size(); i++) {
@@ -235,24 +236,8 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
                 scanset[iy].end = ix;
             }
         }
-        int clabel = cl(lrint(raw_points[0].x), lrint(raw_points[0].y));
-        int total = 0;
-        int foreground = 0;
-        for (map<int, scanline>::iterator it=scanset.begin(); it != scanset.end(); it++) {
-            int y=it->first;
-            for (int x=it->second.start; x <= it->second.end; x++) {
-                if (cl(x,y) == clabel) {
-                    foreground++;
-                }
-                total++;
-            }
-        }
-        if (foreground >= total - 1) {
-            solid = true;
-        }
-    }
+    }        
     
-
     return is_circle;
 }
 

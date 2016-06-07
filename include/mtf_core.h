@@ -37,6 +37,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/loess_fit.h"
 #include "include/afft.h"
 #include "include/mtf_profile_sample.h"
+#include "include/bayer.h"
 
 #include <map>
 using std::map;
@@ -56,12 +57,7 @@ const double max_edge_length = 200;
 
 class Mtf_core {
   public:
-    typedef enum {
-        NONE,
-        RED,
-        GREEN,
-        BLUE
-    } bayer_t;
+    
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
              const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
@@ -69,18 +65,7 @@ class Mtf_core {
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
         sliding(false), samples_per_edge(0) {
 
-        if (bayer_subset.compare("none") == 0) {
-            bayer = NONE;
-        }
-        if (bayer_subset.compare("red") == 0) {
-            bayer = RED;
-        }
-        if (bayer_subset.compare("blue") == 0) {
-            bayer = BLUE;
-        }
-        if (bayer_subset.compare("green") == 0) {
-            bayer = GREEN;
-        }
+        bayer = Bayer::from_string(bayer_subset);
         printf("bayer subset is %d\n", bayer);
       
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
@@ -148,7 +133,7 @@ class Mtf_core {
     const Gradient&           g;
     const cv::Mat&            img;
     const cv::Mat&            bayer_img;
-    bayer_t bayer;
+    Bayer::bayer_t bayer;
     
     AFFT<512> afft; // FFT_SIZE = 512 ??
     vector<int> valid_obj;
@@ -202,7 +187,7 @@ class Mtf_core {
         Point2d mean_grad(cos(ea), sin(ea));
         Point2d edge_direction(-sin(ea), cos(ea));
 
-        if (bayer == NONE) {
+        if (bayer == Bayer::NONE) {
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
                 for (int x=it->second.start; x <= it->second.end; ++x) {
@@ -225,13 +210,13 @@ class Mtf_core {
                     int code = rowcode | (x & 1);
 
                     // skip the appropriate sites if we are operating only on a subset
-                    if (bayer == RED && code != 0) {
+                    if (bayer == Bayer::RED && code != 0) {
                         continue;
                     } 
-                    if (bayer == BLUE && code != 3) {
+                    if (bayer == Bayer::BLUE && code != 3) {
                         continue;
                     } 
-                    if (bayer == GREEN && (code == 0 || code == 3)) {
+                    if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
                         continue;
                     }
 

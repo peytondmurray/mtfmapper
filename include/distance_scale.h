@@ -125,8 +125,7 @@ class Distance_scale {
             longitudinal = Point2d(-transverse.y, transverse.x);
             printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
-            // code 3 is quadrant 0
-            if (by_code.find(3) != by_code.end()) { // can check for others?
+            if (by_code.size() > 6) { // minimum of 5 unique fiducials plus one spare plus the zeros
                 
                 prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
                 img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);

@@ -56,6 +56,7 @@ using std::stringstream;
 #include "include/scanline.h"
 #include "include/distance_scale.h"
 #include "include/autocrop.h"
+#include "include/bayer.h"
 #include "include/demosaic.h"
 #include "config.h"
 
@@ -262,7 +263,9 @@ int main(int argc, char** argv) {
     
     cv::Mat rawimg = cvimg;
     if (tc_bayer.isSet()) {
-        simple_demosaic(cvimg, rawimg);
+        simple_demosaic(cvimg, rawimg, Bayer::from_string(tc_bayer.getValue()));
+        //imwrite(string("prewhite.png"), rawimg);
+        //imwrite(string("white.png"), cvimg);
     }
     
     
