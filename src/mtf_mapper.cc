@@ -56,6 +56,7 @@ using std::stringstream;
 #include "include/scanline.h"
 #include "include/distance_scale.h"
 #include "include/autocrop.h"
+#include "include/demosaic.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -261,112 +262,7 @@ int main(int argc, char** argv) {
     
     cv::Mat rawimg = cvimg;
     if (tc_bayer.isSet()) {
-        printf("Bayer subset specified, performing quick-and-dirty WB\n");
-        rawimg = cvimg.clone();
-        
-        vector < vector<int> > hist(4, vector<int>(65536, 0));
-        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-            for (int col=0; col < cvimg.cols; col++) {
-                int val = cvimg.at<uint16_t>(row, col);
-                int subset = ((row & 1) << 1) | (col & 1);
-                if (subset > 3 || subset < 0) {
-                    printf("subset = %d\n", subset);
-                }
-                if (val < 0 || val > 65535) {
-                    printf("val = %d\n", val);
-                }
-                hist[subset][val]++;
-            }
-        }
-        // convert histograms to cumulative histograms
-        for (int subset=0; subset < 4; subset++) {
-            int acc = 0;
-            for (size_t i=0; i < hist[subset].size(); i++) {
-                acc += hist[subset][i];
-                hist[subset][i] = acc;
-            }
-        }
-        
-        // find 90% centre
-        vector<double> l5(4, 0);
-        vector<double> u5(4, 0);
-        vector<double> mean(4, 0);
-        for (int subset=0; subset < 4; subset++) {
-            int lower = 0;
-            int upper = hist[subset].size() - 1;
-            while (hist[subset][lower] < 0.05*hist[subset].back() && lower < upper) lower++;
-            while (hist[subset][upper] > 0.95*hist[subset].back() && upper > lower) upper--;
-            l5[subset] = lower;
-            u5[subset] = upper;
-            
-            mean[subset] = upper - lower;
-            
-            printf("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
-        }
-        const int targ = 1;
-        for (int i=0; i < 4; i++) {
-            if (i != targ) {
-                mean[i] = mean[targ] / mean[i];
-            }
-        }
-        
-        // bilnear interpolation to get rid op R and B channels?
-        for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
-            for (int col=4; col < cvimg.cols-4; col++) {
-                int subset = ((row & 1) << 1) | (col & 1);
-                
-                if (subset == 0 || subset == 3) {
-                
-                    #if 0
-                    double hgrad = fabs(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1));
-                    double vgrad = fabs(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col));
-                    #else
-                    double hgrad = fabs(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
-                                        3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3));
-                    double vgrad = fabs(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
-                                        3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col));
-                    #endif
-                    
-                    if (std::max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/std::max(hgrad, vgrad) < 0.001) {
-                        cvimg.at<uint16_t>(row, col) = 
-                            (cvimg.at<uint16_t>(row-1, col) + 
-                            cvimg.at<uint16_t>(row+1, col) + 
-                            cvimg.at<uint16_t>(row, col-1) + 
-                            cvimg.at<uint16_t>(row, col+1)) / 4;
-                    } else {
-                        #if 0
-                        if (hgrad > vgrad) {
-                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
-                        } else {
-                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
-                        }
-                        #else
-                        double l = sqrt(hgrad*hgrad + vgrad*vgrad);
-                        if (hgrad > vgrad) {
-                            l = hgrad / l;
-                            if (l > 0.92388) { // more horizontal than not
-                                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
-                            } else { // in between, blend it
-                                cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) +
-                                    (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) ) / 6.0;
-                            }
-                        } else {
-                            l = vgrad / l;
-                            if (l > 0.92388) {
-                                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
-                            } else {
-                                cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) +
-                                    (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) ) / 6.0;
-                            }    
-                        }
-                        #endif
-                    }
-                }
-            }
-        }
-        
-        //imwrite(string("prewhite.png"), rawimg);
-        //imwrite(string("white.png"), cvimg);
+        simple_demosaic(cvimg, rawimg);
     }
     
     
