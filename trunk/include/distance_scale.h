@@ -69,17 +69,38 @@ class Distance_scale {
     
     void construct(Mtf_core& mtf_core, bool pose_based=false) {
     
-        // check too see if our four main fiducials are present?
         int zcount = 0;
-        for (auto e: mtf_core.ellipses) {
-            if (e.code == 0) {
-                zero.x += 0.5 * e.centroid_x;
-                zero.y += 0.5 * e.centroid_y;
-                zcount++;
+        auto to_remove = mtf_core.ellipses.end();
+        for (auto e = mtf_core.ellipses.begin(); e != mtf_core.ellipses.end(); e++) {
+            if (e->code == 0) {
+                bool skip = false;
+                // check if it is inside another fiducial (stupid design mistake on chart ....)
+                for (const auto& f: mtf_core.ellipses) {
+                    
+                    if (f.centroid_x == e->centroid_x && 
+                        f.centroid_y == e->centroid_y &&
+                        f.code == e->code && f.major_axis == e->major_axis) {
+                        // skip self
+                    } else {
+                        double cdist = sqrt(SQR(f.centroid_x - e->centroid_x) + SQR(f.centroid_y - e->centroid_y));
+                        if (cdist < e->major_axis && f.code != 0) {
+                            skip = true;
+                            to_remove = e;
+                        }
+                    }
+                }
+                
+                if (!skip) {
+                    zero.x += 0.5 * e->centroid_x;
+                    zero.y += 0.5 * e->centroid_y;
+                    zcount++;
+                }
             }
         }
-        
-        if (zcount == 2 && pose_based) { // TODO: based on above check
+        if (to_remove != mtf_core.ellipses.end()) {
+            mtf_core.ellipses.erase(to_remove);
+        }
+        if (zcount == 2 && pose_based) {
         
             map<int, vector<Ellipse_detector*> > by_code;
             Point2d first;
@@ -104,118 +125,33 @@ class Distance_scale {
             longitudinal = Point2d(-transverse.y, transverse.x);
             printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
-            // we must find fiducials 2, 4, 6, and 8 to orient ourselves
-            // code 8 is quadrant 0
-            if (by_code.find(8) != by_code.end()) { // TODO: we can probably fall back on other codes here ...
-                
-                vector<int> to_locate{2,4,6,8};
-                for (auto t: to_locate) {
-                    for (int i=0; i < n_fiducials; i++) {
-                        if (main_fiducials[i].code == t) {
-                            fiducials[t] = vector<Fiducial>(4);
-                            
-                            fiducials[t][main_fiducials[i].quadrant].icoords = Point2d(by_code[t][0]->centroid_x, by_code[t][0]->centroid_y);
-                            fiducials[t][main_fiducials[i].quadrant].rcoords = main_fiducials[i].rcoords;
-                            
-                            printf("Ellipse assigned to fiducial (code=%d, quad=%d) : (%lf %lf) -> (%lf %lf)\n",
-                                t, main_fiducials[i].quadrant,
-                                fiducials[t][main_fiducials[i].quadrant].icoords.x, fiducials[t][main_fiducials[i].quadrant].icoords.y,
-                                fiducials[t][main_fiducials[i].quadrant].rcoords.x, fiducials[t][main_fiducials[i].quadrant].rcoords.y
-                            );
-                        }
-                    }
-                }
-                
-                Point2d dv(by_code[8][0]->centroid_x - zero.x, by_code[8][0]->centroid_y - zero.y);
-                
-                if ( (dv.x*transverse.x + dv.y*transverse.y) > 0 ) {
-                    transverse = -transverse;
-                    longitudinal = Point2d(-transverse.y, transverse.x);
-                }
-            
-                printf("Oriented transverse vector: (%lf, %lf)\n", transverse.x, transverse.y);
-                printf("Oriented longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
-                
-                
-                for (auto& e: mtf_core.ellipses) {
-                    Point2d pv(e.centroid_x - zero.x, e.centroid_y - zero.y);
-                    double dot_l = longitudinal.x*pv.x + longitudinal.y*pv.y;
-                    double dot_t = transverse.x*pv.x + transverse.y*pv.y;
-                    
-                    int quadrant = 0;
-                    if (dot_l > 0 && dot_t <= 0) quadrant = 1;
-                    if (dot_l > 0 && dot_t > 0) quadrant = 2;
-                    if (dot_l <= 0 && dot_t <= 0) quadrant = 0;
-                    if (dot_l <= 0 && dot_t > 0) quadrant = 3;
-                    
-                    // find the best match
-                    for (int j=0; j < n_fiducials; j++) {
-                        if (e.code == main_fiducials[j].code && quadrant == main_fiducials[j].quadrant) {
-                            
-                            auto it = fiducials.find(e.code);
-                            if (it == fiducials.end()) {
-                                fiducials[e.code] = vector<Fiducial>(4);
-                            }
-                            Fiducial& selected = fiducials[e.code][quadrant];
-                            selected = Fiducial(
-                                e.centroid_x,
-                                e.centroid_y,
-                                main_fiducials[j].rcoords.y, 
-                                main_fiducials[j].rcoords.x,  
-                                e.code,
-                                quadrant
-                            );
-                            printf("Ellipse assigned to fiducial (code=%d, quad=%d) : (%lf %lf) -> (%lf %lf) (dot_l=%lf, dot_t=%lf)\n",
-                                e.code, quadrant,
-                                selected.icoords.x, selected.icoords.y,
-                                selected.rcoords.x, selected.rcoords.y,
-                                dot_l, dot_t
-                            );
-                        }
-                    }
-                }
+            // code 3 is quadrant 0
+            if (by_code.find(3) != by_code.end()) { // can check for others?
                 
                 prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
-                
-                // take 2
-                vector<cv::Point2i> initial{ {6,0}, {4,3}, {2,2}, {8,1}, {10,2} };
-                
-                vector<Eigen::Vector2d> feature_points(5);
-                vector<Eigen::Vector3d> world_points(5);
-                int fidcount = 0;
-                Point2d pix_centroid(0, 0);
-                int totalcount = 0;
-                for (auto p: initial) {
-                    Fiducial& fid = fiducials[p.x][p.y];
-                    feature_points[fidcount] = Eigen::Vector2d(
-                        (fid.icoords.x - prin.x),
-                        (fid.icoords.y - prin.y)
-                    );
-                    world_points[fidcount] = Eigen::Vector3d(fid.rcoords.x, fid.rcoords.y, 1 + 0.000001*(fidcount+1));
-                    fidcount++;
-                    if (p.x <= 8) {    
-                        pix_centroid.x += fid.icoords.x;
-                        pix_centroid.y += fid.icoords.y;
-                        totalcount++;
-                    }
-                }
-                pix_centroid *= 1.0/double(totalcount);
-                printf("pix centroid =[%lf %lf]\n", pix_centroid.x, pix_centroid.y);
-                
                 img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
                 
                 vector<Eigen::Vector2d> ba_img_points;
                 vector<Eigen::Vector3d> ba_world_points;
                 vector<int> perm;
-                for (auto fidv: fiducials) {
-                    for (auto fid: fidv.second) {
-                        if (fid.icoords.x == 0 && fid.icoords.y == 0) continue;
-                        ba_img_points.push_back(Eigen::Vector2d((fid.icoords.x - prin.x)/img_scale, (fid.icoords.y - prin.y)/img_scale));
-                        ba_world_points.push_back(Eigen::Vector3d(fid.rcoords.x, fid.rcoords.y, 1.0));
-                        perm.push_back(perm.size());
+                for (const auto& e: mtf_core.ellipses) {
+                    if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
+                    int main_idx = -1;
+                    for (size_t i=0; i < n_fiducials && main_idx == -1; i++) {
+                        if (main_fiducials[i].code == e.code) {
+                            main_idx = i;
+                        }
                     }
+                    ba_img_points.push_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
+                    ba_world_points.push_back(
+                        Eigen::Vector3d(
+                            main_fiducials[main_idx].rcoords.y, 
+                            main_fiducials[main_idx].rcoords.x, 
+                            1.0
+                        )
+                    );
+                    perm.push_back(perm.size());
                 }
-                
                 
                 vector<Eigen::Matrix<double, 3, 4> > projection_matrices;
                 vector<vector<double> > radial_distortions;
@@ -241,6 +177,8 @@ class Distance_scale {
                 };
                 
                 vector<Cal_solution> solutions;
+                vector<Eigen::Vector2d> feature_points(5);
+                vector<Eigen::Vector3d> world_points(5);
                 
                 double global_bpr = 1e50;
                 for (int ri=0; ri < 20000; ri++) {
@@ -464,7 +402,7 @@ class Distance_scale {
                 cop = Eigen::Vector3d(translation[0], translation[1], translation[2]/focal_length);
                 cop = - invP * cop;
                 
-                centre_depth = backproject(pix_centroid.x, pix_centroid.y)[2];
+                centre_depth = backproject(zero.x, zero.y)[2];
             }
             
             // construct a distance scale
