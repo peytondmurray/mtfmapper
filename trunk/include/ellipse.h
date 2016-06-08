@@ -29,7 +29,7 @@ class Ellipse_detector {
   public:
     Ellipse_detector(void)
       : centroid_x(0), centroid_y(0), major_axis(1), minor_axis(1), angle(0),
-        quality(0), solid(false), code(-1), _C(3,3) {
+        quality(0), fg_fraction(0), valid(false), solid(false), code(-1), _C(3,3) {
                           
         _C.setZero();
     }
@@ -60,6 +60,8 @@ class Ellipse_detector {
     double minor_axis;
     double angle;
     double quality;
+    double fg_fraction;
+    bool valid; // flagged by detector at a later stage
     bool solid;
     int code;
     

@@ -51,9 +51,25 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         int valid = e.fit(cl, g, it->second, 0, 0, 2);
         if (valid) {
             Ellipse_decoder ed(e, img);
-            if (ed.valid && ed.code >= 0 && cl(lrint(e.centroid_x), lrint(e.centroid_y)) != label) {
+            
+            // search small region near centre for mismatched labels
+            // this is almost a duplicate of the foreground fraction check
+            // in the Ellipse_detector class, but adds the constraint that
+            // the hole must be near the centre .... 
+            // TODO: consolidate fiducial validation in one spot
+            bool hole_found = false;
+            for (int dy=-3; dy <= 3 && !hole_found; dy++) {
+                for (int dx=-3; dx <= 3 && !hole_found; dx++) {
+                    if (cl(lrint(e.centroid_x+dx), lrint(e.centroid_y+dy)) != label) {
+                        hole_found = true;
+                    }
+                }
+            }
+            
+            if (ed.valid && ed.code >= 0 && hole_found) {
                 {
                     tbb::mutex::scoped_lock lock(global_mutex);
+                    e.valid = ed.valid;
                     e.set_code(ed.code);
                     ellipses.push_back(e);
                     printf("Fiducial with code %d extracted at (%.2lf %.2lf)\n", e.code, e.centroid_x, e.centroid_y);
@@ -630,6 +646,12 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         
         Edge_record edge_record;
         
+        // clamp ROi to image
+        tl.x = std::max(1.0, tl.x);
+        tl.y = std::max(1.0, tl.y);
+        br.x = std::min(img.cols-1.0, br.x);
+        br.y = std::min(img.rows-1.0, br.y);
+        
         for (double y=tl.y; y < br.y; y += 1.0) {
             for (double x=tl.x; x < br.x; x += 1.0) {
             
@@ -709,6 +731,11 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             tl.y = std::min(tl.y, tl2.y);
             br.x = std::max(br.x, br2.x);
             br.y = std::max(br.y, br2.y);
+            
+            tl.x = std::max(1.0, tl.x);
+            tl.y = std::max(1.0, tl.y);
+            br.x = std::min(img.cols-1.0, br.x);
+            br.y = std::min(img.rows-1.0, br.y);
             
             map<int, scanline> scanset;
             Edge_record edge_record;

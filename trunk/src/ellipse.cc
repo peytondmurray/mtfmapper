@@ -236,6 +236,20 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
                 scanset[iy].end = ix;
             }
         }
+        int clabel = cl(lrint(raw_points[0].x), lrint(raw_points[0].y));
+        printf("label used for scanset: %d\n", clabel);
+        int total = 0;
+        int foreground = 0;
+        for (map<int, scanline>::iterator it=scanset.begin(); it != scanset.end(); it++) {
+            int y=it->first;
+            for (int x=it->second.start; x <= it->second.end; x++) {
+                if (cl(x,y) == clabel) {
+                    foreground++;
+                }
+                total++;
+            }
+        }
+        fg_fraction = double(foreground)/double(total);
     }        
     
     return is_circle;
