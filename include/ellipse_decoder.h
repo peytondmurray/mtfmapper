@@ -137,10 +137,6 @@ class Ellipse_decoder {
         }
         
         if (!ones && img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)) < otsu) {
-            printf("fiducial at (%.2lf %.2lf) rejected because of centre mislabelling: got %d, otsu is %d\n",
-                img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)),
-                otsu
-            );
             code = -1;
             valid = false;
             return;
@@ -151,6 +147,12 @@ class Ellipse_decoder {
         int final_code = outer_code*4 + inner_code;
         code = final_code;
         valid = true;
+        
+        
+        if (e.fg_fraction > 0.9999) {
+            printf("ellipse too solid, cannot be a valid code\n");
+            valid = false;
+        }
     }
     
     int code;

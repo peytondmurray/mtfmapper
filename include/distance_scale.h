@@ -70,44 +70,40 @@ class Distance_scale {
     void construct(Mtf_core& mtf_core, bool pose_based=false) {
     
         int zcount = 0;
-        auto to_remove = mtf_core.ellipses.end();
-        for (auto e = mtf_core.ellipses.begin(); e != mtf_core.ellipses.end(); e++) {
-            if (e->code == 0) {
-                bool skip = false;
-                // check if it is inside another fiducial (stupid design mistake on chart ....)
-                for (const auto& f: mtf_core.ellipses) {
-                    
-                    if (f.centroid_x == e->centroid_x && 
-                        f.centroid_y == e->centroid_y &&
-                        f.code == e->code && f.major_axis == e->major_axis) {
-                        // skip self
+        
+        for (size_t i=0; i < mtf_core.ellipses.size() - 1; i++) {
+            Ellipse_detector& e = mtf_core.ellipses[i];
+            for (size_t j=i+1; j < mtf_core.ellipses.size(); j++) {
+                Ellipse_detector& f = mtf_core.ellipses[j];
+                double cdist = sqrt(SQR(f.centroid_x - e.centroid_x) + SQR(f.centroid_y - e.centroid_y));
+                if (cdist < std::min(e.minor_axis, f.minor_axis)) {
+                    // keep only the larger fiducial
+                    if (e.major_axis > f.major_axis) {
+                        f.valid = false;
                     } else {
-                        double cdist = sqrt(SQR(f.centroid_x - e->centroid_x) + SQR(f.centroid_y - e->centroid_y));
-                        if (cdist < e->major_axis && f.code != 0) {
-                            skip = true;
-                            to_remove = e;
-                        }
+                        e.valid = false;
                     }
-                }
-                
-                if (!skip) {
-                    zero.x += 0.5 * e->centroid_x;
-                    zero.y += 0.5 * e->centroid_y;
-                    zcount++;
                 }
             }
         }
-        if (to_remove != mtf_core.ellipses.end()) {
-            mtf_core.ellipses.erase(to_remove);
+        
+        for (const auto& e: mtf_core.ellipses) {
+            if (e.valid && e.code == 0) {
+                zero.x += 0.5 * e.centroid_x;
+                zero.y += 0.5 * e.centroid_y;
+                zcount++;
+            }
         }
+        
         if (zcount == 2 && pose_based) {
         
-            map<int, vector<Ellipse_detector*> > by_code;
+            map<int, Ellipse_detector* > by_code;
             Point2d first;
             Point2d last;
             zcount = 0;
+            double max_fiducial_diameter = 0;
             for (auto& e: mtf_core.ellipses) {
-                by_code[e.code].push_back(&e);
+                if (!e.valid) continue;
                 if (e.code == 0) {
                     if (zcount == 0) {
                         first = Point2d(e.centroid_x, e.centroid_y);
@@ -115,7 +111,16 @@ class Distance_scale {
                         last = Point2d(e.centroid_x, e.centroid_y);
                     }
                     zcount++;
+                } else {
+                    if (by_code.find(e.code) != by_code.end()) {
+                        printf("collision: code %d found at both [%lf %lf] and [%lf %lf]\n",
+                            e.code, e.centroid_x, e.centroid_y,
+                            by_code[e.code]->centroid_x, by_code[e.code]->centroid_y
+                        );
+                    }
+                    by_code[e.code] = &e;
                 }
+                max_fiducial_diameter = std::max(e.major_axis*0.5, max_fiducial_diameter);
             }
             
             printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
@@ -134,6 +139,7 @@ class Distance_scale {
                 vector<Eigen::Vector3d> ba_world_points;
                 vector<int> perm;
                 for (const auto& e: mtf_core.ellipses) {
+                    if (!e.valid) continue;
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
                     int main_idx = -1;
                     for (size_t i=0; i < n_fiducials && main_idx == -1; i++) {
@@ -163,8 +169,8 @@ class Distance_scale {
                         
                 class Cal_solution {
                   public:
-                    Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0)
-                     : bpe(bpe), proj(proj), distort(distort) {};
+                    Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0, vector<int> inlier_list=vector<int>())
+                     : bpe(bpe), proj(proj), distort(distort), inlier_list(inlier_list) {};
                      
                     bool operator< (const Cal_solution& b) const {
                         return bpe < b.bpe;
@@ -173,12 +179,14 @@ class Distance_scale {
                     double bpe;
                     Eigen::MatrixXd proj;
                     double distort;
+                    vector<int> inlier_list;
                 };
                 
                 vector<Cal_solution> solutions;
                 vector<Eigen::Vector2d> feature_points(5);
                 vector<Eigen::Vector3d> world_points(5);
                 
+                double inlier_threshold = max_fiducial_diameter; // this should work unless extreme distortion is present?
                 double global_bpr = 1e50;
                 for (int ri=0; ri < 20000; ri++) {
                 
@@ -202,7 +210,6 @@ class Distance_scale {
                         &radial_distortions
                     );
                     
-                    double min_bpr = 1e50;
                     for (size_t k=0; k < projection_matrices.size(); k++) {
                     
                         // check if Rodriques produces the same rotation matrix
@@ -230,50 +237,50 @@ class Distance_scale {
                         
                         if (rot_err < 0.01) {
                             vector<double> residuals;
-                            double bpr = 0;
+                            
+                            vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
                                 Eigen::VectorXd rp = projection_matrices[k]*Eigen::Vector4d(ba_world_points[i][0], ba_world_points[i][1], ba_world_points[i][2], 1.0);
                                 rp /= rp[2];
                                 double rad = 1 + radial_distortions[k][0]*(rp[0]*rp[0] + rp[1]*rp[1]);
                                 rp /= rad;
                                 double err = (ba_img_points[i] - Eigen::Vector2d(rp[0], rp[1])).norm();
-                                bpr += fabs(err); // more robustness against outliers is appreciated here
-                                residuals.push_back(err);
+                                
+                                if (err*img_scale < inlier_threshold) {
+                                    residuals.push_back(err);
+                                    inliers.push_back(i);
+                                } 
                             }
-                            bpr /= ba_img_points.size();
-                        
+                            
+                            if (inliers.size() < 5) continue; // do not waste time on outlier-dominated solutions
+                            
                             sort(residuals.begin(), residuals.end());
-                            bpr = 0;
-                            int actual_count = 0;
-                            for (int i=0; i < 0.9*residuals.size(); i++) {
+                            double bpr = 0;
+                            // try to exclude the worst two or so specimens
+                            size_t nresiduals = std::max(size_t(0.9*residuals.size()), std::min(residuals.size(), size_t(5)));
+                            for (size_t i=0; i < nresiduals; i++) {
                                 bpr += residuals[i]*residuals[i];
-                                actual_count ++;
                             }
-                            bpr = sqrt(bpr/actual_count)*img_scale;
+                            bpr = sqrt(bpr/double(nresiduals))*img_scale;
                             
-                            // only keep a rotation matrix if it repeats with the Rodrigues angle convention
-                            if (bpr <= min_bpr && rot_err < 0.01) { 
-                                min_bpr = bpr;
-                                
-                                if (solutions.size() < 5) {
-                                    solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0]));
-                                } else {
-                                    auto worst_sol = solutions.rbegin();
-                                    if (bpr < worst_sol->bpe) {
-                                        *worst_sol = Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0]);
-                                        sort(solutions.begin(), solutions.end());
-                                    }
-                                }
-                                
-                                
-                                if (bpr < global_bpr) {
-                                    global_bpr = bpr;
-                                    P = projection_matrices[k];
-                                    distortion = radial_distortions[k][0];
-                                    printf("%lu[%d]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels\n", k, ri, rot_err, bpr*img_scale, img_scale/w);
+                            if (solutions.size() < 5) {
+                                solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers));
+                            } else {
+                                auto worst_sol = solutions.rbegin();
+                                if (bpr < worst_sol->bpe) {
+                                    *worst_sol = Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers);
+                                    sort(solutions.begin(), solutions.end());
                                 }
                             }
                             
+                            if (bpr < global_bpr) {
+                                global_bpr = bpr;
+                                P = projection_matrices[k];
+                                distortion = radial_distortions[k][0];
+                                printf("%lu[%d]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu\n", 
+                                    k, ri, rot_err, bpr, img_scale/w, inliers.size()
+                                );
+                            }
                         }
                     }
                     projection_matrices.clear();
@@ -285,8 +292,6 @@ class Distance_scale {
                     printf("\t solution with bpe = %lf, dist=%le\n", s.bpe, s.distort);
                 }
                 
-                printf("picking second one from potential solutions\n");
-                
                 double w = 0;
                 ////
                 double min_rmse = 1e50;
@@ -294,6 +299,7 @@ class Distance_scale {
                 for (size_t j=0; j < solutions.size(); j++) {
                     P = solutions[j].proj;
                     distortion = solutions[j].distort;
+                    vector<int>& inliers = solutions[j].inlier_list;
                 
                     double r1n = (P.block(0,0,1,3)).norm();
                     double r3n = (P.block(2,0,1,3)).norm();
@@ -317,9 +323,16 @@ class Distance_scale {
                     }
                     cv::Rodrigues(rot_matrix, rod_angles);
                     
+                    vector<Eigen::Vector2d> il_feature_points(inliers.size());
+                    vector<Eigen::Vector3d> il_world_points(inliers.size());
+                    
+                    for (size_t k=0; k < inliers.size(); k++) {
+                        il_feature_points[k] = ba_img_points[inliers[k]];
+                        il_world_points[k] = ba_world_points[inliers[k]];
+                    }
                     
                     Bundle_adjuster ba(
-                        ba_img_points, ba_world_points, 
+                        il_feature_points, il_world_points, 
                         Pcop, 
                         rod_angles,
                         distortion,
@@ -328,7 +341,7 @@ class Distance_scale {
                     );
                     double rmse = ba.evaluate(ba.best_sol)*img_scale;
                     
-                    printf("solution %d has rmse=%lf\n", j, rmse);
+                    printf("solution %lu has rmse=%lf with %lu inliers\n", j, rmse, inliers.size());
                     
                     if (rmse < min_rmse) {
                         min_rmse = rmse;
@@ -339,10 +352,13 @@ class Distance_scale {
                 }
                 
                 /////
-                printf("best solution is %d\n", min_idx);
+                
                 
                 P = solutions[min_idx].proj;
                 distortion = solutions[min_idx].distort;
+                vector<int>& inliers = solutions[min_idx].inlier_list;
+                
+                printf("best solution is %d with %lu inliers\n", min_idx, inliers.size());
             
                 double r1n = (P.block(0,0,1,3)).norm();
                 double r3n = (P.block(2,0,1,3)).norm();
@@ -367,8 +383,16 @@ class Distance_scale {
                 cv::Rodrigues(rot_matrix, rod_angles);
                 
                 
+                vector<Eigen::Vector2d> inlier_feature_points(inliers.size());
+                vector<Eigen::Vector3d> inlier_world_points(inliers.size());
+                
+                for (size_t k=0; k < inliers.size(); k++) {
+                    inlier_feature_points[k] = ba_img_points[inliers[k]];
+                    inlier_world_points[k] = ba_world_points[inliers[k]];
+                }
+                
                 Bundle_adjuster ba(
-                    ba_img_points, ba_world_points, 
+                    inlier_feature_points, inlier_world_points, 
                     Pcop, 
                     rod_angles,
                     distortion,
