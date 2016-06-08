@@ -42,6 +42,8 @@ using std::make_pair;
 #include "focus_surface.h"
 #include "distance_scale.h"
 #include "mtf50_edge_quality_rating.h"
+#include "bayer.h"
+#include "ellipse.h"
 
 class Mtf_renderer_focus : public Mtf_renderer {
   public:
@@ -65,26 +67,19 @@ class Mtf_renderer_focus : public Mtf_renderer {
         return;
     }
     
-    void render(const vector<Mtf_profile_sample>& samples) {
+    void render(const vector<Mtf_profile_sample>& samples, Bayer::bayer_t bayer = Bayer::NONE, vector<Ellipse_detector>* ellipses = NULL) {
         Point2d centroid(0,0);
         
         if (samples.size() < 10) { // probably not a valid image for profiles
             return;
         }
         
-        double lmin = 0;
-        double lmax = 0;
-        double step = 0;
-        bool bounded = distance_scale.bounds(lmin, lmax, step);
-        if (bounded) {
-            lmin -= 8*step; // highly dependent on chart scale, should be adaptive (somehow)
-            lmax += 10*step;
-        }
-        
         double mean_y = 0;
         vector<Sample> data;
         double min_long = 1e50;
         double max_long = -1e50;
+        double min_pix_long = 1e50;
+        double max_pix_long = -1e50;
         for (size_t i=0; i < samples.size(); i++) {
             if (samples[i].quality > poor_quality) {
                 Point2d d = samples[i].p - zero;
@@ -93,8 +88,9 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     d.x*transverse.x + d.y*transverse.y
                 );
                 
-                if (!bounded ||
-                    (bounded && coord.x >= lmin && coord.x <= lmax && fabs(coord.y) < 8*step)) { 
+                Point2d wc = distance_scale.estimate_world_coords(samples[i].p.x, samples[i].p.y);
+                
+                if (fabs(wc.y) < 20 && fabs(wc.x) < 180) { 
                 
                     mean_y += coord.y;
                     
@@ -106,6 +102,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     data.push_back(Sample(coord.x, samples[i].mtf, 1.0, 1.0));
                     min_long = std::min(coord.x, min_long);
                     max_long = std::max(coord.x, max_long);
+                    min_pix_long = std::min(min_pix_long, coord.x);
+                    max_pix_long = std::max(max_pix_long, coord.x);
                 }
             }
         }
@@ -172,9 +170,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
             wsum += data[k].yweight;
         }
         errsum /= wsum;
-        printf("final err(weighted): %lg\n", errsum);
+        printf("final model fit error (weighted): %lg\n", errsum);
         
-        FILE* fraw = fopen("rprofile.txt", "wt");
+        string rp_name = wdir + ((bayer != Bayer::NONE) ? Bayer::to_string(bayer) + "_" : "") + "profile_points.txt";
+        FILE* fraw = fopen(rp_name.c_str(), "wt");
         for (size_t i=0; i < data.size(); i++) {
             fprintf(fraw, "%lf %lf\n", data[i].x, data[i].y);
         }
@@ -183,7 +182,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         // now we can plot the reconstruction?
         double peak_x = 0;
         double peak_y = 0;
-        FILE* fout = fopen("xprofile.txt", "wt");
+        string cp_name = wdir + ((bayer != Bayer::NONE) ? Bayer::to_string(bayer) + "_" : "") + "profile_curve.txt";
+        FILE* fout = fopen(cp_name.c_str(), "wt");
         for (double x=min_long; x < max_long; x += 1) {
             double y = cf.rpeval(sol, x*cf.xsf)/cf.ysf;
             fprintf(fout, "%lf %lf\n", x, y);
@@ -201,10 +201,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         printf("focus_pix %lg\n", peak_x);
         
-        //Point2d pos = peak_x * longitudinal + mean_y * transverse + zero;
-        
-        //double focus_peak = 0;
-        //distance_scale.estimate_depth(pos.x, pos.y, focus_peak);
         double focus_peak = peak_x; // works on pre-stretched depth
         printf("focus_plane %lg\n", focus_peak);
         
@@ -223,19 +219,66 @@ class Mtf_renderer_focus : public Mtf_renderer {
         int initial_rows = merged.rows;
         merged.resize(merged.rows + 100);
         
-        //draw_curve(merged, pf.ridge, cv::Scalar(30, 255, 30), 3);
-        
-        for (double x=min_long; x < max_long; x += 1) {
-            /*
-            double y = cf.rpeval(sol, x*cf.xsf)/cf.ysf;
-            
-            
-            cv::Vec3b& color = merged.at<cv::Vec3b>(lrint(y*1000 + zero.y), lrint(x + zero.x));
-            color[0] = 255;
-            color[1] = 255;
-            color[2] = 0;
-            */
+        if (ellipses) {
+            for (auto e: *ellipses) {
+                if (!e.valid) continue;
+                for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
+                    double synth_x = e.major_axis * cos(theta);
+                    double synth_y = e.minor_axis * sin(theta);
+                    double rot_x = cos(e.angle)*synth_x - sin(e.angle)*synth_y + e.centroid_x;
+                    double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
+
+                    // clip to image size, just in case
+                    rot_x = std::max(rot_x, 0.0);
+                    rot_x = std::min(rot_x, (double)(merged.cols-1));
+                    rot_y = std::max(rot_y, 0.0);
+                    rot_y = std::min(rot_y, (double)(merged.rows-1));
+
+                    cv::Vec3b& color = merged.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
+                    color[0] = 255;
+                    color[1] = 255;
+                    color[2] = 0;
+                }
+            }
         }
+        
+        vector<Point2d> curve;
+        min_pix_long = -merged.cols/2;
+        max_pix_long = merged.cols/2;
+        double mtf_peak_value = 0;
+        double peak_wx = 0;
+        for (double x=min_pix_long; x < max_pix_long; x += 1) {
+            double px = longitudinal.x * x  + longitudinal.y * mean_y + zero.x;
+            double py = transverse.x * x + transverse.y *  mean_y + zero.y;
+            
+            double depth = 0;
+            distance_scale.estimate_depth_img_coords(px, py, depth);
+            
+            if (depth > min_long && depth < max_long) {
+                double mtf = cf.rpeval(sol, depth*cf.xsf)/cf.ysf;
+                
+                double world_y = (mtf / peak_y) * 130 - 130;
+                    
+                Point2d wc = distance_scale.estimate_world_coords(px, py);
+                
+                if (mtf > mtf_peak_value) {
+                    mtf_peak_value = mtf;
+                    peak_wx = wc.x;
+                }
+                    
+                Point2d proj_p = distance_scale.world_to_image(wc.x, world_y);
+                curve.push_back(proj_p);
+            }
+        }
+        draw_curve(merged, curve, cv::Scalar(128, 128, 128), 6);
+        draw_curve(merged, curve, cv::Scalar(40, 90, 40), 3, cv::Scalar(40, 255, 40));
+        
+        curve.clear();
+        for (double wy=-130; wy < 130; wy += 1) {
+            Point2d proj_p = distance_scale.world_to_image(peak_wx, wy);
+            curve.push_back(proj_p);
+        }
+        draw_curve(merged, curve, cv::Scalar(255, 30, 30), 3);
         
         rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
@@ -251,23 +294,42 @@ class Mtf_renderer_focus : public Mtf_renderer {
 
   private:
   
-    void draw_curve(cv::Mat& image, const vector<Point2d>& data, cv::Scalar col, double width, bool points=false) {
+    void draw_curve(cv::Mat& image, const vector<Point2d>& data, cv::Scalar col, double width, cv::Scalar col2=cv::Scalar(0, 0, 0)) {
         int prevx = 0;
         int prevy = 0;
+        
+        double total_l = 0;
+        for (size_t i=1; i < data.size(); i++) {
+            double dx = data[i].x - data[i-1].x;
+            double dy = data[i].y - data[i-1].y;
+            total_l += sqrt(dx*dx + dy*dy);
+        }
+        
+        bool shade = col2[0] != 0 || col2[1] != 0 || col2[1] != 0;
+        cv::Scalar blended_col = col;
+        
+        double running_l = 0;
         for (size_t i=0; i < data.size(); i++) {
-            double px = data[i].x*longitudinal.x + data[i].y*longitudinal.y + zero.x;
-            double py = data[i].x*transverse.x + data[i].y*transverse.y + zero.y;
+            if (i > 1) {
+                double dx = data[i].x - data[i-1].x;
+                double dy = data[i].y - data[i-1].y;
+                running_l += sqrt(dx*dx + dy*dy);
+            }
             
-            int ix = lrint(px);
-            int iy = lrint(py);
+            double progress = running_l / total_l;
+            
+            if (shade) {
+                for (int k=0; k < 3; k++) {
+                    blended_col[k] = col[k] + (col2[k] - col[k])*progress;
+                }
+            }
+            
+            int ix = lrint(data[i].x);
+            int iy = lrint(data[i].y);
             if (ix >= 0 && ix < image.cols &&
                 iy >= 0 && iy < image.rows && i > 0) {
                 
-                if (points) {
-                    cv::line(image, Point2d(ix, iy), Point2d(ix, iy), col, width, CV_AA);
-                } else {
-                    cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), col, width, CV_AA);
-                }
+                cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), blended_col, width, CV_AA);
             }
             
             prevx = ix;

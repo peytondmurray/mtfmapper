@@ -57,6 +57,17 @@ class Bayer {
         }
         return NONE; // undefined strings too
     }
+    
+    static string to_string(bayer_t bayer) {
+        string bname="";
+        switch (bayer) {
+            case RED: bname = "red"; break;
+            case BLUE: bname = "blue"; break;
+            case GREEN: bname = "green"; break;
+            default: bname = ""; break;
+        }
+        return bname;
+    }
 
 };
 
