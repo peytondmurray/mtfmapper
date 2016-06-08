@@ -131,6 +131,13 @@ class Distance_scale {
             printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
             if (by_code.size() > 6) { // minimum of 5 unique fiducials plus one spare plus the zeros
+            
+                if (by_code.find(1) != by_code.end()) {
+                    Point2d dir(by_code[1]->centroid_x -  zero.x, by_code[1]->centroid_y - zero.y);
+                    if (dir.x * transverse.x + dir.y * transverse.y < 0) {
+                        printf("should flip transverse\n");
+                    }
+                }
                 
                 prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
                 img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
@@ -507,15 +514,6 @@ class Distance_scale {
         }
     }
     
-    bool bounds(double& lmin, double &lmax, double& step) {
-        if (distance_scale.size() > 2) {
-            lmin = distance_scale.front().x;
-            lmax = distance_scale.back().x;
-            step = fabs(distance_scale.back().x - distance_scale[distance_scale.size()-2].x);
-            return true;
-        }
-        return false;
-    }
     
     inline Point2d normalize_img_coords(double pixel_x, double pixel_y) const {
         double xs = (pixel_x - prin.x)/img_scale;
@@ -618,10 +616,7 @@ class Distance_scale {
     Point2d transverse;
     Point2d longitudinal;
     double chart_scale;
-    vector<cv::Point3d> distance_scale;
     int largest_block_index;
-    
-    map<int, vector<Fiducial> > fiducials;
     
     Point2d prin;
     double focal_length;

@@ -346,6 +346,7 @@ int main(int argc, char** argv) {
     
     printf("Parallel MTF50 calculation\n");
     parallel_for(blocked_range<size_t>(size_t(0), mtf_core.num_objects()), ca); 
+    //ca(blocked_range<size_t>(size_t(0), mtf_core.num_objects()));
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_sliding.getValue()) {
@@ -499,7 +500,7 @@ int main(int argc, char** argv) {
             lpmm_mode,
             pixel_size
         );
-        profile.render(mtf_core.get_samples());
+        profile.render(mtf_core.get_samples(), mtf_core.bayer, &mtf_core.ellipses);
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);
