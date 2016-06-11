@@ -285,7 +285,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
         int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[1024];
         
-        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin", focus_peak, focus_peak, focus_peak);
+        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin."
+            " Estimated chart distance=%.2lf mm. Bundle adjustment RMSE=%.3lf pixels", 
+            focus_peak, focus_peak, focus_peak, distance_scale.centre_depth, distance_scale.bundle_rmse
+        );
         cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
         
         imwrite(wdir + prname, merged);
