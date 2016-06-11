@@ -144,7 +144,6 @@ class Distance_scale {
                 
                 vector<Eigen::Vector2d> ba_img_points;
                 vector<Eigen::Vector3d> ba_world_points;
-                vector<int> perm;
                 for (const auto& e: mtf_core.ellipses) {
                     if (!e.valid) continue;
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
@@ -154,6 +153,7 @@ class Distance_scale {
                             main_idx = i;
                         }
                     }
+                    
                     ba_img_points.push_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
                     ba_world_points.push_back(
                         Eigen::Vector3d(
@@ -162,7 +162,6 @@ class Distance_scale {
                             1.0
                         )
                     );
-                    perm.push_back(perm.size());
                 }
                 
                 vector<Eigen::Matrix<double, 3, 4> > projection_matrices;
@@ -171,9 +170,6 @@ class Distance_scale {
                 cv::Mat rod_angles = cv::Mat(3, 1, CV_64FC1);
                 Eigen::MatrixXd P;
                 
-                std::mt19937 mt(101);
-                std::uniform_real_distribution<double> dist(0, 1);
-                        
                 class Cal_solution {
                   public:
                     Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0, vector<int> inlier_list=vector<int>())
@@ -193,19 +189,15 @@ class Distance_scale {
                 vector<Eigen::Vector2d> feature_points(5);
                 vector<Eigen::Vector3d> world_points(5);
                 
+                enumerate_combinations(ba_img_points.size(), 5);
+                
                 double inlier_threshold = max_fiducial_diameter; // this should work unless extreme distortion is present?
                 double global_bpr = 1e50;
-                for (int ri=0; ri < 20000; ri++) {
-                
-                    // shuffle perm
-                    for (size_t yi=perm.size()-1; yi > 1; yi--) {
-                        int j = (int)floor(dist(mt)*yi);
-                        std::swap(perm[yi], perm[j]);
-                    }
+                for (size_t ri=0; ri < combinations.size(); ri++) {
                 
                     for (int i=0; i < 5; i++) {
-                        feature_points[i] = ba_img_points[perm[i]];
-                        world_points[i] = ba_world_points[perm[i]];
+                        feature_points[i] = ba_img_points[combinations[ri][i]];
+                        world_points[i] = ba_world_points[combinations[ri][i]];
                         world_points[i][2] += + 0.000001*(i+1);
                     }
                     
@@ -245,17 +237,52 @@ class Distance_scale {
                         if (rot_err < 0.01) {
                             vector<double> residuals;
                             
+                            // TODO: technically, we could re-run the five-point solver with eccentricity correction
+                            // but since this should have very little effect, rather leave that for the
+                            // final bundle adjustment
+                            
+                            Eigen::Matrix3d RMM(RM);
+                            RMM.row(2) *= w;
+                            Eigen::VectorXd TV = projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm();
+                            
+                            double r = 5.0;   // radius of circle
+                            double c = 1.0/w; // focal length, but in which units?
+                            Eigen::Vector3d ii = RMM.col(2); // already includes focal length scaling ... ?
+                            
+                            double max_err = 0;
                             vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
-                                Eigen::VectorXd rp = projection_matrices[k]*Eigen::Vector4d(ba_world_points[i][0], ba_world_points[i][1], ba_world_points[i][2], 1.0);
-                                rp /= rp[2];
-                                double rad = 1 + radial_distortions[k][0]*(rp[0]*rp[0] + rp[1]*rp[1]);
-                                rp /= rad;
-                                double err = (ba_img_points[i] - Eigen::Vector2d(rp[0], rp[1])).norm();
+                                
+                                Eigen::Vector3d v = TV - RMM*ba_world_points[i];
+                                
+                                Eigen::VectorXd a(5);
+                                a[0] = r*r*ii[0]*ii[0] - SQR(v[1]*ii[1] + v[2]*ii[2]) - ii[0]*ii[0]*(v[1]*v[1] + v[2]*v[2]);
+                                a[1] = 2*(r*r*ii[0]*ii[1] - (v[2]*ii[0] - v[0]*ii[2])*(v[2]*ii[1] - v[1]*ii[2]) + v[0]*v[1]);
+                                a[2] = r*r*ii[1]*ii[1] + SQR(v[0]*ii[2] - v[2]*ii[0]) - v[0]*v[0] - v[2]*v[2];
+                                a[3] = 2*c*(v[0]*v[2]*(ii[1]*ii[1] - 1) + v[1]*(-v[0]*ii[1]*ii[2] + v[1]*ii[0]*ii[2] - v[2]*ii[0]*ii[1]) - r*r*ii[0]*ii[2]);
+                                a[4] = 2*c*((v[0]*ii[2] - v[2]*ii[0])*(v[0]*ii[1] - v[1]*ii[0]) - v[1]*v[2] - r*r*ii[1]*ii[2]);
+                                
+                                double d = c*c*(-SQR(v[1]*ii[0] - v[0]*ii[1]) + v[0]*v[0] + v[1]*v[1] - r*r*ii[2]*ii[2]);
+                                a /= d;
+                                
+                                double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
+                                double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
+                                
+                                Eigen::Vector3d bp = RMM*Eigen::Vector3d(ba_world_points[i][0], ba_world_points[i][1], 1.0) + TV;
+                                bp /= bp[2];
+                                
+                                double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
+                                bp /= rad;
+                                
+                                // correct for eccentricity error
+                                Eigen::Vector2d corrected_img_point = ba_img_points[i] + Eigen::Vector2d(bp[0] - uc, bp[1] - vc)/img_scale;
+                                
+                                double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
                                 if (err*img_scale < inlier_threshold) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
+                                    max_err = std::max(err, max_err);
                                 } 
                             }
                             
@@ -270,7 +297,7 @@ class Distance_scale {
                             }
                             bpr = sqrt(bpr/double(nresiduals))*img_scale;
                             
-                            if (solutions.size() < 5) {
+                            if (solutions.size() < 5) { // keep 5 best solutions
                                 solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers));
                             } else {
                                 auto worst_sol = solutions.rbegin();
@@ -293,80 +320,22 @@ class Distance_scale {
                     projection_matrices.clear();
                     radial_distortions.clear();
                 }
+                combinations.clear(); // discard the combinations
                 
                 printf("Retained %lu promising solutions\n", solutions.size());
                 for (auto s: solutions) {
                     printf("\t solution with bpe = %lf, dist=%le\n", s.bpe, s.distort);
                 }
-                
                 double w = 0;
-                ////
-                double min_rmse = 1e50;
+                
                 int min_idx = 0;
-                for (size_t j=0; j < solutions.size(); j++) {
-                    P = solutions[j].proj;
-                    distortion = solutions[j].distort;
-                    vector<int>& inliers = solutions[j].inlier_list;
                 
-                    double r1n = (P.block(0,0,1,3)).norm();
-                    double r3n = (P.block(2,0,1,3)).norm();
-                    w = sqrt( (r3n*r3n)/(r1n*r1n) );
-                    focal_length = 1.0/w;
-                    
-                    P /= P.block(0,0,1,3).norm(); // remove the arbitrary scaling factor
-                    P.row(2) /= w; // remove focal length from last row
-                    
-                    Eigen::MatrixXd RM = P.block(0,0,3,3);
-                    Eigen::Vector3d Pcop = P.col(3);
-                    
-                    std::cout << "R=\n" << RM << std::endl;
-                    std::cout << "T= " << Pcop.transpose() << std::endl;
-                    printf("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0/w, img_scale/w);
-                    
-                    for (int rr=0; rr < 3; rr++) {
-                        for (int cc=0; cc < 3; cc++) {
-                            rot_matrix.at<double>(rr,cc) = RM(rr,cc);
-                        }
-                    }
-                    cv::Rodrigues(rot_matrix, rod_angles);
-                    
-                    vector<Eigen::Vector2d> il_feature_points(inliers.size());
-                    vector<Eigen::Vector3d> il_world_points(inliers.size());
-                    
-                    for (size_t k=0; k < inliers.size(); k++) {
-                        il_feature_points[k] = ba_img_points[inliers[k]];
-                        il_world_points[k] = ba_world_points[inliers[k]];
-                    }
-                    
-                    Bundle_adjuster ba(
-                        il_feature_points, il_world_points, 
-                        Pcop, 
-                        rod_angles,
-                        distortion,
-                        w,
-                        img_scale
-                    );
-                    double rmse = ba.evaluate(ba.best_sol)*img_scale;
-                    
-                    printf("solution %lu has rmse=%lf with %lu inliers\n", j, rmse, inliers.size());
-                    
-                    if (rmse < min_rmse) {
-                        min_rmse = rmse;
-                        min_idx = j;
-                        
-                        ba.unpack(rotation, translation, distortion, w);
-                    }
-                }
-                
-                /////
-                
+                try_next_solution:
                 
                 P = solutions[min_idx].proj;
                 distortion = solutions[min_idx].distort;
                 vector<int>& inliers = solutions[min_idx].inlier_list;
                 
-                printf("best solution is %d with %lu inliers\n", min_idx, inliers.size());
-            
                 double r1n = (P.block(0,0,1,3)).norm();
                 double r3n = (P.block(2,0,1,3)).norm();
                 w = sqrt( (r3n*r3n)/(r1n*r1n) );
@@ -393,8 +362,42 @@ class Distance_scale {
                 vector<Eigen::Vector2d> inlier_feature_points(inliers.size());
                 vector<Eigen::Vector3d> inlier_world_points(inliers.size());
                 
+                // prepate rotation matrix and 
+                Eigen::Matrix3d RMM(RM);
+                RMM.row(2) *= w;
+                Eigen::VectorXd TV = Pcop;
+                TV[2] *= w;
+                
                 for (size_t k=0; k < inliers.size(); k++) {
-                    inlier_feature_points[k] = ba_img_points[inliers[k]];
+                
+                    double r = 5.0;   // radius of circle
+                    double c = 1.0/w; // focal length, but in which units?
+                    Eigen::Vector3d i = RMM.col(2); // already includes focal length scaling ... ?
+                    Eigen::Vector3d v = TV - RMM*ba_world_points[inliers[k]];
+                    
+                    Eigen::VectorXd a(5);
+                    a[0] = r*r*i[0]*i[0] - SQR(v[1]*i[1] + v[2]*i[2]) - i[0]*i[0]*(v[1]*v[1] + v[2]*v[2]);
+                    a[1] = 2*(r*r*i[0]*i[1] - (v[2]*i[0] - v[0]*i[2])*(v[2]*i[1] - v[1]*i[2]) + v[0]*v[1]);
+                    a[2] = r*r*i[1]*i[1] + SQR(v[0]*i[2] - v[2]*i[0]) - v[0]*v[0] - v[2]*v[2];
+                    a[3] = 2*c*(v[0]*v[2]*(i[1]*i[1] - 1) + v[1]*(-v[0]*i[1]*i[2] + v[1]*i[0]*i[2] - v[2]*i[0]*i[1]) - r*r*i[0]*i[2]);
+                    a[4] = 2*c*((v[0]*i[2] - v[2]*i[0])*(v[0]*i[1] - v[1]*i[0]) - v[1]*v[2] - r*r*i[1]*i[2]);
+                    
+                    double d = c*c*(-SQR(v[1]*i[0] - v[0]*i[1]) + v[0]*v[0] + v[1]*v[1] - r*r*i[2]*i[2]);
+                    a /= d;
+                    
+                    double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
+                    double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
+                    
+                    Eigen::Vector3d bp = RMM*Eigen::Vector3d(ba_world_points[inliers[k]][0], ba_world_points[inliers[k]][1], 1.0) + TV;
+                    bp /= bp[2];
+                    
+                    printf("point %d: [%lf %lf] -> ellipse centre [%lf %lf], point centre [%lf %lf]\n",
+                        inliers[k], img_scale*bp[0] + prin.x, img_scale*bp[1] + prin.y,
+                        uc*img_scale + prin.x, vc*img_scale + prin.y, 
+                        (bp[0] - uc), (bp[1] - vc)
+                    );
+                    
+                    inlier_feature_points[k] = ba_img_points[inliers[k]] + Eigen::Vector2d(bp[0] - uc, bp[1] - vc)/img_scale;
                     inlier_world_points[k] = ba_world_points[inliers[k]];
                 }
                 
@@ -404,17 +407,26 @@ class Distance_scale {
                     rod_angles,
                     distortion,
                     w,
-                    img_scale,
-                    100000
+                    img_scale
                 );
-                double rmse = ba.evaluate(ba.best_sol)*img_scale;
-                
-                printf("solution %d has rmse=%lf\n", min_idx, rmse);
-                
+                ba.solve();
                 ba.unpack(rotation, translation, distortion, w);
-                focal_length = 1.0/w;
+                bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
+                printf("solution %d has rmse=%lf\n", min_idx, bundle_rmse);
                 
-                printf("ultimate f=%lf\n", focal_length*img_scale);
+                if (ba.optimization_failure() && min_idx < int(solutions.size() - 1)) {
+                    min_idx++;
+                    goto try_next_solution;
+                }
+                
+                // take another stab, in case NM stopped at a point that
+                // was not really a minimum
+                // TODO: in theory, we could repeat this until RMSE stabilizes?
+                ba.solve();
+                ba.unpack(rotation, translation, distortion, w);
+                bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
+                printf("2nd solution %d has rmse=%lf\n", min_idx, bundle_rmse);
+                focal_length = 1.0/w;
                 
                 // prepare for backprojection
                 Eigen::Matrix3d K;
@@ -433,6 +445,8 @@ class Distance_scale {
                 cop = - invP * cop;
                 
                 centre_depth = backproject(zero.x, zero.y)[2];
+                
+                printf("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
             }
             
             // construct a distance scale
@@ -592,11 +606,6 @@ class Distance_scale {
     }
     
     Point2d world_to_image(double world_x, double world_y) const {
-        Eigen::Matrix3d R = rotation;
-    
-        R.row(2) *= 1.0/focal_length; 
-        Eigen::Vector3d t(translation[0], translation[1], translation[2]/focal_length);
-        
         Eigen::Vector3d bp = fwdP*Eigen::Vector3d(world_x, world_y, 1.0) + fwdT;
             
         bp /= bp[2];
@@ -631,9 +640,51 @@ class Distance_scale {
     Eigen::Matrix3d invP; // from image to world coords
     Eigen::Vector3d cop;  // centre of projection (i.e., camera)
     
+    double bundle_rmse;
+    
   private:
     template <typename T> int sgn(T val) const {
         return (T(0) < val) - (val < T(0));
+    }
+    
+    vector< vector<int> > combinations;
+    
+    int n_choose_k(int n, int k) {
+        if (k == n) { 
+            return 1; 
+        }
+        if (k == 1) { 
+            return n; 
+        }
+        return n_choose_k(n - 1, k) + n_choose_k(n - 1, k - 1);
+    }
+
+    void sub_enumerate_n_choose_k(int n, int k, vector< vector<int> >& all, int& j, vector<int>& a, int i) {
+        a[i] = n - 1;
+        if (i == k - 1) {
+            all[j] = a;
+            j++;
+            return;
+        }
+        for (int c=n - 1; c > 0; c--) {
+            sub_enumerate_n_choose_k(c, k, all, j, a, i + 1);
+        }
+    }
+
+    void enumerate_n_choose_k(int n, int k, vector< vector<int> >& arr) {
+        int j = 0;
+        vector<int> a(k, 0);
+        for (int c=n; c >= k; c--) {
+            sub_enumerate_n_choose_k(c, k, arr, j, a, 0);
+        }
+    }
+    
+    void enumerate_combinations(int n, int k) {
+        int t = n_choose_k(n, k);
+        
+        combinations = vector< vector<int> > (t, vector<int>(k, 0));
+        
+        enumerate_n_choose_k(n, k, combinations);
     }
 };
 

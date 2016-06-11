@@ -43,7 +43,7 @@ class Bundle_adjuster {
         Eigen::Vector3d& t,
         cv::Mat in_rod_angles,
         double distortion,
-        double w, double img_scale=1.0, int maxiters=1000) 
+        double w, double img_scale=1.0) 
          : img_points(img_points), world_points(world_points), img_scale(img_scale) {
         
         rot_mat = cv::Mat(3, 3, CV_64FC1);
@@ -59,11 +59,22 @@ class Bundle_adjuster {
         init[4] = in_rod_angles.at<double>(1,0);
         init[5] = in_rod_angles.at<double>(2,0);
         init[6] = distortion;
-        
         init[7] = w;
         
         best_sol = init;
-        best_sol = solve_random_search(best_sol, maxiters);
+    }
+    
+    void solve(void) {
+        Eigen::VectorXd scale(best_sol.size());
+        
+        scale << 1e-6, 1e-6, 0.01,     // origin
+                 1e-3, 1e-3, 1e-3,  // angles
+                 1e-7,              // distortion
+                 0.025*img_scale;    // 1/focal length
+        
+        nelder_mead_failed = false;
+        seed_simplex(best_sol, scale);
+        best_sol = iterate(1e-12);
     }
     
     void unpack(Eigen::Matrix3d& R, Eigen::Vector3d& t, double& distortion, double& w) {
@@ -101,7 +112,8 @@ class Bundle_adjuster {
         R.row(2) *= v[7]; // multiply by 1/f
         Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
         
-        double bpsse = 0;
+        double max_err = 0;
+        double sse = 0;
         for (size_t i=0; i < world_points.size(); i++) {
             Eigen::Vector3d bp = R*world_points[i] + t;
             bp /= bp[2];
@@ -109,157 +121,131 @@ class Bundle_adjuster {
             double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
             bp /= rad;
                         
-            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            bpsse += bpe*bpe;
+            double err = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
+            max_err = std::max(err, max_err);
+            sse += err*err;
         }
-        return sqrt(bpsse/img_points.size());
+        return sqrt(sse/world_points.size());
     }
     
-    double backproj(const Eigen::VectorXd& v) {
-        rod_angles.at<double>(0,0) = v[3];
-        rod_angles.at<double>(1,0) = v[4];
-        rod_angles.at<double>(2,0) = v[5];
-        cv::Rodrigues(rod_angles, rot_mat);
-        
-        // global_scale * K * R | t
-        Eigen::Matrix3d R;
-        R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
-             rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
-             rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
-        
-        R.row(2) *= v[7]; // multiply by 1/f
-        Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
-        
-        double f5 = 0;
-        double bpsse = 0;
-        for (size_t i=0; i < world_points.size(); i++) {
-            Eigen::Vector3d bp = R*world_points[i] + t;
-            
-            bp /= bp[2];
-            
-            
-            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
-            bp /= rad;
-            
-            printf("pt[%lu], expect (%lf %lf), got (%lf %lf)\n", i,
-                img_points[i][0]*img_scale, img_points[i][1]*img_scale,
-                bp[0]*img_scale, bp[1]*img_scale
-            );
-            double bpe = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            bpsse += bpe*bpe;
-            if (i < 5) f5 += bpe;
+    void seed_simplex(VectorXd& v, const VectorXd& lambda) {
+        np = vector<Eigen::VectorXd>(v.size()+1);
+        // seed the simplex
+        for (int i = 0; i < v.size(); i++) {
+            np[i] = v;
+            np[i][i] += lambda[i];
         }
-        printf("MAD error : %lf, first 5: %lf\n", img_scale*bpsse/double(world_points.size()), img_scale*f5/double(world_points.size()));
-        return 0.5*(bpsse/double(world_points.size()));
-    }
-    
-    Eigen::VectorXd solve_random_search(const Eigen::VectorXd& init, int maxiter=10000) {
-        Eigen::VectorXd scale(init.rows());
-        scale << 0.01, 0.01, 0.001,    // origin
-                 0.01, 0.01, 0.01,     // angles
-                 1e-2,                 // distortion
-                 1e-3;                 // 1/focal length
+        np[v.size()] = v;
 
-        
-        Eigen::VectorXd p = init;
-        Eigen::VectorXd pp = init;
-        Eigen::VectorXd vel = Eigen::VectorXd::Zero(init.rows());
-        Eigen::VectorXd dir = Eigen::VectorXd::Zero(init.rows());
-        
-        std::mt19937 mt(100);
-        std::normal_distribution<double> dist(0, 3);
-        
-        double fbest = evaluate(p);
-        
-        backproj(p);
-        printf("initial f=%lf, distortion=%le, RMSE=%lf\n", 
-            img_scale/init[7], init[6], fbest*img_scale
-        );
-        
-        double rho = 0.1;
-        double inertia = 0.72;
-        
-        int count_gs = 0;
-        int count_gf = 0;
-        int thresh_s = 5;
-        const int thresh_f = 500;
-        int thresh_s5 = 5*5;
-        const double contract_coeff = 0.5;
-        const double expand_coeff = 1.2;
-        const double search_radius = 0.1;
-        const double rho_lower_bound = 1e-11;
-        
-        double bestm500 = -1;
-        
-        //FILE* fout = fopen("bundle.txt", "wt");
-        for (int iter=0; iter < maxiter; iter++) {
-            for (int r=0; r < p.rows(); r++) {
-                vel[r] = dist(mt)*rho*scale[r];
-            }
-            vel += dir*inertia;
-            pp = p + vel;
-            double f = evaluate(pp);
-            if (f < fbest) {
-                fbest = f;
-                dir = 0.9*dir + 0.1*vel;
-                p = pp;
-                count_gf = 0;
-                count_gs++;
-            } else {
-                dir *= 0.9;
-                count_gf++;
-                count_gs = 0;
-            }
-            
-            if (count_gs >= thresh_s) {
-                rho *= expand_coeff;
-                
-                if (thresh_s5 < 5*100) {
-                    thresh_s5++;
-                }
-                
-            } else {
-                if (count_gf >= thresh_f) {
-                    rho *= contract_coeff;
-                }
-                
-                if (thresh_s5 > 15*5) {
-                    thresh_s5--;
-                }
-            }
-            thresh_s = thresh_s5/5; // constant
-  
-            if (rho > search_radius) {
-                rho = search_radius;  
-            }
-            if (rho < rho_lower_bound) {
-                rho = rho_lower_bound;
-            }
-            
-            if (iter >= 500 && (iter % 500) == 0) {
-                if (iter > 500) {
-                    double improvement = (sqrt(bestm500/img_points.size()) - sqrt(fbest/img_points.size()))*img_scale;
-                    if (improvement  < 5e-5 ) { 
-                        printf("bailing at iteration %d : %le\n", iter, improvement);
-                        break;
-                    }
-                }
-                bestm500 = fbest;
-            }
-            
-            //fprintf(fout, "%lf %lf %lf\n", f*img_scale, fbest*img_scale, p[7]);
+        ny = VectorXd(v.size()+1);
+        // now obtain their function values
+        for (int i = 0; i < v.size() + 1; i++) {
+            ny[i] = evaluate(np[i]);
         }
-        //fclose(fout);
+    }
+    
+    inline void simplex_sum(VectorXd& psum) {
+        psum.setZero();
+        for (size_t m=0; m < np.size(); m++) {
+            psum += np[m];
+        }
+    }
+    
+    void nelder_mead(const double ftol, int& num_evals) {
+        const int max_allowed_iterations = 5000;
+        const double epsilon = 1.0e-10;
+
+        VectorXd psum(np[0].size());
+        num_evals = 0;
+        simplex_sum(psum);
         
-        printf("final f=%lf, distortion=%le, RMSE=%lf\n", 
-            img_scale/p[7], p[6], fbest*img_scale
-        );
-        backproj(p);
-        
-        std::cout << "final solution= " << p.transpose() << std::endl;
-        std::cout << "delta from initial = " << (init-p).transpose() << std::endl;
-        
-        return p;
+        for (;;) {
+            size_t inhi;
+            size_t ilo = 0;
+            size_t ihi = ny[0] > ny[1] ? (inhi = 1, 0) : (inhi = 0, 1);
+
+            for (size_t i=0; i < np.size(); i++) {
+                if (ny[i] <= ny[ilo]) {
+                    ilo = i;
+                }
+                if (ny[i] > ny[ihi]) {
+                    inhi = ihi;
+                    ihi = i;
+                } else
+                if (ny[i] > ny[inhi] && i != ihi) {
+                    inhi = i;
+                }
+            }
+            double rtol = 2.0 * fabs(ny[ihi] - ny[ilo]) / ( fabs(ny[ihi]) + fabs(ny[ilo]) + epsilon );
+            if (rtol < ftol) {
+                std::swap(ny[0], ny[ilo]);
+                for (size_t i=0; i < (size_t)np[0].size(); i++) {
+                    std::swap(np[0][i], np[ilo][i]);
+                }
+                break;
+            }
+            if (num_evals >= max_allowed_iterations) {
+                nelder_mead_failed = true;
+                return;
+            }
+            num_evals += 2;
+            double ytry = try_solution(psum, ihi, -1.0);
+            if (ytry <= ny[ilo]) {
+                ytry = try_solution(psum, ihi, 2.0);
+            } else {
+                if (ytry >= ny[inhi]) {
+                    double ysave = ny[ihi];
+                    ytry = try_solution(psum, ihi, 0.5);
+                    if (ytry >= ysave) {
+                        for (size_t i=0; i < np.size(); i++) {
+                            if (i != ilo) {
+                                np[i] = psum = (np[i] + np[ilo]) * 0.5;
+                                ny[i] = evaluate(psum);
+                            }
+                        }
+                        num_evals += np[0].size();
+                        simplex_sum(psum);
+                    }
+                } else {
+                    num_evals--;
+                }
+            }
+        }
+    }
+    
+    double try_solution(VectorXd& psum, const int ihi, const double fac) {
+
+        double fac1 = (1.0 - fac) / double (psum.size());
+        double fac2 = fac1 - fac;
+        VectorXd ptry = psum * fac1 - np[ihi] * fac2;
+        double ytry = evaluate(ptry);
+
+        if (ytry < ny[ihi]) {
+            ny[ihi] = ytry;
+            psum += ptry - np[ihi];
+            np[ihi] = ptry;
+        }
+        return ytry;
+    }
+    
+    VectorXd iterate(double tol) {
+    
+        int evals = 0;
+        const int tries = 2;
+        for (int i = 0; i < tries; i++) {
+            nelder_mead(tol, evals);
+        }
+        int min_idx = 0;
+        for (size_t i=0; i < (size_t)ny.size(); i++) {
+            if (ny[i] < ny[min_idx]) {
+                min_idx = i;
+            }
+        }
+        return np[min_idx];
+    }
+    
+    bool optimization_failure(void) const {
+        return nelder_mead_failed;
     }
     
     vector<Eigen::Vector2d>& img_points;
@@ -268,6 +254,11 @@ class Bundle_adjuster {
     cv::Mat rod_angles;
     Eigen::VectorXd best_sol;
     double img_scale;
+    
+    // variables used by nelder-mead
+    vector<Eigen::VectorXd> np;
+    VectorXd ny;
+    bool nelder_mead_failed;
 };
 
 #endif
