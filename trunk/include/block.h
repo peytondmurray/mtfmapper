@@ -51,6 +51,11 @@ class Block {
         size_t bot_edge_idx = 0;
         size_t left_edge_idx = 0;
         size_t right_edge_idx = 0;
+        
+        if (rect.centroids.size() != 4) {
+            valid = false;
+            return;
+        }
      
         for (size_t i=0; i < 4; i++) {
             centroid.x += get_edge_centroid(i).x;

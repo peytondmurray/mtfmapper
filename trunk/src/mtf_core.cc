@@ -44,7 +44,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
     
-    if (!valid) {
+    if (!valid && sliding) {
         // this may be an ellipse. check it ...
         Boundarylist::const_iterator it = cl.get_boundaries().find(label);
         Ellipse_detector e;
