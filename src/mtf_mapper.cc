@@ -279,7 +279,7 @@ int main(int argc, char** argv) {
     
     printf("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 60, false, 20000);
+    Component_labeller cl(masked_img, 60, false, 8000);
 
     #if 0
     // blank out the largest block

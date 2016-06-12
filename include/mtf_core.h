@@ -97,8 +97,17 @@ class Mtf_core {
         if (detected_blocks.size() == 0) {
             for (map<int,Block>::const_iterator it=shared_blocks_map.begin();
                  it != shared_blocks_map.end(); ++it) {
-
-                detected_blocks.push_back(it->second);
+                
+                bool allzero = true;
+                for (int k=0; k < 4 && allzero; k++) {
+                    if (fabs(it->second.get_mtf50_value(k)) > 1e-6) {
+                        allzero = false;
+                    }
+                }
+                
+                if (it->second.valid && !allzero) { 
+                    detected_blocks.push_back(it->second);
+                }
             }
         }
         return detected_blocks;
