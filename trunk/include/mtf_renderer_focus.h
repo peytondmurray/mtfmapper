@@ -74,6 +74,11 @@ class Mtf_renderer_focus : public Mtf_renderer {
             return;
         }
         
+        if (!distance_scale.fiducials_found) {
+            printf("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
+            return;
+        }
+        
         double mean_y = 0;
         vector<Sample> data;
         double min_long = 1e50;
@@ -172,6 +177,24 @@ class Mtf_renderer_focus : public Mtf_renderer {
         errsum /= wsum;
         printf("final model fit error (weighted): %lg\n", errsum);
         
+        // do a quick bootstrap to estimate some bounds on the focus peak
+        vector<double> mc_peaks;
+        const int n_mc = 30;
+        for (int i=0; i < n_mc; i++) {
+            vector<Sample> mc_data;
+            for (size_t j=i; j < data.size(); j += 10) {
+                mc_data.push_back(data[j]);
+            }
+            Ratpoly_fit mc_cf(mc_data, 4, 2);
+            VectorXd mc_sol = rpfit(mc_cf);
+            
+            double mc_peak = mc_cf.peak(mc_sol);
+            mc_peaks.push_back(mc_peak);
+        }
+        sort(mc_peaks.begin(), mc_peaks.end());
+        double mc_p5 = mc_peaks[lrint(n_mc*0.05)];
+        double mc_p95 = mc_peaks[lrint(n_mc*0.95)];
+        
         string rp_name = wdir + ((bayer != Bayer::NONE) ? Bayer::to_string(bayer) + "_" : "") + "profile_points.txt";
         FILE* fraw = fopen(rp_name.c_str(), "wt");
         for (size_t i=0; i < data.size(); i++) {
@@ -180,7 +203,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         fclose(fraw);
         
         // now we can plot the reconstruction?
-        double peak_x = 0;
         double peak_y = 0;
         string cp_name = wdir + ((bayer != Bayer::NONE) ? Bayer::to_string(bayer) + "_" : "") + "profile_curve.txt";
         FILE* fout = fopen(cp_name.c_str(), "wt");
@@ -189,19 +211,12 @@ class Mtf_renderer_focus : public Mtf_renderer {
             fprintf(fout, "%lf %lf\n", x, y);
             
             if (y > peak_y) {
-                peak_x = x;
                 peak_y = y;
             }
         }
         fclose(fout);
         
-        double rpeak = cf.peak(sol);
-        printf("peak_diff %le\n", peak_x - rpeak);
-        peak_x = rpeak;
-        
-        printf("focus_pix %lg\n", peak_x);
-        
-        double focus_peak = peak_x; // works on pre-stretched depth
+        double focus_peak = cf.peak(sol); // works on pre-stretched depth
         printf("focus_plane %lg\n", focus_peak);
         
         cv::Mat channel(img.rows, img.cols, CV_8UC1);
@@ -280,15 +295,66 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         draw_curve(merged, curve, cv::Scalar(255, 30, 30), 3);
         
-        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+        
+        cv::Scalar axisdark = cv::Scalar(30, 140, 190);
+        cv::Scalar axislight = cv::Scalar(40, 187, 255);
+        
+        curve.clear();
+        curve.push_back(distance_scale.world_to_image(-180, 135));
+        curve.push_back(distance_scale.world_to_image(-180, -135));
+        draw_curve(merged, curve, axisdark, 2, axisdark);
+        curve.clear();
+        for (double xstep=-180; xstep <= 180; xstep += 2) {
+            curve.push_back(distance_scale.world_to_image(xstep, -135));
+        }
+        draw_curve(merged, curve, axisdark, 2, axislight);
+        curve.clear();
+        curve.push_back(distance_scale.world_to_image(-180, -135));
+        curve.push_back(distance_scale.world_to_image(-180, -135, -100));
+        draw_curve(merged, curve, axisdark, 2, axisdark);
         
         int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[1024];
         
+        sprintf(tbuffer, "Y");
+        Point2d textpos = distance_scale.world_to_image(-178, 135);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axisdark, 1, CV_AA);
+        
+        sprintf(tbuffer, "X");
+        textpos = distance_scale.world_to_image(180, -133);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axislight, 1, CV_AA);
+        
+        sprintf(tbuffer, "Z");
+        textpos = distance_scale.world_to_image(-180, -132, -100);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axisdark, 1, CV_AA);
+        
+        cv::Scalar resultcolour(255, 255, 30);
+        sprintf(tbuffer, "%.3lf (c/p)", mtf_peak_value);
+        int tbaseline=0;
+        cv::Size tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
+        textpos = distance_scale.world_to_image(peak_wx, -20);
+        textpos -= Point2d(tsize.width/2.0, 0);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
+        double prev_line_height = tsize.height;
+        
+        sprintf(tbuffer, "%.1lf mm", focus_peak);
+        tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
+        textpos = distance_scale.world_to_image(peak_wx, -20);
+        textpos -= Point2d(tsize.width/2.0, -prev_line_height*1.5);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
+        
+        
         sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin."
             " Estimated chart distance=%.2lf mm. Bundle adjustment RMSE=%.3lf pixels", 
-            focus_peak, focus_peak, focus_peak, distance_scale.centre_depth, distance_scale.bundle_rmse
+            focus_peak, mc_p5, mc_p95, distance_scale.centre_depth, distance_scale.bundle_rmse
         );
+        
+        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
         
         imwrite(wdir + prname, merged);
