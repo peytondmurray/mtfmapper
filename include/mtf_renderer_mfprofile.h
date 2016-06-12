@@ -72,6 +72,11 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
             return;
         }
         
+        if (!distance_scale.fiducials_found) {
+            printf("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
+            return;
+        }
+        
         FILE* fout = fopen("points.txt", "wt");
         vector< Mtf_profile_sample > data;
         for (size_t i=0; i < samples.size(); i++) {

@@ -64,7 +64,7 @@ static inline bool t_intersect(double& pix, double& piy,
 class Distance_scale {
   public:
     Distance_scale(void)
-    : chart_scale(1.0), largest_block_index(-1), focal_length(10000) {
+    : chart_scale(1.0), largest_block_index(-1), focal_length(10000), fiducials_found(false) {
     }
     
     void construct(Mtf_core& mtf_core, bool pose_based=false) {
@@ -131,13 +131,21 @@ class Distance_scale {
             printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
             if (by_code.size() > 6) { // minimum of 5 unique fiducials plus one spare plus the zeros
-            
-                if (by_code.find(1) != by_code.end()) {
-                    Point2d dir(by_code[1]->centroid_x -  zero.x, by_code[1]->centroid_y - zero.y);
-                    if (dir.x * transverse.x + dir.y * transverse.y < 0) {
-                        printf("should flip transverse\n");
-                    }
+                
+                // use knowledge of the first four fiducials to orient the transverse direction
+                vector< pair<int, double> > candidates {{1, 1.0}, {2, 1.0}, {3, -1.0}, {4, -1.0}};
+                for (auto c: candidates) {
+                    if (by_code.find(c.first) != by_code.end()) {
+                        Point2d dir(by_code[c.first]->centroid_x -  zero.x, by_code[c.first]->centroid_y - zero.y);
+                        dir *= c.second;
+                        if (dir.x * transverse.x + dir.y * transverse.y < 0) {
+                            transverse = -transverse;
+                            longitudinal = Point2d(-transverse.y, transverse.x);
+                        }
+                        break; // one sample is enough
+                    }    
                 }
+                
                 
                 prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
                 img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
@@ -211,6 +219,11 @@ class Distance_scale {
                     
                     for (size_t k=0; k < projection_matrices.size(); k++) {
                     
+                        // only consider solutions in front of camera
+                        if (projection_matrices[k](2, 3) > 0) {
+                            projection_matrices[k] *= -1;
+                        }
+                    
                         // check if Rodriques produces the same rotation matrix
                         double r1n = (projection_matrices[k].block(0,0,1,3)).norm();
                         double r3n = (projection_matrices[k].block(2,0,1,3)).norm();
@@ -234,7 +247,7 @@ class Distance_scale {
                             }
                         }
                         
-                        if (rot_err < 0.01) {
+                        if (rot_err < 0.01) { 
                             vector<double> residuals;
                             
                             // TODO: technically, we could re-run the five-point solver with eccentricity correction
@@ -447,6 +460,7 @@ class Distance_scale {
                 centre_depth = backproject(zero.x, zero.y)[2];
                 
                 printf("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
+                fiducials_found = true;
             }
             
             // construct a distance scale
@@ -454,16 +468,23 @@ class Distance_scale {
         } else {
             printf("Warning: Manual focus profile chart mode requested, but central dots not found\n");
             const vector<Block>& blocks = mtf_core.get_blocks();
-            // find largest block
-            vector< pair<double, int> > by_size;
-            for (size_t i=0; i < blocks.size(); i++) {
-                by_size.push_back(make_pair(blocks[i].get_area(), i));
-            }
-            sort(by_size.begin(), by_size.end());
             
-            const int sstart = 5;
-            double delta_1 = by_size[by_size.size()-1].first / by_size[by_size.size()-sstart-1].first;
-            double delta_2 = by_size[by_size.size()-sstart-1].first / by_size[by_size.size()-sstart-2].first;
+            double delta_1 = 1;
+            double delta_2 = 1;
+            vector< pair<double, int> > by_size;
+            
+            if (blocks.size() > 0) {
+                // find largest block
+                for (size_t i=0; i < blocks.size(); i++) {
+                    by_size.push_back(make_pair(blocks[i].get_area(), i));
+                }
+                sort(by_size.begin(), by_size.end());
+                
+                const int sstart = 5;
+                delta_1 = by_size[by_size.size()-1].first / by_size[by_size.size()-sstart-1].first;
+                delta_2 = by_size[by_size.size()-sstart-1].first / by_size[by_size.size()-sstart-2].first;    
+            }
+            
             if (delta_1/delta_2 > 80) {
                 largest_block_index = by_size.back().second;
                 const Block& lblock = blocks[by_size.back().second];
@@ -605,8 +626,8 @@ class Distance_scale {
         return Point2d(ip[0], ip[1]); // ip[2] (=z) will always be in the plane
     }
     
-    Point2d world_to_image(double world_x, double world_y) const {
-        Eigen::Vector3d bp = fwdP*Eigen::Vector3d(world_x, world_y, 1.0) + fwdT;
+    Point2d world_to_image(double world_x, double world_y, double world_z=1.0) const {
+        Eigen::Vector3d bp = fwdP*Eigen::Vector3d(world_x, world_y, world_z) + fwdT;
             
         bp /= bp[2];
             
@@ -641,6 +662,7 @@ class Distance_scale {
     Eigen::Vector3d cop;  // centre of projection (i.e., camera)
     
     double bundle_rmse;
+    bool fiducials_found;
     
   private:
     template <typename T> int sgn(T val) const {
