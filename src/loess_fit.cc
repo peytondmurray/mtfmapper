@@ -297,14 +297,14 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     // we know that mtf50 ~ 1/(p90idx - p10idx) * (1/samples_per_pixel)
-    double rise_dist = std::max(double(4), fabs(p10idx - p90idx)*0.125);
+    double rise_dist = std::max(double(4), fabs(double(p10idx - p90idx))*0.125);
     if (p10idx < p90idx) {
         std::swap(p10idx, p90idx);
     }
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
     int midpoint = fft_size/2;
-    int twidth = std::max(fabs(p10idx - fft_size/2), fabs(p90idx - fft_size/2));
+    int twidth = std::max(fabs(double(p10idx - fft_size/2)), fabs(double(p90idx - fft_size/2)));
     
     // now recompute ESF using box() for tails, and exp() for transition
     rightsum = 0;
@@ -320,7 +320,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = floor(ordered[i].first*8 + fft_size/2);
         
-        int nbins = lrint(8 + 8.0*fabs(cbin - midpoint)/(fft_right-fft_size/2));
+        int nbins = lrint(8 + 8.0*fabs(double(cbin - midpoint))/(fft_right-fft_size/2));
         
         int left = std::max(fft_left, cbin-nbins);
         int right = std::min(fft_right-1, cbin+nbins);
@@ -329,14 +329,14 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             double w = 1; // in extreme tails, just plain box filter
             const double bwidth = 2;
             const double lwidth = 0.5;
-            if (fabs(b - midpoint) < bwidth*twidth) {
-                if (fabs(b - midpoint) < twidth*lwidth) {
+            if (fabs(double(b - midpoint)) < bwidth*twidth) {
+                if (fabs(double(b - midpoint)) < twidth*lwidth) {
                     // edge transition itself, use preferred low-pass function
                     w = exp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
                 } else {
                     const double start_factor = 1;
                     const double end_factor =   0.05;
-                    double alpha = (fabs(b - midpoint)/twidth - lwidth)/(bwidth - lwidth);
+                    double alpha = (fabs(double(b - midpoint))/twidth - lwidth)/(bwidth - lwidth);
                     double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
                     // between edge and tail region, use slightly wider low-pass function
                     w = exp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );

@@ -222,7 +222,7 @@ class Svg_page_manualperspective : public Svg_page {
                     }
                     
                     // drop it if too small...
-                    if ( fabs(nmaxx - nminx) < 0.2*fabs(rbr.x - rtl.x) ) {
+                    if ( fabs(double(nmaxx - nminx)) < 0.2*fabs(double(rbr.x - rtl.x)) ) {
                         clean = false;
                     }
                 }

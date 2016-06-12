@@ -133,10 +133,10 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
             
             if (subset == 0 || subset == 3) {
             
-                double hgrad = fabs(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
-                                    3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3));
-                double vgrad = fabs(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
-                                    3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col));
+                double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
+                                    3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3)));
+                double vgrad = fabs(double(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
+                                    3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col)));
                                     
                 if (std::max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/std::max(hgrad, vgrad) < 0.001) {
                     cvimg.at<uint16_t>(row, col) = 
@@ -180,8 +180,8 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
         for (int col=4; col < cvimg.cols-4; col++) {
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset == first_subset) { // TODO: really should optimize access pattern
-                double d1grad = fabs(cvimg.at<uint16_t>(row-1, col-1) - cvimg.at<uint16_t>(row+1, col+1));
-                double d2grad = fabs(cvimg.at<uint16_t>(row-1, col+1) - cvimg.at<uint16_t>(row+1, col-1));
+                double d1grad = fabs(double(cvimg.at<uint16_t>(row-1, col-1) - cvimg.at<uint16_t>(row+1, col+1)));
+                double d2grad = fabs(double(cvimg.at<uint16_t>(row-1, col+1) - cvimg.at<uint16_t>(row+1, col-1)));
                 
                 if (std::max(d1grad, d2grad) < 1 || fabs(d1grad - d2grad)/std::max(d1grad, d2grad) < 0.001) {
                     cvimg.at<uint16_t>(row, col) = 
@@ -207,8 +207,8 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             
             if (subset == 1 || subset == 2) {
             
-                double hgrad = fabs(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1));
-                double vgrad = fabs(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col));
+                double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1)));
+                double vgrad = fabs(double(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col)));
                 
                 if (std::max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/std::max(hgrad, vgrad) < 0.001) {
                     cvimg.at<uint16_t>(row, col) = 
@@ -305,10 +305,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                 // obtain initial estimate of interpolated value using modfied gradient interpolation
                 int gi_estimate = 0;
             
-                double hgrad = fabs(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
-                                    3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3));
-                double vgrad = fabs(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
-                                    3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col));
+                double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
+                                    3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3)));
+                double vgrad = fabs(double(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
+                                    3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col)));
                                     
                 bool gi_flat = false;
                 if (std::max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/std::max(hgrad, vgrad) < 0.001) {
@@ -457,7 +457,7 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                 
                 int proposed = lrint(interp); 
                 
-                maderr += fabs(cvimg.at<uint16_t>(row, col) - proposed);
+                maderr += fabs(double(cvimg.at<uint16_t>(row, col) - proposed));
                 interp_count++;
                     
                 cvimg.at<uint16_t>(row, col) = proposed;
