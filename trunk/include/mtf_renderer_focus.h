@@ -300,8 +300,9 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::Scalar axislight = cv::Scalar(40, 187, 255);
         
         curve.clear();
-        curve.push_back(distance_scale.world_to_image(-180, 135));
-        curve.push_back(distance_scale.world_to_image(-180, -135));
+        for (double ystep=-135; ystep <= 135; ystep += 2) {
+            curve.push_back(distance_scale.world_to_image(-180, ystep));
+        }
         draw_curve(merged, curve, axisdark, 2, axisdark);
         curve.clear();
         for (double xstep=-180; xstep <= 180; xstep += 2) {
