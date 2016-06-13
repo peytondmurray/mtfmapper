@@ -57,10 +57,10 @@ class Quadtree : public Multipolygon_geom {
         
         for (size_t p=0; p < parts.size(); p++) {
             for (size_t v=0; v < parts[p].bases.size(); v++) {
-                maxx = std::max(parts[p].bases[v][0], maxx);
-                maxy = std::max(parts[p].bases[v][1], maxy);
-                minx = std::min(parts[p].bases[v][0], minx);
-                miny = std::min(parts[p].bases[v][1], miny);
+                maxx = max(parts[p].bases[v][0], maxx);
+                maxy = max(parts[p].bases[v][1], maxy);
+                minx = min(parts[p].bases[v][0], minx);
+                miny = min(parts[p].bases[v][1], miny);
             }
         }
         

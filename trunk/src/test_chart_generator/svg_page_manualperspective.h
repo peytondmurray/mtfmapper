@@ -177,10 +177,10 @@ class Svg_page_manualperspective : public Svg_page {
             iPoint rtl(points[0]);
             iPoint rbr(points[0]);
             for (size_t j=1; j < points.size(); j++) {
-                rtl.x = std::min(rtl.x, points[j].x);
-                rtl.y = std::min(rtl.y, points[j].y);
-                rbr.x = std::max(rbr.x, points[j].x);
-                rbr.y = std::max(rbr.y, points[j].y);
+                rtl.x = min(rtl.x, points[j].x);
+                rtl.y = min(rtl.y, points[j].y);
+                rbr.x = max(rbr.x, points[j].x);
+                rbr.y = max(rbr.y, points[j].y);
             }
             for (size_t j=0; j < points.size() && clean; j++) {
                 iPoint tl = scale(main_fiducials[i].rcoords.x - rad, main_fiducials[i].rcoords.y - rad*0.9);
@@ -209,15 +209,15 @@ class Svg_page_manualperspective : public Svg_page {
                     int rmidx = (rtl.x + rbr.x)/2;
                     if (midx < rmidx) { // circle is left
                         for (size_t k=0; k < points.size(); k++) {
-                            points[k].x = std::max(points[k].x, br.x);
-                            nminx = std::min(nminx, points[k].x);
-                            nmaxx = std::max(nmaxx, points[k].x);
+                            points[k].x = max(points[k].x, br.x);
+                            nminx = min(nminx, points[k].x);
+                            nmaxx = max(nmaxx, points[k].x);
                         }
                     } else { // circle is right
                         for (size_t k=0; k < points.size(); k++) {
-                            points[k].x = std::min(points[k].x, tl.x);
-                            nminx = std::min(nminx, points[k].x);
-                            nmaxx = std::max(nmaxx, points[k].x);
+                            points[k].x = min(points[k].x, tl.x);
+                            nminx = min(nminx, points[k].x);
+                            nmaxx = max(nmaxx, points[k].x);
                         }
                     }
                     

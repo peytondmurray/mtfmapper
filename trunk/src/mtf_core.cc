@@ -82,10 +82,10 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
 
                     // clip to image size, just in case
-                    rot_x = std::max(rot_x, 0.0);
-                    rot_x = std::min(rot_x, (double)(od_img.cols-1));
-                    rot_y = std::max(rot_y, 0.0);
-                    rot_y = std::min(rot_y, (double)(od_img.rows-1));
+                    rot_x = max(rot_x, 0.0);
+                    rot_x = min(rot_x, (double)(od_img.cols-1));
+                    rot_y = max(rot_y, 0.0);
+                    rot_y = min(rot_y, (double)(od_img.rows-1));
 
                     cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
                     color[0] = 255;
@@ -192,7 +192,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             reduce_success &= edge_record[k].reduce();
             Point2d ncx = edge_record[k].centroid;
             double shift = sqrt(SQR(ocx.x - ncx.x) + SQR(ocx.y - ncx.y));
-            max_shift = std::max(max_shift, shift);
+            max_shift = max(max_shift, shift);
         }
         rrect = newrect;
     }
@@ -426,7 +426,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
                 smoothed[idx] = magnitude[idx];
             } else {
                 const int stride = 3;
-                int filter_order = std::min(5, (idx-5)/stride);
+                int filter_order = min(5, (idx-5)/stride);
                 sgw = savitsky_golay[filter_order];
                 for (int x=-sgh; x <= sgh; x++) { 
                     // since magnitude has extra samples at the end, we can safely go past the end
@@ -639,18 +639,18 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         if (tl2.y > br2.y) {
             std::swap(tl2.y, br2.y);
         }
-        tl.x = std::min(tl.x, tl2.x);
-        tl.y = std::min(tl.y, tl2.y);
-        br.x = std::max(br.x, br2.x);
-        br.y = std::max(br.y, br2.y);
+        tl.x = min(tl.x, tl2.x);
+        tl.y = min(tl.y, tl2.y);
+        br.x = max(br.x, br2.x);
+        br.y = max(br.y, br2.y);
         
         Edge_record edge_record;
         
         // clamp ROi to image
-        tl.x = std::max(1.0, tl.x);
-        tl.y = std::max(1.0, tl.y);
-        br.x = std::min(img.cols-1.0, br.x);
-        br.y = std::min(img.rows-1.0, br.y);
+        tl.x = max(1.0, tl.x);
+        tl.y = max(1.0, tl.y);
+        br.x = min(img.cols-1.0, br.x);
+        br.y = min(img.rows-1.0, br.y);
         
         for (double y=tl.y; y < br.y; y += 1.0) {
             for (double x=tl.x; x < br.x; x += 1.0) {
@@ -692,7 +692,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         int steps = floor((edge_len - winlen)/steplen) + 1;
         
         if (samples_per_edge != 0) {
-            steps = std::max(2, std::min(steps, samples_per_edge));
+            steps = max(2, min(steps, samples_per_edge));
             steplen = (edge_len - winlen) / double(steps-1);
         }
         
@@ -727,15 +727,15 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             if (tl2.y > br2.y) {
                 std::swap(tl2.y, br2.y);
             }
-            tl.x = std::min(tl.x, tl2.x);
-            tl.y = std::min(tl.y, tl2.y);
-            br.x = std::max(br.x, br2.x);
-            br.y = std::max(br.y, br2.y);
+            tl.x = min(tl.x, tl2.x);
+            tl.y = min(tl.y, tl2.y);
+            br.x = max(br.x, br2.x);
+            br.y = max(br.y, br2.y);
             
-            tl.x = std::max(1.0, tl.x);
-            tl.y = std::max(1.0, tl.y);
-            br.x = std::min(img.cols-1.0, br.x);
-            br.y = std::min(img.rows-1.0, br.y);
+            tl.x = max(1.0, tl.x);
+            tl.y = max(1.0, tl.y);
+            br.x = min(img.cols-1.0, br.x);
+            br.y = min(img.rows-1.0, br.y);
             
             map<int, scanline> scanset;
             Edge_record edge_record;
@@ -761,8 +761,8 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
                             edge_record.add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                         }
                         
-                        min_p = std::min(min_p, pdot);
-                        max_p = std::max(max_p, pdot);
+                        min_p = min(min_p, pdot);
+                        max_p = max(max_p, pdot);
                     }
                 }
             }

@@ -105,10 +105,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     
                     // coord is now projected into the surface
                     data.push_back(Sample(coord.x, samples[i].mtf, 1.0, 1.0));
-                    min_long = std::min(coord.x, min_long);
-                    max_long = std::max(coord.x, max_long);
-                    min_pix_long = std::min(min_pix_long, coord.x);
-                    max_pix_long = std::max(max_pix_long, coord.x);
+                    min_long = min(coord.x, min_long);
+                    max_long = max(coord.x, max_long);
+                    min_pix_long = min(min_pix_long, coord.x);
+                    max_pix_long = max(max_pix_long, coord.x);
                 }
             }
         }
@@ -244,10 +244,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     double rot_y = sin(e.angle)*synth_x + cos(e.angle)*synth_y + e.centroid_y;
 
                     // clip to image size, just in case
-                    rot_x = std::max(rot_x, 0.0);
-                    rot_x = std::min(rot_x, (double)(merged.cols-1));
-                    rot_y = std::max(rot_y, 0.0);
-                    rot_y = std::min(rot_y, (double)(merged.rows-1));
+                    rot_x = max(rot_x, 0.0);
+                    rot_x = min(rot_x, (double)(merged.cols-1));
+                    rot_y = max(rot_y, 0.0);
+                    rot_y = min(rot_y, (double)(merged.rows-1));
 
                     cv::Vec3b& color = merged.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
                     color[0] = 255;
@@ -414,8 +414,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
             double xsf=0;
             double ysf=0;
             for (size_t i=0; i < pts_row.size(); i++) {
-                xsf = std::max(xsf, fabs(pts_row[i].x));
-                ysf = std::max(ysf, fabs(pts_row[i].y));
+                xsf = max(xsf, fabs(pts_row[i].x));
+                ysf = max(ysf, fabs(pts_row[i].y));
             }
             cf.xsf = xsf = 1.0/xsf;
             cf.ysf = ysf = 1.0/ysf;

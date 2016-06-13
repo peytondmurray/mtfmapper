@@ -71,12 +71,12 @@ class Distance_scale {
     
         int zcount = 0;
         
-        for (size_t i=0; i < std::max(0, int(mtf_core.ellipses.size()) - 1); i++) {
+        for (size_t i=0; i < max(0, int(mtf_core.ellipses.size()) - 1); i++) {
             Ellipse_detector& e = mtf_core.ellipses[i];
             for (size_t j=i+1; j < mtf_core.ellipses.size(); j++) {
                 Ellipse_detector& f = mtf_core.ellipses[j];
                 double cdist = sqrt(SQR(f.centroid_x - e.centroid_x) + SQR(f.centroid_y - e.centroid_y));
-                if (cdist < std::min(e.minor_axis, f.minor_axis)) {
+                if (cdist < min(e.minor_axis, f.minor_axis)) {
                     // keep only the larger fiducial
                     if (e.major_axis > f.major_axis) {
                         f.valid = false;
@@ -120,7 +120,7 @@ class Distance_scale {
                     }
                     by_code[e.code] = &e;
                 }
-                max_fiducial_diameter = std::max(e.major_axis, max_fiducial_diameter);
+                max_fiducial_diameter = max(e.major_axis, max_fiducial_diameter);
             }
             
             printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
@@ -155,7 +155,7 @@ class Distance_scale {
                     img_scale = max(dimension_correction->height, dimension_correction->width);
                 } else {
                     prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
-                    img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
+                    img_scale = max(mtf_core.img.rows, mtf_core.img.cols);
                 }
                 
                 vector<Eigen::Vector2d> ba_img_points;
@@ -303,7 +303,7 @@ class Distance_scale {
                                 if (err*img_scale < inlier_threshold) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
-                                    max_err = std::max(err, max_err);
+                                    max_err = max(err, max_err);
                                 } 
                             }
                             
@@ -312,7 +312,7 @@ class Distance_scale {
                             sort(residuals.begin(), residuals.end());
                             double bpr = 0;
                             // try to exclude the worst two or so specimens
-                            size_t nresiduals = std::max(size_t(0.9*residuals.size()), std::min(residuals.size(), size_t(5)));
+                            size_t nresiduals = max(size_t(0.9*residuals.size()), min(residuals.size(), size_t(5)));
                             for (size_t i=0; i < nresiduals; i++) {
                                 bpr += residuals[i]*residuals[i];
                             }
@@ -581,7 +581,7 @@ class Distance_scale {
             double r2 = pc / q;
             
             if (r1 > 0 && r2 > 0) {
-                r = std::min(r1, r2);
+                r = min(r1, r2);
             } else {
                 if (r1 <= 0) {
                     r = r2;

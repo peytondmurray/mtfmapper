@@ -57,7 +57,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         Point2d centr(img.cols/2, img.rows/2);
         
         vector<double> resolution;
-        for (size_t i=0; i < std::min(size_t(3), in_resolution.size()); i++) {
+        for (size_t i=0; i < min(size_t(3), in_resolution.size()); i++) {
             resolution.push_back(in_resolution[i] / pixel_size);
             printf("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
         }
@@ -81,7 +81,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                 const vector<double>& sfr = blocks[i].get_sfr(k);
                 for (size_t j=0; j < resolution.size(); j++) {
                     double res = resolution[j] * NYQUIST_FREQ*2;
-                    int lidx = std::min((int)floor(res), NYQUIST_FREQ*2-2);
+                    int lidx = min((int)floor(res), NYQUIST_FREQ*2-2);
                     double frac = res - lidx;
                 
                     double contrast = (1 - frac)*sfr[lidx] + frac*sfr[lidx+1]; 
@@ -425,7 +425,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
                 recon_smoothed[q] = recon[q].second;
             } else {
                 //const int stride = 3;
-                int filter_order = 5; //std::min(5, (q-5)/stride);
+                int filter_order = 5; //min(5, (q-5)/stride);
                 sgw = savitsky_golay[filter_order];
                 for (int x=-sgh; x <= sgh; x++) { 
                     // since magnitude has extra samples at the end, we can safely go past the end

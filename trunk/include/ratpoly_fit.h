@@ -244,8 +244,8 @@ class Ratpoly_fit  {
         double xmin=1e50;
         double xmax=-1e50;
         for (size_t i=0; i < data.size(); i++) {
-            xmin = std::min(data[i].x, xmin);
-            xmax = std::max(data[i].x, xmax);
+            xmin = min(data[i].x, xmin);
+            xmax = max(data[i].x, xmax);
         }
         // bracket the maximum
         double peak_z = 0;
@@ -290,8 +290,8 @@ class Ratpoly_fit  {
         double xmin=1e50;
         double xmax=-1e50;
         for (size_t i=0; i < data.size(); i++) {
-            xmin = std::min(data[i].x, xmin);
-            xmax = std::max(data[i].x, xmax);
+            xmin = min(data[i].x, xmin);
+            xmax = max(data[i].x, xmax);
         }
         // ensure the bounds are slightly wider than the actual data
         double span=xmax - xmin;

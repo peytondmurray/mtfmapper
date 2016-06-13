@@ -206,8 +206,8 @@ class Mtf_core {
                     double dist_along_edge = d.ddot(edge_direction);
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
-                        max_along_edge = std::max(max_along_edge, dist_along_edge);
-                        min_along_edge = std::min(min_along_edge, dist_along_edge);
+                        max_along_edge = max(max_along_edge, dist_along_edge);
+                        min_along_edge = min(min_along_edge, dist_along_edge);
                     }
                 }
             }
@@ -234,8 +234,8 @@ class Mtf_core {
                     double dist_along_edge = d.ddot(edge_direction);
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
-                        max_along_edge = std::max(max_along_edge, dist_along_edge);
-                        min_along_edge = std::min(min_along_edge, dist_along_edge);
+                        max_along_edge = max(max_along_edge, dist_along_edge);
+                        min_along_edge = min(min_along_edge, dist_along_edge);
                     }
                 }
             }

@@ -173,10 +173,10 @@ class Polygon_geom : public Geometry {
         bounds.max_y = -1e12;
         bounds.min_x = 1e12;
         for (size_t i=0; i < bases.size(); i++) {
-            bounds.min_y = std::min(bases[i][1], bounds.min_y);
-            bounds.max_x = std::max(bases[i][0], bounds.max_x);
-            bounds.max_y = std::max(bases[i][1], bounds.max_y);
-            bounds.min_x = std::min(bases[i][0], bounds.min_x);
+            bounds.min_y = min(bases[i][1], bounds.min_y);
+            bounds.max_x = max(bases[i][0], bounds.max_x);
+            bounds.max_y = max(bases[i][1], bounds.max_y);
+            bounds.min_x = min(bases[i][0], bounds.min_x);
         }
         bounds.area = (bounds.max_x - bounds.min_x) * (bounds.max_y - bounds.min_y);
     }

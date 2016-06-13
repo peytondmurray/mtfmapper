@@ -135,7 +135,7 @@ class Edge_record {
         double l1 = q/pa;
         double l2 = pc / q;
         
-        double l = std::max(l1,l2);
+        double l = max(l1,l2);
         assert(l >= 0);
         
         double ev[2];
@@ -153,8 +153,8 @@ class Edge_record {
         angle = atan2(-ev[0], ev[1]);
         
         return make_pair(
-            sqrt(std::max(fabs(l1), fabs(l2))),
-            sqrt(std::min(fabs(l1), fabs(l2)))
+            sqrt(max(fabs(l1), fabs(l2))),
+            sqrt(min(fabs(l1), fabs(l2)))
         );
     }
 
@@ -264,7 +264,7 @@ class Edge_record {
     void renormalize_weights(void) {
         double maxw = 0;
         for (size_t i=0; i < weights.size(); i++) {
-            maxw = std::max(weights[i], maxw);
+            maxw = max(weights[i], maxw);
         }
         if (maxw > 0) {
             for (size_t i=0; i < weights.size(); i++) {

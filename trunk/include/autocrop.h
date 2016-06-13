@@ -140,8 +140,8 @@ class Autocropper {
         
         int even_start = lower - border;
         even_start += even_start % 2;
-        even_start  = std::max(0, even_start);
-        int even_end = std::min(int(data.size()-1), upper + border);
+        even_start  = max(0, even_start);
+        int even_end = min(int(data.size()-1), upper + border);
         even_end -= even_end % 2;
         int ewidth = (even_end - even_start);
         
