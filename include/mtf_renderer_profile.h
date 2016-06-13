@@ -115,12 +115,12 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // apply additional smoothing
         // try various LOESS filter sizes until the sign changes in the slope
         // drops below 5% (which seems to provide relatively oscillation-free curves)
-        for (size_t w2=5; w2 < std::max(ordered.size()/10, size_t(6)); w2+=3) {
+        for (size_t w2=5; w2 < max(ordered.size()/10, size_t(6)); w2+=3) {
             for (size_t i=0; i < ordered.size() - 1; i++) {
                 Point2d sol;
                 
-                size_t start = std::max(0, int(i) - int(w2));
-                size_t end   = std::min(ordered.size() - 1, i + w2);
+                size_t start = max(0, int(i) - int(w2));
+                size_t end   = min(ordered.size() - 1, i + w2);
                 loess_core(ordered, start, end, ordered[i].first, sol);
                     
                 med_filt_mtf[i] = ordered[i].first * sol.y + sol.x;
@@ -276,9 +276,9 @@ class Mtf_renderer_profile : public Mtf_renderer {
         vector<double> counts(nbins, 0);
         for (map<int, double>::const_iterator it = data.begin(); it != data.end(); ++it) {
             int idx = (it->first - minval)*nbins/(span);
-            idx = std::max(0, idx);
-            idx = std::min(nbins-1, idx);
-            counts[idx] = std::max(it->second, counts[idx]);
+            idx = max(0, idx);
+            idx = min(nbins-1, idx);
+            counts[idx] = max(it->second, counts[idx]);
         }
 
         // find two breakpoints in density; we are looking for a -_- shape, which
@@ -287,7 +287,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         int min_start=0;
         int min_end=0;
         for (int b_start=10; b_start < 2*nbins/3; b_start += 2) {
-            for (int b_end=std::max(nbins/2, b_start+4); b_end < nbins-10; b_end += 2) {
+            for (int b_end=max(nbins/2, b_start+4); b_end < nbins-10; b_end += 2) {
                 double cost = 
                     IQR(counts,0, b_start) + 
                     10*IQR(counts, b_start, b_end) + 
@@ -308,8 +308,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
     double IQR(const vector<double>& counts, int start, int end) {
         vector<double> sorted;
-        start = std::max(0, start);
-        end = std::min(counts.size()-1, size_t(end));
+        start = max(0, start);
+        end = min(counts.size()-1, size_t(end));
         for (size_t i=start; i < size_t(end); i++) {
             sorted.push_back(counts[i]);
         }
@@ -319,8 +319,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
     double median(const vector<double>& counts, int start, int end) {
         vector<double> sorted;
-        start = std::max(0, start);
-        end = std::min(counts.size()-1, size_t(end));
+        start = max(0, start);
+        end = min(counts.size()-1, size_t(end));
         for (size_t i=start; i < size_t(end); i++) {
             sorted.push_back(counts[i]);
         }
@@ -337,9 +337,9 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 double mindiff = 0;
 
                 if (transpose) {
-                    mindiff = std::min(angular_diff(angle, 0)/M_PI*180, angular_diff(angle, M_PI)/M_PI*180);
+                    mindiff = min(angular_diff(angle, 0)/M_PI*180, angular_diff(angle, M_PI)/M_PI*180);
                 } else {
-                    mindiff = std::min(angular_diff(angle, M_PI/2)/M_PI*180, angular_diff(angle, -M_PI/2)/M_PI*180);
+                    mindiff = min(angular_diff(angle, M_PI/2)/M_PI*180, angular_diff(angle, -M_PI/2)/M_PI*180);
                 }
 
                 if (val > 0 && blocks[i].get_quality(k) >= 0.5 && mindiff < 30) {

@@ -122,7 +122,7 @@ class Bundle_adjuster {
             bp /= rad;
                         
             double err = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            max_err = std::max(err, max_err);
+            max_err = max(err, max_err);
             sse += err*err;
         }
         return sqrt(sse/world_points.size());

@@ -76,7 +76,7 @@ class Render_polygon_is : public Render_polygon {
         double prev_sk = 0;
         double prev_mk = 0;
         
-        int samples_threshold = std::min((long)nsamples, lrint(sqrt((double)nsamples)*12));
+        int samples_threshold = min((long)nsamples, lrint(sqrt((double)nsamples)*12));
         
         double dx = x - img_width/2;
         double dy = y - img_height/2;

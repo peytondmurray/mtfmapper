@@ -268,10 +268,10 @@ void Ellipse_detector::_dilate(set<iPoint>& s, int width, int height, int iters)
 
                 gen_s.insert(*it);
 
-                int left = std::max(border, it->first-1);
-                int right = std::min(width-1-border, it->first+1);
-                int top = std::max(border, it->second-1);
-                int bottom = std::min(height-1-border, it->second+1);
+                int left = max(border, it->first-1);
+                int right = min(width-1-border, it->first+1);
+                int top = max(border, it->second-1);
+                int bottom = min(height-1-border, it->second+1);
 
                 gen_s.insert(iPoint(right, it->second));
                 gen_s.insert(iPoint(right, bottom));
@@ -308,10 +308,10 @@ void Ellipse_detector::_dilate_outer_only(set<iPoint>& s, int width, int height)
         
         Point2d dir(it->first - cx, it->second - cy); // current radial direction
 
-        int left = std::max(border, it->first-1);
-        int right = std::min(width-1-border, it->first+1);
-        int top = std::max(border, it->second-1);
-        int bottom = std::min(height-1-border, it->second+1);
+        int left = max(border, it->first-1);
+        int right = min(width-1-border, it->first+1);
+        int top = max(border, it->second-1);
+        int bottom = min(height-1-border, it->second+1);
 
         if ((right - it->first)*dir.x >= 0) gen_s.insert(iPoint(right, it->second));
         if ((right - it->first)*dir.x >= 0 && (bottom - it->second)*dir.y >= 0) gen_s.insert(iPoint(right, bottom));

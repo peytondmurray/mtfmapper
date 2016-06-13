@@ -112,10 +112,10 @@ class Multipolygon_geom : public Geometry {
         bounds.min_x = 1e12;
         for (size_t p=0; p < parts.size(); p++) {
             for (int i=0; i < parts[p].nvertices; i++) {
-                bounds.min_y = std::min(parts[p].bases[i][1], bounds.min_y);
-                bounds.max_x = std::max(parts[p].bases[i][0], bounds.max_x);
-                bounds.max_y = std::max(parts[p].bases[i][1], bounds.max_y);
-                bounds.min_x = std::min(parts[p].bases[i][0], bounds.min_x);
+                bounds.min_y = min(parts[p].bases[i][1], bounds.min_y);
+                bounds.max_x = max(parts[p].bases[i][0], bounds.max_x);
+                bounds.max_y = max(parts[p].bases[i][1], bounds.max_y);
+                bounds.min_x = min(parts[p].bases[i][0], bounds.min_x);
             }
         }
         bounds.area = (bounds.max_x - bounds.min_x) * (bounds.max_y - bounds.min_y);

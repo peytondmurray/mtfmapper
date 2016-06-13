@@ -49,7 +49,7 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
         return 1e10;
     }
     
-    double span = std::max(ordered[end_idx-1].first - mid, mid - ordered[start_idx].first);
+    double span = max(ordered[end_idx-1].first - mid, mid - ordered[start_idx].first);
     vector<double> sig(n,1.0);
     for (int i=0; i < n; i++) {
         double d = fabs((ordered[i + start_idx].first - mid)/span) / 1.2;
@@ -130,8 +130,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = floor(ordered[i].first*8 + fft_size/2);
-        int left = std::max(fft_left, cbin-8);
-        int right = std::min(fft_right-1, cbin+8);
+        int left = max(fft_left, cbin-8);
+        int right = min(fft_right-1, cbin+8);
         
         for (int b=left; b <= right; b++) {
             double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
@@ -218,12 +218,12 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             for (int j=idx; j >= fft_left; j--) {
                 if (slopes[j]*central_peak < 0) {
                     below++;
-                    maxdev = std::max(maxdev, fabs(slopes[j]));
+                    maxdev = max(maxdev, fabs(slopes[j]));
                 }
                 scount++;
             }
             if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
-                fft_left = std::min(idx, fft_size/2 - 2*8);
+                fft_left = min(idx, fft_size/2 - 2*8);
                 clipped = true;
                 break;
             } 
@@ -238,12 +238,12 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             for (int j=idx; j < fft_right; j++) {
                 if (slopes[j]*central_peak < 0) {
                     below++;
-                    maxdev = std::max(maxdev, fabs(slopes[j]));
+                    maxdev = max(maxdev, fabs(slopes[j]));
                 }
                 scount++;
             }
             if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
-                fft_right = std::max(idx, fft_size/2 + 2*8);
+                fft_right = max(idx, fft_size/2 + 2*8);
                 clipped = true;
                 break;
             } 
@@ -279,8 +279,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     rightsum /= double(rightcount);
     
     // now find 10% / 90% thresholds
-    double bright = std::max(leftsum, rightsum);
-    double dark   = std::min(leftsum, rightsum);
+    double bright = max(leftsum, rightsum);
+    double dark   = min(leftsum, rightsum);
     int p10idx = fft_left-1;
     int p90idx = fft_left-1;
     double p10err = 1e50;
@@ -297,14 +297,14 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     // we know that mtf50 ~ 1/(p90idx - p10idx) * (1/samples_per_pixel)
-    double rise_dist = std::max(double(4), fabs(double(p10idx - p90idx))*0.125);
+    double rise_dist = max(double(4), fabs(double(p10idx - p90idx))*0.125);
     if (p10idx < p90idx) {
         std::swap(p10idx, p90idx);
     }
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
     int midpoint = fft_size/2;
-    int twidth = std::max(fabs(double(p10idx - fft_size/2)), fabs(double(p90idx - fft_size/2)));
+    int twidth = max(fabs(double(p10idx - fft_size/2)), fabs(double(p90idx - fft_size/2)));
     
     // now recompute ESF using box() for tails, and exp() for transition
     rightsum = 0;
@@ -322,8 +322,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         
         int nbins = lrint(8 + 8.0*fabs(double(cbin - midpoint))/(fft_right-fft_size/2));
         
-        int left = std::max(fft_left, cbin-nbins);
-        int right = std::min(fft_right-1, cbin+nbins);
+        int left = max(fft_left, cbin-nbins);
+        int right = min(fft_right-1, cbin+nbins);
         for (int b=left; b <= right; b++) {
             double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
             double w = 1; // in extreme tails, just plain box filter
@@ -341,8 +341,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                     // between edge and tail region, use slightly wider low-pass function
                     w = exp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
                 }
-                left_trans = std::min(left_trans, b);
-                right_trans = std::max(right_trans, b);
+                left_trans = min(left_trans, b);
+                right_trans = max(right_trans, b);
             }
             mean[b] += ordered[i].second * w;
             weights[b] += w;

@@ -78,10 +78,10 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
             y1=j-s2; y2=j+s2;
 
             // check the border
-            x1 = std::max(0, x1);
-            x2 = std::min(x2, out.cols - 1);
-            y1 = std::max(0, y1);
-            y2 = std::min(y2, out.rows -1);
+            x1 = max(0, x1);
+            x2 = min(x2, out.cols - 1);
+            y1 = max(0, y1);
+            y2 = min(y2, out.rows -1);
 
             count = (x2-x1)*(y2-y1);
 

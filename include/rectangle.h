@@ -57,8 +57,8 @@ class Mrectangle {
         Point2d diff1 = Point2d(c1.x - c2.x, c1.y - c2.y);
         double len = sqrt(diff1.ddot(diff1));
         Point2d pn(-n.y, n.x);
-        double e_adj = std::min(len*adjust, 4.0)/len;
-        e_adj = std::max(e_adj, 0.08); // TODO: this must probably be larger on wider PSFs
+        double e_adj = min(len*adjust, 4.0)/len;
+        e_adj = max(e_adj, 0.08); // TODO: this must probably be larger on wider PSFs
         Point2d delta(-pn.x*len*e_adj, -pn.y*len*e_adj);
         
         if (ndiff(avg(c1,c2), c1).ddot(pn) > 0) {
@@ -231,7 +231,7 @@ class Mrectangle {
                 for (size_t k=0; k < 4; k++) {
                     Point2d v(centroids[k].x - points[i].x, centroids[k].y - points[i].y);
                     double dist = fabs(v.ddot(normals[k]));
-                    min_dist = std::min(min_dist, dist);
+                    min_dist = min(min_dist, dist);
                 }
                 if (min_dist > rect_il_thresh) {
                     outlier_count++;

@@ -275,7 +275,7 @@ int main(int argc, char** argv) {
     Gradient gradient(cvimg, false);
     
     printf("Thresholding image ...\n");
-    int brad_S = 2*std::min(cvimg.cols, cvimg.rows)/3;
+    int brad_S = 2*min(cvimg.cols, cvimg.rows)/3;
     double brad_threshold = tc_thresh.getValue();
     bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
     

@@ -41,9 +41,9 @@ class Focus_surface  {
     
         double miny = 1e50;
         for (size_t i=0; i < data.size(); i++) {
-            maxx = std::max(fabs(data[i].p.x), maxx);
-            maxy = std::max(fabs(data[i].p.y), maxy);
-            miny = std::min(fabs(data[i].p.y), miny);
+            maxx = max(fabs(data[i].p.x), maxx);
+            maxy = max(fabs(data[i].p.y), maxy);
+            miny = min(fabs(data[i].p.y), miny);
         }
         
         printf("chart extents: y:(%lf, %lf) mm, x:(%lf) mm\n", miny, maxy, maxx);
@@ -64,7 +64,7 @@ class Focus_surface  {
         vector<Sample> peak_pts;
         // |15 to 110| in steps of 2.5, width=5 ??
         for (int s=-1; s <= 1; s+=2) {
-            //for (double d=std::max(10.0, 1.2*miny*cscale); d <= 0.95*maxy*cscale; d += 1.0) {
+            //for (double d=max(10.0, 1.2*miny*cscale); d <= 0.95*maxy*cscale; d += 1.0) {
             for (double d=10.0; d <= 0.9*maxy; d += 2.0) {
                 double midy = s*d;
                 
@@ -187,7 +187,7 @@ class Focus_surface  {
             for (size_t i=0; i < peak_pts.size(); i++) {
                 double y = cf.rpeval(sol, peak_pts[i].x*cf.xsf) / cf.ysf;
                 double e = fabs(y - peak_pts[i].y);
-                peak_pts[i].yweight = iweights[i] / std::max(0.0001, e);
+                peak_pts[i].yweight = iweights[i] / max(0.0001, e);
                 
                 if (iter > 3 && e > 20) {
                     printf("outlier at %lf mm, suppressing\n", e);
@@ -266,8 +266,8 @@ class Focus_surface  {
         double curve_min = 1e50;
         double curve_max = -1e50;
         for (size_t i=0; i < dummy_data.size(); i++) {
-            curve_min = std::min(curve_min, dummy_data[i].x);
-            curve_max = std::max(curve_max, dummy_data[i].x);
+            curve_min = min(curve_min, dummy_data[i].x);
+            curve_max = max(curve_max, dummy_data[i].x);
         }
         FILE* profile = fopen("nprofile.txt", "wt");
         double curve_peak = best_fit.peak(best_sol);
@@ -289,8 +289,8 @@ class Focus_surface  {
             double xsf=0;
             double ysf=0;
             for (size_t i=0; i < pts_row.size(); i++) {
-                xsf = std::max(xsf, fabs(pts_row[i].x));
-                ysf = std::max(ysf, fabs(pts_row[i].y));
+                xsf = max(xsf, fabs(pts_row[i].x));
+                ysf = max(ysf, fabs(pts_row[i].y));
             }
             cf.xsf = xsf = 1.0/xsf;
             cf.ysf = ysf = 1.0/ysf;
