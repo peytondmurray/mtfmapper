@@ -67,11 +67,11 @@ class Distance_scale {
     : chart_scale(1.0), largest_block_index(-1), focal_length(10000), fiducials_found(false) {
     }
     
-    void construct(Mtf_core& mtf_core, bool pose_based=false) {
+    void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL) {
     
         int zcount = 0;
         
-        for (size_t i=0; i < mtf_core.ellipses.size() - 1; i++) {
+        for (size_t i=0; i < std::max(0, int(mtf_core.ellipses.size()) - 1); i++) {
             Ellipse_detector& e = mtf_core.ellipses[i];
             for (size_t j=i+1; j < mtf_core.ellipses.size(); j++) {
                 Ellipse_detector& f = mtf_core.ellipses[j];
@@ -146,9 +146,17 @@ class Distance_scale {
                     }    
                 }
                 
-                
-                prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
-                img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
+                if (dimension_correction) {
+                    // principal point relative to original uncropped image
+                    prin = Point2d(dimension_correction->width/2.0 - dimension_correction->x, 
+                        dimension_correction->height/2.0 - dimension_correction->y
+                    );
+                    // image dimensions of uncropped image should be used
+                    img_scale = max(dimension_correction->height, dimension_correction->width);
+                } else {
+                    prin = Point2d(mtf_core.img.cols/2.0, mtf_core.img.rows/2.0);
+                    img_scale = std::max(mtf_core.img.rows, mtf_core.img.cols);
+                }
                 
                 vector<Eigen::Vector2d> ba_img_points;
                 vector<Eigen::Vector3d> ba_world_points;

@@ -39,51 +39,37 @@ class Autocropper {
     Autocropper(cv::Mat& in_img) {
         const int border = 150;
         
-        vector<double> grad_rs(in_img.rows, 0);
-        vector<double> grad_cs(in_img.cols, 0);
-        for (int r=0; r < in_img.rows-1; r++) {
-            for (int c=0; c < in_img.cols-1; c++) {
-                double dx = (in_img.at<uint16_t>(r, c+1) - in_img.at<uint16_t>(r, c)) / 65536.0;
-                double dy = (in_img.at<uint16_t>(r+1, c) - in_img.at<uint16_t>(r, c)) / 65536.0;
-                double mag = sqrt(dx*dx + dy*dy);
-                grad_rs[r] += mag;
-                grad_cs[c] += mag;
+        vector<double> int_rs(in_img.rows, 0);
+        vector<double> int_cs(in_img.cols, 0);
+        for (int r=4; r < in_img.rows-4; r++) {
+            for (int c=4; c < in_img.cols-4; c++) {
+                int_rs[r] += in_img.at<uint16_t>(r, c) / 65536.0;
+                int_cs[c] += in_img.at<uint16_t>(r, c) / 65536.0;
             }
         }
-        double ot1 = otsu_threshold(grad_rs);
         
-        int upper = 0;
-        int lower = grad_rs.size();
-        for (int r=0; r < (int)grad_rs.size(); r++) {
-            if (grad_rs[r] > ot1 && r > upper) {
-                upper = r;
-            }
-            int complement = grad_rs.size() - 1 - r;
-            if (grad_rs[r] > ot1 && complement < lower) {
-                lower = complement;
-            }
-        }
-        rstart = std::max(0, lower - border);
-        height = (std::min(int(grad_rs.size()-1), upper + border) - rstart);
+        cv::Point_<int> bounds = otsu_bounds(int_rs, border);
+        rstart = bounds.x;
+        height = bounds.y;
         
-        double ot2 = otsu_threshold(grad_cs);
+        bounds = otsu_bounds(int_cs, border);
+        cstart = bounds.x;
+        width  = bounds.y;
         
-        upper = 0;
-        lower = grad_cs.size();
-        for (int c=0; c < (int)grad_cs.size(); c++) {
-            if (grad_cs[c] > ot2 && c > upper) {
-                upper = c;
-            }
-            int complement = grad_cs.size() - 1 - c;
-            if (grad_cs[c] > ot2 && complement < lower) {
-                lower = complement;
-            }
-        }
-        cstart = std::max(0, lower - border);
-        width = (std::min(int(grad_cs.size()-1), upper + border) - cstart);
+        printf("start r/c: [%d %d], w/h: [%d %d]\n", rstart, cstart, height, width);
     }
     
-    cv::Mat subset(const cv::Mat& X) {
+    cv::Mat subset(const cv::Mat& X, cv::Rect* dimensions=NULL) {
+        
+        if (dimensions) {
+            // what to add to cropped image coordinates to obtain original coordinates
+            dimensions->x = cstart;
+            dimensions->y = rstart;
+            // original width and height
+            dimensions->width = X.cols;
+            dimensions->height = X.rows;
+        }
+        
         cv::Mat Y;
         X(cv::Rect(cstart, rstart, width, height)).copyTo(Y);
         return Y;
@@ -132,6 +118,34 @@ class Autocropper {
             }
         }
         return ((thresh1 + thresh2) * 0.5) / binscale;
+    }
+    
+    cv::Point_<int> otsu_bounds(const vector<double>& data, const int border) {
+        
+        // try the same with intensity
+        double otsu = otsu_threshold(data);
+        
+        int upper = 0;
+        int lower = data.size();
+        
+        for (int i=0; i < (int)data.size(); i++) {
+            if (data[i] > otsu && i > upper) {
+                upper = i;
+            }
+            int complement = data.size() - 1 - i;
+            if (data[i] > otsu && complement < lower) {
+                lower = complement;
+            }
+        }
+        
+        int even_start = lower - border;
+        even_start += even_start % 2;
+        even_start  = std::max(0, even_start);
+        int even_end = std::min(int(data.size()-1), upper + border);
+        even_end -= even_end % 2;
+        int ewidth = (even_end - even_start);
+        
+        return cv::Point_<int>(even_start, ewidth);
     }
     
     int rstart;
