@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <list>
 #include <map>
 #include <cmath>
+#include <algorithm>
 
 using std::vector;
 using std::pair;

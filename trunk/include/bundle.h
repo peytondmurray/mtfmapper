@@ -38,8 +38,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Bundle_adjuster {
   public:
     Bundle_adjuster(
-        vector<Eigen::Vector2d>& img_points,
-        vector<Eigen::Vector3d>& world_points,
+        vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& img_points,
+        vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> >& world_points,
         Eigen::Vector3d& t,
         cv::Mat in_rod_angles,
         double distortion,
@@ -248,8 +248,10 @@ class Bundle_adjuster {
         return nelder_mead_failed;
     }
     
-    vector<Eigen::Vector2d>& img_points;
-    vector<Eigen::Vector3d>& world_points;
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    const vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& img_points;
+    const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> >& world_points;
     cv::Mat rot_mat;
     cv::Mat rod_angles;
     Eigen::VectorXd best_sol;

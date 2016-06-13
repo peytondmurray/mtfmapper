@@ -35,6 +35,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "fiducial_positions.h"
 #include "five_point_focal_length_radial_distortion.h"
+#include <Eigen/StdVector>
 
 #include "bundle.h"
 
@@ -158,8 +159,8 @@ class Distance_scale {
                     img_scale = max(mtf_core.img.rows, mtf_core.img.cols);
                 }
                 
-                vector<Eigen::Vector2d> ba_img_points;
-                vector<Eigen::Vector3d> ba_world_points;
+                vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > ba_img_points;
+                vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > ba_world_points;
                 for (const auto& e: mtf_core.ellipses) {
                     if (!e.valid) continue;
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
@@ -170,8 +171,8 @@ class Distance_scale {
                         }
                     }
                     
-                    ba_img_points.push_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
-                    ba_world_points.push_back(
+                    ba_img_points.emplace_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
+                    ba_world_points.emplace_back(
                         Eigen::Vector3d(
                             main_fiducials[main_idx].rcoords.y, 
                             main_fiducials[main_idx].rcoords.x, 
@@ -180,7 +181,7 @@ class Distance_scale {
                     );
                 }
                 
-                vector<Eigen::Matrix<double, 3, 4> > projection_matrices;
+                vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  > projection_matrices;
                 vector<vector<double> > radial_distortions;
                 cv::Mat rot_matrix = cv::Mat(3, 3, CV_64FC1);
                 cv::Mat rod_angles = cv::Mat(3, 1, CV_64FC1);
@@ -202,8 +203,8 @@ class Distance_scale {
                 };
                 
                 vector<Cal_solution> solutions;
-                vector<Eigen::Vector2d> feature_points(5);
-                vector<Eigen::Vector3d> world_points(5);
+                vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > feature_points(5);
+                vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > world_points(5);
                 
                 enumerate_combinations(ba_img_points.size(), 5);
                 
@@ -386,8 +387,8 @@ class Distance_scale {
                 cv::Rodrigues(rot_matrix, rod_angles);
                 
                 
-                vector<Eigen::Vector2d> inlier_feature_points(inliers.size());
-                vector<Eigen::Vector3d> inlier_world_points(inliers.size());
+                vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > inlier_feature_points(inliers.size());
+                vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > inlier_world_points(inliers.size());
                 
                 // prepate rotation matrix and 
                 Eigen::Matrix3d RMM(RM);
@@ -655,7 +656,8 @@ class Distance_scale {
         return Point2d(bp[0], bp[1]); 
     }
     
-    
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     Point2d zero;
     Point2d transverse;
     Point2d longitudinal;
