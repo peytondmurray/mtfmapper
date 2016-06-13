@@ -120,7 +120,7 @@ class Distance_scale {
                     }
                     by_code[e.code] = &e;
                 }
-                max_fiducial_diameter = std::max(e.major_axis*0.5, max_fiducial_diameter);
+                max_fiducial_diameter = std::max(e.major_axis, max_fiducial_diameter);
             }
             
             printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
@@ -299,7 +299,7 @@ class Distance_scale {
                                 } 
                             }
                             
-                            if (inliers.size() < 5) continue; // do not waste time on outlier-dominated solutions
+                            if (inliers.size() < 4) continue; // do not waste time on outlier-dominated solutions
                             
                             sort(residuals.begin(), residuals.end());
                             double bpr = 0;
@@ -334,6 +334,12 @@ class Distance_scale {
                     radial_distortions.clear();
                 }
                 combinations.clear(); // discard the combinations
+                
+                if (solutions.size() == 0) {
+                    printf("Error: Solutions to camera calibration found. Aborting\n");
+                    fiducials_found = false;
+                    return;
+                }
                 
                 printf("Retained %lu promising solutions\n", solutions.size());
                 for (auto s: solutions) {
