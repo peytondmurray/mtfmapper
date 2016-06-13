@@ -37,6 +37,8 @@ using std::vector;
 using std::pair;
 using std::list;
 using std::map;
+using std::max;
+using std::min;
 
 #include <iostream>
 #include <string>

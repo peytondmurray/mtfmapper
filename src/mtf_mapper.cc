@@ -256,9 +256,11 @@ int main(int argc, char** argv) {
 
     cv::Mat masked_img;
     
+    cv::Rect img_dimension_correction(0,0, cvimg.cols, cvimg.rows);
+    
     if (tc_autocrop.getValue()) {
         Autocropper ac(cvimg);
-        cvimg = ac.subset(cvimg);
+        cvimg = ac.subset(cvimg, &img_dimension_correction);
     }
     
     cv::Mat rawimg = cvimg;
@@ -281,45 +283,6 @@ int main(int argc, char** argv) {
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 8000);
 
-    #if 0
-    // blank out the largest block
-    cv::Mat outimg = cvimg.clone();
-    Boundarylist bl = cl.get_boundaries();
-    for (Boundarylist::const_iterator it=bl.begin(); it != bl.end(); it++) {
-        if (it->second.size() > 3000) {
-            Point2d cent = centroid(it->second);
-            printf("found a big one: %d (%lf,%lf)\n", (int)it->second.size(), cent.x, cent.y); 
-
-            map<int, scanline> scanset;
-            for (size_t i=0; i < it->second.size(); i++) {
-                Point2d p = it->second[i];
-                int iy = lrint(p.y);
-                int ix = lrint(p.x);
-                if (iy > 0 && iy < cvimg.rows && ix > 0 && ix < cvimg.cols) {
-                    map<int, scanline>::iterator it2 = scanset.find(iy);
-                    if (it2 == scanset.end()) {
-                        scanline sl(ix,ix);
-                        scanset.insert(make_pair(iy, sl));
-                    }
-                    if (ix < scanset[iy].start) {
-                        scanset[iy].start = ix;
-                    }
-                    if (ix > scanset[iy].end) {
-                        scanset[iy].end = ix;
-                    }
-                }
-            }
-            for (map<int,scanline>::const_iterator it3=scanset.begin(); it3 != scanset.end(); it3++) {
-                printf("line %d, from %d to %d\n", it3->first, scanset[it3->first].start, scanset[it3->first].end);
-                for (int col=scanset[it3->first].start+1; col < scanset[it3->first].end; col++) {
-                    outimg.at<uint16_t>(it3->first, col) = 0;
-                }
-            }
-        }
-    }
-    imwrite(string("out.tiff"), outimg);
-    #endif
-    
     if (cl.get_boundaries().size() == 0) {
         printf("No black objects found. Try a lower threshold value with the -t option.\n");
         return 0;
@@ -350,7 +313,7 @@ int main(int argc, char** argv) {
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_sliding.getValue()) {
-        distance_scale.construct(mtf_core, true);
+        distance_scale.construct(mtf_core, true, &img_dimension_correction);
     }
     
     // now render the computed MTF values
