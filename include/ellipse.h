@@ -54,6 +54,8 @@ class Ellipse_detector {
     void _dilate_outer_only(set<iPoint>& s, int width, int height);
     void _correct_eccentricity(double major_scale, double bp_x, double bp_y);
 
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     double centroid_x;
     double centroid_y;
     double major_axis;

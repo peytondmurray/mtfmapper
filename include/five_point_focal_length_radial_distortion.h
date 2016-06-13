@@ -37,6 +37,7 @@
 
 #include <Eigen/Core>
 #include <vector>
+#include <Eigen/StdVector>
 
 namespace theia {
 
@@ -63,10 +64,10 @@ namespace theia {
 // Output: true if success, false if not.
 
 bool FivePointFocalLengthRadialDistortion(
-    const std::vector<Eigen::Vector2d>& feature_positions,
-    const std::vector<Eigen::Vector3d>& world_points,
+    const std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& feature_positions,
+    const std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> >& world_points,
     const int num_radial_distortion_params,
-    std::vector<Eigen::Matrix<double, 3, 4> >* projection_matrices,
+    std::vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  >* projection_matrices,
     std::vector<std::vector<double> >* radial_distortions);
 
 

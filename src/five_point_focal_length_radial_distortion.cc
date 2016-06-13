@@ -182,10 +182,10 @@ void SetupAndSolveSylvesterMatrix(const Matrix<double, 8, 3>& n,
 }
 
 bool FivePointFocalLengthRadialDistortion(
-    const std::vector<Vector2d>& feature_vectors,
-    const std::vector<Vector3d>& world_points,
+    const std::vector<Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& feature_vectors,
+    const std::vector<Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> >& world_points,
     const int num_radial_distortion_params,
-    std::vector<Matrix<double, 3, 4> >* projection_matrices,
+    std::vector<Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  >* projection_matrices,
     std::vector<std::vector<double> >* radial_distortions) {
   
   /*  
