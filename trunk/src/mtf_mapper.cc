@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
     TCLAP::SwitchArg tc_autocrop("","autocrop","Automatically crop image to the chart area", cmd, false);
-    TCLAP::SwitchArg tc_sliding("","sliding","Compute MTF in sliding windows along edges", cmd, false);
+    TCLAP::SwitchArg tc_focus("","focus","Compute focus depth using special 'focus' type chart", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1)", false, 0.75, "threshold", cmd);
@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
     }
-    if (tc_sliding.isSet() || tc_mf_profile.getValue()) {
+    if (tc_focus.isSet() || tc_mf_profile.getValue()) {
         mtf_core.set_sliding(true);
         if (tc_mf_profile.getValue()) {
             mtf_core.set_samples_per_edge(5);
@@ -312,7 +312,7 @@ int main(int argc, char** argv) {
     //ca(blocked_range<size_t>(size_t(0), mtf_core.num_objects()));
     
     Distance_scale distance_scale;
-    if (tc_mf_profile.getValue() || tc_sliding.getValue()) {
+    if (tc_mf_profile.getValue() || tc_focus.getValue()) {
         distance_scale.construct(mtf_core, true, &img_dimension_correction);
     }
     
@@ -454,7 +454,7 @@ int main(int argc, char** argv) {
         esf_writer.render(mtf_core.get_blocks());
     }
     
-    if (tc_sliding.getValue()) {
+    if (tc_focus.getValue()) {
         Mtf_renderer_focus profile(
             distance_scale,
             wdir, 
@@ -467,7 +467,7 @@ int main(int argc, char** argv) {
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);
-    if (tc_sliding.getValue() || tc_mf_profile.getValue()) {
+    if (tc_focus.getValue() || tc_mf_profile.getValue()) {
         stats.render(mtf_core.get_samples());
     } else {
         stats.render(mtf_core.get_blocks());
