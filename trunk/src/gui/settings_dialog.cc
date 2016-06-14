@@ -39,6 +39,7 @@ const QString setting_threshold = "setting_threshold";
 const QString setting_threshold_default = "0.75";
 const QString setting_pixsize = "setting_pixelsize";
 const QString setting_pixsize_default = "4.78";
+const QString setting_bayer = "setting_bayer";
 const QString setting_linear_gamma = "setting_gamma";
 const Qt::CheckState setting_linear_gamma_default = Qt::Unchecked;
 const QString setting_annotation = "setting_annotation";
@@ -47,6 +48,10 @@ const QString setting_profile = "setting_profile";
 const Qt::CheckState setting_profile_default = Qt::Checked;
 const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
+const QString setting_focus = "setting_focus";
+const Qt::CheckState setting_focus_default = Qt::Unchecked;
+const QString setting_autocrop = "setting_autocrop";
+const Qt::CheckState setting_autocrop_default = Qt::Unchecked;
 const QString setting_lpmm = "setting_lpmm";
 const Qt::CheckState setting_lpmm_default = Qt::Unchecked;
 const QString setting_gnuplot = "setting_gnuplot";
@@ -93,7 +98,14 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_annotation   = new QCheckBox("Annotation");
     cb_profile      = new QCheckBox("Profile");
     cb_grid         = new QCheckBox("Grid");
+    cb_focus        = new QCheckBox("Focus");
+    cb_autocrop     = new QCheckBox("Autocrop");
     cb_lpmm         = new QCheckBox("Line pairs/mm units");
+    
+    rb_colour_none  = new QRadioButton("none");
+    rb_colour_red   = new QRadioButton("red");
+    rb_colour_green = new QRadioButton("green");
+    rb_colour_blue  = new QRadioButton("blue");
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
@@ -109,9 +121,22 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_grid->setCheckState(
         (Qt::CheckState)settings.value(setting_grid, setting_grid_default).toInt()
     );
+    cb_focus->setCheckState(
+        (Qt::CheckState)settings.value(setting_focus, setting_focus_default).toInt()
+    );
+    cb_autocrop->setCheckState(
+        (Qt::CheckState)settings.value(setting_autocrop, setting_autocrop_default).toInt()
+    );
     cb_lpmm->setCheckState(
         (Qt::CheckState)settings.value(setting_lpmm, setting_lpmm_default).toInt()
     );
+    
+    switch(settings.value(setting_bayer, 0).toInt()) {
+        case 0: rb_colour_none->setChecked(true); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(false); break;
+        case 1: rb_colour_none->setChecked(false); rb_colour_red->setChecked(true); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(false); break;
+        case 2: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(true); rb_colour_blue->setChecked(false); break;
+        case 3: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(true); break;
+    }
 
     #ifdef _WIN32
     setting_gnuplot_default = QCoreApplication::applicationDirPath() + QString("/gnuplot/gnuplot.exe");
@@ -129,8 +154,18 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_annotation);
     cb_layout->addWidget(cb_profile);
     cb_layout->addWidget(cb_grid);
+    cb_layout->addWidget(cb_focus);
+    cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
     v2GroupBox->setLayout(cb_layout);
+    
+    QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"));
+    QVBoxLayout *rb_layout = new QVBoxLayout;
+    rb_layout->addWidget(rb_colour_none);
+    rb_layout->addWidget(rb_colour_red);
+    rb_layout->addWidget(rb_colour_green);
+    rb_layout->addWidget(rb_colour_blue);
+    v4GroupBox->setLayout(rb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"));
     QGridLayout *helper_layout = new QGridLayout;
@@ -159,10 +194,11 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     QGroupBox* vGroupBox = new QGroupBox(tr("Settings"));
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(v2GroupBox, 0, 0, 1, 2);
-    vlayout->addWidget(v3GroupBox, 1, 0, 1, 2);
-    vlayout->addWidget(advanced, 2, 0, 1, 2);
-    vlayout->addWidget(accept_button, 3, 0);
-    vlayout->addWidget(cancel_button, 3, 1);
+    vlayout->addWidget(v4GroupBox, 1, 0, 1, 2);
+    vlayout->addWidget(v3GroupBox, 2, 0, 1, 2);
+    vlayout->addWidget(advanced, 3, 0, 1, 2);
+    vlayout->addWidget(accept_button, 4, 0);
+    vlayout->addWidget(cancel_button, 4, 1);
     vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
@@ -196,9 +232,27 @@ void Settings_dialog::send_argument_string(void) {
     if (cb_grid->checkState()) {
         args = args + QString(" -s");
     }
+    
+    if (cb_focus->checkState()) {
+        args = args + QString(" --focus");
+    }
+    
+    if (cb_autocrop->checkState()) {
+        args = args + QString(" --autocrop");
+    }
 
     if (cb_lpmm->checkState()) {
         args = args + QString(" --pixelsize " + pixsize_line->text());
+    }
+    
+    if (rb_colour_red->isChecked()) {
+        args = args + QString(" --bayer red");
+    }
+    if (rb_colour_green->isChecked()) {
+        args = args + QString(" --bayer green");
+    }
+    if (rb_colour_blue->isChecked()) {
+        args = args + QString(" --bayer blue");
     }
     
     emit argument_string(args);
@@ -214,9 +268,25 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_profile, cb_profile->checkState());
     settings.setValue(setting_lpmm, cb_lpmm->checkState());
     settings.setValue(setting_grid, cb_grid->checkState());
+    settings.setValue(setting_focus, cb_focus->checkState());
+    settings.setValue(setting_autocrop, cb_autocrop->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());
+    
+    if (rb_colour_none->isChecked()) {
+        settings.setValue(setting_bayer, 0);
+    }
+    if (rb_colour_red->isChecked()) {
+        settings.setValue(setting_bayer, 1);
+    }
+    if (rb_colour_green->isChecked()) {
+        printf("saving green bayer\n");
+        settings.setValue(setting_bayer, 2 );
+    }
+    if (rb_colour_blue->isChecked()) {
+        settings.setValue(setting_bayer, 3);
+    }
     
     send_argument_string();
     

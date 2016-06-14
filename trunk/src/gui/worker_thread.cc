@@ -65,24 +65,41 @@ void Worker_thread::run(void) {
         if ( fi.suffix().compare(QString("NEF"), Qt::CaseInsensitive) == 0 ||  // Nikon
              fi.suffix().compare(QString("ARW"), Qt::CaseInsensitive) == 0 ||  // Sony
              fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
-             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0 ) { // Canon
+             fi.suffix().compare(QString("IIQ"), Qt::CaseInsensitive) == 0 ||  // Phase One
+             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
             tempdir.toLocal8Bit().constData();
             input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
-
-            #ifdef _WIN32
-            sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
-                dcraw_binary.toLocal8Bit().constData(),
-                input_files.at(i).toLocal8Bit().constData(),
-                input_file.toLocal8Bit().constData()
-            );
-            #else
-            sprintf(buffer, "\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"", 
-                dcraw_binary.toLocal8Bit().constData(),
-                input_files.at(i).toLocal8Bit().constData(),
-                input_file.toLocal8Bit().constData()
-            );
-            #endif
+            
+            if (arguments.contains(QString("--bayer"))) {
+                #ifdef _WIN32
+                sprintf(buffer, "\"\"%s\" -4 -T -D -c \"%s\" > \"%s\"\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #else
+                sprintf(buffer, "\"%s\"  -4 -T -D -c \"%s\" > \"%s\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #endif
+            } else {
+                #ifdef _WIN32
+                sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #else
+                sprintf(buffer, "\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #endif
+            }
 
             int dc_rval = system(buffer);
             if (dc_rval < 0) {
@@ -151,6 +168,13 @@ void Worker_thread::run(void) {
             if (QFile().exists(gs_file)) {
                 emit send_child_item(QString("grid3d"), gs_file);
                 emit send_delete_item(gs_file);
+            }
+            QString fp_file = QString("%1/focus_peak.png").arg(tempdir);
+            if (QFile().exists(fp_file)) {
+                emit send_child_item(QString("focus"), fp_file);
+                emit send_delete_item(fp_file);
+                emit send_delete_item(tempdir + QString("/profile_curve.txt"));
+                emit send_delete_item(tempdir + QString("/profile_points.txt"));
             }
             emit send_close_item();
         }
