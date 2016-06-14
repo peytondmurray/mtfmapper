@@ -35,6 +35,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QCheckBox;
+class QRadioButton;
 
 class Settings_dialog : public QDialog 
 {
@@ -65,7 +66,14 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_annotation;
     QCheckBox*  cb_profile;
     QCheckBox*  cb_grid;
+    QCheckBox*  cb_focus;
+    QCheckBox*  cb_autocrop;
     QCheckBox*  cb_lpmm;
+    
+    QRadioButton* rb_colour_none;
+    QRadioButton* rb_colour_red;
+    QRadioButton* rb_colour_green;
+    QRadioButton* rb_colour_blue;
 
     QLabel*     gnuplot_label;
     QLineEdit*  gnuplot_line;

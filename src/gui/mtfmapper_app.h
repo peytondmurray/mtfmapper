@@ -38,6 +38,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "exiv2_property.h"
 #include "about_dialog.h"
 #include "help_dialog.h"
+#include "imgviewer.h"
 
 class QPushButton;
 class QLabel;
@@ -118,6 +119,7 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_profile;
     QCheckBox*      tb_img_gridimg;
     QCheckBox*      tb_img_gridsurf;
+    QCheckBox*      tb_img_focus;
     
     QProgressBar*   progress;
     QPushButton*    abort_button;
@@ -139,6 +141,7 @@ class mtfmapper_app : public QMainWindow
     void img_profile_toggled(void);
     void img_gridimg_toggled(void);
     void img_gridsurf_toggled(void);
+    void img_focus_toggled(void);
   
     void zoom_in(void);
     void zoom_out(void);  
