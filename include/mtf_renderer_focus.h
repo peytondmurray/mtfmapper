@@ -86,7 +86,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         double min_pix_long = 1e50;
         double max_pix_long = -1e50;
         for (size_t i=0; i < samples.size(); i++) {
-            if (samples[i].quality > poor_quality) {
+            if (samples[i].quality > very_poor_quality) {
                 Point2d d = samples[i].p - zero;
                 Point2d coord(
                     d.x*longitudinal.x + d.y*longitudinal.y,
