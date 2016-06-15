@@ -99,10 +99,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     
     Block block(rrect);
 
-    if (block.get_area() > 225) {
-        tbb::mutex::scoped_lock lock(global_mutex);
-        shared_blocks_map[label] = block;
-    } else {
+    if (block.get_area() <= 225) {
         return;
     }
     
@@ -286,6 +283,9 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
             tbb::mutex::scoped_lock lock(global_mutex);
+            if (shared_blocks_map.find(label) == shared_blocks_map.end()) {
+                shared_blocks_map[label] = block;
+            }
             shared_blocks_map[label].set_mtf50_value(k, mtf50, quality);
             shared_blocks_map[label].set_normal(k, Point2d(cos(edge_record[k].angle), sin(edge_record[k].angle)));
             shared_blocks_map[label].set_sfr(k, sfr);
@@ -294,7 +294,10 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     }
     if (allzero) {
         tbb::mutex::scoped_lock lock(global_mutex);
-        shared_blocks_map[label].valid = false;
+        auto it = shared_blocks_map.find(label);
+        if (it != shared_blocks_map.end()) {
+            shared_blocks_map.erase(it);
+        }
     }
 }
 

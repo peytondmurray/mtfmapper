@@ -142,10 +142,15 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fclose(fraw);
         */
         
+        double lower_limit = 5;
+        double upper_limit = -5;
+        
         fprintf(fout, "#sagittal curve\n");
         for (size_t i=0; i < s_fitted[0].size(); i++) {
             for (size_t j=0; j < resolution.size(); j++) {
                 fprintf(fout, "%lf %lf ", scale*s_fitted[j][i].first, s_fitted[j][i].second);
+                lower_limit = min(lower_limit, s_fitted[j][i].second);
+                upper_limit = max(upper_limit, s_fitted[j][i].second);
             }
             fprintf(fout, "\n");
         }
@@ -154,6 +159,8 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         for (size_t i=0; i < m_fitted[0].size(); i++) {
             for (size_t j=0; j < resolution.size(); j++) {
                 fprintf(fout, "%lf %lf ", scale*m_fitted[j][i].first, m_fitted[j][i].second);
+                lower_limit = min(lower_limit, m_fitted[j][i].second);
+                upper_limit = max(upper_limit, m_fitted[j][i].second);
             }
             fprintf(fout, "\n");
         }
@@ -163,6 +170,8 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         for (size_t i=0; i < s_spread[0].size(); i++) {
             for (size_t j=0; j < resolution.size(); j++) {
                 fprintf(fout, "%lf %lf ", scale*s_spread[j][i].first, s_spread[j][i].second);
+                lower_limit = min(lower_limit, s_spread[j][i].second);
+                upper_limit = max(upper_limit, s_spread[j][i].second);
             }
             fprintf(fout, "\n");
         }
@@ -171,6 +180,8 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         for (size_t i=0; i < m_spread[0].size(); i++) {
             for (size_t j=0; j < resolution.size(); j++) {
                 fprintf(fout, "%lf %lf ", scale*m_spread[j][i].first, m_spread[j][i].second);
+                lower_limit = min(lower_limit, m_spread[j][i].second);
+                upper_limit = max(upper_limit, m_spread[j][i].second);
             }
             fprintf(fout, "\n");
         }
@@ -206,7 +217,10 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             fprintf(gpf, "set title \"%s\" font \",14\"\n", img_filename.c_str());
         }
         
-        fprintf(gpf, "plot [][-0.05:1] ");
+        lower_limit = min(-0.05, lower_limit);
+        upper_limit = max(1.0, upper_limit);
+        
+        fprintf(gpf, "plot [][%.3lf:%.3lf] ", lower_limit, upper_limit);
         for (size_t j=0; j < resolution.size(); j++) {
             double res = lpmm_mode ? resolution[j]*pixel_size : resolution[j] ;
             fprintf(gpf,   
