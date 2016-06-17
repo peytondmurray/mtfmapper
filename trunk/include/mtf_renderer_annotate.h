@@ -66,60 +66,36 @@ class Mtf_renderer_annotate : public Mtf_renderer {
     
     void write_number(cv::Mat& img, int px, int py, double val, double quality) {
         char buffer[10];
-        sprintf(buffer, "%.2lf", val);
+        
+        if (val < 1) {
+            sprintf(buffer, "%.2lf", val);
+        } else {
+            sprintf(buffer, "N/A");
+        }
         
         int baseline = 0;
         
         cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+        cv::Point to(-ts.width/2,  ts.height/2);
+        to.x += px;
+        to.y += py;
         
-        ts.width -= 8;  // tweak box size slightly
-        ts.height += 6; // tweak box height slighly
-        
-        cv::Point2d to( px - ts.width/2, py + ts.height/2 );
-        
-        cv::rectangle(img, 
-            cv::Point2d( px - ts.width, py - ts.height), 
-            cv::Point2d( px + ts.width, py + ts.height),
-            CV_RGB(0,0,0), CV_FILLED
-        );
-        
-        cv::rectangle(img, 
-            cv::Point2d( px - ts.width + 1, py - ts.height + 1), 
-            cv::Point2d( px + ts.width - 1, py + ts.height - 1 ),
-            CV_RGB(255,255,255), 1
-        );
-        
-        to.y -= 9;
         cv::putText(img, buffer, to, 
             cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-            CV_RGB(255, 255, 255), 1, 8
+            CV_RGB(20, 20, 20), 2.5, CV_AA
         );
         
-        sprintf(buffer, "(%.2lf)", quality);
-        ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.3, 1, &baseline);
-        to.x = px - ts.width/2;
-        to.y += 8 + 3;
-        
-        cv::Scalar col = CV_RGB(255, 0, 0);
-        if (quality == 1.0) {
-            col = CV_RGB(0, 255, 0);
-        }
-        if (quality < 1.0) {
-            col = CV_RGB(8, 202, 255);
-        }
+        cv::Scalar col = CV_RGB(0, 255, 255);
         if (quality < 0.8) {
             col = CV_RGB(255, 255, 0);
         }
-        if (quality < 0.5) {
-            col = CV_RGB(255, 187, 8);
-        } 
-        if (quality < 0.2) {
+        if (quality <= 0.2 || val == 1.0) {
             col = CV_RGB(255, 0, 0);
         }
         
         cv::putText(img, buffer, to, 
-            cv::FONT_HERSHEY_SIMPLEX, 0.3, 
-            col, 1, 8
+            cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+            col, 1, CV_AA
         );
         
     }

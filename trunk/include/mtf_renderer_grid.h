@@ -169,7 +169,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
         zmax *= 1.1;
 
         const int width_in_pixels = 600;
-        const int width_in_pixels_3d = 900;
         const int height_in_pixels_3d = 1200;
         FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
         if (img_filename.length() > 0) {

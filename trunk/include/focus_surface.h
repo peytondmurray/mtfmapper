@@ -52,7 +52,6 @@ class Focus_surface  {
         // to protect the (few) shared structures (like "peaks")
         
         double min_fit_err = 1e50;
-        double min_midy = maxy;
         VectorXd best_sol;
         vector<Sample> dummy_data;
         Ratpoly_fit best_fit(dummy_data, 5, 5);
@@ -137,7 +136,6 @@ class Focus_surface  {
                     min_fit_err = merr;
                 }
                 if (fabs(midy) < 20 && fabs(merr - min_fit_err)/merr < 1) {
-                    min_midy = midy;
                     best_sol = sol;
                     dummy_data = pts_row;
                     best_fit.order_n = cf.order_n;
