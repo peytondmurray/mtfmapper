@@ -72,7 +72,7 @@ class Distance_scale {
     
         int zcount = 0;
         
-        for (size_t i=0; i < max(0, int(mtf_core.ellipses.size()) - 1); i++) {
+        for (size_t i=0; i < (size_t)max(0, int(mtf_core.ellipses.size()) - 1); i++) {
             Ellipse_detector& e = mtf_core.ellipses[i];
             for (size_t j=i+1; j < mtf_core.ellipses.size(); j++) {
                 Ellipse_detector& f = mtf_core.ellipses[j];
@@ -333,7 +333,7 @@ class Distance_scale {
                                 global_bpr = bpr;
                                 P = projection_matrices[k];
                                 distortion = radial_distortions[k][0];
-                                printf("%lu[%d]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu\n", 
+                                printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu\n", 
                                     k, ri, rot_err, bpr, img_scale/w, inliers.size()
                                 );
                             }
