@@ -36,7 +36,7 @@ using std::cout;
 using std::endl;
 
 const QString setting_threshold = "setting_threshold";
-const QString setting_threshold_default = "0.75";
+const QString setting_threshold_default = "0.55";
 const QString setting_pixsize = "setting_pixelsize";
 const QString setting_pixsize_default = "4.78";
 const QString setting_bayer = "setting_bayer";
