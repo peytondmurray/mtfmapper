@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "svg_page.h"
 #include "include/mtf50_edge_quality_rating.h"
 #include <vector>
+#include <cmath>
 using std::vector;
 using std::pair;
 using std::make_pair;
@@ -143,7 +144,7 @@ class Svg_page_lensgrid : public Svg_page {
             double angles[4];
             for (int i=0; i < 4; i++) {
                 int next = (i + 1) % 4;
-                double angle = atan2(fabs(coords[i].y - coords[next].y), fabs(coords[i].x - coords[next].x));
+                double angle = atan2(fabs(double(coords[i].y - coords[next].y)), fabs(double(coords[i].x - coords[next].x)));
                 angle *= 180.0/M_PI;
                 if (angle > 45) {
                     angle = 90 - angle;
