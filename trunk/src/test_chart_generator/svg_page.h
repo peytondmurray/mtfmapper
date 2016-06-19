@@ -73,8 +73,8 @@ class Svg_page {
             height_mm = 1189;
         }
         
-        width  = width_mm * sscale;
-        height = height_mm * sscale;
+        width  = lrint(width_mm * sscale);
+        height = lrint(height_mm * sscale);
         
         fout = fopen(fname.c_str(), "wt");
         emit_header();
