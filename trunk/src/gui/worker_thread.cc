@@ -176,6 +176,12 @@ void Worker_thread::run(void) {
                 emit send_delete_item(tempdir + QString("/profile_curve.txt"));
                 emit send_delete_item(tempdir + QString("/profile_points.txt"));
             }
+            QString lp_file = QString("%1/lensprofile.png").arg(tempdir);
+            if (QFile().exists(lp_file)) {
+                emit send_child_item(QString("lensprofile"), lp_file);
+                emit send_delete_item(lp_file);
+                emit send_delete_item(tempdir + QString("/lensprofile.txt"));
+            }
             emit send_close_item();
         }
         delete [] buffer;
