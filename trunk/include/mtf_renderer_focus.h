@@ -70,12 +70,16 @@ class Mtf_renderer_focus : public Mtf_renderer {
     void render(const vector<Mtf_profile_sample>& samples, Bayer::bayer_t bayer = Bayer::NONE, vector<Ellipse_detector>* ellipses = NULL) {
         Point2d centroid(0,0);
         
-        if (samples.size() < 10) { // probably not a valid image for profiles
+        cv::Mat merged = gray_to_colour(img);
+        initial_rows = img.rows;
+        
+        if (samples.size() < 100) {
+            fail_with_message(merged, string("Insufficient targets detected"));
             return;
         }
         
         if (!distance_scale.fiducials_found) {
-            printf("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
+            fail_with_message(merged, string("Fiducials not found, probably incorrect chart type."));
             return;
         }
         
@@ -219,20 +223,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         double focus_peak = cf.peak(sol); // works on pre-stretched depth
         printf("focus_plane %lg\n", focus_peak);
         
-        cv::Mat channel(img.rows, img.cols, CV_8UC1);
-        double imin;
-        double imax;
-        cv::minMaxLoc(img, &imin, &imax);
-        img.convertTo(channel, CV_8U, 255.0/(imax - imin), 0);
         
-        vector<cv::Mat> channels;
-        channels.push_back(channel);
-        channels.push_back(channel);
-        channels.push_back(channel);
-        cv::Mat merged;
-        merge(channels, merged);
-        int initial_rows = merged.rows;
-        merged.resize(merged.rows + 100);
         
         if (ellipses) {
             for (auto e: *ellipses) {
@@ -350,13 +341,86 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
         
         
-        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin."
-            " Estimated chart distance=%.2lf mm. Bundle adjustment RMSE=%.3lf pixels", 
-            focus_peak, mc_p5, mc_p95, distance_scale.centre_depth, distance_scale.bundle_rmse
-        );
+        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin.",focus_peak, mc_p5, mc_p95);
+        int baseline = 0;
+        cv::Size ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*1.75), font, 1, cv::Scalar::all(0), 1, CV_AA);
         
-        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
-        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        sprintf(tbuffer, "Estimated chart distance=%.2lf mm.", distance_scale.centre_depth);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*2*1.75), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        cv::Scalar red(30, 30, 200);
+        cv::Scalar yellow(40, 187, 255);
+        cv::Scalar black(0, 0, 0);
+        cv::Scalar green(30, 200, 30);
+        
+        sprintf(tbuffer, "Bundle adjustment RMSE=%.3lf pixels (ideal < 1)", distance_scale.bundle_rmse);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*3*1.75), font, 1, black, 1, CV_AA);
+        ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
+        double col2 = ts.width + 150;
+        cv::Scalar rmse_col = green;
+        if (distance_scale.bundle_rmse < 1.5) {
+            if (distance_scale.bundle_rmse > 0.7) {
+                rmse_col = yellow;
+            }
+            checkmark(merged, Point2d(25, initial_rows + ts.height*3*1.75), rmse_col);
+        } else {
+            crossmark(merged, Point2d(35, initial_rows + ts.height*2.75*1.75), red);
+        }
+        
+        double rpy = initial_rows + ts.height*4*1.75;
+        double rpx = 50;
+        sprintf(tbuffer, "Chart z-angle=%.1lf degrees (ideal = 45)", distance_scale.get_normal_angle_z());
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+        
+        cv::Scalar zang_col = green;
+        if (fabs(distance_scale.get_normal_angle_z() - 45) < 10) {
+            if (fabs(distance_scale.get_normal_angle_z() - 45) > 5) {
+                zang_col = yellow;
+            }
+            checkmark(merged, Point2d(25, rpy), zang_col);
+        } else {
+            crossmark(merged, Point2d(35, rpy - 0.25*1.75*ts.height), red);
+        }
+        
+        rpy = initial_rows + ts.height*5*1.75;
+        sprintf(tbuffer, "Chart y-angle=%.1lf degrees (ideal = 90)", distance_scale.get_normal_angle_y());
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+        
+        cv::Scalar yang_col = green;
+        if (fabs(distance_scale.get_normal_angle_y() - 90) < 10) {
+            if (fabs(distance_scale.get_normal_angle_y() - 90) > 5) {
+                yang_col = yellow;
+            }
+            checkmark(merged, Point2d(25, rpy), yang_col);
+        } else {
+            crossmark(merged, Point2d(35, rpy - 0.25*1.75*ts.height), red);
+        }
+        
+        
+        double white_clip = 0;
+        exposure_checks(Point2d(180, 135), white_clip);
+        
+        rpx = col2;
+        rpy = initial_rows + ts.height*3*1.75;
+        sprintf(tbuffer, "Correct bright exposure score=%.1lf (ideal = 100)", 100 - white_clip);
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+        
+        cv::Scalar wc_col = green;
+        if (white_clip < 10) {
+            if (white_clip > 5) {
+                wc_col = yellow;
+            }
+            checkmark(merged, Point2d(rpx-25, rpy), wc_col);
+        } else {
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+        }
+        
+        rpy = initial_rows + ts.height*4*1.75;
+        sprintf(tbuffer, "Correct dark exposure score=%.1lf (ideal = 100)", 100 - white_clip);
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+        
+        
         
         imwrite(wdir + prname, merged);
         
@@ -472,12 +536,191 @@ class Mtf_renderer_focus : public Mtf_renderer {
         return sol;
     }
     
-    double softclamp(double x, double lower, double upper, double p=0.98) {
-        double s = (x - lower) / (upper - lower);
-        if (s > p) {
-            return 1.0/(1.0 + exp(-3.89182*s));
+    
+    cv::Mat gray_to_colour(const cv::Mat& g_img) {
+        cv::Mat channel(g_img.rows, g_img.cols, CV_8UC1);
+        double imin;
+        double imax;
+        cv::minMaxLoc(g_img, &imin, &imax);
+        g_img.convertTo(channel, CV_8U, 255.0/(imax - imin), 0);
+        
+        vector<cv::Mat> channels;
+        channels.push_back(channel);
+        channels.push_back(channel);
+        channels.push_back(channel);
+        cv::Mat merged;
+        merge(channels, merged);
+        merged.resize(merged.rows + 220);
+        
+        rectangle(merged, Point2d(0, g_img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+        
+        return merged;
+    }
+    
+    void fail_with_message(cv::Mat& merged, const string& s) {
+        Point2d cent(merged.cols/2, merged.rows/2);
+        double rad = min(merged.rows, merged.cols)/2.0 - 20;
+        cv::Scalar red(30, 30, 255);
+        
+        cv::circle(merged, cent, rad, red, 10, CV_AA);
+        Point2d dir(rad*sqrt(0.5)-2, rad*sqrt(0.5)-2);
+        cv::line(merged, cent - dir, cent + dir, red, 10, CV_AA);
+        
+        char tbuffer[1024];
+        int font = cv::FONT_HERSHEY_DUPLEX; 
+        sprintf(tbuffer, "%s", s.c_str());
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        imwrite(wdir + prname, merged);
+    }
+    
+    void checkmark(cv::Mat& img, const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point start(pos.x, pos.y);
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(45.0/180.0*M_PI);
+        tri[2].x = tri[1].x + 20*cos(-45.0/180.0*M_PI);
+        tri[2].y = tri[1].y + 20*sin(-45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 1*cos((180+45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 1*sin((180+45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(-45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(-45.0/180.0*M_PI);
+        tri[2].x = tri[1].x - 5*cos(45.0/180.0*M_PI);
+        tri[2].y = tri[1].y - 5*sin(45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 5*cos((180-45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 5*sin((180-45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+    }
+    
+    void crossmark(cv::Mat& img, const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point cent(pos.x, pos.y);
+        
+        Point2d dir(cos(M_PI/4), sin(M_PI/4));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        dir = Point2d(cos(M_PI/4+M_PI/2), sin(M_PI/4+M_PI/2));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+    }
+    
+    void exposure_checks(const Point2d& dims, double& white_clip) {
+        //double pointPolygonTest(InputArray contour, Point2f pt,
+        
+        
+        
+        vector<Point2d> corners { {-dims.x, -dims.y}, {dims.x, -dims.y}, {dims.x, dims.y}, {-dims.x, dims.y}};
+        vector<cv::Point> roi;
+        for (const auto& p: corners) {
+            Point2d v = distance_scale.world_to_image(p.x, p.y);
+            roi.push_back(cv::Point(v.x, v.y));
         }
-        return s < 0 ? 0 : s;
+        
+        cv::Mat mask(img.rows, img.cols, CV_8UC1, cv::Scalar::all(0));
+        cv::fillConvexPoly(mask, (const cv::Point*)roi.data(), roi.size(), cv::Scalar::all(255));
+        
+        // we could (in theory) mask out all the objects we used (ellipses and blocks)
+        // that should take care of most of the gradients?
+        
+        //imwrite(string("emask.png"), mask);
+        
+        cv::Rect bounds=cv::boundingRect(roi);
+        
+        bounds.x = max(0, bounds.x);
+        bounds.y = max(0, bounds.y);
+        bounds.width = min((img.cols - 1 - bounds.x), bounds.width);
+        bounds.height = min((img.rows - 1 - bounds.y), bounds.height);
+        
+        cv::Mat masked;
+        img.copyTo(masked, mask);
+        //imwrite(string("clipped.png"), masked);
+        
+        // calculate histogram
+        vector<uint32_t> histo(65536 + 1, 0);
+        for (int row=bounds.y; row < (bounds.y + bounds.height); row++) {
+            for (int col=bounds.x; col < (bounds.x + bounds.width); col++) {
+                if (row >= img.rows || col >= img.cols) {
+                    printf("error: r=%d, c=%d\n", row, col);
+                }
+                int val = masked.at<uint16_t>(row, col);
+                if (val > 0) {
+                    histo[val]++;
+                }
+            }
+        }
+        int last_nz = histo.size()-1;
+        while (last_nz > 0 && histo[last_nz] == 0) last_nz--;
+        FILE* hfile = fopen("histo.txt", "wt");
+        for (size_t j=0; j <= size_t(last_nz); j++) {
+            if (histo[j] > 0) {
+                fprintf(hfile, "%lu %u\n", j, histo[j]);
+            }
+        }
+        fclose(hfile);
+        
+        int w=10;
+        double sum = 0;
+        int nzc = 0;
+        for (size_t i=last_nz-1; i > last_nz-8*w && nzc < w; i--) {
+            if (histo[i] > 0) {
+                sum += histo[i];
+                nzc++;
+            }
+        }
+        sum /= w;
+        printf("peak = %u, sum = %lf\n", histo[last_nz], sum);
+        white_clip = 0;
+        if (sum > 0) {
+            if (histo[last_nz] - sum > 0.05*sum) {
+                white_clip = (histo[last_nz] - sum)/histo[last_nz] * 100;
+            }
+        }
+        
+        // compute integral image
+        //cv::Mat temp;
+        //masked.convertTo(temp, CV_32F);
+        //integral(temp, masked, CV_32F);
+        
+        // homomorphic filtering tells us that we can subtract the log 
+        // of the blurred version to obtain the "flat" lighting version
+        // .... so the log of the blur is the slow-varying part
+        // we want to see how uniform that is ...?
+        
+        // edges/nodata will be a problem (but we can construct a second mask?)
+        
+        
+        // maybe we can simply blur a lot, and look at the
+        // horizontal / vertical projections ? These should be flat?
     }
   
     Point2d& zero;
@@ -489,6 +732,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
     bool    lpmm_mode;
     double  pixel_size;
     Distance_scale& distance_scale;
+    int initial_rows;
 };
 
 #endif
