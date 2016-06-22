@@ -656,6 +656,14 @@ class Distance_scale {
         return Point2d(bp[0], bp[1]); 
     }
     
+    double get_normal_angle_z(void) const {
+        return acos(fabs(rotation(2,2)))/M_PI*180;
+    }
+    
+    double get_normal_angle_y(void) const {
+        return acos(fabs(rotation(1,2)))/M_PI*180;
+    }
+    
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     Point2d zero;
