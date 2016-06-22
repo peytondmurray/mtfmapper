@@ -50,6 +50,8 @@ const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
 const QString setting_focus = "setting_focus";
 const Qt::CheckState setting_focus_default = Qt::Unchecked;
+const QString setting_lensprofile = "setting_lensprofile";
+const Qt::CheckState setting_lensprofile_default = Qt::Unchecked;
 const QString setting_autocrop = "setting_autocrop";
 const Qt::CheckState setting_autocrop_default = Qt::Unchecked;
 const QString setting_lpmm = "setting_lpmm";
@@ -99,6 +101,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_profile      = new QCheckBox("Profile");
     cb_grid         = new QCheckBox("Grid");
     cb_focus        = new QCheckBox("Focus");
+    cb_lensprofile  = new QCheckBox("Lens profile");
     cb_autocrop     = new QCheckBox("Autocrop");
     cb_lpmm         = new QCheckBox("Line pairs/mm units");
     
@@ -123,6 +126,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
     cb_focus->setCheckState(
         (Qt::CheckState)settings.value(setting_focus, setting_focus_default).toInt()
+    );
+    cb_lensprofile->setCheckState(
+        (Qt::CheckState)settings.value(setting_lensprofile, setting_lensprofile_default).toInt()
     );
     cb_autocrop->setCheckState(
         (Qt::CheckState)settings.value(setting_autocrop, setting_autocrop_default).toInt()
@@ -155,6 +161,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_profile);
     cb_layout->addWidget(cb_grid);
     cb_layout->addWidget(cb_focus);
+    cb_layout->addWidget(cb_lensprofile);
     cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
     v2GroupBox->setLayout(cb_layout);
@@ -237,6 +244,10 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --focus");
     }
     
+    if (cb_lensprofile->checkState()) {
+        args = args + QString(" --lensprofile");
+    }
+    
     if (cb_autocrop->checkState()) {
         args = args + QString(" --autocrop");
     }
@@ -269,6 +280,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_lpmm, cb_lpmm->checkState());
     settings.setValue(setting_grid, cb_grid->checkState());
     settings.setValue(setting_focus, cb_focus->checkState());
+    settings.setValue(setting_lensprofile, cb_lensprofile->checkState());
     settings.setValue(setting_autocrop, cb_autocrop->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
@@ -281,7 +293,6 @@ void Settings_dialog::save_and_close() {
         settings.setValue(setting_bayer, 1);
     }
     if (rb_colour_green->isChecked()) {
-        printf("saving green bayer\n");
         settings.setValue(setting_bayer, 2 );
     }
     if (rb_colour_blue->isChecked()) {

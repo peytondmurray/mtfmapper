@@ -93,6 +93,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_gridsurf->setChecked(true);
     tb_img_focus = new QCheckBox("Focus position");
     tb_img_focus->setChecked(true);
+    tb_img_lensprofile = new QCheckBox("Lens profile");
+    tb_img_lensprofile->setChecked(true);
     
     qgs = new QGraphicsScene;
     qgs->setSceneRect(0,0,400,400);
@@ -123,6 +125,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_layout->addWidget(tb_img_gridimg, 2, 0);
     tb_layout->addWidget(tb_img_gridsurf, 2, 1);
     tb_layout->addWidget(tb_img_focus, 3, 0);
+    tb_layout->addWidget(tb_img_lensprofile, 3, 1);
     tb_layout->addWidget(datasets, 4, 0, 1, 2);
     QGroupBox* vbox2 = new QGroupBox(tr("selection"));
     vbox2->setLayout(tb_layout);
@@ -198,6 +201,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(tb_img_gridimg, SIGNAL(clicked()), this, SLOT(img_gridimg_toggled()));
     connect(tb_img_gridsurf, SIGNAL(clicked()), this, SLOT(img_gridsurf_toggled()));
     connect(tb_img_focus, SIGNAL(clicked()), this, SLOT(img_focus_toggled()));
+    connect(tb_img_lensprofile, SIGNAL(clicked()), this, SLOT(img_lensprofile_toggled()));
     
     connect(zoom_spinbox, SIGNAL(valueChanged(int)), this, SLOT(zoom_changed(int)));
     connect(img_frame, SIGNAL(zoom_in()), this, SLOT(zoom_in()));
@@ -408,6 +412,19 @@ void mtfmapper_app::img_focus_toggled(void) {
             QStandardItem* current_child = current_dataset_item->child(j);
             if (current_child->text().compare("focus") == 0) {
                 current_child->setEnabled(tb_img_focus->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_lensprofile_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("lensprofile") == 0) {
+                current_child->setEnabled(tb_img_lensprofile->isChecked());
             }
         }
         

@@ -99,7 +99,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         cv::Mat grid_sag_coarse(grid_y_coarse, grid_x_coarse, CV_32FC1, 0.0);
         cv::Mat grid_sag_fine(grid_y_fine, grid_x_fine, CV_32FC1, 0.0);
         extract_mtf_grid(SAGITTAL, grid_sag_coarse, grid_sag_fine, blocks, m_upper);
-
+        
         double zmax = 0;
         FILE* file = fopen((wdir+fname).c_str(), "wt");
         fprintf(file, "#coarse meridional grid\n");
@@ -110,7 +110,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_mer_coarse.rows/pixel_size, 
                     grid_mer_coarse.at<float>(y,x)*pixel_size
                 );
-                zmax = max(zmax, grid_mer_coarse.at<float>(y,x)*pixel_size);
+                zmax = max(zmax, (double)grid_mer_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -123,7 +123,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_sag_coarse.rows/pixel_size, 
                     grid_sag_coarse.at<float>(y,x)*pixel_size
                 );
-                zmax = max(zmax, grid_sag_coarse.at<float>(y,x)*pixel_size);
+                zmax = max(zmax, (double)grid_sag_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -177,7 +177,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         }
         fprintf(gpf, "set yrange [] reverse\n");
         fprintf(gpf, "set palette define (0 0.230 0.299 0.754,  0.5 0.865 0.865 0.865,  1 0.706 0.016 0.150)\n");
-        fprintf(gpf, "set cbrange [%lf:%lf]\n", 0.0, zmax*pixel_size);
+        fprintf(gpf, "set cbrange [%lf:%lf]\n", 0.0, zmax);
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set term png size %d, %d\n", width_in_pixels, (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)));

@@ -66,7 +66,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         vector< vector<Ordered_point> > meridional(resolution.size());
         for (size_t i=0; i < blocks.size(); i++) {
         
-            const double angle_thresh = 10.0;
+            const double angle_thresh = 15.0;
             
             for (size_t k=0; k < 4; k++) {
                 Point2d ec = blocks[i].get_edge_centroid(k);

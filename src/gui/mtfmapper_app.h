@@ -120,6 +120,7 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_gridimg;
     QCheckBox*      tb_img_gridsurf;
     QCheckBox*      tb_img_focus;
+    QCheckBox*      tb_img_lensprofile;
     
     QProgressBar*   progress;
     QPushButton*    abort_button;
@@ -142,6 +143,7 @@ class mtfmapper_app : public QMainWindow
     void img_gridimg_toggled(void);
     void img_gridsurf_toggled(void);
     void img_focus_toggled(void);
+    void img_lensprofile_toggled(void);
   
     void zoom_in(void);
     void zoom_out(void);  
