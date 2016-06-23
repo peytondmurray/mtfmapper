@@ -340,6 +340,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
         cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
         
+        // blank out the text region (again)
+        rectangle(merged, Point2d(0, img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
         sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin.",focus_peak, mc_p5, mc_p95);
         int baseline = 0;
@@ -399,11 +401,16 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         
         double white_clip = 0;
-        exposure_checks(Point2d(180, 135), white_clip);
+        double black_clip = 0;
+        exposure_checks(Point2d(180, 135), white_clip, black_clip);
         
         rpx = col2;
         rpy = initial_rows + ts.height*3*1.75;
-        sprintf(tbuffer, "Correct bright exposure score=%.1lf (ideal = 100)", 100 - white_clip);
+        if (white_clip > 5){
+            sprintf(tbuffer, "Probable white clipping, quality=%.1lf%%", 100 - white_clip);
+        } else {
+            sprintf(tbuffer, "Correct bright exposure, quality=%.1lf%%", 100 - white_clip);
+        }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar wc_col = green;
@@ -417,9 +424,22 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         
         rpy = initial_rows + ts.height*4*1.75;
-        sprintf(tbuffer, "Correct dark exposure score=%.1lf (ideal = 100)", 100 - white_clip);
+        if (black_clip > 5){
+            sprintf(tbuffer, "Probable black clipping, quality=%.1lf%%", 100 - black_clip);
+        } else {
+            sprintf(tbuffer, "Correct dark exposure, quality=%.1lf%%", 100 - black_clip);
+        }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
+        cv::Scalar bc_col = green;
+        if (black_clip < 10) {
+            if (black_clip > 5) {
+                bc_col = yellow;
+            }
+            checkmark(merged, Point2d(rpx-25, rpy), bc_col);
+        } else {
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+        }
         
         
         imwrite(wdir + prname, merged);
@@ -442,6 +462,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         bool shade = col2[0] != 0 || col2[1] != 0 || col2[1] != 0;
         cv::Scalar blended_col = col;
         
+        cv::Rect bounds(0, 0, img.cols, img.rows+5);
+        
         double running_l = 0;
         for (size_t i=0; i < data.size(); i++) {
             if (i > 1) {
@@ -458,16 +480,16 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 }
             }
             
-            int ix = lrint(data[i].x);
-            int iy = lrint(data[i].y);
-            if (ix >= 0 && ix < image.cols &&
-                iy >= 0 && iy < image.rows && i > 0) {
-                
-                cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), blended_col, width, CV_AA);
+            cv::Point head(prevx, prevy);
+            cv::Point tail(lrint(data[i].x), lrint(data[i].y));
+            bool inside = cv::clipLine(bounds, head, tail);
+            
+            if (i > 0 && inside) {
+                cv::line(image, head, tail, blended_col, width, CV_AA);
             }
             
-            prevx = ix;
-            prevy = iy;
+            prevx = tail.x;
+            prevy = tail.y;
         }
     }
     
@@ -634,10 +656,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
     }
     
-    void exposure_checks(const Point2d& dims, double& white_clip) {
-        //double pointPolygonTest(InputArray contour, Point2f pt,
-        
-        
+    void exposure_checks(const Point2d& dims, double& white_clip, double& black_clip) {
         
         vector<Point2d> corners { {-dims.x, -dims.y}, {dims.x, -dims.y}, {dims.x, dims.y}, {-dims.x, dims.y}};
         vector<cv::Point> roi;
@@ -652,8 +671,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         // we could (in theory) mask out all the objects we used (ellipses and blocks)
         // that should take care of most of the gradients?
         
-        //imwrite(string("emask.png"), mask);
-        
         cv::Rect bounds=cv::boundingRect(roi);
         
         bounds.x = max(0, bounds.x);
@@ -661,25 +678,23 @@ class Mtf_renderer_focus : public Mtf_renderer {
         bounds.width = min((img.cols - 1 - bounds.x), bounds.width);
         bounds.height = min((img.rows - 1 - bounds.y), bounds.height);
         
-        cv::Mat masked;
-        img.copyTo(masked, mask);
-        //imwrite(string("clipped.png"), masked);
+        //cv::Mat masked;
+        //img.copyTo(masked, mask);
         
         // calculate histogram
         vector<uint32_t> histo(65536 + 1, 0);
         for (int row=bounds.y; row < (bounds.y + bounds.height); row++) {
             for (int col=bounds.x; col < (bounds.x + bounds.width); col++) {
-                if (row >= img.rows || col >= img.cols) {
-                    printf("error: r=%d, c=%d\n", row, col);
-                }
-                int val = masked.at<uint16_t>(row, col);
-                if (val > 0) {
+                int val = img.at<uint16_t>(row, col);
+                if (mask.at<uint8_t>(row, col) > 0) {
                     histo[val]++;
                 }
             }
         }
         int last_nz = histo.size()-1;
         while (last_nz > 0 && histo[last_nz] == 0) last_nz--;
+        
+        #if 0
         FILE* hfile = fopen("histo.txt", "wt");
         for (size_t j=0; j <= size_t(last_nz); j++) {
             if (histo[j] > 0) {
@@ -687,23 +702,36 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
         }
         fclose(hfile);
+        #endif
         
-        int w=10;
-        double sum = 0;
-        int nzc = 0;
-        for (size_t i=last_nz-1; i > last_nz-8*w && nzc < w; i--) {
-            if (histo[i] > 0) {
-                sum += histo[i];
-                nzc++;
-            }
+        vector<double> chisto(histo.size(), 0.0);
+        chisto[0] = histo[0];
+        for (size_t j=1; j < chisto.size(); j++) {
+            chisto[j] = chisto[j-1] + histo[j];
         }
-        sum /= w;
-        printf("peak = %u, sum = %lf\n", histo[last_nz], sum);
+        
         white_clip = 0;
-        if (sum > 0) {
-            if (histo[last_nz] - sum > 0.05*sum) {
-                white_clip = (histo[last_nz] - sum)/histo[last_nz] * 100;
-            }
+        if (chisto.back() - chisto[last_nz-1] > 0.05*chisto.back()) {
+            white_clip = (chisto[last_nz] - chisto[last_nz-1])/chisto.back() * 100;
+        }
+        
+        int first_nz = 0;
+        while (first_nz < (int)histo.size()-1 && histo[first_nz] == 0) first_nz++;
+        
+        vector<double> rhisto(histo.size(), 0.0);
+        rhisto.back() = histo.back();
+        for (size_t j=histo.size()-2; j > 0; j--) {
+            rhisto[j] = rhisto[j+1] + histo[j];
+        }
+        rhisto[0] = rhisto[1] + histo[0];
+        
+        int p5 = first_nz+1;
+        while (p5 < (int)histo.size()-1 && rhisto[p5] > 0.05*rhisto.front()) p5++;
+        
+        black_clip = 0;
+        if (rhisto[first_nz] - rhisto[first_nz+1] > 0.0001*rhisto.front()) {
+            black_clip = (rhisto[first_nz] - rhisto[first_nz+1])/(0.05*rhisto.front()) * 100;
+            black_clip = min(black_clip, 100.0);
         }
         
         // compute integral image
