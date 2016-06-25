@@ -661,7 +661,12 @@ class Distance_scale {
     }
     
     double get_normal_angle_y(void) const {
-        return acos(fabs(rotation(1,2)))/M_PI*180;
+        // choosing the max here means that it does not matter
+        // what the chart orientation is relative to the sensor,
+        // i.e., a 90-degree rotation of the chart (or sensor)
+        // is already factored out
+        double yrot = max(fabs(rotation(0,1)), fabs(rotation(1,1)));
+        return acos(yrot)/M_PI*180;
     }
     
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW

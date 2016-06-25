@@ -56,7 +56,7 @@ class Autocropper {
         cstart = bounds.x;
         width  = bounds.y;
         
-        printf("start r/c: [%d %d], w/h: [%d %d]\n", rstart, cstart, height, width);
+        printf("start r/c: [%d %d], h/w: [%d %d]\n", rstart, cstart, height, width);
     }
     
     cv::Mat subset(const cv::Mat& X, cv::Rect* dimensions=NULL) {
@@ -76,7 +76,7 @@ class Autocropper {
     }
     
     double otsu_threshold(const vector<double>& data) {
-        const double binscale = 20.0;
+        const double binscale = 30.0;
         map<int, int> histo;
         double total = 0;
         for (size_t i=0; i < data.size(); i++ ) {
@@ -122,7 +122,6 @@ class Autocropper {
     
     cv::Point_<int> otsu_bounds(const vector<double>& data, const int border) {
         
-        // try the same with intensity
         double otsu = otsu_threshold(data);
         
         int upper = 0;
