@@ -67,7 +67,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         return;
     }
     
-    void render(const vector<Mtf_profile_sample>& samples, Bayer::bayer_t bayer = Bayer::NONE, vector<Ellipse_detector>* ellipses = NULL) {
+    void render(const vector<Mtf_profile_sample>& samples, Bayer::bayer_t bayer = Bayer::NONE, 
+        vector<Ellipse_detector>* ellipses = NULL, cv::Rect* dimension_correction = NULL) {
         Point2d centroid(0,0);
         
         cv::Mat merged = gray_to_colour(img);
@@ -223,12 +224,44 @@ class Mtf_renderer_focus : public Mtf_renderer {
         double focus_peak = cf.peak(sol); // works on pre-stretched depth
         printf("focus_plane %lg\n", focus_peak);
         
+        // draw centre-of-chart marker
+        cv::Scalar mark_col(255-50, 127-50, 0);
+        Point2d left_zero  = distance_scale.world_to_image(0, -30);
+        Point2d right_zero = distance_scale.world_to_image(0, 30);
+        cv::line(merged, left_zero, right_zero, mark_col, 2, CV_AA);
+        Point2d top_zero  = distance_scale.world_to_image(-15, 0);
+        Point2d bot_zero  = distance_scale.world_to_image(15, 0);
+        cv::line(merged, top_zero, bot_zero, mark_col, 2, CV_AA);
         
+        // draw centre-of-camera marker
+        cv::Scalar reticle_col(0, 127-50, 255-50);
+        if (dimension_correction) {
+            cv::Point centre(
+                dimension_correction->width/2 - dimension_correction->x, 
+                dimension_correction->height/2 - dimension_correction->y
+            );
+            const double rad = 25;
+            cv::circle(merged, centre, rad, reticle_col, 2, CV_AA);
+            int i=0;
+            for (double th=M_PI/2; i < 3; th += 2*M_PI/3.0, i++) {
+                const double dth = 10.0/180.0*M_PI;
+                
+                cv::Point pts[3] = {
+                  { int((double)centre.x + (rad-7)*cos(th)),     int((double)centre.y + (rad-7)*sin(th)) },
+                  { int((double)centre.x + (rad+7)*cos(th+dth)), int((double)centre.y + (rad+7)*sin(th+dth)) },
+                  { int((double)centre.x + (rad+7)*cos(th-dth)), int((double)centre.y + (rad+7)*sin(th-dth)) }
+                };
+                
+                cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, reticle_col, CV_AA);
+            }
+        }
         
         if (ellipses) {
+            cv::Scalar ellipse_col(200,200,0);
             for (auto e: *ellipses) {
                 if (!e.valid) continue;
-                for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
+                Point2d prev(0,0);
+                for (double theta=0; theta < 2*M_PI; theta += M_PI/64.0) {
                     double synth_x = e.major_axis * cos(theta);
                     double synth_y = e.minor_axis * sin(theta);
                     double rot_x = cos(e.angle)*synth_x - sin(e.angle)*synth_y + e.centroid_x;
@@ -239,11 +272,13 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     rot_x = min(rot_x, (double)(merged.cols-1));
                     rot_y = max(rot_y, 0.0);
                     rot_y = min(rot_y, (double)(merged.rows-1));
-
-                    cv::Vec3b& color = merged.at<cv::Vec3b>(lrint(rot_y), lrint(rot_x));
-                    color[0] = 255;
-                    color[1] = 255;
-                    color[2] = 0;
+                    
+                    Point2d current(rot_x, rot_y);
+                    if (theta > 0) {
+                        cv::line(merged, prev, current, ellipse_col, 1, CV_AA);
+                    }
+                    
+                    prev = current;
                 }
             }
         }
@@ -386,12 +421,12 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         
         rpy = initial_rows + ts.height*5*1.75;
-        sprintf(tbuffer, "Chart y-angle=%.1lf degrees (ideal = 90)", distance_scale.get_normal_angle_y());
+        sprintf(tbuffer, "Chart y-angle=%.1lf degrees (ideal = 0)", distance_scale.get_normal_angle_y());
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar yang_col = green;
-        if (fabs(distance_scale.get_normal_angle_y() - 90) < 10) {
-            if (fabs(distance_scale.get_normal_angle_y() - 90) > 5) {
+        if (fabs(distance_scale.get_normal_angle_y()) < 10) {
+            if (fabs(distance_scale.get_normal_angle_y()) > 5) {
                 yang_col = yellow;
             }
             checkmark(merged, Point2d(25, rpy), yang_col);
@@ -407,9 +442,9 @@ class Mtf_renderer_focus : public Mtf_renderer {
         rpx = col2;
         rpy = initial_rows + ts.height*3*1.75;
         if (white_clip > 5){
-            sprintf(tbuffer, "Probable white clipping, quality=%.1lf%%", 100 - white_clip);
+            sprintf(tbuffer, "Probable highlight clipping, quality=%.1lf%%", 100 - white_clip);
         } else {
-            sprintf(tbuffer, "Correct bright exposure, quality=%.1lf%%", 100 - white_clip);
+            sprintf(tbuffer, "Acceptable highlight exposure, quality=%.1lf%%", 100 - white_clip);
         }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
@@ -425,9 +460,9 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         rpy = initial_rows + ts.height*4*1.75;
         if (black_clip > 5){
-            sprintf(tbuffer, "Probable black clipping, quality=%.1lf%%", 100 - black_clip);
+            sprintf(tbuffer, "Probable shadow clipping, quality=%.1lf%%", 100 - black_clip);
         } else {
-            sprintf(tbuffer, "Correct dark exposure, quality=%.1lf%%", 100 - black_clip);
+            sprintf(tbuffer, "Acceptable shadow exposure, quality=%.1lf%%", 100 - black_clip);
         }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
@@ -440,6 +475,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         } else {
             crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
         }
+        
         
         
         imwrite(wdir + prname, merged);

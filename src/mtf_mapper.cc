@@ -463,7 +463,7 @@ int main(int argc, char** argv) {
             lpmm_mode,
             pixel_size
         );
-        profile.render(mtf_core.get_samples(), mtf_core.bayer, &mtf_core.ellipses);
+        profile.render(mtf_core.get_samples(), mtf_core.bayer, &mtf_core.ellipses, &img_dimension_correction);
     }
     
     Mtf_renderer_stats stats(lpmm_mode, pixel_size);
