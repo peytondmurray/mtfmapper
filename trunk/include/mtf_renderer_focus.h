@@ -225,13 +225,38 @@ class Mtf_renderer_focus : public Mtf_renderer {
         printf("focus_plane %lg\n", focus_peak);
         
         // draw centre-of-chart marker
-        cv::Scalar mark_col(255-50, 127-50, 0);
-        Point2d left_zero  = distance_scale.world_to_image(0, -30);
-        Point2d right_zero = distance_scale.world_to_image(0, 30);
-        cv::line(merged, left_zero, right_zero, mark_col, 2, CV_AA);
-        Point2d top_zero  = distance_scale.world_to_image(-15, 0);
-        Point2d bot_zero  = distance_scale.world_to_image(15, 0);
-        cv::line(merged, top_zero, bot_zero, mark_col, 2, CV_AA);
+        cv::Scalar mark_col(0, 127-20, 255-20);
+        Point2d czero = distance_scale.world_to_image(0, 0);
+        
+        for (int i=0; i < 4; i++) {
+            Point2d wp(10*cos(2.0*i*M_PI/4.0), 10*sin(2.0*i*M_PI/4.0));
+            Point2d pt = distance_scale.world_to_image(wp.x, wp.y);
+            cv::line(merged, czero, pt, mark_col, 2, CV_AA);
+        }
+        cv::circle(merged, czero, 10, mark_col, 2, CV_AA);
+        
+        int j=0;
+        for (double th=0; j < 4; th += 2*M_PI/4.0, j++) {
+            
+            const double dth = 10.0/180.0*M_PI;
+            double rad = 10;
+            const double aw=2.0;
+            
+            Point2d dpts[3] = {
+              { (rad+aw)*cos(th),     (rad+aw)*sin(th) },
+              { (rad-aw)*cos(th+dth), (rad-aw)*sin(th+dth) },
+              { (rad-aw)*cos(th-dth), (rad-aw)*sin(th-dth) }
+            };
+            
+            cv::Point pts[3];
+            for (int i=0; i < 3; i++) {
+                Point2d pt = distance_scale.world_to_image(dpts[i].x, dpts[i].y);
+                pts[i].x = lrint(pt.x);
+                pts[i].y = lrint(pt.y);
+            }
+            
+            cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, mark_col, CV_AA);
+        }
         
         // draw centre-of-camera marker
         cv::Scalar reticle_col(0, 127-50, 255-50);
@@ -241,9 +266,22 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 dimension_correction->height/2 - dimension_correction->y
             );
             const double rad = 25;
-            cv::circle(merged, centre, rad, reticle_col, 2, CV_AA);
+            cv::circle(merged, centre, rad, cv::Scalar(20,20,20), 4, CV_AA);
             int i=0;
-            for (double th=M_PI/2; i < 3; th += 2*M_PI/3.0, i++) {
+            for (double th=M_PI/2; i < 4; th += 2*M_PI/4.0, i++) {
+                const double dth = 12.5/180.0*M_PI;
+                
+                cv::Point pts[3] = {
+                  { int((double)centre.x + (rad-9)*cos(th)),     int((double)centre.y + (rad-9)*sin(th)) },
+                  { int((double)centre.x + (rad+8)*cos(th+dth)), int((double)centre.y + (rad+8)*sin(th+dth)) },
+                  { int((double)centre.x + (rad+8)*cos(th-dth)), int((double)centre.y + (rad+8)*sin(th-dth)) }
+                };
+                
+                cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, cv::Scalar(20,20,20), CV_AA);
+            }
+            cv::circle(merged, centre, rad, reticle_col, 2, CV_AA);
+            i=0;
+            for (double th=M_PI/2; i < 4; th += 2*M_PI/4.0, i++) {
                 const double dth = 10.0/180.0*M_PI;
                 
                 cv::Point pts[3] = {
@@ -425,8 +463,8 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar yang_col = green;
-        if (fabs(distance_scale.get_normal_angle_y()) < 10) {
-            if (fabs(distance_scale.get_normal_angle_y()) > 5) {
+        if (fabs(distance_scale.get_normal_angle_y()) < 2) {
+            if (fabs(distance_scale.get_normal_angle_y()) > 1) {
                 yang_col = yellow;
             }
             checkmark(merged, Point2d(25, rpy), yang_col);
@@ -599,8 +637,29 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::Mat channel(g_img.rows, g_img.cols, CV_8UC1);
         double imin;
         double imax;
-        cv::minMaxLoc(g_img, &imin, &imax);
-        g_img.convertTo(channel, CV_8U, 255.0/(imax - imin), 0);
+        vector<uint64_t> histo(65537, 0);
+        uint16_t* dptr = (uint16_t*)g_img.data;
+        uint16_t* sentinel = dptr + g_img.rows*g_img.cols;
+        while (dptr < sentinel) {
+            histo[(*dptr)&0xffff]++;
+            dptr += 8; // only sample every 8th pixel to speed things up??
+        }
+        uint64_t sum = histo[0];
+        for (size_t i=1; i < histo.size(); i++) {
+            histo[i-1] = sum;
+            sum += histo[i];
+        }
+        histo.back() = sum;
+        // find 2% max brightness
+        uint64_t target = lrint(0.98*sum);
+        imax = histo.size() - 1;
+        while (imax > 0 && histo[imax] > target) imax--;
+        target = lrint(0.02*sum);
+        imin = 0;
+        while (imin < imax && histo[imin] < target) imin++;
+        double scale = 255.0/(imax - imin);
+        double offset = -imin*scale;
+        g_img.convertTo(channel, CV_8U, scale, offset);
         
         vector<cv::Mat> channels;
         channels.push_back(channel);
