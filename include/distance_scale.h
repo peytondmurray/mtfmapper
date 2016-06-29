@@ -321,22 +321,28 @@ class Distance_scale {
                             
                             if (solutions.size() < 5) { // keep 5 best solutions
                                 solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers));
+                                if (bpr < global_bpr) {
+                                    global_bpr = bpr;
+                                    printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n", 
+                                        k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
+                                    );
+                                }
                             } else {
                                 auto worst_sol = solutions.rbegin();
-                                if (bpr < worst_sol->bpe) {
+                                if (bpr < worst_sol->bpe && inliers.size() >= worst_sol->inlier_list.size()) {
                                     *worst_sol = Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers);
                                     sort(solutions.begin(), solutions.end());
+                                    
+                                    if (bpr < global_bpr) {
+                                        global_bpr = bpr;
+                                        printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n", 
+                                            k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
+                                        );
+                                    }
                                 }
                             }
                             
-                            if (bpr < global_bpr) {
-                                global_bpr = bpr;
-                                P = projection_matrices[k];
-                                distortion = radial_distortions[k][0];
-                                printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu\n", 
-                                    k, ri, rot_err, bpr, img_scale/w, inliers.size()
-                                );
-                            }
+                            
                         }
                     }
                     projection_matrices.clear();
@@ -352,7 +358,7 @@ class Distance_scale {
                 
                 printf("Retained %lu promising solutions\n", solutions.size());
                 for (auto s: solutions) {
-                    printf("\t solution with bpe = %lf, dist=%le\n", s.bpe, s.distort);
+                    printf("\t solution with bpe = %lf, dist=%le, #inliers=%lu\n", s.bpe, s.distort, s.inlier_list.size());
                 }
                 double w = 0;
                 
@@ -447,13 +453,23 @@ class Distance_scale {
                     goto try_next_solution;
                 }
                 
+                double prev_rmse = bundle_rmse;
                 // take another stab, in case NM stopped at a point that
                 // was not really a minimum
                 // TODO: in theory, we could repeat this until RMSE stabilizes?
-                ba.solve();
-                ba.unpack(rotation, translation, distortion, w);
-                bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
-                printf("2nd solution %d has rmse=%lf\n", min_idx, bundle_rmse);
+                bool improved = false;
+                do {
+                    ba.solve();
+                    ba.unpack(rotation, translation, distortion, w);
+                    bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
+                    printf("next solution %d has rmse=%lf\n", min_idx, bundle_rmse);
+                    improved = false;
+                    if (prev_rmse - bundle_rmse > 1e-4) {
+                        improved = true;
+                    }
+                    prev_rmse = bundle_rmse;
+                } while (improved);
+                
                 focal_length = 1.0/w;
                 
                 // prepare for backprojection
