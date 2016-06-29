@@ -41,12 +41,29 @@ class Autocropper {
         
         vector<double> int_rs(in_img.rows, 0);
         vector<double> int_cs(in_img.cols, 0);
-        for (int r=4; r < in_img.rows-4; r++) {
-            for (int c=4; c < in_img.cols-4; c++) {
+        for (int r=4; r < in_img.rows-4; r+=2) {
+            for (int c=4; c < in_img.cols-4; c+=2) {
                 int_rs[r] += in_img.at<uint16_t>(r, c) / 65536.0;
                 int_cs[c] += in_img.at<uint16_t>(r, c) / 65536.0;
+                
+                int_rs[r+1] = int_rs[r];
+                int_cs[c+1] = int_cs[c];
             }
         }
+        
+        #if 0
+        FILE* frow = fopen("rows.txt", "wt");
+        for (size_t i=0; i < int_rs.size(); i++) {
+            fprintf(frow, "%lf\n", int_rs[i]);
+        }
+        fclose(frow);
+        
+        FILE* fcol = fopen("cols.txt", "wt");
+        for (size_t i=0; i < int_cs.size(); i++) {
+            fprintf(fcol, "%lf\n", int_cs[i]);
+        }
+        fclose(fcol);
+        #endif
         
         cv::Point_<int> bounds = otsu_bounds(int_rs, border);
         rstart = bounds.x;
@@ -76,7 +93,7 @@ class Autocropper {
     }
     
     double otsu_threshold(const vector<double>& data) {
-        const double binscale = 30.0;
+        const double binscale = 20.0;
         map<int, int> histo;
         double total = 0;
         for (size_t i=0; i < data.size(); i++ ) {
@@ -89,12 +106,11 @@ class Autocropper {
             histo[val]++;
             total++;
         }
-            
         double sum = 0;
-        // compute Otsu threshold
         for (map<int, int>::iterator it=histo.begin(); it != histo.end(); it++) {
             sum += it->first * it->second;
         }
+        // compute Otsu threshold
         double sum_b = 0;
         double w_b = 0;
         double max = 0;
@@ -120,6 +136,93 @@ class Autocropper {
         return ((thresh1 + thresh2) * 0.5) / binscale;
     }
     
+    double kittler_threshold(const vector<double>& data) {
+        const double binscale = 20.0;
+        map<int, int> histo;
+        double total = 0;
+        for (size_t i=0; i < data.size(); i++ ) {
+            int val = lrint(data[i] * binscale); 
+        
+            map<int, int>::iterator hi=histo.find(val);
+            if (hi == histo.end()) {
+                histo[val] = 0;
+            }
+            histo[val]++;
+            total++;
+        }
+            
+        double sum = 0;
+        // compute Kittler threshold
+        FILE* hfile = fopen("khisto.txt", "wt");
+        for (map<int, int>::iterator it=histo.begin(); it != histo.end(); it++) {
+            sum += it->first * it->second;
+            fprintf(hfile, "%d %d\n", it->first, it->second);
+        }
+        fclose(hfile);
+        double sum_b = 0;
+        double w_b = 0;
+        double mineps = 1e50;
+        double thresh1 = 0;
+        double thresh2 = 0;
+        for (map<int, int>::iterator it=histo.begin(); it != histo.end(); it++) {
+            w_b += it->second;
+            double w_f = total - w_b;
+            if (w_f == 0) break;
+            
+            // w_b/total -> P_1(T), where T = it->first
+            // w_f/total -> P_2(T)
+                       
+            sum_b += it->first * it->second;
+            
+            // sum_b = sum_0^T (h[i]*i)
+            
+            // mean background = mu_1
+            double m_b = sum_b / w_b;
+            
+            // mean foreground = mu_2 = complement of mu_1
+            double m_f = (sum - sum_b) / w_f;
+            
+            // now estimate sdev ...
+            // use brute force at first
+            double sdev_b = 0;
+            double sdev_f = 0;
+            for (auto it2=histo.begin(); it2 != histo.end(); it2++) {
+                if (it2->first <= it->first) {
+                    sdev_b += SQR(it2->first - m_b) * it2->second;
+                } else {
+                    sdev_f += SQR(it2->first - m_f) * it2->second;
+                }
+            }
+            if (w_b == 0 || w_f == 0) break; // avoid divide-by-zero
+            sdev_b = sqrt(sdev_b)/w_b;
+            sdev_f = sqrt(sdev_f)/w_f;
+            
+            if (it->first == 439) {
+                printf("mu_b = %lf, sigma_b = %lf, mu_f = %lf, sigma_f = %lf\n", 
+                    m_b, sdev_b,
+                    m_f, sdev_f
+                );
+            }
+            
+            double eps = 0;
+            for (auto it2=histo.begin(); it2 != histo.end(); it2++) {
+                if (it2->first > it->first) {
+                    eps += 2*(SQR((it2->first - m_b)/sdev_b) + 2*log(sdev_b) - 2*log(w_b/total)) * it2->second / total;
+                } else {
+                    eps += (SQR((it2->first - m_f)/sdev_f) + 2*log(sdev_f) - 2*log(w_f/total)) * it2->second / total;
+                }
+            }
+            if (it->first == 439) {
+                printf("eps=%lf, mineps=%lf\n", eps, mineps);
+            }
+            if (eps < mineps) {
+                mineps = eps;
+                thresh1 = it->first;
+            }
+        }
+        return thresh1 / binscale;
+    }
+    
     cv::Point_<int> otsu_bounds(const vector<double>& data, const int border) {
         
         double otsu = otsu_threshold(data);
@@ -128,12 +231,13 @@ class Autocropper {
         int lower = data.size();
         
         for (int i=0; i < (int)data.size(); i++) {
-            if (data[i] > otsu && i > upper) {
+            if (data[i] > otsu) {
                 upper = i;
             }
-            int complement = data.size() - 1 - i;
-            if (data[i] > otsu && complement < lower) {
-                lower = complement;
+        }
+        for (int i=(int)data.size()-1; i > 0; i--) {
+            if (data[i] > otsu) {
+                lower = i;
             }
         }
         
