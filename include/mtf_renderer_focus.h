@@ -349,6 +349,15 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 curve.push_back(proj_p);
             }
         }
+        if (cf.has_poles(sol)) {
+            Point2d cent(merged.cols/2, merged.rows/2);
+            double rad = min(merged.rows, merged.cols)/2.0 - 20;
+            cv::Scalar red(30, 30, 255);
+            
+            cv::circle(merged, cent, rad, red, 10, CV_AA);
+            Point2d dir(rad*sqrt(0.5)-2, rad*sqrt(0.5)-2);
+            cv::line(merged, cent - dir, cent + dir, red, 10, CV_AA);
+        } 
         draw_curve(merged, curve, cv::Scalar(128, 128, 128), 6);
         draw_curve(merged, curve, cv::Scalar(40, 90, 40), 3, cv::Scalar(40, 255, 40));
         
@@ -805,9 +814,20 @@ class Mtf_renderer_focus : public Mtf_renderer {
             chisto[j] = chisto[j-1] + histo[j];
         }
         
+        // catch a histogram with an abnormally large count in the last bin
         white_clip = 0;
         if (chisto.back() - chisto[last_nz-1] > 0.05*chisto.back()) {
             white_clip = (chisto[last_nz] - chisto[last_nz-1])/chisto.back() * 100;
+        }
+        
+        // catch a histogram with a bin within 5% of end with an abnormally large count
+        int wc_sentinel = max(2.0, last_nz * 0.95);
+        int wc_peak = last_nz;
+        while (wc_peak > wc_sentinel) {
+            if (chisto[wc_peak] - chisto[wc_peak-1] > 0.05*chisto.back()) {
+                white_clip = (chisto[wc_peak] - chisto[wc_peak-1])/chisto.back() * 100;
+            }
+            wc_peak--;
         }
         
         int first_nz = 0;
