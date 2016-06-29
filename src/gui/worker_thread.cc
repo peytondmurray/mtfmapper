@@ -73,13 +73,13 @@ void Worker_thread::run(void) {
             
             if (arguments.contains(QString("--bayer"))) {
                 #ifdef _WIN32
-                sprintf(buffer, "\"\"%s\" -4 -T -D -c \"%s\" > \"%s\"\"", 
+                sprintf(buffer, "\"\"%s\" -4 -T -d -c \"%s\" > \"%s\"\"", 
                     dcraw_binary.toLocal8Bit().constData(),
                     input_files.at(i).toLocal8Bit().constData(),
                     input_file.toLocal8Bit().constData()
                 );
                 #else
-                sprintf(buffer, "\"%s\"  -4 -T -D -c \"%s\" > \"%s\"", 
+                sprintf(buffer, "\"%s\"  -4 -T -d -c \"%s\" > \"%s\"", 
                     dcraw_binary.toLocal8Bit().constData(),
                     input_files.at(i).toLocal8Bit().constData(),
                     input_file.toLocal8Bit().constData()

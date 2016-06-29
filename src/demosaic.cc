@@ -65,6 +65,54 @@ static void match(const vector<int>& source, const vector<int>& target, vector<i
     }
 }
 
+void green_leveling(cv::Mat& img, double thresh = 0.1) {
+    cv::Mat dest = img.clone();
+    // for now, always interpolate subset 2 ??
+    
+    for (int row=4; row < img.rows-4; row+=2) {
+        for (int col=5; col < img.cols; col+= 2) {
+            float d1_1 = img.at<uint16_t>(row-1, col-1);
+            float d1_2 = img.at<uint16_t>(row-1, col+1);
+            float d1_3 = img.at<uint16_t>(row+1, col-1);
+            float d1_4 = img.at<uint16_t>(row+1, col+1);
+            
+            float d2_1 = img.at<uint16_t>(row-2, col);
+            float d2_2 = img.at<uint16_t>(row+2, col);
+            float d2_3 = img.at<uint16_t>(row, col-2);
+            float d2_4 = img.at<uint16_t>(row, col+2);
+            
+            float d1 = (d1_1 + d1_2 + d1_3 + d1_4);
+            float d2 = (d2_1 + d2_2 + d2_3 + d2_4);
+            
+            float c1 = (fabs(d1_1 - d1_2) + fabs(d1_1 - d1_3) + fabs(d1_1 - d1_4) + fabs(d1_2 - d1_3) + fabs(d1_2 - d1_4) + fabs(d1_3 - d1_4))/6.0;
+            float c2 = (fabs(d2_1 - d2_2) + fabs(d2_1 - d2_3) + fabs(d2_1 - d2_4) + fabs(d2_2 - d2_3) + fabs(d2_2 - d2_4) + fabs(d2_3 - d2_4))/6.0;
+            
+            if ((c1 + c2) < thresh * fabs(d1 - d2)) { // gradients are small enough to allow interpolation
+                float vin = img.at<uint16_t>(row, col);
+                
+                float gse = img.at<uint16_t>(row+1, col+1) + 0.5 * (vin - img.at<uint16_t>(row+2, col+2));
+                float gnw = img.at<uint16_t>(row-1, col-1) + 0.5 * (vin - img.at<uint16_t>(row-2, col-2));
+                float gne = img.at<uint16_t>(row-1, col+1) + 0.5 * (vin - img.at<uint16_t>(row-2, col+2));
+                float gsw = img.at<uint16_t>(row+1, col-1) + 0.5 * (vin - img.at<uint16_t>(row+2, col-2));
+                
+                const float eps = 1e-5;
+                
+                float wtse = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col+2) - vin) + SQR(img.at<uint16_t>(row+3, col+3) - d1_4));
+                float wtnw = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col-2) - vin) + SQR(img.at<uint16_t>(row-3, col-3) - d1_1));
+                float wtne = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col+2) - vin) + SQR(img.at<uint16_t>(row-3, col+3) - d1_2));
+                float wtsw = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col-2) - vin) + SQR(img.at<uint16_t>(row+3, col-3) - d1_3));
+                
+                float iv = (gse*wtse + gnw*wtnw + gne*wtne + gsw*wtsw) / (wtse + wtnw + wtne + wtsw);
+                
+                if ( (iv - vin) < thresh*(iv + vin) ) {
+                    dest.at<uint16_t>(row, col) = lrint(0.5 * (vin + iv));
+                }
+            }
+        }
+    }
+    img = dest; // copy back the result
+}
+
 void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
     printf("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
     rawimg = cvimg.clone();
@@ -100,31 +148,8 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
         }
     }
     
-    /*
-    // find 90% centre
-    vector<double> l5(4, 0);
-    vector<double> u5(4, 0);
-    vector<double> mean(4, 0);
-    for (int subset=0; subset < 4; subset++) {
-        int lower = 0;
-        int upper = hist[subset].size() - 1;
-        while (hist[subset][lower] < 0.05*hist[subset].back() && lower < upper) lower++;
-        while (hist[subset][upper] > 0.95*hist[subset].back() && upper > lower) upper--;
-        l5[subset] = lower;
-        u5[subset] = upper;
-        
-        mean[subset] = upper - lower;
-        
-        printf("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
-    }
-    const int targ = 1;
-    for (int i=0; i < 4; i++) {
-        if (i != targ) {
-            mean[i] = mean[targ] / mean[i];
-        }
-    }*/
-    
-    
+    // apply green channel equilibration
+    green_leveling(cvimg, 0.2);
     
     // bilnear interpolation to get rid op R and B channels?
     for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
@@ -138,7 +163,7 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
                 double vgrad = fabs(double(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
                                     3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col)));
                                     
-                if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/max(hgrad, vgrad) < 0.001) {
+                if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/max(hgrad, vgrad) < 0.1) {
                     cvimg.at<uint16_t>(row, col) = 
                         (cvimg.at<uint16_t>(row-1, col) + 
                         cvimg.at<uint16_t>(row+1, col) + 
