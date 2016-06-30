@@ -58,6 +58,7 @@ using std::stringstream;
 #include "include/autocrop.h"
 #include "include/bayer.h"
 #include "include/demosaic.h"
+#include "include/stride_range.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -127,6 +128,9 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_lp1("", "lp1", "Lens profile resolution 1 (lp/mm or c/p)", false, 10.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp2("", "lp2", "Lens profile resolution 2 (lp/mm or c/p)", false, 30.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm or c/p)", false, 50.0, "lp/mm", cmd);
+    #ifdef DEBUG
+    TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
+    #endif
 
     vector<string> allowed_bayer_subsets;
     allowed_bayer_subsets.push_back("red");
@@ -307,9 +311,20 @@ int main(int argc, char** argv) {
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
-    printf("Parallel MTF50 calculation\n");
-    parallel_for(blocked_range<size_t>(size_t(0), mtf_core.num_objects()), ca); 
-    //ca(blocked_range<size_t>(size_t(0), mtf_core.num_objects()));
+    size_t nthreads = std::thread::hardware_concurrency();
+    ThreadPool tp (nthreads);
+    
+    #ifdef DEBUG
+    if (tc_single.getValue()) {
+        ca(Stride_range(size_t(0), mtf_core.num_objects(), 1));
+    } else {
+        printf("Parallel MTF50 calculation\n");
+        Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+    }
+    #else
+    Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+    #endif
+    
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_focus.getValue()) {

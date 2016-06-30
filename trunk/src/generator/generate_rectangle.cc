@@ -33,6 +33,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "noise_source.h"
 #include "multipolygon_geom.h" // temporary?
 #include "quadtree.h"
+#include "../../include/stride_range.h"
+#include "../../include/threadpool.h"
 
 #include "cv.h"
 #include "highgui.h"
@@ -43,9 +45,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <vector>
 using std::vector;
-
-#include "tbb/tbb.h"
-using namespace tbb;
 
 #include <iostream>
 #include <string>
@@ -89,7 +88,7 @@ inline double gamma(double x) { // x in [0,1]
 
 
 
-// functor for tbb
+// functor for Stride_range
 class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
@@ -128,12 +127,12 @@ class Render_rows {
         }
     }
      
-    void operator()(const blocked_range<size_t>& r) const {
+    void operator()(const Stride_range& r) const {
         // assume a dynamic range of 5% to 95% of full scale
         double object_value = contrast_reduction / 2.0;
         double background_value = 1 - object_value;
         
-        for (size_t row=r.begin(); row != r.end(); ++row) {
+        for (size_t row=r.begin(); row != r.end(); r.increment(row)) {
 
             if (int(row) < buffer_border || int(row) > img.rows - buffer_border) {
                 for (int col = 0; col < img.cols; col++) {
@@ -179,7 +178,7 @@ class Render_rows {
 };
 
 
-// functor for tbb
+// functor for Stride_range
 class Render_esf {
   public:
     Render_esf(const Render_polygon& in_r, vector< pair<double, double> >& esf, double length, double theta,
@@ -211,9 +210,9 @@ class Render_esf {
     }
 
 
-    void operator()(const blocked_range<size_t>& r) const {
+    void operator()(const Stride_range& r) const {
     
-        for (size_t row=r.begin(); row != r.end(); ++row) {
+        for (size_t row=r.begin(); row != r.end(); r.increment(row)) {
             double rval = 0;
             rval = rect.evaluate(sample_pos[row].x, sample_pos[row].y, 0.05, 0.95);
             esf[row].first = norm(sample_pos[row] - p) - length*0.5;
@@ -688,6 +687,9 @@ int main(int argc, char** argv) {
         ns = new Additive_gaussian_noise(img.rows*img.cols, tc_noise.getValue());
     }
     
+    size_t nthreads = std::thread::hardware_concurrency();
+    ThreadPool tp (nthreads);
+    
     if (!tc_profile.getValue()) {
         int crc = 0;
         Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, 
@@ -696,7 +698,7 @@ int main(int argc, char** argv) {
         );
         printf("progress: 0%% ");
         fflush(stdout);
-        parallel_for(blocked_range<size_t>(size_t(0), height), rr); 
+        Stride_range::parallel_for(rr, tp, height);
         printf("\n");
         imwrite(tc_out_name.getValue(), img);
     } else {
@@ -708,7 +710,7 @@ int main(int argc, char** argv) {
         const int oversample = 32*4;
         vector< pair<double, double> > esf(Render_esf::n_samples(rwidth, oversample));
         Render_esf re(*rect, esf, rwidth, theta, oversample, tc_xoff.getValue(), tc_yoff.getValue());
-        parallel_for(blocked_range<size_t>(size_t(0), esf.size()), re);
+        Stride_range::parallel_for(re, tp, esf.size());
         re.write(profile_fname);
     }
     

@@ -42,9 +42,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <map>
 using std::map;
 
-#include "tbb/tbb.h"
-using namespace tbb;
-
 typedef vector<Block> block_vector;
 
 // global constants for ESF-fourier MTF method
