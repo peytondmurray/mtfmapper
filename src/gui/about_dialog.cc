@@ -25,7 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include <QtGui> 
+#include <QtWidgets> 
 #include "about_dialog.h"
 #include "about_dialog.moc"
 

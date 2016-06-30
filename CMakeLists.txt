@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 3.0)
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
@@ -70,7 +70,6 @@ if (NOT OpenCV_VERSION)
     find_package(OpenCV REQUIRED)
 endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
-find_package(Qt4)
 find_package(Eigen3 REQUIRED)
 
 include_directories("${OpenCV_INCLUDE_DIRS}")
