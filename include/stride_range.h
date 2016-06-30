@@ -25,27 +25,67 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef MTF_CORE_TBB_ADAPTOR
-#define MTF_CORE_TBB_ADAPTOR
 
-#include "include/mtf_core.h"
-#include "include/stride_range.h"
-#include "include/point_helpers.h"
+#ifndef STRIDE_RANGE_H
+#define STRIDE_RANGE_H
 
-class Mtf_core_tbb_adaptor {
+#include "threadpool.h"
+
+class Stride_range {
   public:
-    Mtf_core_tbb_adaptor(Mtf_core* core) : mtf_core(core) {
+    Stride_range(size_t start, size_t end, size_t stride)
+    : first(start), last(end), stride(stride)
+    {}
+    
+    size_t begin(void) const {
+        return first;
     }
-
-    void operator()(const Stride_range& r) const {
-        for (size_t i=r.begin(); i != r.end(); r.increment(i)) {
-            Boundarylist::const_iterator it = mtf_core->cl.get_boundaries().find(mtf_core->valid_obj[i]);
-            Point2d cent = centroid(it->second);
-            mtf_core->search_borders(cent, mtf_core->valid_obj[i]);
+    
+    size_t end(void) const {
+        return last + 2*stride; // excluded end value
+    }
+    
+    size_t& increment(size_t& v) const {
+        if (v == last) {
+            v = last + 2*stride;
+            return v;
+        } else {
+            if (v + stride > last) {
+                v = last;
+                return v;
+            }
+        }
+        v += stride;
+        return v;
+    }
+    
+    template<class T>
+    static void parallel_for(T& ftor, ThreadPool& tp, size_t ceiling) {
+        size_t stride = min(ceiling, tp.size());
+        size_t rpt = ceiling / stride; // rows per thread
+        size_t remainder = ceiling - rpt*stride;
+        
+        vector< std::future<void> > futures;
+        for (size_t b=0; b < stride; b++) {
+            size_t lower = b;
+            size_t upper = b < remainder ? lower + rpt*stride : lower + (rpt-1)*stride;
+            Stride_range sr(lower, upper, stride);
+            
+            futures.emplace_back( 
+                tp.enqueue( [sr,&ftor] {
+                    ftor(sr);
+                })
+            );
+            
+        }
+        for (size_t i=0; i < futures.size(); i++) {
+            futures[i].wait();
         }
     }
-  
-    Mtf_core* mtf_core;  
+    
+    size_t first;
+    size_t last;
+    size_t stride;
 };
 
 #endif

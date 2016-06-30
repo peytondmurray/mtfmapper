@@ -36,8 +36,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/mtf_tables.h"
 #include "include/ellipse_decoder.h"
 
+#include <mutex>
+
 // global lock to prevent race conditions on detected_blocks
-static tbb::mutex global_mutex;
+static std::mutex global_mutex;
 
 void Mtf_core::search_borders(const Point2d& cent, int label) {
     
@@ -68,7 +70,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             
             if (ed.valid && ed.code >= 0 && hole_found) {
                 {
-                    tbb::mutex::scoped_lock lock(global_mutex);
+                    std::lock_guard<std::mutex> lock(global_mutex);
                     e.valid = ed.valid;
                     e.set_code(ed.code);
                     ellipses.push_back(e);
@@ -282,7 +284,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         allzero &= fabs(mtf50) < 1e-6;
         
         if (mtf50 <= 1.2) { // reject mtf values above 1.2, since these are impossible, and likely to be erroneous
-            tbb::mutex::scoped_lock lock(global_mutex);
+            std::lock_guard<std::mutex> lock(global_mutex);
             if (shared_blocks_map.find(label) == shared_blocks_map.end()) {
                 shared_blocks_map[label] = block;
             }
@@ -293,7 +295,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         }
     }
     if (allzero) {
-        tbb::mutex::scoped_lock lock(global_mutex);
+        std::lock_guard<std::mutex> lock(global_mutex);
         auto it = shared_blocks_map.find(label);
         if (it != shared_blocks_map.end()) {
             shared_blocks_map.erase(it);
@@ -838,7 +840,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     }
     
     if (local_samples.size() > 0) {
-        tbb::mutex::scoped_lock lock(global_mutex);
+        std::lock_guard<std::mutex> lock(global_mutex);
         samples.insert(samples.end(), local_samples.begin(), local_samples.end());
     }
 }
