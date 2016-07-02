@@ -196,6 +196,25 @@ class Edge_record {
                 total_weight += weights[i]*7;
             }
         }
+        // find peak value in central 5 pixel band
+        size_t central_idx = 16*8;
+        for (size_t j=(-5*8+16*8); j <= (5*8+16*8); j++) {
+            if (histo[j] > histo[central_idx]) {
+                central_idx = j;
+            }
+        }
+        // now find 5% cut-off on both sides of peak
+        size_t lower5p = central_idx-1;
+        while (lower5p > 1 && histo[lower5p] > 0.05*histo[central_idx]) lower5p--;
+        size_t upper5p = central_idx+1;
+        while (upper5p < histo.size()-1 && histo[upper5p] > 0.05*histo[central_idx]) upper5p++;
+        
+        // move outwards a little, then look for another value greater than the 5% threshold
+        size_t rise_lower5p = (size_t)max(int(1), int(lower5p) - 8);
+        while (rise_lower5p > 1 && histo[rise_lower5p] <= histo[lower5p]) rise_lower5p--;
+        size_t rise_upper5p = min(histo.size()-1, upper5p+8);
+        while (rise_upper5p < histo.size()-1 && histo[rise_upper5p] <= histo[upper5p]) rise_upper5p++;
+        
         double csum = 0;
         for (size_t i = 0; i < histo.size(); i++) {
             csum += histo[i];
@@ -215,12 +234,17 @@ class Edge_record {
             }
         }
         
+        
+        
         double lower = p10idx / 8.0 - 16.0;
         double upper = p90idx / 8.0 - 16.0;
         double span = upper - lower;
         
         lower -= span * 0.7;
         upper += span * 0.7;
+        
+        lower = max(double(rise_lower5p + lower5p)/16.0 - 16.0, lower);
+        upper = min(double(rise_upper5p + upper5p)/16.0 - 16.0, upper);
         
         // trim weights to 10%-90% region?
         for (size_t i=0; i < points.size(); i++) {

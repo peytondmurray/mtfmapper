@@ -66,6 +66,7 @@ void Worker_thread::run(void) {
              fi.suffix().compare(QString("ARW"), Qt::CaseInsensitive) == 0 ||  // Sony
              fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
              fi.suffix().compare(QString("IIQ"), Qt::CaseInsensitive) == 0 ||  // Phase One
+             fi.suffix().compare(QString("MOS"), Qt::CaseInsensitive) == 0 ||  // Leaf
              fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
             tempdir.toLocal8Bit().constData();

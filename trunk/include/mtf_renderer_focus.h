@@ -484,22 +484,20 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         double white_clip = 0;
         double black_clip = 0;
-        exposure_checks(Point2d(180, 135), white_clip, black_clip);
+        double overexposure = 0;
+        exposure_checks(Point2d(180, 135), white_clip, black_clip, overexposure);
         
         rpx = col2;
         rpy = initial_rows + ts.height*3*1.75;
         if (white_clip > 5){
-            sprintf(tbuffer, "Probable highlight clipping, quality=%.1lf%%", 100 - white_clip);
+            sprintf(tbuffer, "Probable highlight clipping, severity=%.1lf%%", white_clip);
         } else {
-            sprintf(tbuffer, "Acceptable highlight exposure, quality=%.1lf%%", 100 - white_clip);
+            sprintf(tbuffer, "No highlight clipping detected");
         }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar wc_col = green;
         if (white_clip < 10) {
-            if (white_clip > 5) {
-                wc_col = yellow;
-            }
             checkmark(merged, Point2d(rpx-25, rpy), wc_col);
         } else {
             crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
@@ -507,22 +505,26 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         rpy = initial_rows + ts.height*4*1.75;
         if (black_clip > 5){
-            sprintf(tbuffer, "Probable shadow clipping, quality=%.1lf%%", 100 - black_clip);
+            sprintf(tbuffer, "Probable shadow clipping, severity=%.1lf%%", black_clip);
         } else {
-            sprintf(tbuffer, "Acceptable shadow exposure, quality=%.1lf%%", 100 - black_clip);
+            sprintf(tbuffer, "No shadow clipping detected");
         }
         cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar bc_col = green;
         if (black_clip < 10) {
-            if (black_clip > 5) {
-                bc_col = yellow;
-            }
             checkmark(merged, Point2d(rpx-25, rpy), bc_col);
         } else {
             crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
         }
         
+        
+        rpy = initial_rows + ts.height*5*1.75;
+        if (overexposure > 0){
+            sprintf(tbuffer, "Probable overexposure, severity=%.1lf%%", overexposure);
+            cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+        } 
         
         
         imwrite(wdir + prname, merged);
@@ -760,7 +762,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
     }
     
-    void exposure_checks(const Point2d& dims, double& white_clip, double& black_clip) {
+    void exposure_checks(const Point2d& dims, double& white_clip, double& black_clip, double& overexposure) {
         
         vector<Point2d> corners { {-dims.x, -dims.y}, {dims.x, -dims.y}, {dims.x, dims.y}, {-dims.x, dims.y}};
         vector<cv::Point> roi;
@@ -798,11 +800,13 @@ class Mtf_renderer_focus : public Mtf_renderer {
         int last_nz = histo.size()-1;
         while (last_nz > 0 && histo[last_nz] == 0) last_nz--;
         
-        #if 0
-        FILE* hfile = fopen("histo.txt", "wt");
+        #ifdef MDEBUG
+        FILE* hfile = fopen("focus_histo.txt", "wt");
+        size_t ch = 0;
         for (size_t j=0; j <= size_t(last_nz); j++) {
             if (histo[j] > 0) {
-                fprintf(hfile, "%lu %u\n", j, histo[j]);
+                ch += histo[j];
+                fprintf(hfile, "%lu %u %lu\n", j, histo[j], ch);
             }
         }
         fclose(hfile);
@@ -828,6 +832,13 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 white_clip = (chisto[wc_peak] - chisto[wc_peak-1])/chisto.back() * 100;
             }
             wc_peak--;
+        }
+        
+        overexposure = 0;
+        // catch a histogram that has a > 70% weight in last 10% ....
+        if ( (chisto.back() - chisto[65535*0.9]) > 0.7*histo.back() ) {
+            overexposure = (chisto.back() - chisto[65535*0.9]) / (0.5*chisto.back()) * 100;
+            overexposure = min(overexposure, 100.0);
         }
         
         int first_nz = 0;
