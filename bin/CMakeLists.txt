@@ -2,17 +2,17 @@ file(GLOB sources ../src/*${cpp_ext})
 
 add_executable(mtfmapper_bin ${sources})
 set_target_properties(mtfmapper_bin PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME mtf_mapper)
-target_link_libraries(mtfmapper_bin ${OpenCV_LIBS})
+target_link_libraries(mtfmapper_bin ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 file(GLOB gen_sources ../src/generator/*${cpp_ext})
 add_executable(generate_rectangle ${gen_sources})
 set_target_properties(generate_rectangle PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME mtf_generate_rectangle)
-target_link_libraries(generate_rectangle ${OpenCV_LIBS})
+target_link_libraries(generate_rectangle ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 file(GLOB chart_sources ../src/test_chart_generator/*${cpp_ext})
 add_executable(generate_test_chart ${chart_sources})
 set_target_properties(generate_test_chart PROPERTIES CLEAN_DIRECT_OUTPUT 1 OUTPUT_NAME mtf_generate_test_chart)
-target_link_libraries(generate_test_chart ${OpenCV_LIBS} )
+target_link_libraries(generate_test_chart ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 # Qt5 
 set(CMAKE_AUTOMOC ON)
