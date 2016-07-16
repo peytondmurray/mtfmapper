@@ -71,6 +71,7 @@ if (NOT OpenCV_VERSION)
 endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(Threads)
 
 include_directories("${OpenCV_INCLUDE_DIRS}")
 include_directories("${TCLAP_INCLUDE_DIR}")

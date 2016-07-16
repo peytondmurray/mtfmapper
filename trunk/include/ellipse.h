@@ -6,6 +6,7 @@
 
 #include <Eigen/Dense>
 
+#include <cmath>
 #include <string>
 using std::string;
 

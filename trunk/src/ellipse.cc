@@ -2,6 +2,7 @@
 #include "include/component_labelling.h"
 #include "include/point_helpers.h"
 
+#include <cmath>
 #include <Eigen/Cholesky>
 #include <Eigen/Dense>
 using namespace Eigen;
@@ -46,7 +47,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     
     if (edge_touched) return 0; // skip objects that touch the edge of the image (ellipses not really allowed there)
 
-    if (isnan(mx) || isnan(my)) {
+    if (std::isnan(mx) || std::isnan(my)) {
         return 0; // 0 -> not a circle
     }
 
@@ -128,7 +129,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     
     bool has_nans = false;
     for (size_t ri=0; ri < rhs.rows(); ri++) {
-        if (isnan(rhs(ri,0))) {
+        if (std::isnan(rhs(ri,0))) {
             has_nans = true;   
             return 0;
         }
@@ -211,7 +212,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     }
 
 
-    if (isnan(centroid_x) || isnan(centroid_y) || isnan(major_axis) || isnan(minor_axis)) {
+    if (std::isnan(centroid_x) || std::isnan(centroid_y) || std::isnan(major_axis) || std::isnan(minor_axis)) {
         is_circle = 0;
     }
     
