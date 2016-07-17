@@ -25,7 +25,7 @@ set(genrectangle_VERSION_MINOR 0)
 # Turn all compiler warnings on when building with GCC
 if(CMAKE_COMPILER_IS_GNUCXX)
   message(STATUS "Using a g++ compiler variant --- additional compiler warnings turned on")
-  add_definitions(-Wall -W -Wno-unused-local-typedefs)
+  add_definitions(-Wall -W -Wno-unused-local-typedefs -std=c++11)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 # Turn all compiler warnings on when building with the Intel compiler
