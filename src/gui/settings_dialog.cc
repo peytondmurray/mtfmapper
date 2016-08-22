@@ -266,6 +266,8 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --bayer blue");
     }
     
+    args = args + QString(" %1").arg(arguments_line->text());
+    
     emit argument_string(args);
 }
 
