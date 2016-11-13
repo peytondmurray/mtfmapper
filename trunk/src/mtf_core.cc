@@ -130,7 +130,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                 
                     int iy = lrint(y);
                     int ix = lrint(x);
-                    if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+                    if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
                         edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                     }
                 }
@@ -163,7 +163,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     
                         int iy = lrint(y);
                         int ix = lrint(x);
-                        if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+                        if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
                         
                             Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
@@ -219,7 +219,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     
                         int iy = lrint(y);
                         int ix = lrint(x);
-                        if (iy > 0 && iy < img.rows && ix > 0 && ix < img.cols) {
+                        if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
                         
                             Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
@@ -243,7 +243,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     }
                 }
             }
-            reduce_success &= edge_record[k].reduce();
+            reduce_success &= edge_record[k].reduce(true);
         }
     }
     

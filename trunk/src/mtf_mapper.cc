@@ -195,14 +195,14 @@ int main(int argc, char** argv) {
    
     assert(cvimg.type() == CV_16UC1);
 
-
+    const int border_width = 20;
     if (tc_border.getValue()) {
-        printf("The -b option has been specified, adding a 20-pixel border to the image\n");
+        printf("The -b option has been specified, adding a %d-pixel border to the image\n", border_width);
         double max_val = 0;
         double min_val = 0;
         cv::minMaxLoc(cvimg, &min_val, &max_val);
         cv::Mat border;
-        cv::copyMakeBorder(cvimg, border, 20, 20, 20, 20, cv::BORDER_CONSTANT, cv::Scalar((int)max_val));
+        cv::copyMakeBorder(cvimg, border, border_width, border_width, border_width, border_width, cv::BORDER_CONSTANT, cv::Scalar((int)max_val));
         cvimg = border;
     }
     
@@ -298,6 +298,10 @@ int main(int argc, char** argv) {
     Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
     mtf_core.set_absolute_sfr(tc_absolute.getValue());
     mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
+    if (tc_border.getValue()) {
+        printf("setting border to %d\n", border_width);
+        mtf_core.set_border(border_width+1);
+    }
     
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
