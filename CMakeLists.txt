@@ -3,6 +3,8 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+include(CPack)
+
 # set the extension used for C++ files here
 # this is used to find all sources using a GLOB
 set(cpp_ext .cc)
@@ -37,13 +39,6 @@ if(CMAKE_CXX_COMPILER MATCHES "icpc")
   # to be spurious.
   add_definitions(-Wall -wd981 -wd810)
 endif(CMAKE_CXX_COMPILER MATCHES "icpc")
-
-# must check this on new MSVC
-# Add stdint.h if we are compiling on MSVC
-#if(CMAKE_GENERATOR MATCHES "Visual Studio")
-#  INCLUDE_DIRECTORIES(${scl_SOURCE_DIR}/include)
-#  add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
-#endif(CMAKE_GENERATOR MATCHES "Visual Studio")
 
 if (MSVC)
     add_definitions(/arch:SSE2)
