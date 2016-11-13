@@ -33,7 +33,13 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     mtfmapper_app dialog;
- 
+
+    app.setAttribute(Qt::AA_UseHighDpiPixmaps);
+
+    QIcon appIcon;
+    appIcon.addFile(":/Icons/AppIcon64");
+    app.setWindowIcon(appIcon);
+
     dialog.show();
     return app.exec();
 }

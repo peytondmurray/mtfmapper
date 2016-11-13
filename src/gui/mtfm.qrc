@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version = "1.0">
+<qresource prefix="/Icons">
+<file alias="AppIcon64">mtf_mapper_gui.ico</file>
+</qresource>
+</RCC>

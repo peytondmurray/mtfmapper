@@ -214,7 +214,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
     connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
     
-    setWindowTitle(tr("Image Viewer"));
+    setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
     
     settings->send_argument_string();
