@@ -33,16 +33,17 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string>
 
 #include "include/fiducial_positions.h"
+#include "alpa_correction.h"
 
 using std::string;
 using std::ostringstream;
 
 class Svg_page_focus : public Svg_page {
   public:
-    Svg_page_focus(const string& page_spec, const string& fname) 
+    Svg_page_focus(const string& page_spec, const string& fname, bool alpa_scale=false) 
       : Svg_page(page_spec, fname, 10000), cop(0,0,0), pl(0,0,2000), 
         normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), 
-        sensor(15.6, 23.6), width_scale(1), clipid(1) {
+        sensor(15.6, 23.6), width_scale(1), clipid(1), alpa_scale(alpa_scale) {
         
         // must call set_viewing_parameters before render
     }
@@ -56,6 +57,11 @@ class Svg_page_focus : public Svg_page {
         coded_sector_circles(10);
         
         chevrons();
+        
+        if (alpa_scale) {
+            alpa_corrections();
+        }
+        print_checks();
         
         // print out chart specification
         fprintf(fout, "\n");
@@ -284,6 +290,66 @@ class Svg_page_focus : public Svg_page {
         }
     }
     
+    void alpa_corrections(void) {
+        bool first = true;
+        for (size_t i=0; i < alpa_correction_table.size(); i++) {
+            
+            double pos  = alpa_correction_table[i].second * (first ? -1 : 1);
+            double shim = alpa_correction_table[i].first * (first ? 1 : -1);
+            
+            if (fabs(pos) < 1e-6) {
+                first = false;
+            } else {
+                direct_rectangle(-25, pos, 10, 0.25, 0);
+                iPoint p = scale(-28, pos + (!first ? -1 : 1.75)*1.5);
+                fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" > %c%d </text>\n",
+                    p.x, p.y, int(0.6*sscale), first ? '+' : ' ', int(shim)
+                );   
+            }
+        }
+    }
+    
+    void print_checks(void) {
+        // markers of known dimension to check printed scale
+        
+        vector<Point2d> corners = {
+            {-120, -150},
+            { 120,  150},
+            {-120,  150},
+            { 120, -150}
+            
+        };
+        
+        for (auto p: corners) {
+            direct_rectangle(p.x, p.y, 10, 0.25, 0);
+            direct_rectangle(p.x, p.y, 0.25, 10, 0);
+        }
+        
+        Point2d ip = corners[0];
+        
+        Point2d pleft(ip.x + (ip.x < 0 ? - 10 : 10), ip.y);
+        
+        direct_rectangle(pleft.x, pleft.y, 10, 0.25, 0);
+        direct_rectangle(pleft.x-3, pleft.y, 2, 0.25, M_PI/2);
+        direct_rectangle(pleft.x+3, pleft.y, 2, 0.25, M_PI/2);
+        iPoint p = scale(pleft.x - 2, pleft.y + 1.25);
+        fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" > %.0lf mm </text>\n",
+            p.x, p.y, int(0.25*sscale), 2*fabs(ip.x)
+        );
+        
+        Point2d ptop(ip.x, ip.y + (ip.y < 0 ? - 10 : 10));
+        direct_rectangle(ptop.x, ptop.y, 10, 0.25, M_PI/2);
+        direct_rectangle(ptop.x, ptop.y-3, 2, 0.25, 0);
+        direct_rectangle(ptop.x, ptop.y+3, 2, 0.25, 0);
+        p = scale(ptop.x + 0.5, ptop.y - 2);
+        fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" transform=\"rotate(90 %d,%d)\"> %.0lf mm </text>\n",
+            p.x, p.y, int(0.25*sscale), 
+            p.x, p.y, 
+            2*fabs(ip.y)
+        );
+        
+    }
+    
     Vec3d cop;      // centre of projection
     Vec3d pl;       // position of focal plane
     Vec3d normal;     // normal vector of target
@@ -293,6 +359,7 @@ class Svg_page_focus : public Svg_page {
     double width_scale;
     std::string chart_description;
     int clipid;
+    bool alpa_scale;
 };
 
 #endif
