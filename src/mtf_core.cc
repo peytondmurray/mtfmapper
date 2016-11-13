@@ -243,7 +243,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     }
                 }
             }
-            reduce_success &= edge_record[k].reduce(true);
+            reduce_success &= edge_record[k].reduce();
         }
     }
     
