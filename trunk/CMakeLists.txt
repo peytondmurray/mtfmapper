@@ -3,8 +3,6 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-include(CPack)
-
 # set the extension used for C++ files here
 # this is used to find all sources using a GLOB
 set(cpp_ext .cc)
@@ -128,3 +126,19 @@ set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 11)
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD_REQUIRED ON)
+
+# custom install to make a whole windows installer, not necessary if building on Linux
+if(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base/")
+    install(DIRECTORY "C:/workspace/mtfmapper_windows_base/" DESTINATION bin)
+endif(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base/")
+
+set(CPACK_PACKAGE_VENDOR "Frans van den Bergh")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/license.txt")
+set(CPACK_PACKAGE_VERSION_MAJOR ${mtfmapper_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${mtfmapper_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH 9) #increment on release
+set(CPACK_PACKAGE_EXECUTABLES "mtf_mapper_gui;MTF Mapper")
+set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
+set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
+include(CPack)
+
