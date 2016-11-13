@@ -60,7 +60,7 @@ class Mtf_core {
              const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false), samples_per_edge(0) {
+        sliding(false), samples_per_edge(0), border_width(0) {
 
         bayer = Bayer::from_string(bayer_subset);
         printf("bayer subset is %d\n", bayer);
@@ -135,6 +135,10 @@ class Mtf_core {
         snap_to_angle = angle;
     }
     
+    void set_border(int in_border_width) {
+        border_width = in_border_width;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -159,6 +163,7 @@ class Mtf_core {
     bool sfr_smoothing;
     bool sliding;
     int samples_per_edge;
+    int border_width;
     
     void process_with_sliding_window(Mrectangle& rrect);
   
@@ -196,8 +201,12 @@ class Mtf_core {
         if (bayer == Bayer::NONE) {
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
+                if (y < border_width || y > img.rows-1-border_width) continue;
+                
                 for (int x=it->second.start; x <= it->second.end; ++x) {
-
+                    
+                    if (x < border_width || x > img.cols-1-border_width) continue;
+                    
                     Point2d d((x) - cent.x, (y) - cent.y);
                     double dot = d.ddot(mean_grad); 
                     double dist_along_edge = d.ddot(edge_direction);
@@ -212,8 +221,12 @@ class Mtf_core {
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
                 int rowcode = (y & 1) << 1;
+                if (y < border_width || y > img.rows-1-border_width) continue;
+                
                 for (int x=it->second.start; x <= it->second.end; ++x) {
                     int code = rowcode | (x & 1);
+                    
+                    if (x < border_width || x > img.cols-1-border_width) continue;
 
                     // skip the appropriate sites if we are operating only on a subset
                     if (bayer == Bayer::RED && code != 0) {
