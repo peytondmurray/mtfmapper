@@ -25,6 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include "include/mtf_core.h"
 
 #include "include/loess_fit.h"
@@ -74,7 +75,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     e.valid = ed.valid;
                     e.set_code(ed.code);
                     ellipses.push_back(e);
-                    printf("Fiducial with code %d extracted at (%.2lf %.2lf)\n", e.code, e.centroid_x, e.centroid_y);
+                    logger.debug("Fiducial with code %d extracted at (%.2lf %.2lf)\n", e.code, e.centroid_x, e.centroid_y);
                 }
                 
                 for (double theta=0; theta < 2*M_PI; theta += M_PI/720.0) {
@@ -106,7 +107,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     }
     
     if (!rrect.corners_ok()) {
-        printf("discarding broken square (early)\n");
+        logger.debug("discarding broken square (early)\n");
         return;
     }
     
@@ -145,7 +146,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
-            printf("discarding broken square (after updates)\n");
+            logger.debug("discarding broken square (after updates)\n");
             return;
         }
         
@@ -200,7 +201,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
-            printf("discarding broken square (after updates)\n");
+            logger.debug("discarding broken square (after updates)\n");
             return;
         }
         
@@ -248,7 +249,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     }
     
     if (!reduce_success) {
-        printf("reduce failed, probably not a rectangle/quadrangle\n");
+        logger.debug("reduce failed, probably not a rectangle/quadrangle\n");
         return;
     }
     
@@ -338,11 +339,11 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     // TODO: rethink this test
     for (int ci=0; ci < 4; ci++) {
         if (cl(lrint(0.5*(ix+rrect.centroids[0].x)), lrint(0.5*(iy+rrect.centroids[0].y))) != label) {
-            printf("block with centroid (%d, %d) failed interior check\n", ix, iy);
+            logger.debug("block with centroid (%d, %d) failed interior check\n", ix, iy);
             return false;
         }
         if (cl(lrint(0.5*(ix+rrect.corners[0].x)), lrint(0.5*(iy+rrect.corners[0].y))) != label) {
-            printf("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
+            logger.debug("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
             return false;
         }
     }
@@ -391,7 +392,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
-        printf("failed edge\n");
+        logger.debug("failed edge\n");
         return 1.0;
     }
     afft.realfft(fft_out_buffer.data());
@@ -607,7 +608,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     d[1] = corners[corner_map[v2][1]] - corners[corner_map[v2][0]];
     
     if (dims[2].first < winlen) {
-        printf("Rectangle not really long enough for sliding mode. Skipping.\n");
+        logger.debug("Rectangle not really long enough for sliding mode. Skipping.\n");
         return;
     }
     

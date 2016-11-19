@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_FOCUS_H
 #define MTF_RENDERER_FOCUS_H
 
+#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
@@ -62,7 +63,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
     }
     
     void render(const vector<Block>&) {
-        printf("Fatal error. This function should not be used. Aborting\n");
+        logger.error("Fatal error. This function should not be used. Aborting\n");
         exit(1);
         return;
     }
@@ -137,7 +138,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
             
         }
-        printf("dropped %lu samples, %lu remain\n", data.size() - ndata.size(), ndata.size());
+        logger.debug("dropped %lu samples, %lu remain\n", data.size() - ndata.size(), ndata.size());
         data = ndata;
         
         Ratpoly_fit cf(data, 4, 2);
@@ -163,10 +164,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 
             }
             errsum /= wsum;
-            printf("iter %d err: %lg dc=%lg\n", iter, errsum, dccount/double(data.size()));
+            logger.debug("iter %d err: %lg dc=%lg\n", iter, errsum, dccount / double(data.size()));
             sol = rpfit(cf);
             if (iter > 0 && (prev_err - errsum)/prev_err < 0.0001) {
-                printf("bailing out at iter %d\n", iter);
+                logger.debug("bailing out at iter %d\n", iter);
                 break;
             }
             prev_err = errsum;
@@ -180,7 +181,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             wsum += data[k].yweight;
         }
         errsum /= wsum;
-        printf("final model fit error (weighted): %lg\n", errsum);
+        logger.debug("final model fit error (weighted): %lg\n", errsum);
         
         // do a quick bootstrap to estimate some bounds on the focus peak
         vector<double> mc_peaks;
@@ -222,7 +223,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         fclose(fout);
         
         double focus_peak = cf.peak(sol); // works on pre-stretched depth
-        printf("focus_plane %lg\n", focus_peak);
+        logger.debug("focus_plane %lg\n", focus_peak);
         
         // draw centre-of-chart marker
         cv::Scalar mark_col(0, 127-20, 255-20);

@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_CORE_H
 #define MTF_CORE_H
 
+#include "include/logger.h"
 #include "include/component_labelling.h"
 #include "include/gradient.h"
 #include "include/block.h"
@@ -63,7 +64,7 @@ class Mtf_core {
         sliding(false), samples_per_edge(0), border_width(0) {
 
         bayer = Bayer::from_string(bayer_subset);
-        printf("bayer subset is %d\n", bayer);
+        logger.debug("bayer subset is %d\n", bayer);
       
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
@@ -253,7 +254,6 @@ class Mtf_core {
     
         
         edge_length = max_along_edge - min_along_edge;
-        //printf("edge length = %lf\n", edge_length);
     }
 
 };

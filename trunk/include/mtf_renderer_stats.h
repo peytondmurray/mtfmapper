@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_STATS_H
 #define MTF_RENDERER_STATS_H
 
+#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 
@@ -100,8 +101,8 @@ class Mtf_renderer_stats : public Mtf_renderer {
         sort(filtered.begin(), filtered.end());
         sort(unfiltered.begin(), unfiltered.end());
         
-        printf("    Quantiles ->                   %5d%% %5d%% %5d%% %5d%% %5d%%\n", 5, 25, 50, 75, 95);
-        printf("Statistics on all edges:           %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
+        logger.info("    Quantiles ->                   %5d%% %5d%% %5d%% %5d%% %5d%%\n", 5, 25, 50, 75, 95);
+        logger.info("Statistics on all edges:           %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
             quantile(unfiltered, 0.05)*pixel_size,
             quantile(unfiltered, 0.25)*pixel_size,
             quantile(unfiltered, 0.5)*pixel_size,
@@ -114,7 +115,7 @@ class Mtf_renderer_stats : public Mtf_renderer {
             return;
         }
         
-        printf("Statistics on all filtered edges : %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
+        logger.info("Statistics on all filtered edges : %5.4lf %5.4lf %5.4lf %5.4lf %5.4lf  (total=%u)\n", 
             quantile(filtered, 0.05)*pixel_size,
             quantile(filtered, 0.25)*pixel_size,
             quantile(filtered, 0.5)*pixel_size,

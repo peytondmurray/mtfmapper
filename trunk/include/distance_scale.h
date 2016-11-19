@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef DISTANCE_SCALE_H
 #define DISTANCE_SCALE_H
 
+#include "include/logger.h"
 #include "mtf_core.h"
 #include "ellipse_decoder.h"
 
@@ -114,7 +115,7 @@ class Distance_scale {
                     zcount++;
                 } else {
                     if (by_code.find(e.code) != by_code.end()) {
-                        printf("collision: code %d found at both [%lf %lf] and [%lf %lf]\n",
+                        logger.debug("collision: code %d found at both [%lf %lf] and [%lf %lf]\n",
                             e.code, e.centroid_x, e.centroid_y,
                             by_code[e.code]->centroid_x, by_code[e.code]->centroid_y
                         );
@@ -124,12 +125,12 @@ class Distance_scale {
                 max_fiducial_diameter = max(e.major_axis, max_fiducial_diameter);
             }
             
-            printf("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
+            logger.debug("absolute centre: (%lf, %lf)\n", zero.x, zero.y);
             transverse = normalize(first - last);
-            printf("transverse vector: (%lf, %lf)\n", transverse.x, transverse.y);
+            logger.debug("transverse vector: (%lf, %lf)\n", transverse.x, transverse.y);
             // sign of transverse unknown at this stage
             longitudinal = Point2d(-transverse.y, transverse.x);
-            printf("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
+            logger.debug("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
             if (by_code.size() > 6) { // minimum of 5 unique fiducials plus one spare plus the zeros
                 
@@ -323,7 +324,7 @@ class Distance_scale {
                                 solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers));
                                 if (bpr < global_bpr) {
                                     global_bpr = bpr;
-                                    printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n", 
+                                    logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
                                         k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
                                     );
                                 }
@@ -335,7 +336,7 @@ class Distance_scale {
                                     
                                     if (bpr < global_bpr) {
                                         global_bpr = bpr;
-                                        printf("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n", 
+                                        logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
                                             k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
                                         );
                                     }
@@ -351,14 +352,14 @@ class Distance_scale {
                 combinations.clear(); // discard the combinations
                 
                 if (solutions.size() == 0) {
-                    printf("Error: Solutions to camera calibration found. Aborting\n");
+                    logger.error("Error: No solutions to camera calibration found. Aborting\n");
                     fiducials_found = false;
                     return;
                 }
                 
-                printf("Retained %lu promising solutions\n", solutions.size());
+                logger.debug("Retained %lu promising solutions\n", solutions.size());
                 for (auto s: solutions) {
-                    printf("\t solution with bpe = %lf, dist=%le, #inliers=%lu\n", s.bpe, s.distort, s.inlier_list.size());
+                    logger.debug("\t solution with bpe = %lf, dist=%le, #inliers=%lu\n", s.bpe, s.distort, s.inlier_list.size());
                 }
                 double w = 0;
                 
@@ -383,7 +384,7 @@ class Distance_scale {
                 
                 std::cout << "R=\n" << RM << std::endl;
                 std::cout << "T= " << Pcop.transpose() << std::endl;
-                printf("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0/w, img_scale/w);
+                logger.debug("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0 / w, img_scale / w);
                 
                 for (int rr=0; rr < 3; rr++) {
                     for (int cc=0; cc < 3; cc++) {
@@ -425,7 +426,7 @@ class Distance_scale {
                     Eigen::Vector3d bp = RMM*Eigen::Vector3d(ba_world_points[inliers[k]][0], ba_world_points[inliers[k]][1], 1.0) + TV;
                     bp /= bp[2];
                     
-                    printf("point %d: [%lf %lf] -> ellipse centre [%lf %lf], point centre [%lf %lf]\n",
+                    logger.debug("point %d: [%lf %lf] -> ellipse centre [%lf %lf], point centre [%lf %lf]\n",
                         inliers[k], img_scale*bp[0] + prin.x, img_scale*bp[1] + prin.y,
                         uc*img_scale + prin.x, vc*img_scale + prin.y, 
                         (bp[0] - uc), (bp[1] - vc)
@@ -446,7 +447,7 @@ class Distance_scale {
                 ba.solve();
                 ba.unpack(rotation, translation, distortion, w);
                 bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
-                printf("solution %d has rmse=%lf\n", min_idx, bundle_rmse);
+                logger.debug("solution %d has rmse=%lf\n", min_idx, bundle_rmse);
                 
                 if (ba.optimization_failure() && min_idx < int(solutions.size() - 1)) {
                     min_idx++;
@@ -462,7 +463,7 @@ class Distance_scale {
                     ba.solve();
                     ba.unpack(rotation, translation, distortion, w);
                     bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
-                    printf("next solution %d has rmse=%lf\n", min_idx, bundle_rmse);
+                    logger.debug("next solution %d has rmse=%lf\n", min_idx, bundle_rmse);
                     improved = false;
                     if (prev_rmse - bundle_rmse > 1e-4) {
                         improved = true;
@@ -490,14 +491,14 @@ class Distance_scale {
                 
                 centre_depth = backproject(zero.x, zero.y)[2];
                 
-                printf("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
+                logger.debug("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
                 fiducials_found = true;
             }
             
             // construct a distance scale
             
         } else {
-            printf("Warning: Manual focus profile chart mode requested, but central dots not found\n");
+            logger.debug("Warning: Manual focus profile chart mode requested, but central dots not found\n");
             const vector<Block>& blocks = mtf_core.get_blocks();
             
             double delta_1 = 1;
@@ -530,7 +531,7 @@ class Distance_scale {
                 sort(yp.begin(), yp.end());
                 double idx_x = (find(xp.begin(), xp.end(), lblock.centroid.x) - xp.begin())/double(xp.size());
                 double idx_y = (find(yp.begin(), yp.end(), lblock.centroid.y) - yp.begin())/double(yp.size());
-                printf("xfrac=%lf, yfrac=%lf\n", idx_x, idx_y);
+                logger.debug("xfrac=%lf, yfrac=%lf\n", idx_x, idx_y);
                 
                 Point2d median(xp[xp.size()/2], yp[yp.size()/2]); 
                 
@@ -566,16 +567,16 @@ class Distance_scale {
                 zero = lblock.get_edge_centroid(bot_i);
                 double block_width = norm(lblock.get_edge_centroid(right_i) - lblock.get_edge_centroid(left_i));
                 chart_scale = 62.0 / block_width; // assume central block is 62 mm wide
-                printf("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
+                logger.debug("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
             } else { 
-                printf("Warning: Could not identify largest block, choosing poor defaults\n");
+                logger.debug("Warning: Could not identify largest block, choosing poor defaults\n");
                 chart_scale = 0.15;
                 zero = Point2d(932, 710);
                 transverse = Point2d(1,0);
                 longitudinal = Point2d(0,1);
             }
-            printf("zero: %lf %lf\n", zero.x, zero.y);
-            printf("transverse: %lf %lf\nlongitudinal: %lf %lf\n", transverse.x, transverse.y, longitudinal.x, longitudinal.y);
+            logger.debug("zero: %lf %lf\n", zero.x, zero.y);
+            logger.debug("transverse: %lf %lf\nlongitudinal: %lf %lf\n", transverse.x, transverse.y, longitudinal.x, longitudinal.y);
             
         }
     }

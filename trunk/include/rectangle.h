@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MRECTANGLE_H
 #define MRECTANGLE_H
 
+#include "include/logger.h"
 #include "common_types.h"
 #include "peak_detector.h"
 #include "edge_record.h"
@@ -284,7 +285,7 @@ class Mrectangle {
         
         if ( fabs(det) < 1e-12 ) {
             // lines are actually parallel. this is impossible?
-            printf("Warning: determinant near-zero: %s, %d\n", __FILE__, __LINE__);
+            logger.debug("Warning: determinant near-zero: %s, %d\n", __FILE__, __LINE__);
             return false;
         }
         
@@ -312,7 +313,7 @@ class Mrectangle {
     
     void print(void) const {
         for (int k=0; k < 4; k++) {
-            printf("c(%lf, %lf), e(%lf, %lf), n(%lf, %lf), t(%lf), cr(%lf, %lf), map(%d, %d)\n",
+            logger.debug("c(%lf, %lf), e(%lf, %lf), n(%lf, %lf), t(%lf), cr(%lf, %lf), map(%d, %d)\n",
                 centroids[k].x, centroids[k].y,
                 edges[k].x, edges[k].y,
                 normals[k].x, normals[k].x,

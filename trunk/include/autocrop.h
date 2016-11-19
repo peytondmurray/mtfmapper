@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define AUTOCROP_H    
 
 #include "common_types.h"
+#include "include/logger.h"
 
 #include <map>
 using std::map;
@@ -59,7 +60,7 @@ class Autocropper {
         cstart = bounds.x;
         width  = bounds.y;
         
-        printf("start r/c: [%d %d], h/w: [%d %d]\n", rstart, cstart, height, width);
+        logger.debug("start r/c: [%d %d], h/w: [%d %d]\n", rstart, cstart, height, width);
     }
     
     cv::Mat subset(const cv::Mat& X, cv::Rect* dimensions=NULL) {
