@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef RATPOLY_FIT_H
 #define RATPOLY_FIT_H
 
+#include "include/logger.h"
 #include <Eigen/Dense>
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -107,7 +108,7 @@ class Ratpoly_fit  {
                 double e = z - data[i].y*ysf;
                 deriv += e*d*w;
             } else {
-                printf("hit a pole!\n");
+                logger.debug("hit a pole!\n");
             }
         }
         evaluation_count++;
@@ -323,21 +324,13 @@ class Ratpoly_fit  {
                 double q = -0.5*(b + sb*sqrt(b*b - 4*a*c));
                 double pole1 = q/a;
                 double pole2 = c/q;
-                
-                /*
-                if ((pole1 >= xmin && pole1 <= xmax) ||
-                       (pole2 >= xmin && pole2 <= xmax)) {
-                       
-                       printf("poles at %lf, %lf\n", pole1, pole2);
-                }
-                */
-                
+                              
                 return (pole1 >= xmin && pole1 <= xmax) ||
                        (pole2 >= xmin && pole2 <= xmax);
             }
         default:
             // TODO: see NR chapter 5.6 for cubic roots
-            printf("Warning: no implementation to compute roots of order-%d polynomial\n",
+            logger.error("Warning: no implementation to compute roots of order-%d polynomial\n",
                 order_m
             );
             return false;

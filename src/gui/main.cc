@@ -26,7 +26,10 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include <QApplication>
- 
+
+#include "include/logger.h"
+Logger logger;
+
 #include "mtfmapper_app.h"
  
 int main(int argc, char *argv[])

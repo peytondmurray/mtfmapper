@@ -26,6 +26,7 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
+#include "include/logger.h"
 #include "include/demosaic.h"
 #include <string>
 using std::string;
@@ -43,7 +44,7 @@ void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer) {
         if (bayer == Bayer::RED || bayer == Bayer::BLUE) {
             simple_demosaic_redblue(cvimg, rawimg, bayer);
         } else {
-            printf("Fata error: Unknown bayer subset requested. Aborting\n");
+            logger.error("Fatal error: Unknown bayer subset requested. Aborting\n");
             exit(-1);
         }
     }
@@ -114,7 +115,7 @@ void green_leveling(cv::Mat& img, double thresh = 0.1) {
 }
 
 void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
-    printf("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
+    logger.debug("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
     rawimg = cvimg.clone();
     
     vector < vector<int> > hist(4, vector<int>(65536, 0));
@@ -265,7 +266,7 @@ inline void hv_cross(cv::Mat& cvimg, int row0, int col0, int centre_val, double&
 }
 
 void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
-    printf("Bayer subset specified, performing geometric demosaic\n");
+    logger.debug("Bayer subset specified, performing geometric demosaic\n");
     rawimg = cvimg.clone();
     
     // TODO: WB does not seem to work very well on IQ180 images ...
@@ -276,10 +277,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
             int val = cvimg.at<uint16_t>(row, col);
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset > 3 || subset < 0) {
-                printf("subset = %d\n", subset);
+                logger.debug("subset = %d\n", subset);
             }
             if (val < 0 || val > 65535) {
-                printf("val = %d\n", val);
+                logger.debug("val = %d\n", val);
             }
             hist[subset][val]++;
         }
@@ -307,7 +308,7 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
         
         mean[subset] = upper - lower;
         
-        printf("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
+        logger.debug("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
     }
     const int targ = 1;
     for (int i=0; i < 4; i++) {
@@ -468,10 +469,6 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                     
                 interp = max(0.0, min(interp, 65535.0));
                 
-                
-                
-                //fprintf(stderr, "%lf %lf\n", sqrt(botsum/double(4*0.25 + 4 + 1)), ndiff);
-                
                 // difference between two interpolants should be small, or we fall back on the simpler gradient interpolant
                 if (fabs(interp - gi_estimate) > 2*ndiff) {
                     outlier_count++;
@@ -490,10 +487,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
         }
     }
     
-    printf("MAD interpolation error: %lg\n", maderr/double(interp_count));
-    printf("Fraction of outliers: %lf\n", outlier_count/double(interp_count));
+    logger.debug("MAD interpolation error: %lg\n", maderr/double(interp_count));
+    logger.debug("Fraction of outliers: %lf\n", outlier_count/double(interp_count));
     for (size_t i=0; i < ncount.size(); i++) {
-        printf("%lu neighours = %lf\n", i, ncount[i]/double(interp_count));
+        logger.debug("%lu neighours = %lf\n", i, ncount[i]/double(interp_count));
     }
     
     imwrite(string("prewhite.png"), rawimg);

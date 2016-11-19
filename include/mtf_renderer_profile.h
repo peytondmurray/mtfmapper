@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_PROFILE_H
 #define MTF_RENDERER_PROFILE_H
 
+#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
@@ -62,7 +63,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // check distribution: a bimodal distribution probably means the image is rotated
         bool transpose = test_for_bimodal_distribution(row_max);
         if (transpose) {
-            printf("bimodal distribution found, taking transpose\n");
+            logger.debug("bimodal distribution found, taking transpose\n");
             extract_row_maxima(row_max, blocks, true);
         }
 
@@ -86,7 +87,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         }
         
         if (row_max.empty()) {
-            printf("Warning: All mtf50 values are zero; cannot generate a profile.\n");
+            logger.debug("Warning: All mtf50 values are zero; cannot generate a profile.\n");
             return;
         }
         
@@ -199,7 +200,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
 
-        printf("peak_shift = %lf mtf_at_peak = %lf %s\n", 
+        logger.debug("peak_shift = %lf mtf_at_peak = %lf %s\n",
             peak_shift, mean_mtf50_at_ref_edge*pixel_size,
             lpmm_mode ? "lp/mm" : "c/p"
         );
@@ -241,11 +242,11 @@ class Mtf_renderer_profile : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            printf("Failed to execute gnuplot (error code %d)\n", rval);
-            printf("You can try to execute [%s] to render the plots manually\n", buffer);
+            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
+            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            printf("Gnuplot plot completed successfully. Look for profile_image.png\n");
+            logger.debug("Gnuplot plot completed successfully. Look for profile_image.png\n");
         }
         
         delete [] buffer;
@@ -349,10 +350,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
                     if (transpose) {
                         y = lrint(cent.x);
-                        //fprintf(stderr, "%lf %lf %lf\n", cent.y, cent.x, val);
                     } else {
                         y = lrint(cent.y);
-                        //fprintf(stderr, "%lf %lf %lf\n", cent.x, cent.y, val);
                     }
                     
                     map<int, double>::iterator it = row_max.find(y);

@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define COMPONENT_LABELLING_H
 
 #include "common_types.h"
+#include "include/logger.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -71,7 +72,7 @@ public:
 
     inline int operator()(int x, int y) const {
         if (!(x >= 0 && x < _width && y >= 0 && y < _height)) {
-            printf("trying to access %d, %d (size is %d,%d)\n", x, y, _width, _height);
+            logger.debug("trying to access %d, %d (size is %d,%d)\n", x, y, _width, _height);
             return -1;
         }
         return _labels[y * _width + x];

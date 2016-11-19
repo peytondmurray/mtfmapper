@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef ELLIPSE_DECODER_H
 #define ELLIPSE_DECODER_H
 
+#include "include/logger.h"
 #include "include/common_types.h"
 #include "include/ellipse.h"
 #include "include/component_labelling.h"
@@ -150,7 +151,7 @@ class Ellipse_decoder {
         
         
         if (e.fg_fraction > 0.9999) {
-            printf("ellipse too solid, cannot be a valid code\n");
+            logger.debug("ellipse too solid, cannot be a valid code\n");
             valid = false;
         }
     }

@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_GRID_H
 #define MTF_RENDERER_GRID_H
 
+#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "gaussfilter.h"
@@ -85,7 +86,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         }
 
         if (allvals.size() < 20) {
-            printf("Too few valid edges found. No surface can be generated\n");
+            logger.error("Too few valid edges found. No surface can be generated\n");
             return;
         }
 
@@ -235,11 +236,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            printf("Failed to execute gnuplot (error code %d)\n", rval);
-            printf("You can try to execute [%s] to render the plots manually\n", buffer);
+            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
+            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            printf("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
+            logger.debug("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
         }
         
         delete [] buffer;

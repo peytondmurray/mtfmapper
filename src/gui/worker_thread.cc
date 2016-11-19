@@ -25,10 +25,12 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include "worker_thread.h"
 #include "worker_thread.moc"
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -104,7 +106,7 @@ void Worker_thread::run(void) {
 
             int dc_rval = system(buffer);
             if (dc_rval < 0) {
-                printf("error. dcraw call failed\n");
+                logger.error("error. dcraw call failed\n");
             }
 
             emit send_delete_item(input_file);
@@ -128,9 +130,11 @@ void Worker_thread::run(void) {
             arguments.toLocal8Bit().constData()
         );
         #endif
-        cout << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
+        std::ostringstream sbuf(std::ios_base::out);
+        sbuf << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
              << arguments.toLocal8Bit().constData() << endl;
-        printf("actual command = [%s]\n", buffer);
+        logger.debug("%s\n", sbuf.str().c_str());
+        logger.debug("actual command = [%s]\n", buffer);
         int rval = system(buffer);
         
         if (rval >= 0) {

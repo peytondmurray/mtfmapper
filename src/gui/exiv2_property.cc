@@ -26,6 +26,7 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
+#include "include/logger.h"
 #include "exiv2_property.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,7 +121,7 @@ QString Exiv2_property::extract_property(QString propname) {
         return rval;
 
     } else {
-        printf("failed to open %s\n", tfname.toLocal8Bit().constData());
+        logger.error("failed to open %s\n", tfname.toLocal8Bit().constData());
     }
 
     delete [] buffer;

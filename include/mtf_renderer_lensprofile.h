@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_LENSPROFILE_H
 #define MTF_RENDERER_LENSPROFILE_H
 
+#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "include/loess_fit.h"
@@ -59,7 +60,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         vector<double> resolution;
         for (size_t i=0; i < min(size_t(3), in_resolution.size()); i++) {
             resolution.push_back(in_resolution[i] / pixel_size);
-            printf("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
+            logger.debug("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
         }
         
         vector< vector<Ordered_point> > sagittal(resolution.size());
@@ -101,11 +102,11 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         FILE* fout = fopen((wdir + prname).c_str(), "wt");
         
         if (sagittal[0].size() == 0 || meridional.size() == 0) {
-            printf("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
+            logger.error("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
             return;
         }
         
-        printf("got %d sagittal / %d meridional samples\n", (int)sagittal[0].size(), (int)meridional[0].size());
+        logger.debug("got %d sagittal / %d meridional samples\n", (int)sagittal[0].size(), (int)meridional[0].size());
         
         vector< vector<Ordered_point> > s_fitted(resolution.size());
         vector< vector<Ordered_point> > s_spread(resolution.size());
@@ -245,11 +246,11 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            printf("Failed to execute gnuplot (error code %d)\n", rval);
-            printf("You can try to execute [%s] to render the plots manually\n", buffer);
+            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
+            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            printf("Gnuplot plot completed successfully. Look for lensprofile.png\n");
+            logger.debug("Gnuplot plot completed successfully. Look for lensprofile.png\n");
         }
         
         delete [] buffer;

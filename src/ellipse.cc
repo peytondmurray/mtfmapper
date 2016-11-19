@@ -1,3 +1,4 @@
+#include "include/logger.h"
 #include "include/ellipse.h"
 #include "include/component_labelling.h"
 #include "include/point_helpers.h"
@@ -123,7 +124,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     }
     
     if (rhs.rows() != 5 || rhs.cols() != 1) {
-        printf("rhs undefined\n");
+        logger.debug("rhs undefined\n");
         exit(1);
     }
     
@@ -216,7 +217,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         is_circle = 0;
     }
     
-    printf("centre (%.2lf, %.2lf), major = %lf, minor = %lf, angle = %lf, is_circle = %d\n",
+    logger.debug("centre (%.2lf, %.2lf), major = %lf, minor = %lf, angle = %lf, is_circle = %d\n",
         centroid_x, centroid_y, major_axis, minor_axis, angle/M_PI*180.0, is_circle);
         
     if (is_circle) {
@@ -238,7 +239,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
             }
         }
         int clabel = cl(lrint(raw_points[0].x), lrint(raw_points[0].y));
-        printf("label used for scanset: %d\n", clabel);
+        logger.debug("label used for scanset: %d\n", clabel);
         int total = 0;
         int foreground = 0;
         for (map<int, scanline>::iterator it=scanset.begin(); it != scanset.end(); it++) {

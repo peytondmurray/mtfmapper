@@ -25,6 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include "include/loess_fit.h"
 #include "include/gaussfilter.h"
 #include "include/mtf_tables.h"
@@ -194,7 +195,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
         abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
-        printf("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
+        logger.debug("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
         return -1;
     }
     
@@ -255,7 +256,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         if (fft_size/2 - fft_left < shift_tolerance*8 ||
             fft_right  - fft_size/2 < shift_tolerance*8) {
             
-            printf("probably contamination. tagging edge as dodgy\n");
+            logger.debug("probably contamination. tagging edge as dodgy\n");
             rval = 1;
         }
     }

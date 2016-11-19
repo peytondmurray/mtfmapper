@@ -36,6 +36,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::string;
 using std::stringstream;
 
+#include "include/logger.h"
+Logger logger;
+
 #include "include/common_types.h"
 #include "include/thresholding.h"
 #include "include/gamma_lut.h"
@@ -120,6 +123,8 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
     TCLAP::SwitchArg tc_autocrop("","autocrop","Automatically crop image to the chart area", cmd, false);
     TCLAP::SwitchArg tc_focus("","focus","Compute focus depth using special 'focus' type chart", cmd, false);
+    TCLAP::SwitchArg tc_log_append("", "log-append", "Append to log file in stead of overwriting log file", cmd, false);
+    TCLAP::SwitchArg tc_debug("", "debug", "Enable debug output messages", cmd, false);
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1), default 0.55", false, 0.55, "threshold", cmd);
@@ -128,6 +133,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_lp1("", "lp1", "Lens profile resolution 1 (lp/mm or c/p)", false, 10.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp2("", "lp2", "Lens profile resolution 2 (lp/mm or c/p)", false, 30.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm or c/p)", false, 50.0, "lp/mm", cmd);
+    TCLAP::ValueArg<string> tc_logfile("", "logfile", "Output written to <logfile> in stead of standard out", false, "", "filename", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -143,17 +149,24 @@ int main(int argc, char** argv) {
     
     cmd.parse(argc, argv);
 
+    if (tc_logfile.isSet()) {
+        logger.redirect(tc_logfile.getValue(), tc_log_append.getValue());
+    }
+    if (tc_debug.getValue()) {
+        logger.enable_level(Logger::DEBUG);
+    }
+
     bool lpmm_mode = false;
     double pixel_size = 1;
     if (tc_pixelsize.isSet()) {
-        printf("Info: Pixel size has been specified, measurement will be reported in lp/mm, rather than c/p\n");
+        logger.info("Info: Pixel size has been specified, measurement will be reported in lp/mm, rather than c/p\n");
         lpmm_mode = true;
         pixel_size = 1000 / tc_pixelsize.getValue();
-        printf("working with=%lf pixels per mm\n", pixel_size);
+        logger.info("working with=%lf pixels per mm\n", pixel_size);
     }
 
     if (!tc_profile.isSet() && !tc_annotate.isSet() && !tc_surface.isSet() && !tc_print.isSet() && !tc_sfr.isSet() && !tc_edges.isSet()) {
-        printf("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]\n");
+        logger.info("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]\n");
     }
 
     cv::Mat cvimg;
@@ -164,40 +177,40 @@ int main(int argc, char** argv) {
 	}
 
 	if (!cvimg.data) {
-		printf("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
+		logger.error("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
 		return -2;
 	}
 	
 	struct STAT sb;
 	if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {
-	    printf("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
+	    logger.error("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
 	    return -3;
 	} else {
 	    if (!S_ISDIR(sb.st_mode)) {
-	        printf("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
+	        logger.error("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
 	        return -3;
 	    }
 	}
     
     if (cvimg.type() == CV_8UC3 || cvimg.type() == CV_16UC3) {
-        printf("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
+        logger.info("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
         cv::Mat dest;
         cv::cvtColor(cvimg, dest, CV_RGB2GRAY);  // force to grayscale
         cvimg = dest;
     }
     
     if (cvimg.type() == CV_8UC1) {
-        printf("8-bit input image, upconverting %s\n", tc_linear.getValue() ? "with linear scaling" : "with sRGB gamma correction");
+        logger.info("8-bit input image, upconverting %s\n", tc_linear.getValue() ? "with linear scaling" : "with sRGB gamma correction");
         convert_8bit_input(cvimg, !tc_linear.getValue());        
     } else {
-        printf("16-bit input image, no upconversion required\n");
+        logger.info("16-bit input image, no upconversion required\n");
     }
    
     assert(cvimg.type() == CV_16UC1);
 
     const int border_width = 20;
     if (tc_border.getValue()) {
-        printf("The -b option has been specified, adding a %d-pixel border to the image\n", border_width);
+        logger.info("The -b option has been specified, adding a %d-pixel border to the image\n", border_width);
         double max_val = 0;
         double min_val = 0;
         cv::minMaxLoc(cvimg, &min_val, &max_val);
@@ -275,20 +288,20 @@ int main(int argc, char** argv) {
     }
     
     
-    printf("Computing gradients ...\n");
+    logger.info("Computing gradients ...\n");
     Gradient gradient(cvimg, false);
     
-    printf("Thresholding image ...\n");
+    logger.info("Thresholding image ...\n");
     int brad_S = 2*min(cvimg.cols, cvimg.rows)/3;
     double brad_threshold = tc_thresh.getValue();
     bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
     
-    printf("Component labelling ...\n");
+    logger.info("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 8000);
 
     if (cl.get_boundaries().size() == 0) {
-        printf("No black objects found. Try a lower threshold value with the -t option.\n");
+        logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
         return 0;
     }
     
@@ -299,7 +312,7 @@ int main(int argc, char** argv) {
     mtf_core.set_absolute_sfr(tc_absolute.getValue());
     mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
     if (tc_border.getValue()) {
-        printf("setting border to %d\n", border_width);
+        logger.debug("setting border to %d\n", border_width);
         mtf_core.set_border(border_width+1);
     }
     
@@ -322,7 +335,7 @@ int main(int argc, char** argv) {
     if (tc_single.getValue()) {
         ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
     } else {
-        printf("Parallel MTF50 calculation\n");
+        logger.debug("Parallel MTF50 calculation\n");
         Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
     }
     #else
@@ -346,7 +359,7 @@ int main(int argc, char** argv) {
     
     if (tc_profile.getValue()) {
         if (mtf_core.get_blocks().size() < 10) {
-            printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+            logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
             few_edges_warned = true;
         } else {
             Mtf_renderer_profile profile(
@@ -378,7 +391,7 @@ int main(int argc, char** argv) {
     if (tc_surface.getValue()) {
         if (mtf_core.get_blocks().size() < 10) {
             if (!few_edges_warned) {
-                printf("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+                logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
             }
         } else {
             Mtf_renderer_grid grid(
