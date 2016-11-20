@@ -37,6 +37,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QFileInfo>
 #include <QSharedPointer>
 #include <QCoreApplication>
+#include <QProcess.h>
 #include "mtfmapper_app.h"
 
 using std::cout;
@@ -71,73 +72,53 @@ void Worker_thread::run(void) {
              fi.suffix().compare(QString("MOS"), Qt::CaseInsensitive) == 0 ||  // Leaf
              fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
-            tempdir.toLocal8Bit().constData();
-            input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
-            
+            input_file = QString(tempdir + "/" + fi.baseName() + QString(".tiff"));
+            QProcess dcp(this);
+            dcp.setProgram(dcraw_binary);
+            dcp.setStandardOutputFile(input_file);
             if (arguments.contains(QString("--bayer"))) {
-                #ifdef _WIN32
-                sprintf(buffer, "\"\"%s\" -4 -T -d -c \"%s\" > \"%s\"\"", 
-                    dcraw_binary.toLocal8Bit().constData(),
-                    input_files.at(i).toLocal8Bit().constData(),
-                    input_file.toLocal8Bit().constData()
+                dcp.setArguments(
+                    QStringList() << "-4" << "-T" << "-d" << "-c" << input_files.at(i)
                 );
-                #else
-                sprintf(buffer, "\"%s\"  -4 -T -d -c \"%s\" > \"%s\"", 
-                    dcraw_binary.toLocal8Bit().constData(),
-                    input_files.at(i).toLocal8Bit().constData(),
-                    input_file.toLocal8Bit().constData()
-                );
-                #endif
             } else {
-                #ifdef _WIN32
-                sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
-                    dcraw_binary.toLocal8Bit().constData(),
-                    input_files.at(i).toLocal8Bit().constData(),
-                    input_file.toLocal8Bit().constData()
+                dcp.setArguments(
+                    QStringList() << "-w" <<  "-4" << "-T" << "-q" << "3" << "-c" << input_files.at(i)
                 );
-                #else
-                sprintf(buffer, "\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"", 
-                    dcraw_binary.toLocal8Bit().constData(),
-                    input_files.at(i).toLocal8Bit().constData(),
-                    input_file.toLocal8Bit().constData()
-                );
-                #endif
             }
 
-            int dc_rval = system(buffer);
-            if (dc_rval < 0) {
-                logger.error("error. dcraw call failed\n");
+            logger.debug("arguments to dcraw [%s]:\n", dcraw_binary.toLocal8Bit().constData());
+            for (int kk = 0; kk < dcp.arguments().size(); kk++) {
+                logger.debug("[%d]=%s\n", kk, dcp.arguments().at(kk).toLocal8Bit().constData());
             }
-
+            dcp.start();
+            dcp.waitForFinished(-1);
+            int dc_rval = dcp.exitStatus() == QProcess::NormalExit && dcp.exitCode() == 0;
+            if (!dc_rval) {
+                logger.error("Error. dcraw call failed on input image %s [exit status=%d, exitcode=%d]\n", input_files.at(i).toLocal8Bit().constData(), dcp.exitStatus(), dcp.exitCode());
+            }
             emit send_delete_item(input_file);
         }
 
-
-        #ifdef _WIN32
-        sprintf(buffer, "\"\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s\"", 
-            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
-            gnuplot_binary.toLocal8Bit().constData(),
-            input_file.toLocal8Bit().constData(),
-            tempdir.toLocal8Bit().constData(),
-            arguments.toLocal8Bit().constData()
+        QProcess mmp(this);
+        mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
+        mmp.setArguments(
+            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt"
         );
-        #else
-        sprintf(buffer, "\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s", 
-            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
-            gnuplot_binary.toLocal8Bit().constData(),
-            input_file.toLocal8Bit().constData(),
-            tempdir.toLocal8Bit().constData(),
-            arguments.toLocal8Bit().constData()
-        );
-        #endif
-        std::ostringstream sbuf(std::ios_base::out);
-        sbuf << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
-             << arguments.toLocal8Bit().constData() << endl;
-        logger.debug("%s\n", sbuf.str().c_str());
-        logger.debug("actual command = [%s]\n", buffer);
-        int rval = system(buffer);
-        
-        if (rval >= 0) {
+        mmp.setNativeArguments(arguments); // TODO: It might be cleaner to use a QStringList here too, but we do not expect filenames with spaces, so for now this works fine
+        logger.debug("arguments to mtf mapper:\n");
+        for (int kk = 0; kk < mmp.arguments().size(); kk++) {
+            logger.debug("[%d]=%s\n", kk, mmp.arguments().at(kk).toLocal8Bit().constData());
+        }
+        mmp.start();
+        mmp.waitForFinished(-1);
+        int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
+        if (!rval) {
+            logger.error("Error. mtf mapper call failed\n");
+        } else {
+            emit send_delete_item(tempdir + "/log.txt");
+        }
+                
+        if (rval) {
 
             // this call must come from within the worker thread, since we
             // may have to perform a raw conversion in the worker thread
@@ -186,6 +167,7 @@ void Worker_thread::run(void) {
                 emit send_child_item(QString("lensprofile"), lp_file);
                 emit send_delete_item(lp_file);
                 emit send_delete_item(tempdir + QString("/lensprofile.txt"));
+                emit send_delete_item(tempdir + QString("/lensprofile.gnuplot"));
             }
             emit send_close_item();
         }

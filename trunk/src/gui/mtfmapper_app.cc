@@ -25,12 +25,17 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include <QtWidgets> 
 #include "mtfmapper_app.h"
 #include "mtfmapper_app.moc"
 
 #include "worker_thread.h"
 #include "common.h"
+
+// OpenCV headers
+#include <cv.h>
+#include <highgui.h>
 
 #include <string>
 #include <iostream>
@@ -264,11 +269,46 @@ void mtfmapper_app::create_actions(void) {
 void mtfmapper_app::view_image(const QString& fname) {
     QImage image(fname);
     if (image.isNull()) {
-        QMessageBox::information(
-            this, tr("Image Viewer"),
-            tr("Cannot load %1.").arg(fname)
-        );
-        return;
+        // Qt could not load the file. This might be because it is a 16-bit TIFF file.
+        // Try loading it using opencv
+        cv::Mat cvimg;
+        bool opencv_succeeded = true;
+        try {
+            cvimg = cv::imread(fname.toStdString(), CV_LOAD_IMAGE_GRAYSCALE);
+            if (cvimg.data) {
+                // resize the image if it exceeds 10k pixels, since this seems to break QT 5.7 ?
+                if (cvimg.cols > 9999 || cvimg.rows > 9999) {
+                    cv::Mat smaller;
+                    double sf = 1;
+                    if (cvimg.cols >= cvimg.rows) {
+                        sf = 8000.0 / double(cvimg.cols);
+                    } else {
+                        sf = 80000.0 / double(cvimg.rows);
+                    }
+                    cv::resize(cvimg, smaller, cv::Size(0, 0), sf, sf);
+                    cvimg = smaller;
+                    logger.debug("Input image %s resized to %d x %d\n", fname.toLocal8Bit().constData(), cvimg.cols, cvimg.rows);
+                }
+                image = QImage(cvimg.cols, cvimg.rows, QImage::Format_Grayscale8);
+                memcpy(image.bits(), cvimg.data, cvimg.rows*cvimg.cols);
+                logger.debug("Input image %s loaded through OpenCV\n", fname.toLocal8Bit().constData());
+            } else {
+                // too bad, OpenCV cannot handle it either ...
+                opencv_succeeded = false;
+            }
+        }
+        catch (const cv::Exception&) {
+            // too bad, OpenCV cannot handle it either ...
+            opencv_succeeded = false;
+        }
+        if (!opencv_succeeded) {
+            QMessageBox::information(
+                this, tr("Image Viewer"),
+                tr("Cannot load %1.").arg(fname)
+            );
+            return;
+        }
+        
     }
     int rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
     int rheight = int(image.height() * (zoom_spinbox->value() / 100.0));

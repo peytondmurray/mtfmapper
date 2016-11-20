@@ -30,10 +30,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 Logger logger;
 
+#include <QFileInfo>
+
 #include "mtfmapper_app.h"
  
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+
+    string logname = (QDir::tempPath() + QDir::separator()).toStdString() + "mtfmapperlog.txt";
+    logger.redirect(logname);
+    logger.enable_level(Logger::DEBUG);
+
     QApplication app(argc, argv);
     mtfmapper_app dialog;
 

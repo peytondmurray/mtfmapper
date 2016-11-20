@@ -40,6 +40,7 @@ using std::ifstream;
 using std::cout;
 using std::endl;
 
+#include <QProcess.h>
 
 Exiv2_property::Exiv2_property(QString bin_name, QString ifname, QString tfname)
 : exiv2_binary(bin_name),ifname(ifname), tfname(tfname)
@@ -76,25 +77,22 @@ char*   Exiv2_property::eat_whitespace(char* cp) {
 
 QString Exiv2_property::extract_property(QString propname) {
     char* buffer = new char[4096];
-    #ifdef _WIN32
-    sprintf(buffer, "\"\"%s\" \"%s\" -g %s > %s\"",
-		exiv2_binary.toLocal8Bit().constData(),
-        ifname.toLocal8Bit().constData(),
-        propname.toLocal8Bit().constData(),
-        tfname.toLocal8Bit().constData()
-    );
-    #else
-    sprintf(buffer, "\"%s\" \"%s\" -g %s > %s",
-		exiv2_binary.toLocal8Bit().constData(),
-        ifname.toLocal8Bit().constData(),
-        propname.toLocal8Bit().constData(),
-        tfname.toLocal8Bit().constData()
-    );
-    #endif
 
-    int rval2 = system(buffer);
+    QProcess evp;
+    evp.setProgram(exiv2_binary);
+    evp.setStandardOutputFile(tfname);
+    evp.setArguments(
+        QStringList() << ifname << "-g" << propname
+    );
+    evp.start();
+    evp.waitForFinished(-1);
+    int rval2 = evp.exitStatus() == QProcess::NormalExit;
 
-    if (rval2 < 0) {
+    if (!rval2) {
+        logger.error("exiv2 call failed on file %s : prop %s, exitstatus=%d, exitcode=%d\n", 
+            ifname.toLocal8Bit().constData(), propname.toLocal8Bit().constData(),
+            evp.exitStatus(), evp.exitCode()
+        );
         delete [] buffer;
         return QString("");
     }
