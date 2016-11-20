@@ -124,8 +124,12 @@ class mtfmapper_app : public QMainWindow
     
     QProgressBar*   progress;
     QPushButton*    abort_button;
+
+    QPushButton*    clear_button;
     
     Img_frame*      img_frame;
+
+    QIcon* mtfmapper_logo;
               
   public slots:
     void open();
@@ -150,6 +154,8 @@ class mtfmapper_app : public QMainWindow
     void zoom_to_100(void);
 
     void hide_abort_button(void);
+    void enable_clear_button(void);
+    void clear_button_pressed(void);
 };
                                
                                 

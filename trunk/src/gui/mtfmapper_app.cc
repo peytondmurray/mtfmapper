@@ -122,7 +122,9 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     datasets->setRootIsDecorated(true);
     
     progress = new QProgressBar;
-    
+
+    clear_button = new QPushButton("Clear results");
+    clear_button->setEnabled(false);
     
     QGridLayout* tb_layout = new QGridLayout;
     tb_layout->addWidget(tb_img_annotated, 1, 0);
@@ -132,6 +134,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_layout->addWidget(tb_img_focus, 3, 0);
     tb_layout->addWidget(tb_img_lensprofile, 3, 1);
     tb_layout->addWidget(datasets, 4, 0, 1, 2);
+    tb_layout->addWidget(clear_button, 5, 0, 1, 2);
     QGroupBox* vbox2 = new QGroupBox(tr("selection"));
     vbox2->setLayout(tb_layout);
 
@@ -219,6 +222,15 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
     connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
     
+    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_clear_button()));
+    connect(clear_button, SIGNAL(clicked()), this, SLOT(clear_button_pressed()));
+
+    mtfmapper_logo = new QIcon;
+    mtfmapper_logo->addFile(":/Icons/AppIcon256");
+    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
+    qgs->setSceneRect(QRectF(0, 0, 255, 255));
+
+
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
     
@@ -243,6 +255,7 @@ void mtfmapper_app::clear_temp_files(void) {
         //cout << "f:" << fn.toAscii().constData() << ":" << fr << endl;
         //cout << "d:" << dn.toAscii().constData() << ":" << dr << endl;
     }
+    clear_button->setEnabled(false);
 }
 
 void mtfmapper_app::create_actions(void) {
@@ -326,11 +339,6 @@ void mtfmapper_app::open()
         
     if (input_files.size() > 0) {
     
-        clear_temp_files();
-        dataset_contents.clear(); // this could be optional, but issues with overwriting the temp dirs may cause problems
-        dataset_files.clear();
-        exif_properties.clear();
-        
         progress->setRange(0, input_files.size()+1);
         
         QStringList labels;
@@ -489,6 +497,22 @@ void mtfmapper_app::zoom_to_100(void) {
 
 void mtfmapper_app::hide_abort_button(void) {
     abort_button->hide();
+}
+
+void mtfmapper_app::enable_clear_button(void) {
+    clear_button->setEnabled(true);
+}
+
+void mtfmapper_app::clear_button_pressed(void) {
+    clear_temp_files();
+    dataset_contents.clear(); 
+    dataset_files.clear();
+    exif_properties.clear();
+
+    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
+    qgs->setSceneRect(QRectF(0, 0, 255, 255));
+
+    clear_button->setEnabled(false);
 }
 
 void mtfmapper_app::display_exif_properties(int index) {
