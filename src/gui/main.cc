@@ -47,6 +47,8 @@ int main(int argc, char *argv[]) {
 
     QIcon appIcon;
     appIcon.addFile(":/Icons/AppIcon64");
+    appIcon.addFile(":/Icons/AppIcon128");
+    appIcon.addFile(":/Icons/AppIcon256");
     app.setWindowIcon(appIcon);
 
     dialog.show();

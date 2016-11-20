@@ -45,7 +45,7 @@ using std::endl;
 using std::string;
 
 Worker_thread::Worker_thread(QWidget* parent) 
-: parent(dynamic_cast<mtfmapper_app*>(parent)), abort(false) {
+: parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), abort(false) {
 
 }
 
@@ -58,7 +58,7 @@ void Worker_thread::run(void) {
     output_files.clear();
     for (int i=0; i < input_files.size() && !abort; i++) {
         emit send_progress_indicator(i+1);
-        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(i);
+        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
         QDir().mkdir(tempdir);
         char* buffer = new char[4096];
 
