@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
  
 #include <QMainWindow> 
 #include <QModelIndex>
+#include <QFileDialog>
 #include <QStringList>
 #include <QList>
 #include "settings_dialog.h"
@@ -118,7 +119,6 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_annotated;
     QCheckBox*      tb_img_profile;
     QCheckBox*      tb_img_gridimg;
-    QCheckBox*      tb_img_gridsurf;
     QCheckBox*      tb_img_focus;
     QCheckBox*      tb_img_lensprofile;
     
@@ -126,8 +126,11 @@ class mtfmapper_app : public QMainWindow
     QPushButton*    abort_button;
 
     QPushButton*    clear_button;
+    QPushButton*    save_button;
     
     Img_frame*      img_frame;
+
+    QFileDialog*    open_dialog;
 
     QIcon* mtfmapper_logo;
               
@@ -141,13 +144,6 @@ class mtfmapper_app : public QMainWindow
     void item_for_deletion(QString s);
     void populate_exif_info_from_file(QString s, QString tempdir);
     void zoom_changed(int i);
-    
-    void img_annotated_toggled(void);
-    void img_profile_toggled(void);
-    void img_gridimg_toggled(void);
-    void img_gridsurf_toggled(void);
-    void img_focus_toggled(void);
-    void img_lensprofile_toggled(void);
   
     void zoom_in(void);
     void zoom_out(void);  
@@ -156,6 +152,11 @@ class mtfmapper_app : public QMainWindow
     void hide_abort_button(void);
     void enable_clear_button(void);
     void clear_button_pressed(void);
+    void enable_save_button(void);
+    void disable_save_button(void);
+    void save_button_pressed(void);
+
+    void enable_file_open(void);
 };
                                
                                 

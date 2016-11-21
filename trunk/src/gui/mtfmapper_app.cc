@@ -88,14 +88,12 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     img_frame = new Img_frame(this);
     
-    tb_img_annotated = new QCheckBox("Annotated");
+    tb_img_annotated = new QCheckBox("Annotated image");
     tb_img_annotated->setChecked(true);
     tb_img_profile = new QCheckBox("Profile");
     tb_img_profile->setChecked(true);
-    tb_img_gridimg = new QCheckBox("2D map");
+    tb_img_gridimg = new QCheckBox("Grid");
     tb_img_gridimg->setChecked(true);
-    tb_img_gridsurf = new QCheckBox("3D map");
-    tb_img_gridsurf->setChecked(true);
     tb_img_focus = new QCheckBox("Focus position");
     tb_img_focus->setChecked(true);
     tb_img_lensprofile = new QCheckBox("Lens profile");
@@ -125,18 +123,20 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
 
     clear_button = new QPushButton("Clear results");
     clear_button->setEnabled(false);
+
+    save_button = new QPushButton("Save results");
+    save_button->setEnabled(false);
     
     QGridLayout* tb_layout = new QGridLayout;
-    tb_layout->addWidget(tb_img_annotated, 1, 0);
-    tb_layout->addWidget(tb_img_profile, 1, 1);
-    tb_layout->addWidget(tb_img_gridimg, 2, 0);
-    tb_layout->addWidget(tb_img_gridsurf, 2, 1);
-    tb_layout->addWidget(tb_img_focus, 3, 0);
-    tb_layout->addWidget(tb_img_lensprofile, 3, 1);
-    tb_layout->addWidget(datasets, 4, 0, 1, 2);
-    tb_layout->addWidget(clear_button, 5, 0, 1, 2);
-    QGroupBox* vbox2 = new QGroupBox(tr("selection"));
+    tb_layout->addWidget(datasets, 0, 0);
+    tb_layout->addWidget(clear_button, 1, 0);
+    tb_layout->addWidget(save_button, 2, 0);
+    QGroupBox* vbox2 = new QGroupBox(tr("Data set control"));
     vbox2->setLayout(tb_layout);
+    QSizePolicy sizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
+    vbox2->setSizePolicy(sizePolicy);
+    vbox2->setMinimumWidth(200);
+    vbox2->setMaximumWidth(200);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Image properties"));
     QGridLayout* hlayout = new QGridLayout;
@@ -151,7 +151,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     v3GroupBox->setLayout(hlayout);
 
     
-    QGroupBox* vGroupBox = new QGroupBox(tr("output"));
+    QGroupBox* vGroupBox = new QGroupBox(tr("Current output"));
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(qgv, 0, 0);
     vlayout->addWidget(zoom_spinbox, 1, 0);
@@ -159,6 +159,24 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(v3GroupBox);
     vGroupBox->setLayout(vlayout);
 
+    open_dialog = new QFileDialog(this, tr("Select input files"), QString::null, QString::null);
+    open_dialog->setOption(QFileDialog::DontUseNativeDialog);
+
+    QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
+    QGridLayout* ft_gridbox = new QGridLayout(open_dialog);
+    if (ft_gridbox) {
+        ft_gridbox->addWidget(tb_img_annotated, 0, 0);
+        ft_gridbox->addWidget(tb_img_profile, 0, 1);
+        ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
+        ft_gridbox->addWidget(tb_img_focus, 1, 0);
+        ft_gridbox->addWidget(tb_img_lensprofile, 1, 1);
+    }
+    v4GroupBox->setLayout(ft_gridbox);
+
+    QGridLayout* od_gridbox = qobject_cast<QGridLayout*>(open_dialog->layout());
+    od_gridbox->addWidget(v4GroupBox);
+    open_dialog->setLayout(od_gridbox);
+    open_dialog->setFileMode(QFileDialog::FileMode::ExistingFiles);
     
     abort_button = new QPushButton("Abort");
     abort_button->hide();
@@ -204,13 +222,6 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_delete_item(QString)), this, SLOT(item_for_deletion(QString)));
     connect(&processor, SIGNAL(send_exif_filename(QString, QString)), this, SLOT(populate_exif_info_from_file(QString, QString)));
     
-    connect(tb_img_annotated, SIGNAL(clicked()), this, SLOT(img_annotated_toggled()));
-    connect(tb_img_profile, SIGNAL(clicked()), this, SLOT(img_profile_toggled()));
-    connect(tb_img_gridimg, SIGNAL(clicked()), this, SLOT(img_gridimg_toggled()));
-    connect(tb_img_gridsurf, SIGNAL(clicked()), this, SLOT(img_gridsurf_toggled()));
-    connect(tb_img_focus, SIGNAL(clicked()), this, SLOT(img_focus_toggled()));
-    connect(tb_img_lensprofile, SIGNAL(clicked()), this, SLOT(img_lensprofile_toggled()));
-    
     connect(zoom_spinbox, SIGNAL(valueChanged(int)), this, SLOT(zoom_changed(int)));
     connect(img_frame, SIGNAL(zoom_in()), this, SLOT(zoom_in()));
     connect(img_frame, SIGNAL(zoom_out()), this, SLOT(zoom_out()));
@@ -224,6 +235,12 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_clear_button()));
     connect(clear_button, SIGNAL(clicked()), this, SLOT(clear_button_pressed()));
+    connect(clear_button, SIGNAL(clicked()), this, SLOT(disable_save_button()));
+
+    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_save_button()));
+    connect(save_button, SIGNAL(clicked()), this, SLOT(save_button_pressed()));
+
+    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
 
     mtfmapper_logo = new QIcon;
     mtfmapper_logo->addFile(":/Icons/AppIcon256");
@@ -249,11 +266,9 @@ void mtfmapper_app::clear_temp_files(void) {
         QString fn(tempfiles_to_delete.at(i));
         QString dn(QFileInfo(fn).absolutePath());
         
-        /*bool fr = */QFile().remove(fn);
-        /*bool dr = */QDir().rmdir(dn);
+        QFile().remove(fn);
+        QDir().rmdir(dn);
             
-        //cout << "f:" << fn.toAscii().constData() << ":" << fr << endl;
-        //cout << "d:" << dn.toAscii().constData() << ":" << dr << endl;
     }
     clear_button->setEnabled(false);
 }
@@ -329,16 +344,33 @@ void mtfmapper_app::view_image(const QString& fname) {
     qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
 } 
  
-void mtfmapper_app::open()
-{
-    input_files = QFileDialog::getOpenFileNames(
-        this,
-        "Choose files to open",
-        QString::null,
-        QString::null);
-        
-    if (input_files.size() > 0) {
+void mtfmapper_app::open() {
     
+    // use the state from the settings menu as a starting point
+    tb_img_annotated->setCheckState(settings->cb_annotation->checkState());
+    tb_img_profile->setCheckState(settings->cb_profile->checkState());
+    tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
+    tb_img_focus->setCheckState(settings->cb_focus->checkState());
+    tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
+
+    if (!open_dialog->exec()) {
+        return;
+    }
+    
+    // write state back to settings menu
+    settings->cb_annotation->setCheckState(tb_img_annotated->checkState());
+    settings->cb_profile->setCheckState(tb_img_profile->checkState());
+    settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
+    settings->cb_focus->setCheckState(tb_img_focus->checkState());
+    settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
+    settings->send_argument_string();
+
+    input_files = open_dialog->selectedFiles();
+    if (input_files.size() > 0) {
+        
+        open_act->setEnabled(false);
+        exit_act->setEnabled(false);
+
         progress->setRange(0, input_files.size()+1);
         
         QStringList labels;
@@ -401,83 +433,6 @@ void mtfmapper_app::item_for_deletion(QString s) {
     tempfiles_to_delete.push_back(s);
 }
 
-void mtfmapper_app::img_annotated_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("annotated") == 0) {
-                current_child->setEnabled(tb_img_annotated->isChecked());
-            }
-        }
-        
-    }
-}
-
-void mtfmapper_app::img_profile_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("profile") == 0) {
-                current_child->setEnabled(tb_img_profile->isChecked());
-            }
-        }
-        
-    }
-}
-
-void mtfmapper_app::img_gridimg_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("grid2d") == 0) {
-                current_child->setEnabled(tb_img_gridimg->isChecked());
-            }
-        }
-        
-    }
-}
-
-void mtfmapper_app::img_gridsurf_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("grid3d") == 0) {
-                current_child->setEnabled(tb_img_gridsurf->isChecked());
-            }
-        }
-        
-    }
-}
-
-void mtfmapper_app::img_focus_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("focus") == 0) {
-                current_child->setEnabled(tb_img_focus->isChecked());
-            }
-        }
-        
-    }
-}
-
-void mtfmapper_app::img_lensprofile_toggled(void) {
-    for (int i=0; i < dataset_contents.rowCount(); i++) {
-        QStandardItem* current_dataset_item = dataset_contents.item(i);
-        for (int j=0; j < current_dataset_item->rowCount(); j++) {
-            QStandardItem* current_child = current_dataset_item->child(j);
-            if (current_child->text().compare("lensprofile") == 0) {
-                current_child->setEnabled(tb_img_lensprofile->isChecked());
-            }
-        }
-        
-    }
-}
 
 void mtfmapper_app::zoom_changed(int i ATTRIBUTE_UNUSED) {
     dataset_selected(datasets->selectionModel()->currentIndex());
@@ -509,10 +464,89 @@ void mtfmapper_app::clear_button_pressed(void) {
     dataset_files.clear();
     exif_properties.clear();
 
+    img_comment_value->setText("N/A");
+    af_ft_value->setText("N/A");
+    focal_length_value->setText("N/A");
+    focus_distance_value->setText("N/A");
+
     qgpi->setPixmap(mtfmapper_logo->pixmap(256));
     qgs->setSceneRect(QRectF(0, 0, 255, 255));
 
     clear_button->setEnabled(false);
+}
+
+void mtfmapper_app::enable_save_button(void) {
+    save_button->setEnabled(true);
+}
+
+void mtfmapper_app::disable_save_button(void) {
+    save_button->setEnabled(false);
+}
+
+
+void mtfmapper_app::enable_file_open(void) {
+    open_act->setEnabled(true);
+    exit_act->setEnabled(true);
+}
+
+
+void mtfmapper_app::save_button_pressed(void) {
+    // lock file->open to prevent messing with the dataset list
+    bool open_was_enabled = open_act->isEnabled();
+    open_act->setEnabled(false);
+    exit_act->setEnabled(false);
+
+    QString save_path = QFileDialog::getExistingDirectory(
+        this,
+        tr("Choose directory to save results in"),
+        QDir::homePath()
+    );
+    int overwrite_count = 0;
+    int idx = 0;
+    std::vector< std::pair<QString, QString> > copy_list;
+    for (int i = 0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        QString prefix = current_dataset_item->text();
+        idx++; // skip the actual image file
+        for (int j = 0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            QString dest_fname = save_path + "/" + prefix;
+            QString src_fname = dataset_files.at(idx++);
+            dest_fname += "_" + current_child->text() + ".png";
+            logger.info("cp [%s] [%s]\n", src_fname.toLocal8Bit().constData(), dest_fname.toLocal8Bit().constData());
+            copy_list.push_back(std::make_pair(src_fname, dest_fname));
+            if (QFile::exists(dest_fname)) {
+                overwrite_count++;
+            }
+        }
+    }
+    bool overwrite_ok = true;
+    if (overwrite_count > 0) {
+        QMessageBox::StandardButton response = QMessageBox::question(
+            this,
+            QString("Saving results"),
+            tr("Some output files already appear to exist. Do you want to overwrite %1 files?").arg(overwrite_count),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes
+        );
+        if (response == QMessageBox::No) {
+            overwrite_ok = false;
+        }
+    }
+    for (auto& cp : copy_list) {
+        if (QFile::exists(cp.second)) {
+            if (overwrite_ok) {
+                QFile::remove(cp.second);
+                QFile::copy(cp.first, cp.second);
+            }
+        } else {
+            QFile::copy(cp.first, cp.second);
+        }
+    }
+    if (open_was_enabled) {
+        open_act->setEnabled(true);
+        exit_act->setEnabled(true);
+    } // otherwise the worker thread will have to re-enable the open action
 }
 
 void mtfmapper_app::display_exif_properties(int index) {
@@ -520,7 +554,6 @@ void mtfmapper_app::display_exif_properties(int index) {
     img_comment_value->setText(props->get_comment());
     af_ft_value->setText(props->get_af_tune());
     focus_distance_value->setText(props->get_focus_distance());
-    //focal_length_value->setText(props->get_focal_length());
 
     focal_length_value->setText(props->get_focal_length() + " / " + props->get_aperture());
 }
