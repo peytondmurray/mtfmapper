@@ -109,6 +109,7 @@ void Worker_thread::run(void) {
         for (int kk = 0; kk < mmp.arguments().size(); kk++) {
             logger.debug("[%d]=%s\n", kk, mmp.arguments().at(kk).toLocal8Bit().constData());
         }
+        logger.debug("[rest]=%s\n", arguments.toLocal8Bit().constData());
         mmp.start();
         mmp.waitForFinished(-1);
         int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
@@ -161,6 +162,13 @@ void Worker_thread::run(void) {
                 emit send_delete_item(fp_file);
                 emit send_delete_item(tempdir + QString("/profile_curve.txt"));
                 emit send_delete_item(tempdir + QString("/profile_points.txt"));
+                // we might as well try to delete all the bayer-channel specific outputs, whether they are generated, or not
+                emit send_delete_item(tempdir + QString("/green_profile_curve.txt"));
+                emit send_delete_item(tempdir + QString("/green_profile_points.txt"));
+                emit send_delete_item(tempdir + QString("/blue_profile_curve.txt"));
+                emit send_delete_item(tempdir + QString("/blue_profile_points.txt"));
+                emit send_delete_item(tempdir + QString("/red_profile_curve.txt"));
+                emit send_delete_item(tempdir + QString("/red_profile_points.txt"));
             }
             QString lp_file = QString("%1/lensprofile.png").arg(tempdir);
             if (QFile().exists(lp_file)) {

@@ -153,15 +153,19 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
     exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
     dcraw_line->setText(settings.value(setting_dcraw, setting_dcraw_default).toString());
+
+    QGroupBox* voGroupBox = new QGroupBox(tr("Output types"));
+    QVBoxLayout *vo_layout = new QVBoxLayout;
+    vo_layout->addWidget(cb_annotation);
+    vo_layout->addWidget(cb_profile);
+    vo_layout->addWidget(cb_grid);
+    vo_layout->addWidget(cb_focus);
+    vo_layout->addWidget(cb_lensprofile);
+    voGroupBox->setLayout(vo_layout);
     
     QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"));
     QVBoxLayout *cb_layout = new QVBoxLayout;
     cb_layout->addWidget(cb_linear_gamma);
-    cb_layout->addWidget(cb_annotation);
-    cb_layout->addWidget(cb_profile);
-    cb_layout->addWidget(cb_grid);
-    cb_layout->addWidget(cb_focus);
-    cb_layout->addWidget(cb_lensprofile);
     cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
     v2GroupBox->setLayout(cb_layout);
@@ -200,12 +204,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     
     QGroupBox* vGroupBox = new QGroupBox(tr("Settings"));
     QGridLayout* vlayout = new QGridLayout;
-    vlayout->addWidget(v2GroupBox, 0, 0, 1, 2);
-    vlayout->addWidget(v4GroupBox, 1, 0, 1, 2);
-    vlayout->addWidget(v3GroupBox, 2, 0, 1, 2);
-    vlayout->addWidget(advanced, 3, 0, 1, 2);
-    vlayout->addWidget(accept_button, 4, 0);
-    vlayout->addWidget(cancel_button, 4, 1);
+    vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
+    vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
+    vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
+    vlayout->addWidget(v3GroupBox, 3, 0, 1, 2);
+    vlayout->addWidget(advanced, 4, 0, 1, 2);
+    vlayout->addWidget(accept_button, 5, 0);
+    vlayout->addWidget(cancel_button, 5, 1);
     vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
