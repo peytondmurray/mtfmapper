@@ -18,6 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 5)
+set(mtfmapper_VERSION_SUB 11) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -137,7 +138,7 @@ set(CPACK_PACKAGE_VENDOR "Frans van den Bergh")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/license.txt")
 set(CPACK_PACKAGE_VERSION_MAJOR ${mtfmapper_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${mtfmapper_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH 10) #increment on release
+set(CPACK_PACKAGE_VERSION_PATCH ${mtfmapper_VERSION_SUB}) 
 set(CPACK_PACKAGE_EXECUTABLES "mtf_mapper_gui;MTF Mapper")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "MTF Mapper")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 

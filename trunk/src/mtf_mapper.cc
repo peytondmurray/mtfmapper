@@ -92,14 +92,14 @@ void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
 
 //-----------------------------------------------------------------------------
 void print_version_info(void) {
-    printf("MTF mapper version %d.%d\n", mtfmapper_VERSION_MAJOR, mtfmapper_VERSION_MINOR);
+    printf("MTF mapper version %d.%d.%d\n", mtfmapper_VERSION_MAJOR, mtfmapper_VERSION_MINOR, mtfmapper_VERSION_SUB);
 }
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv) {
 
     stringstream ss;
-    ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR;
+    ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR << "." << mtfmapper_VERSION_SUB;
     
     TCLAP::CmdLine cmd("Measure MTF50 values across edges of rectangular targets", ' ', ss.str());
     TCLAP::UnlabeledValueArg<std::string>  tc_in_name("<input_filename>", 

@@ -30,6 +30,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "about_dialog.moc"
 
 #include "common.h"
+#include "config.h"
+
+#define SFI(x) #x
+#define VER(x) SFI(x)
 
 About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
 
@@ -42,6 +46,7 @@ About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
         "<body bgcolor=\"#efefef\">"
         "<br><br>"
         "<center><big>MTF Mapper</big></center>"
+        "<center>version " VER(mtfmapper_VERSION_MAJOR) "." VER(mtfmapper_VERSION_MINOR) "." VER(mtfmapper_VERSION_SUB) "</center>"
         "<center><small>by</small></center>"
         "<center>Frans van den Bergh</center>"
         "<br><br>"
