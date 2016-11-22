@@ -210,7 +210,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fprintf(gpf, "set ytics 0.1\n");
         fprintf(gpf, "set style line 11 lc rgb \"#f0f0f0\" lt 1 lw 1\n");
         fprintf(gpf, "set grid xtics ytics ls 11\n");
+        #ifdef _WIN32
+        fprintf(gpf, "set term pngcairo dashed transparent enhanced size 1024, 768 font 'Verdana,10'\n");
+        #else
         fprintf(gpf, "set term pngcairo dashed transparent enhanced size 1024, 768\n");
+        #endif
+        
         fprintf(gpf, "set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb \"white\" behind\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
         //fprintf(gpf, "set linetype 5 dashtype 2 linewidth 2\n"); // Use this with gnuplot 5 onwards, later.
@@ -251,6 +256,13 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             gnuplot_failure = true;
         } else {
             logger.debug("Gnuplot plot completed successfully. Look for lensprofile.png\n");
+            // Hack: trim the png file to remove the black border that gnuplot 4.4 leaves
+            cv::Mat src_img;
+            src_img = cv::imread(wdir.c_str() + string("/lensprofile.png"));
+            if (src_img.data) {
+                src_img.adjustROI(-1, -1, -1, -1);
+                cv::imwrite(wdir.c_str() + string("/lensprofile.png"), src_img);
+            }
         }
         
         delete [] buffer;
