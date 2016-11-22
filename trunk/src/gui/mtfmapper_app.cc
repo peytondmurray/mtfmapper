@@ -338,8 +338,17 @@ void mtfmapper_app::view_image(const QString& fname) {
         }
         
     }
-    int rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
-    int rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
+    int rwidth, rheight;
+    
+    if (zoom_spinbox->value() == 0) {
+        QSize vp_size = qgv->maximumViewportSize();
+        rwidth  = int(vp_size.rwidth());
+        rheight = int(vp_size.rwidth()*image.height()/image.width());
+    } else {
+        rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
+        rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
+    }
+    
     qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
 } 
@@ -435,7 +444,9 @@ void mtfmapper_app::item_for_deletion(QString s) {
 
 
 void mtfmapper_app::zoom_changed(int i ATTRIBUTE_UNUSED) {
-    dataset_selected(datasets->selectionModel()->currentIndex());
+    if (datasets->selectionModel()->currentIndex().isValid()) {
+        dataset_selected(datasets->selectionModel()->currentIndex());
+    }
 }
 
 void mtfmapper_app::zoom_in(void) {

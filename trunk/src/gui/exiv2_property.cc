@@ -40,7 +40,7 @@ using std::ifstream;
 using std::cout;
 using std::endl;
 
-#include <QProcess.h>
+#include <QProcess>
 
 Exiv2_property::Exiv2_property(QString bin_name, QString ifname, QString tfname)
 : exiv2_binary(bin_name),ifname(ifname), tfname(tfname)
