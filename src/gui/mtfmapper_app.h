@@ -68,6 +68,7 @@ class mtfmapper_app : public QMainWindow
     void display_exif_properties(int index);
     void clear_temp_files(void);
     void check_if_helpers_exist(void);
+    void save_action(bool subset = false);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
@@ -127,13 +128,12 @@ class mtfmapper_app : public QMainWindow
 
     QPushButton*    clear_button;
     QPushButton*    save_button;
+    QPushButton*    save_subset_button;
     
     Img_frame*      img_frame;
 
-    QFileDialog*    open_dialog;
-
     QIcon* mtfmapper_logo;
-              
+
   public slots:
     void open();
     void dataset_selected(const QModelIndex&);
@@ -155,6 +155,7 @@ class mtfmapper_app : public QMainWindow
     void enable_save_button(void);
     void disable_save_button(void);
     void save_button_pressed(void);
+    void save_subset_button_pressed(void);
 
     void enable_file_open(void);
 };

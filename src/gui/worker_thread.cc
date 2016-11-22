@@ -102,7 +102,7 @@ void Worker_thread::run(void) {
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
         mmp.setArguments(
-            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" << arguments.split(QRegExp("\\s+"))
+            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts)
         );
         logger.debug("arguments to mtf mapper:\n");
         for (int kk = 0; kk < mmp.arguments().size(); kk++) {
