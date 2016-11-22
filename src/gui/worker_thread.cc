@@ -37,7 +37,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QFileInfo>
 #include <QSharedPointer>
 #include <QCoreApplication>
-#include <QProcess.h>
+#include <QProcess>
 #include "mtfmapper_app.h"
 
 using std::cout;
@@ -102,14 +102,12 @@ void Worker_thread::run(void) {
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
         mmp.setArguments(
-            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt"
+            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" << arguments.split(QRegExp("\\s+"))
         );
-        mmp.setNativeArguments(arguments); // TODO: It might be cleaner to use a QStringList here too, but we do not expect filenames with spaces, so for now this works fine
         logger.debug("arguments to mtf mapper:\n");
         for (int kk = 0; kk < mmp.arguments().size(); kk++) {
             logger.debug("[%d]=%s\n", kk, mmp.arguments().at(kk).toLocal8Bit().constData());
         }
-        logger.debug("[rest]=%s\n", arguments.toLocal8Bit().constData());
         mmp.start();
         mmp.waitForFinished(-1);
         int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
