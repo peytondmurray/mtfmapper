@@ -33,6 +33,8 @@ using std::string;
 #include <vector>
 using std::vector;
 
+#include <opencv2/highgui/highgui.hpp>
+
 void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg);
 void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
 

@@ -30,7 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/common_types.h"
 
-#include <cv.h>
 const double transparent = -1.0;
 
 #include "normal_sampler.h"

@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <limits>
 #include <cmath>
 
+#include <opencv2/calib3d/calib3d.hpp>
 
 class Bundle_adjuster {
   public:

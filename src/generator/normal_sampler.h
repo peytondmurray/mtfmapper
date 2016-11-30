@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define QMC_NORMAL_SAMPLING_H
 
 #include <cmath>
+#include <stdint.h>
 
 class normal_sampler {
   public:

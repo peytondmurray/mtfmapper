@@ -28,6 +28,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef GENERAL_GEOM_H
 #define GENERAL_GEOM_H
 
+#include <cstdio>
+
 #include "aabb.h"
 
 //==============================================================================

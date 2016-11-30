@@ -31,6 +31,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "mtf_renderer.h"
 #include "common_types.h"
 
+#include <opencv2/highgui/highgui.hpp>
+
 class Mtf_renderer_annotate : public Mtf_renderer {
   public:
     Mtf_renderer_annotate(const cv::Mat& in_img, const std::string& fname,

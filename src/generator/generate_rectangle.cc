@@ -36,8 +36,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "../../include/stride_range.h"
 #include "../../include/threadpool.h"
 
-#include "cv.h"
-#include "highgui.h"
+#include <opencv2/highgui/highgui.hpp>
 
 #include "config.h"
 

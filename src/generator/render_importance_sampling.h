@@ -30,7 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/common_types.h"
 
-#include <cv.h>
 #include "normal_sampler.h"
 #include "airy_sampler.h"
 #include "render.h"
