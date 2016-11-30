@@ -29,7 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define GH_CLIPPING_H
 
 
-#include <cv.h>
+#include <opencv2/core/core.hpp>
 using namespace cv;
 
 #include <vector>

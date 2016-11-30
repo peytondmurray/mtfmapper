@@ -28,7 +28,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef THRESHOLDING_H
 #define THRESHOLDING_H
 
-#include "cv.h"
+namespace cv {
+   class Mat;
+}
 
 void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& img, double threshold, int S);
 

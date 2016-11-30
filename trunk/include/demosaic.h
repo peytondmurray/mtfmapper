@@ -29,7 +29,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef DEMOSAIC_H
 #define DEMOSAIC_H
 
-#include "cv.h"
 #include "include/common_types.h"
 #include "include/bayer.h"
 

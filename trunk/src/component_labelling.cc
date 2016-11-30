@@ -27,6 +27,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/component_labelling.h"
 
+#include <opencv2/highgui/highgui.hpp>
+
 //------------------------------------------------------------------------------
 Component_labeller::Component_labeller(void) 
 : _width(0), _height(0),
