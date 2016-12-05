@@ -57,6 +57,9 @@ class Mtf_renderer_stats : public Mtf_renderer {
             for (size_t k=0; k < 4; k++) {
             
                 double val = blocks[i].get_mtf50_value(k);
+                
+                if (val == 1.0) continue;
+                
                 unfiltered.push_back(val);
                 
                 if (blocks[i].get_quality(k) >= 0.5) {
@@ -83,6 +86,9 @@ class Mtf_renderer_stats : public Mtf_renderer {
         for (size_t i=0; i < samples.size(); i++) {
             
             double val = samples[i].mtf;
+            
+            if (val == 1.0) continue;
+            
             unfiltered.push_back(val);
             
             if (samples[i].quality >= 0.5) {

@@ -265,7 +265,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         for (size_t i=0; i < blocks.size(); i++) {
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
-                if (val > 0 /*&& blocks[i].get_quality(k) >= 0.2*/) {
+                if (val > 0 && val < 1.0) {
                     Point2d cent = blocks[i].get_edge_centroid(k);
 
                     Point2d dir = cent - centr;
