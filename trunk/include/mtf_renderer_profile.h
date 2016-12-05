@@ -336,6 +336,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 double val = blocks[i].get_mtf50_value(k);
                 double angle = blocks[i].get_edge_angle(k);
                 double mindiff = 0;
+                
+                if (val == 1.0) continue; // skip N/A blocks
 
                 if (transpose) {
                     mindiff = min(angular_diff(angle, 0)/M_PI*180, angular_diff(angle, M_PI)/M_PI*180);
