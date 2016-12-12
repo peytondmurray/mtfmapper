@@ -62,7 +62,7 @@ class Bundle_adjuster {
         init[6] = distortion;
         init[7] = w;
         
-        best_sol = init;
+        best_sol = initial = init;
     }
     
     void solve(void) {
@@ -126,7 +126,9 @@ class Bundle_adjuster {
             max_err = max(err, max_err);
             sse += err*err;
         }
-        return sqrt(sse/world_points.size());
+        double finit = 1.0/initial[7];
+        double fd = fabs(1.0/v[7] - finit);
+        return sqrt(sse/world_points.size()) + ((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0));
     }
     
     void seed_simplex(VectorXd& v, const VectorXd& lambda) {
@@ -262,6 +264,7 @@ class Bundle_adjuster {
     vector<Eigen::VectorXd> np;
     VectorXd ny;
     bool nelder_mead_failed;
+    Eigen::VectorXd initial;
 };
 
 #endif

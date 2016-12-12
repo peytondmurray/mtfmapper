@@ -37,6 +37,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/mtf_tables.h"
 #include "include/ellipse_decoder.h"
 
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
 #include <mutex>
 
 // global lock to prevent race conditions on detected_blocks
@@ -47,7 +50,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
     
-    if (!valid && sliding) {
+    if (!valid && find_fiducials) {
         // this may be an ellipse. check it ...
         Boundarylist::const_iterator it = cl.get_boundaries().find(label);
         Ellipse_detector e;
@@ -94,7 +97,26 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     color[0] = 255;
                     color[1] = 255;
                     color[2] = 0;
+                    
+                    
                 }
+                
+                char buffer[20];
+                int baseline = 0;
+                sprintf(buffer, "%d", e.code);
+                cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+                cv::Point to(-ts.width/2,  ts.height/2);
+                to.x += e.centroid_x;
+                to.y += e.centroid_y;
+                
+                cv::putText(od_img, buffer, to, 
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                    CV_RGB(20, 20, 20), 2.5, CV_AA
+                );
+                cv::putText(od_img, buffer, to, 
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                    CV_RGB(0, 255, 255), 1, CV_AA
+                );
             }
         } 
         return;
@@ -122,6 +144,11 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     for (size_t k=0; k < 4; k++) {
         // now construct buffer around centroid, aligned with direction, of width max_dot
         Mrectangle nr(rrect, k, max_dot+0.5);
+        
+        // TODO: connected-component based masking
+        //cv::Mat limg(nr.br.y - nr.tl.y + 1, nr.br.x - nr.tl.x + 1, CV_8UC1, cv::Scalar::all(1));
+        //cv::Mat roiimg(nr.br.y - nr.tl.y + 1, nr.br.x - nr.tl.x + 1, CV_8UC1, cv::Scalar::all(0));
+        
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                 Point2d p(x,y);
@@ -134,9 +161,33 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
                         edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                     }
+                    
+                    // TODO: connected-component based masking
+                    //roiimg.at<uint8_t>(iy - nr.tl.y, ix - nr.tl.x) = 255;
                 }
+                
+                /*
+                // TODO: connected-component based masking
+                int iy = lrint(y);
+                int ix = lrint(x);
+                limg.at<uint8_t>(iy - nr.tl.y, ix - nr.tl.x) = cl(ix, iy) > 0 ? 0 : 1;
+                */
             }
         }
+        
+        /*
+        // TODO: connected-component based masking
+        cv::Mat dest;
+        cv::Mat labels;
+        cv::distanceTransform(limg, dest, labels, CV_DIST_L1, 3);
+        // The cc-labelled image works well, but a scan set is no longer convex
+        // scan sets would have to be replaced by actual images ?
+        // allocating a new cv::Mat for every ROI will cause a lot of memory allocations
+        // but what else can we do?
+        cv::imwrite("labels_" + std::to_string(k) + ".png", limg);
+        cv::imwrite("dist_" + std::to_string(k) + ".png", labels);
+        cv::imwrite("roi_" + std::to_string(k) + ".png", roiimg);
+        */
         
         reduce_success &= edge_record[k].reduce();
     }

@@ -133,9 +133,55 @@ class Distance_scale {
             logger.debug("longitudinal vector: (%lf, %lf)\n", longitudinal.x, longitudinal.y);
             
             if (by_code.size() > 6) { // minimum of 5 unique fiducials plus one spare plus the zeros
+            
+                // TODO: move this to mtf core implementation?
+                // find the four fiducials closest to zero
+                vector< pair<double, int> > by_distance_from_zero;
+                for (const auto& e: mtf_core.ellipses) {
+                    if (!e.valid) continue;
+                    if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
+                    double distance = norm(Point2d(e.centroid_x, e.centroid_y) - zero);
+                    by_distance_from_zero.push_back(make_pair(distance, e.code));
+                }
+                sort(by_distance_from_zero.begin(), by_distance_from_zero.end());
+                // TODO: we should add a check here to discard fiducials that are much further than expected
+                // something like a ratio of the distance between the zeros ?
+                logger.debug("distance to first four fiducials: ");
+                vector<int> first_four;
+                for (int i=0; i < 4; i++) {
+                    logger.debug("%lf ", by_distance_from_zero[i].first);
+                    first_four.push_back(by_distance_from_zero[i].second);
+                }
+                logger.debug("\n");
+                sort(first_four.begin(), first_four.end());
+                logger.debug("first four fiducials are: %d %d %d %d\n", first_four[0], first_four[1], first_four[2], first_four[3]);
+                int min_edit_dist = 100;
+                int min_fid_coding = 3;
+                for (size_t fid_coding=0; fid_coding < fiducial_code_mapping.size(); fid_coding++) {
+                    vector<int> ref = {
+                        fiducial_code_mapping[fid_coding][2],
+                        fiducial_code_mapping[fid_coding][3],
+                        fiducial_code_mapping[fid_coding][4],
+                        fiducial_code_mapping[fid_coding][5]
+                    };
+                    
+                    int dist = compute_edit_distance(ref, first_four);
+                    if (dist < min_edit_dist) {
+                        min_edit_dist = dist;
+                        min_fid_coding = fid_coding;
+                    }
+                }
+                logger.debug("best matching fid coding is %d with edit distance %d\n", min_fid_coding, min_edit_dist);
+                // if edit_dist => 4, then we might pick the wrong coding, so this should be an abort?
+                
                 
                 // use knowledge of the first four fiducials to orient the transverse direction
-                vector< pair<int, double> > candidates {{1, 1.0}, {2, 1.0}, {3, -1.0}, {4, -1.0}};
+                vector< pair<int, double> > candidates {
+                    {fiducial_code_mapping[min_fid_coding][2], 1.0}, 
+                    {fiducial_code_mapping[min_fid_coding][3], 1.0},
+                    {fiducial_code_mapping[min_fid_coding][4], -1.0},
+                    {fiducial_code_mapping[min_fid_coding][5], -1.0}
+                };
                 for (auto c: candidates) {
                     if (by_code.find(c.first) != by_code.end()) {
                         Point2d dir(by_code[c.first]->centroid_x -  zero.x, by_code[c.first]->centroid_y - zero.y);
@@ -167,7 +213,7 @@ class Distance_scale {
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
                     int main_idx = -1;
                     for (size_t i=0; i < n_fiducials && main_idx == -1; i++) {
-                        if (main_fiducials[i].code == e.code) {
+                        if (fiducial_code_mapping[min_fid_coding][i] == e.code) {
                             main_idx = i;
                         }
                     }
@@ -175,8 +221,8 @@ class Distance_scale {
                     ba_img_points.emplace_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
                     ba_world_points.emplace_back(
                         Eigen::Vector3d(
-                            main_fiducials[main_idx].rcoords.y, 
-                            main_fiducials[main_idx].rcoords.x, 
+                            main_fiducials[main_idx].rcoords.y * fiducial_scale_factor[min_fid_coding], 
+                            main_fiducials[main_idx].rcoords.x * fiducial_scale_factor[min_fid_coding], 
                             1.0
                         )
                     );
@@ -190,8 +236,8 @@ class Distance_scale {
                 
                 class Cal_solution {
                   public:
-                    Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0, vector<int> inlier_list=vector<int>())
-                     : bpe(bpe), proj(proj), distort(distort), inlier_list(inlier_list) {};
+                    Cal_solution(double bpe=0, Eigen::MatrixXd proj=Eigen::MatrixXd(), double distort=0, vector<int> inlier_list=vector<int>(), double f=1)
+                     : bpe(bpe), proj(proj), distort(distort), inlier_list(inlier_list), f(f) {};
                      
                     bool operator< (const Cal_solution& b) const {
                         return bpe < b.bpe;
@@ -201,6 +247,7 @@ class Distance_scale {
                     Eigen::MatrixXd proj;
                     double distort;
                     vector<int> inlier_list;
+                    double f;
                 };
                 
                 vector<Cal_solution> solutions;
@@ -209,6 +256,7 @@ class Distance_scale {
                 
                 enumerate_combinations(ba_img_points.size(), 5);
                 
+                size_t most_inliers = 0;                
                 double inlier_threshold = max_fiducial_diameter; // this should work unless extreme distortion is present?
                 double global_bpr = 1e50;
                 for (size_t ri=0; ri < combinations.size(); ri++) {
@@ -268,14 +316,14 @@ class Distance_scale {
                             RMM.row(2) *= w;
                             Eigen::VectorXd TV = projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm();
                             
-                            double r = 5.0;   // radius of circle
+                            double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
                             double c = 1.0/w; // focal length, but in which units?
                             Eigen::Vector3d ii = RMM.col(2); // already includes focal length scaling ... ?
                             
                             double max_err = 0;
                             vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
-                                
+                             
                                 Eigen::Vector3d v = TV - RMM*ba_world_points[i];
                                 
                                 Eigen::VectorXd a(5);
@@ -297,7 +345,6 @@ class Distance_scale {
                                 double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
                                 bp /= rad;
                                 
-                                // correct for eccentricity error
                                 Eigen::Vector2d corrected_img_point = ba_img_points[i] + Eigen::Vector2d(bp[0] - uc, bp[1] - vc)/img_scale;
                                 
                                 double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
@@ -311,39 +358,24 @@ class Distance_scale {
                             
                             if (inliers.size() < 4) continue; // do not waste time on outlier-dominated solutions
                             
-                            sort(residuals.begin(), residuals.end());
                             double bpr = 0;
-                            // try to exclude the worst two or so specimens
-                            size_t nresiduals = max(size_t(0.9*residuals.size()), min(residuals.size(), size_t(5)));
-                            for (size_t i=0; i < nresiduals; i++) {
-                                bpr += residuals[i]*residuals[i];
+                            double wsum = 0;
+                            for (size_t i=0; i < inliers.size(); i++) {
+                                double weight = ba_world_points[inliers[i]].norm();
+                                bpr += residuals[i]*residuals[i]*weight; // TODO: outer points have more weight. bad idea, or a way to emphasize distortion?
+                                wsum += weight;
                             }
-                            bpr = sqrt(bpr/double(nresiduals))*img_scale;
+                            bpr = sqrt(bpr/wsum)*img_scale;
                             
-                            if (solutions.size() < 5) { // keep 5 best solutions
-                                solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers));
-                                if (bpr < global_bpr) {
-                                    global_bpr = bpr;
-                                    logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
-                                        k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
-                                    );
-                                }
-                            } else {
-                                auto worst_sol = solutions.rbegin();
-                                if (bpr < worst_sol->bpe && inliers.size() >= worst_sol->inlier_list.size()) {
-                                    *worst_sol = Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers);
-                                    sort(solutions.begin(), solutions.end());
-                                    
-                                    if (bpr < global_bpr) {
-                                        global_bpr = bpr;
-                                        logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
-                                            k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
-                                        );
-                                    }
-                                }
+                            most_inliers = std::max(most_inliers, inliers.size());
+                            
+                            solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers, c));
+                            if (bpr < global_bpr) {
+                                global_bpr = bpr;
+                                logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
+                                    k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
+                                );
                             }
-                            
-                            
                         }
                     }
                     projection_matrices.clear();
@@ -357,9 +389,45 @@ class Distance_scale {
                     return;
                 }
                 
+                // now try to characterize the "most popular" solution within the
+                // top 1% of potential solutions
+                vector<double> focal_ratio_list;
+                vector<double> bpe_list;
+                for (auto s: solutions) {
+                    if (s.inlier_list.size() == most_inliers) {
+                        focal_ratio_list.push_back(s.f);
+                        bpe_list.push_back(s.bpe);
+                    }
+                }
+                sort(focal_ratio_list.begin(), focal_ratio_list.end());
+                sort(bpe_list.begin(), bpe_list.end());
+                double bpe_threshold = bpe_list[bpe_list.size()/100];
+                double focal_ratio_min = focal_ratio_list[5*focal_ratio_list.size()/100];
+                double focal_ratio_max = focal_ratio_list[95*focal_ratio_list.size()/100];
+                printf("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
+                vector<double> fr_keepers;
+                for (auto s: solutions) {
+                    if (s.inlier_list.size() == most_inliers &&
+                        s.bpe <= bpe_threshold &&
+                        s.f >= focal_ratio_min &&
+                        s.f <= focal_ratio_max) {
+                        
+                        fr_keepers.push_back(s.f);
+                    }
+                }
+                sort(fr_keepers.begin(), fr_keepers.end());
+                double median_fr = fr_keepers[fr_keepers.size()/2];
+                vector<Cal_solution> kept_solutions;
+                for (auto s: solutions) {
+                    if (s.inlier_list.size() == most_inliers && s.f == median_fr) {
+                        kept_solutions.push_back(s);
+                    }
+                }
+                solutions = kept_solutions;
+                
                 logger.debug("Retained %lu promising solutions\n", solutions.size());
                 for (auto s: solutions) {
-                    logger.debug("\t solution with bpe = %lf, dist=%le, #inliers=%lu\n", s.bpe, s.distort, s.inlier_list.size());
+                    logger.debug("\t solution with bpe = %lf, dist=%le, #inliers=%lu, fr=%lf\n", s.bpe, s.distort, s.inlier_list.size(), s.f);
                 }
                 double w = 0;
                 
@@ -404,8 +472,8 @@ class Distance_scale {
                 TV[2] *= w;
                 
                 for (size_t k=0; k < inliers.size(); k++) {
-                
-                    double r = 5.0;   // radius of circle
+                    
+                    double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
                     double c = 1.0/w; // focal length, but in which units?
                     Eigen::Vector3d i = RMM.col(2); // already includes focal length scaling ... ?
                     Eigen::Vector3d v = TV - RMM*ba_world_points[inliers[k]];
@@ -471,6 +539,7 @@ class Distance_scale {
                     prev_rmse = bundle_rmse;
                 } while (improved);
                 
+                
                 focal_length = 1.0/w;
                 
                 // prepare for backprojection
@@ -492,7 +561,16 @@ class Distance_scale {
                 centre_depth = backproject(zero.x, zero.y)[2];
                 
                 logger.debug("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
+                logger.debug("R=\n");
+                for (int r=0; r < 3; r++) {
+                    for (int c=0; c < 3; c++) {
+                        logger.debug("%12.8lf ", rotation(r, c));
+                    }
+                    logger.debug("\n");
+                }
                 fiducials_found = true;
+                logger.debug("Chart z-angle=%.1lf degrees\n", get_normal_angle_z());
+                logger.debug("Chart y-angle=%.1lf degrees\n", get_normal_angle_y());
             }
             
             // construct a distance scale
@@ -753,6 +831,56 @@ class Distance_scale {
         combinations = vector< vector<int> > (t, vector<int>(k, 0));
         
         enumerate_n_choose_k(n, k, combinations);
+    }
+    
+    int compute_edit_distance(const vector<int>& source, const vector<int>& target) {
+        const uint16_t infinity = ~0;
+
+        // build matrix
+        int nrows = source.size() + 1;
+        int ncols = target.size() + 1;
+        
+        vector<uint16_t> matrix(2*ncols);
+
+        // initialise first row
+        for (int col=0; col < ncols; col++) {
+            matrix[0*ncols+col] = col;
+        }
+
+        for (int row=1; row < nrows; row++) {
+            matrix[1*ncols+0] = row; // initialise this first element of the current row
+            for (int col=1; col < ncols; col++) {
+                unsigned int dist;
+                unsigned int mindist = infinity;
+                
+                dist = matrix[col-1];
+                if ( (source[row-1] != target[col-1]) ) {
+                    dist += 2;
+                }
+
+                if (dist < mindist) {
+                    mindist = dist;
+                }
+
+                dist = matrix[col] + 1;
+                if (dist < mindist) {
+                    mindist = dist;
+                }
+
+                dist = matrix[ncols + col-1] + 1;
+                if (dist < mindist) {
+                    mindist = dist;
+                }
+                
+                matrix[1*ncols + col] = mindist;
+
+            }
+            memcpy(matrix.data(), ((uint16_t*)matrix.data()) + ncols, ncols*sizeof(uint16_t)); // somewhat slow, perhaps, but fast enough!
+        }
+        
+        uint32_t rval = matrix[0*ncols + ncols-1];
+        
+        return rval;
     }
 };
 

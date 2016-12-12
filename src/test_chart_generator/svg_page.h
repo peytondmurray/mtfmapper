@@ -44,6 +44,8 @@ using std::string;
 #include "opencv/cv.h"
 using namespace cv;
 
+#include "include/fiducial_positions.h"
+
 typedef cv::Point_<double> dPoint;
 typedef cv::Point_<int> iPoint;
 
@@ -55,23 +57,30 @@ class Svg_page {
         if (page_spec == "A4" || page_spec == "a4") {
             width_mm = 210;
             height_mm = 297;
+            fiducial_scale_index = fiducial_mapping_index::A4;
         } 
         if (page_spec == "A3" || page_spec == "a3") {
             width_mm = 297;
             height_mm = 420;
+            fiducial_scale_index = fiducial_mapping_index::A3;
         }
         if (page_spec == "A2" || page_spec == "a2") {
             width_mm = 420;
             height_mm = 594;
+            fiducial_scale_index = fiducial_mapping_index::A2;
         }
         if (page_spec == "A1" || page_spec == "a1") {
             width_mm = 594;
             height_mm = 841;
+            fiducial_scale_index = fiducial_mapping_index::A1;
         }
         if (page_spec == "A0" || page_spec == "a0") {
             width_mm = 841;
             height_mm = 1189;
+            fiducial_scale_index = fiducial_mapping_index::A0;
         }
+        
+        fiducial_scale = fiducial_scale_factor[fiducial_scale_index];
         
         width  = lrint(width_mm * sscale);
         height = lrint(height_mm * sscale);
@@ -117,7 +126,7 @@ class Svg_page {
         fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"%s\"/>", int(tlx), int(tly), int(width), int(height), style.c_str());
     }
     
-    virtual iPoint project(double x, double y) {
+    virtual iPoint project(double x, double y, bool silent=false) {
         
         x = floor(x*width);
         y = floor(y*height);
@@ -276,6 +285,9 @@ class Svg_page {
     double sscale;
     bool outside_limits;
     int clipid;
+    
+    fiducial_mapping_index fiducial_scale_index = fiducial_mapping_index::A3;
+    double fiducial_scale = 1.0;
 };
 
 #endif

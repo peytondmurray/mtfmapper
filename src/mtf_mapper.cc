@@ -325,6 +325,9 @@ int main(int argc, char** argv) {
             mtf_core.set_samples_per_edge(5);
         }
     }
+    if (tc_lensprof.isSet()) {
+        mtf_core.set_find_fiducials(true);
+    }
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
@@ -344,7 +347,7 @@ int main(int argc, char** argv) {
     
     
     Distance_scale distance_scale;
-    if (tc_mf_profile.getValue() || tc_focus.getValue()) {
+    if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_lensprof.getValue()) {
         distance_scale.construct(mtf_core, true, &img_dimension_correction);
     }
     
