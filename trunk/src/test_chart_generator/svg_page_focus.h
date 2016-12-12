@@ -54,7 +54,7 @@ class Svg_page_focus : public Svg_page {
         
         strip(-5*bsize, -0.8, 45*bsize, 5*bsize, 44, 1, -ang); // for perspective blocks
         
-        coded_sector_circles(10);
+        coded_sector_circles(10*fiducial_scale);
         
         chevrons();
         
@@ -113,7 +113,7 @@ class Svg_page_focus : public Svg_page {
         return p;
     }
   
-    virtual iPoint project(double x, double y) {
+    virtual iPoint project(double x, double y, bool silent=false) {
     
         dPoint p = project_core(x,y);
         
@@ -123,7 +123,7 @@ class Svg_page_focus : public Svg_page {
         if (p.x < 0 || p.x > width ||
             p.y < 0 || p.y > height) {
             
-            outside_limits = true;
+            outside_limits = !silent;
         }
         
         return iPoint(int(p.x), int(p.y));
@@ -172,11 +172,11 @@ class Svg_page_focus : public Svg_page {
     }
     
     void coded_sector_circles(double swidth) {
-        const double hshift = 20;
+        const double hshift = 20 * fiducial_scale;
         
         #if 0
         
-        const double cdist = 30;
+        const double cdist = 30 * fiducial_scale;
         sector_circle(cdist, 0, swidth/2.0, 0);
         fprintf(fout, "\n");
         printf("{0, 0, %lf, %lf, 0, 0},\n", cdist, 0.0);
@@ -231,28 +231,39 @@ class Svg_page_focus : public Svg_page {
         }
         
         #else 
-        // just use what we have in fiducials include ...
         for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
-            sector_circle(main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y, swidth*0.5, main_fiducials[i].code);
+            sector_circle(main_fiducials[i].rcoords.x*fiducial_scale, main_fiducials[i].rcoords.y*fiducial_scale, swidth*0.5, fiducial_code_mapping[fiducial_scale_index][i]);
+            printf("fiducial %d (%lf, %lf) assigned code %d\n", 
+                i, main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y,
+                fiducial_code_mapping[fiducial_scale_index][i]
+            );
             fprintf(fout, "\n");
         }
         #endif
         
-        for (int y=-80; y < 80; y++) {
-            iPoint c1 = scale(swidth-1 + hshift/2, 2*y);
-            iPoint c2 = scale(swidth+1 + hshift/2, 2*y+1);
+        iPoint vprobe = project(1.07,1, true);
+        const int fine_rows = floor(vprobe.x/sscale);
+        
+        
+        for (int y=-fine_rows/(4*fiducial_scale); y < fine_rows/(4*fiducial_scale); y++) {
+            iPoint c1 = scale(swidth-fiducial_scale + hshift/2, fiducial_scale*(2*y));
+            iPoint c2 = scale(swidth+fiducial_scale + hshift/2, fiducial_scale*(2*y+1));
             fprintf(fout, "\n");
             rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
         }
         
+        // these are probably the horizontal lines ....
+        iPoint hprobe = project(0,-1, true);
+        const double char_scale = floor(hprobe.x/sscale/sqrt(2.0));
+        printf("horizontal scale: %lf\n", char_scale);
         const double rwidth = 2;
-        for (int x=0; x < 25; x++) {
+        for (int x=0; x < int(char_scale/4); x++) {
             iPoint c1 = scale( (4*x-1)*rwidth*0.5 + 2*hshift, -0.25);
             iPoint c2 = scale( (4*x+1)*rwidth*0.5 + 2*hshift,  0.25);
             fprintf(fout, "\n");
             rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
         }
-        for (int x=0; x < 25; x++) {
+        for (int x=0; x < int(char_scale/4); x++) {
             iPoint c1 = scale( (4*(-x)-1)*rwidth*0.5 - 2*hshift, -0.25);
             iPoint c2 = scale( (4*(-x)+1)*rwidth*0.5 - 2*hshift, 0.25);
             fprintf(fout, "\n");
@@ -276,15 +287,16 @@ class Svg_page_focus : public Svg_page {
     }
     
     void chevrons(void) {
-        const int fine_rows = 320;
+        iPoint proj = project(1.07,1, true);
+        const int fine_rows = floor(proj.x/sscale/fiducial_scale);
         const double hshift = 20;
         for (int row=0; row < fine_rows; row++) {
-            direct_rectangle(-7 + hshift, row*1 - fine_rows/2, 3.5, 0.5, 45.0/180*M_PI);
+            direct_rectangle((-7 + hshift)*fiducial_scale, (row*1 - fine_rows/2)*fiducial_scale, 3.5*fiducial_scale, 0.5*fiducial_scale, 45.0/180*M_PI);
             fprintf(fout, "\n");
         }
         for (int row=0; row < fine_rows/4; row++) {
             for (int col=0; col < 3; col ++) {
-                direct_rectangle(col - 7 + hshift, row*4 - fine_rows/2, 3.5, 0.5, -45.0/180*M_PI);
+                direct_rectangle((col - 7 + hshift)*fiducial_scale, (row*4 - fine_rows/2)*fiducial_scale, 3.5*fiducial_scale, 0.5*fiducial_scale, -45.0/180*M_PI);
                 fprintf(fout, "\n");
             }
         }
@@ -313,10 +325,10 @@ class Svg_page_focus : public Svg_page {
         // markers of known dimension to check printed scale
         
         vector<Point2d> corners = {
-            {-120, -150},
-            { 120,  150},
-            {-120,  150},
-            { 120, -150}
+            {floor(-120 * fiducial_scale), floor(-150 * fiducial_scale)},
+            {floor( 120 * fiducial_scale), floor( 150 * fiducial_scale)},
+            {floor(-120 * fiducial_scale), floor( 150 * fiducial_scale)},
+            {floor( 120 * fiducial_scale), floor(-150 * fiducial_scale)}
             
         };
         

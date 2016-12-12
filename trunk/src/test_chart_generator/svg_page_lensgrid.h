@@ -49,7 +49,8 @@ class Svg_page_lensgrid : public Svg_page {
     }
     
     void render(void) {
-        grid(0.04, 17, 11); 
+        vector<Point2f> centers = coded_sector_circles(10*fiducial_scale);
+        grid(0.04, 17, 11, centers); 
     }
     
   protected:
@@ -80,7 +81,7 @@ class Svg_page_lensgrid : public Svg_page {
         fprintf(fout, "%d,%d\" style=\"%s\"/>\n", p.x, p.y, style.c_str());
     }
     
-    void place_trapezoid(double xpos, double ypos, double width, double angle_thresh=1.5) {
+    void place_trapezoid(double xpos, double ypos, double width, double angle_thresh, const vector<Point2f>& circles) {
         vector<iPoint> coords(4);
         
         static double direction = 1;
@@ -89,6 +90,7 @@ class Svg_page_lensgrid : public Svg_page {
         
         double ewidth = 0;
         
+        bool overlap;
         bool done = false;
         int tries = 0;
         int last_change = 0;
@@ -181,29 +183,59 @@ class Svg_page_lensgrid : public Svg_page {
                     last_change = tries;
                 }
             }
+            
+            overlap = false;
+            double mindist = 1e50;
+            for (int i=0; i < 4; i++) {
+                Point2f fp = Point2f(coords[i].x, coords[i].y);
+                //Point2f fp = Point2f(xpos, ypos);
+                for (size_t j=0; j < circles.size(); j++) {
+                    double dist = cv::norm(fp - circles[j]);
+                    mindist = std::min(dist, mindist);
+                }
+            }
+            if (mindist < 10*fiducial_scale*sscale) {
+                overlap = true;
+            }
+            printf("tries = %d, mindist = %lf, thresh = %lf\n", tries, mindist, 10*fiducial_scale*sscale);
+            
             tries++;
             if (tries > last_change+3) done = true;
             
             // estimate radial error
-            printf("%lf %lf\n", 
-                std::min(fabs(radang1-angles[2]), fabs(radang2-angles[2])),
-                std::min(fabs(radang1-angles[3]), fabs(radang2-angles[3]))
-            );
+            //printf("%lf %lf\n", 
+            //    std::min(fabs(radang1-angles[2]), fabs(radang2-angles[2])),
+            //    std::min(fabs(radang1-angles[3]), fabs(radang2-angles[3]))
+            //);
             
         } while (!done);
         
+        if (!overlap) {
+            fprintf(fout, "  <polygon points=\"%d,%d ", coords[0].x, coords[0].y);
+            //fprintf(stderr, "4\n%lf %lf\n", coords[0].y*scale + off, coords[0].x*scale + off);
+            fprintf(fout, "%d,%d ", coords[1].x, coords[1].y);
+            //fprintf(stderr, "%lf %lf\n", coords[1].y*scale + off, coords[1].x*scale + off);
+            fprintf(fout, "%d,%d ", coords[2].x, coords[2].y);
+            //fprintf(stderr, "%lf %lf\n", coords[2].y*scale + off, coords[2].x*scale + off);
+            fprintf(fout, "%d,%d\" style=\"%s\"/>\n", coords[3].x, coords[3].y, style.c_str());
+            //fprintf(stderr, "%lf %lf\n", coords[3].y*scale + off, coords[3].x*scale + off);
+        }
+    }
+    
+    vector<Point2f> coded_sector_circles(double swidth) {
+        const double hshift = 20 * fiducial_scale;
+        vector<Point2f> centers;
         
-        fprintf(fout, "  <polygon points=\"%d,%d ", coords[0].x, coords[0].y);
-        fprintf(stderr, "4\n%lf %lf\n", coords[0].y*scale + off, coords[0].x*scale + off);
-        fprintf(fout, "%d,%d ", coords[1].x, coords[1].y);
-        fprintf(stderr, "%lf %lf\n", coords[1].y*scale + off, coords[1].x*scale + off);
-        fprintf(fout, "%d,%d ", coords[2].x, coords[2].y);
-        fprintf(stderr, "%lf %lf\n", coords[2].y*scale + off, coords[2].x*scale + off);
-        fprintf(fout, "%d,%d\" style=\"%s\"/>\n", coords[3].x, coords[3].y, style.c_str());
-        fprintf(stderr, "%lf %lf\n", coords[3].y*scale + off, coords[3].x*scale + off);
+        for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
+            sector_circle(main_fiducials[i].rcoords.x*fiducial_scale, main_fiducials[i].rcoords.y*fiducial_scale, swidth*0.5, fiducial_code_mapping[fiducial_scale_index][i]);
+            Point2f p(main_fiducials[i].rcoords.x*fiducial_scale*sscale+ 0.5*width, main_fiducials[i].rcoords.y*fiducial_scale*sscale + 0.5*height);
+            centers.push_back(p);
+            //centers.push_back(Point2f(main_fiducials[i].rcoords.x*fiducial_scale/sscale, main_fiducials[i].rcoords.y*fiducial_scale/sscale));
+        }
+        return centers;
     }
 
-    void grid(double swidth, size_t nrows, size_t ncols) {
+    void grid(double swidth, size_t nrows, size_t ncols, const vector<Point2f>& circles) {
         
         const double phi = 1.9/180.0*M_PI;
         for (int row=0; row < (int)nrows; row++) {
@@ -217,7 +249,8 @@ class Svg_page_lensgrid : public Svg_page {
                     0.5 + rx,
                     sqrt(0.5) + ry,
                     swidth,
-                    (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5
+                    (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5,
+                    circles
                 );
             }
         }

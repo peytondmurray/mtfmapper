@@ -43,6 +43,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <map>
 using std::map;
 
+#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 typedef vector<Block> block_vector;
@@ -63,7 +64,7 @@ class Mtf_core {
              const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false), samples_per_edge(0), border_width(0) {
+        sliding(false), samples_per_edge(0), border_width(0), find_fiducials(false) {
 
         bayer = Bayer::from_string(bayer_subset);
         logger.debug("bayer subset is %d\n", bayer);
@@ -127,6 +128,7 @@ class Mtf_core {
     
     void set_sliding(bool val) {
         sliding = val;
+        find_fiducials = true;
     }
     
     void set_samples_per_edge(int s) {
@@ -140,6 +142,10 @@ class Mtf_core {
     
     void set_border(int in_border_width) {
         border_width = in_border_width;
+    }
+    
+    void set_find_fiducials(bool val) {
+        find_fiducials = val;
     }
     
     const Component_labeller& cl;
@@ -167,6 +173,7 @@ class Mtf_core {
     bool sliding;
     int samples_per_edge;
     int border_width;
+    bool find_fiducials;
     
     void process_with_sliding_window(Mrectangle& rrect);
   
