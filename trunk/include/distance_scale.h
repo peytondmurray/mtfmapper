@@ -399,12 +399,13 @@ class Distance_scale {
                         bpe_list.push_back(s.bpe);
                     }
                 }
+                logger.debug("total solutions: %lu, max inlier solutions: %lu\n", solutions.size(), bpe_list.size());
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
                 double bpe_threshold = bpe_list[bpe_list.size()/100];
                 double focal_ratio_min = focal_ratio_list[5*focal_ratio_list.size()/100];
                 double focal_ratio_max = focal_ratio_list[95*focal_ratio_list.size()/100];
-                printf("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
+                logger.debug("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
                 vector<double> fr_keepers;
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers &&
@@ -512,6 +513,9 @@ class Distance_scale {
                     w,
                     img_scale
                 );
+                ba.focal_lower = focal_ratio_min;
+                ba.focal_upper = focal_ratio_max;
+                ba.focal_mode_constraint = acos(fabs(RM(2,2)))/M_PI*180 < 15 ? 1.0 : 0.0; // if the chart is flat, try to keep focal ratio near initial estimate
                 ba.solve();
                 ba.unpack(rotation, translation, distortion, w);
                 bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
