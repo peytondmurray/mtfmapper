@@ -127,8 +127,12 @@ class Bundle_adjuster {
             sse += err*err;
         }
         double finit = 1.0/initial[7];
+        double fr = 1.0/v[7];
         double fd = fabs(1.0/v[7] - finit);
-        return sqrt(sse/world_points.size()) + ((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0));
+        return sqrt(sse/world_points.size()) + 
+            (fr < focal_lower ? (fr - focal_lower)*(fr - focal_lower) : 0) +
+            (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) + 
+            focal_mode_constraint*((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0));
     }
     
     void seed_simplex(VectorXd& v, const VectorXd& lambda) {
@@ -265,6 +269,9 @@ class Bundle_adjuster {
     VectorXd ny;
     bool nelder_mead_failed;
     Eigen::VectorXd initial;
+    double focal_lower;
+    double focal_upper;
+    double focal_mode_constraint;
 };
 
 #endif
