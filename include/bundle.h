@@ -113,8 +113,8 @@ class Bundle_adjuster {
         R.row(2) *= v[7]; // multiply by 1/f
         Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
         
-        double max_err = 0;
         double sse = 0;
+        double wsum = 0;
         for (size_t i=0; i < world_points.size(); i++) {
             Eigen::Vector3d bp = R*world_points[i] + t;
             bp /= bp[2];
@@ -123,13 +123,14 @@ class Bundle_adjuster {
             bp /= rad;
                         
             double err = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            max_err = max(err, max_err);
-            sse += err*err;
+            double weight = world_points[i].norm();
+            wsum += weight;
+            sse += err*err*weight;
         }
         double finit = 1.0/initial[7];
         double fr = 1.0/v[7];
         double fd = fabs(1.0/v[7] - finit);
-        return sqrt(sse/world_points.size()) + 
+        return sqrt(sse/wsum) +  
             (fr < focal_lower ? (fr - focal_lower)*(fr - focal_lower) : 0) +
             (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) + 
             focal_mode_constraint*((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0));
