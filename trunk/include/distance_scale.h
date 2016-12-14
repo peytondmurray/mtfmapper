@@ -207,6 +207,7 @@ class Distance_scale {
                 }
                 
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > ba_img_points;
+                vector<double> ba_img_rad;
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > ba_world_points;
                 for (const auto& e: mtf_core.ellipses) {
                     if (!e.valid) continue;
@@ -218,12 +219,13 @@ class Distance_scale {
                         }
                     }
                     
+                    ba_img_rad.push_back(e.minor_axis);
                     ba_img_points.emplace_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
                     ba_world_points.emplace_back(
                         Eigen::Vector3d(
                             main_fiducials[main_idx].rcoords.y * fiducial_scale_factor[min_fid_coding], 
                             main_fiducials[main_idx].rcoords.x * fiducial_scale_factor[min_fid_coding], 
-                            1.0
+                            0.1
                         )
                     );
                 }
@@ -264,7 +266,7 @@ class Distance_scale {
                     for (int i=0; i < 5; i++) {
                         feature_points[i] = ba_img_points[combinations[ri][i]];
                         world_points[i] = ba_world_points[combinations[ri][i]];
-                        world_points[i][2] += + 0.000001*(i+1);
+                        world_points[i][2] += + 0.000001*(i+1) * (i % 2 == 0 ? -1 : 1);
                     }
                     
                     theia::FivePointFocalLengthRadialDistortion(
@@ -339,17 +341,20 @@ class Distance_scale {
                                 double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
                                 double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
                                 
-                                Eigen::Vector3d bp = RMM*Eigen::Vector3d(ba_world_points[i][0], ba_world_points[i][1], 1.0) + TV;
+                                Eigen::Vector3d bp = RMM*ba_world_points[i] + TV;
                                 bp /= bp[2];
                                 
                                 double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
                                 bp /= rad;
                                 
-                                Eigen::Vector2d corrected_img_point = ba_img_points[i] + Eigen::Vector2d(bp[0] - uc, bp[1] - vc)/img_scale;
+                                Eigen::Vector2d ecor = Eigen::Vector2d(bp[0] - uc, bp[1] - vc);
+                                bool ec_is_sane = fabs(ecor[0]) < ba_img_rad[i]*0.1 && fabs(ecor[1]) < ba_img_rad[i]*0.1;
+                                
+                                Eigen::Vector2d corrected_img_point = ba_img_points[i] + ecor/img_scale;
                                 
                                 double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
-                                if (err*img_scale < inlier_threshold) {
+                                if (err*img_scale < inlier_threshold && ec_is_sane) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
                                     max_err = max(err, max_err);
@@ -389,8 +394,8 @@ class Distance_scale {
                     return;
                 }
                 
-                // now try to characterize the "most popular" solution within the
-                // top 1% of potential solutions
+                // now try to characterize the "mean solution" amongst the
+                // better-performing solutions
                 vector<double> focal_ratio_list;
                 vector<double> bpe_list;
                 for (auto s: solutions) {
@@ -402,26 +407,33 @@ class Distance_scale {
                 logger.debug("total solutions: %lu, max inlier solutions: %lu\n", solutions.size(), bpe_list.size());
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
-                double bpe_threshold = bpe_list[bpe_list.size()/100];
-                double focal_ratio_min = focal_ratio_list[5*focal_ratio_list.size()/100];
-                double focal_ratio_max = focal_ratio_list[95*focal_ratio_list.size()/100];
+                double bpe_threshold = bpe_list[3*bpe_list.size()/10];
+                double focal_ratio_min = focal_ratio_list[5*focal_ratio_list.size()/1000];
+                double focal_ratio_max = focal_ratio_list[995*focal_ratio_list.size()/1000];
                 logger.debug("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
                 vector<double> fr_keepers;
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers &&
-                        s.bpe <= bpe_threshold &&
                         s.f >= focal_ratio_min &&
                         s.f <= focal_ratio_max) {
                         
                         fr_keepers.push_back(s.f);
                     }
                 }
-                sort(fr_keepers.begin(), fr_keepers.end());
-                double median_fr = fr_keepers[fr_keepers.size()/2];
+                
+                double mean_fr = 0;
+                for (double f: fr_keepers) {
+                    mean_fr += f;
+                }
+                mean_fr /= fr_keepers.size();
+                
                 vector<Cal_solution> kept_solutions;
+                double fr_err = 1e50;
+                kept_solutions.push_back(solutions[0]);
                 for (auto s: solutions) {
-                    if (s.inlier_list.size() == most_inliers && s.f == median_fr) {
-                        kept_solutions.push_back(s);
+                    if (s.inlier_list.size() == most_inliers && fabs(s.f - mean_fr) < fr_err && s.bpe <= bpe_threshold) {
+                        kept_solutions[0] = s;
+                        fr_err = fabs(s.f - mean_fr);
                     }
                 }
                 solutions = kept_solutions;
@@ -433,8 +445,6 @@ class Distance_scale {
                 double w = 0;
                 
                 int min_idx = 0;
-                
-                try_next_solution:
                 
                 P = solutions[min_idx].proj;
                 distortion = solutions[min_idx].distort;
@@ -492,7 +502,7 @@ class Distance_scale {
                     double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
                     double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
                     
-                    Eigen::Vector3d bp = RMM*Eigen::Vector3d(ba_world_points[inliers[k]][0], ba_world_points[inliers[k]][1], 1.0) + TV;
+                    Eigen::Vector3d bp = RMM*ba_world_points[inliers[k]] + TV;
                     bp /= bp[2];
                     
                     logger.debug("point %d: [%lf %lf] -> ellipse centre [%lf %lf], point centre [%lf %lf]\n",
@@ -521,10 +531,6 @@ class Distance_scale {
                 bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
                 logger.debug("solution %d has rmse=%lf\n", min_idx, bundle_rmse);
                 
-                if (ba.optimization_failure() && min_idx < int(solutions.size() - 1)) {
-                    min_idx++;
-                    goto try_next_solution;
-                }
                 
                 double prev_rmse = bundle_rmse;
                 // take another stab, in case NM stopped at a point that
@@ -543,14 +549,13 @@ class Distance_scale {
                     prev_rmse = bundle_rmse;
                 } while (improved);
                 
-                
                 focal_length = 1.0/w;
                 
                 // prepare for backprojection
                 Eigen::Matrix3d K;
                 K << 1, 0, 0,
-                    0, 1, 0,
-                    0, 0, 1.0 / focal_length;
+                     0, 1, 0,
+                     0, 0, 1.0 / focal_length;
                 
                 
                 invP = (K*rotation).inverse();
