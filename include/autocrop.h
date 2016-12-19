@@ -127,15 +127,47 @@ class Autocropper {
         
         double otsu = otsu_threshold(data);
         
-        int upper = 0;
-        int lower = data.size();
+        // if the left or right edge is above the threshold, then we probably have a bright edge
+        // so we have to re-estimate the brightness threshold after compensating for that
+        int dead_left = 0;
+        while (data[dead_left] < otsu && dead_left < int(data.size()/4)) dead_left++;
+        if (dead_left < 0.1*data.size()) {
+            while (data[dead_left] > otsu && dead_left < int(data.size()/4)) dead_left++;
+        } else {
+            dead_left = 0;
+        }
+        int dead_right = data.size()-1;
+        while (data[dead_right] < otsu && dead_right > int(3*data.size()/4)) dead_right--;
+        if (dead_right > 0.9*data.size()) {
+            while (data[dead_right] > otsu && dead_right > int(3*data.size()/4)) dead_right--;
+        } else {
+            dead_right = data.size()-1;
+        }
         
-        for (int i=0; i < (int)data.size(); i++) {
+        if (dead_left > 0 || dead_right < (int)data.size()-1) {
+            vector<double> dcopy(data);
+            sort(dcopy.begin(), dcopy.end());
+            double median = dcopy[dcopy.size()/2];
+            // replace values above threshold with median?
+            dcopy = data;
+            for (auto& d: dcopy) {
+                if (d > otsu) {
+                    d = median;
+                }
+            }
+            otsu = otsu_threshold(dcopy);
+            logger.debug("autocrop had to use a deadzone because the image borders were bright\n");
+        }
+        
+        int upper = dead_left;
+        int lower = dead_right;
+        
+        for (int i=dead_left; i < (int)data.size(); i++) {
             if (data[i] > otsu) {
                 upper = i;
             }
         }
-        for (int i=(int)data.size()-1; i > 0; i--) {
+        for (int i=dead_right; i > 0; i--) {
             if (data[i] > otsu) {
                 lower = i;
             }
