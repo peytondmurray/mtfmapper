@@ -53,6 +53,7 @@ class QTreeView;
 class QThread;
 class QCheckBox;
 class QProgressBar;
+class QSplitter;
    
 class mtfmapper_app : public QMainWindow
 {
@@ -131,6 +132,8 @@ class mtfmapper_app : public QMainWindow
     QPushButton*    save_subset_button;
     
     Img_frame*      img_frame;
+    
+    QSplitter*      splitter;
 
     QIcon* mtfmapper_logo;
 
