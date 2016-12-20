@@ -45,7 +45,8 @@ class Svg_page_lensgrid : public Svg_page {
     Svg_page_lensgrid(const string& page_spec, const string& fname) 
     : Svg_page(page_spec, fname), centre(0.5, 0.5*sqrt(2.0)),
       off(0), scale(10.0/100) {
-    
+      
+        fiducial_scale_index = fiducial_mapping_index(int(fiducial_scale_index) + int(fiducial_mapping_index::A0L));
     }
     
     void render(void) {
@@ -188,13 +189,16 @@ class Svg_page_lensgrid : public Svg_page {
             double mindist = 1e50;
             for (int i=0; i < 4; i++) {
                 Point2f fp = Point2f(coords[i].x, coords[i].y);
-                //Point2f fp = Point2f(xpos, ypos);
-                for (size_t j=0; j < circles.size(); j++) {
-                    double dist = cv::norm(fp - circles[j]);
-                    mindist = std::min(dist, mindist);
+                Point2f fpn = Point2f(coords[(i+1)%4].x, coords[(i+1)%4].y);
+                for (double t=0; t <= 1.0; t += 0.1) {
+                    Point2f lp = t*fp + (1-t)*fpn;
+                    for (size_t j=0; j < circles.size(); j++) {
+                        double dist = cv::norm(lp - circles[j]);
+                        mindist = std::min(dist, mindist);
+                    }
                 }
             }
-            if (mindist < 10*fiducial_scale*sscale) {
+            if (mindist < 7.5*fiducial_scale*sscale) {
                 overlap = true;
             }
             printf("tries = %d, mindist = %lf, thresh = %lf\n", tries, mindist, 10*fiducial_scale*sscale);
@@ -227,10 +231,11 @@ class Svg_page_lensgrid : public Svg_page {
         vector<Point2f> centers;
         
         for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
-            sector_circle(main_fiducials[i].rcoords.x*fiducial_scale, main_fiducials[i].rcoords.y*fiducial_scale, swidth*0.5, fiducial_code_mapping[fiducial_scale_index][i]);
-            Point2f p(main_fiducials[i].rcoords.x*fiducial_scale*sscale+ 0.5*width, main_fiducials[i].rcoords.y*fiducial_scale*sscale + 0.5*height);
+            double ypos = main_fiducials[i].rcoords.y*fiducial_scale*fiducial_position_scale_factor[fiducial_scale_index].second;
+            double xpos = main_fiducials[i].rcoords.x*fiducial_scale*fiducial_position_scale_factor[fiducial_scale_index].first;
+            sector_circle(xpos, ypos, swidth*0.5, fiducial_code_mapping[fiducial_scale_index][i]); 
+            Point2f p(xpos*sscale+ 0.5*width, ypos*sscale + 0.5*height);
             centers.push_back(p);
-            //centers.push_back(Point2f(main_fiducials[i].rcoords.x*fiducial_scale/sscale, main_fiducials[i].rcoords.y*fiducial_scale/sscale));
         }
         return centers;
     }

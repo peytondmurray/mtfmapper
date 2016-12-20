@@ -68,25 +68,32 @@ const Fiducial main_fiducials[n_fiducials] = {
     {0, 0, -104.298250, 104.298250, 20}
 };
 
-// another 5 code mappings, which could be used in future.
-// these are the transpose of the first 5 mappings, i.e., 
-// the only share one value with each of the first 5 mappings
-// so they should have the next-best hamming distance
-// 1,5,9,13,17
-// 2,6,10,14,18
-// 3,7,11,15,19
-// 4,8,12,16,20
-
 const vector< vector<int> > fiducial_code_mapping = {
-    {0, 0, 5, 6, 7, 8, 1, 2, 3, 4, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, // A0
-    {0, 0, 9, 10, 11, 12, 5, 6, 7, 8, 1, 2, 3, 4, 13, 14, 15, 16, 17, 18, 19, 20}, // A1
-    {0, 0, 13, 14, 15, 16, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 17, 18, 19, 20}, // A2
-    {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, // A3
-    {0, 0, 17, 18, 19, 20, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4}, // A4
+    // for focus chart
+    {0, 0,  5,  6,  7,  8, 1, 2, 3, 4, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, // A0
+    {0, 0,  9, 10, 11, 12, 5, 6, 7, 8, 1, 2, 3, 4, 13, 14, 15, 16, 17, 18, 19, 20},    // A1
+    {0, 0, 13, 14, 15, 16, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 17, 18, 19, 20},     // A2
+    {0, 0,  1,  2,  3,  4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, // A3
+    {0, 0, 17, 18, 19, 20, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4},     // A4
+    
+    // for lensgrid chart, which has slightly different fiducial positions
+    {0, 0, 2,  6, 10, 14, 18, 1, 7, 8, 9, 3, 11, 12, 13, 4, 15, 16, 17, 5, 19, 20},    // A0
+    {0, 0, 3,  7, 11, 15, 19, 6, 2, 8, 9, 10, 1, 12, 13, 14, 4, 16, 17, 18, 5, 20},    // A1
+    {0, 0, 4,  8, 12, 16, 20, 6, 7, 2, 9, 10, 11, 3, 13, 14, 15, 1, 17, 18, 19, 5},    // A2
+    {0, 0, 1,  5,  9, 13, 17, 2, 7, 8, 3, 10, 11, 12, 4, 14, 15, 16, 6, 18, 19, 20},   // A3
+    {0, 0, 6, 11, 16, 17,  5, 1, 7, 8, 9, 10, 2, 12, 13, 14, 15, 3, 4, 18, 19, 20},    // A4; this code might be weaker than the rest in terms of Hamming distance
 };
 
 // scaling factors of fiducials relative to A3 size (main_fiducials are designed for A3)
-const std::array<double, 5> fiducial_scale_factor = {
+const std::array<double, 10> fiducial_scale_factor = {
+    // scale factors for 45-degree focus chart
+    2.83095238095238095238,  // A0
+    2.00238095238095238095,  // A1 
+    1.41428571428571428571,  // A2 
+    1,                       // A3
+    0.707142857142857,       // A4
+    
+    // repeated for lensgrid chart
     2.83095238095238095238,  // A0
     2.00238095238095238095,  // A1 
     1.41428571428571428571,  // A2 
@@ -94,12 +101,38 @@ const std::array<double, 5> fiducial_scale_factor = {
     0.707142857142857        // A4
 };
 
+const std::vector< pair<double, double> > fiducial_position_scale_factor = {
+  // position scales in main_fiducials are unchanged for focus chart type
+  {1.0, 1.0},
+  {1.0, 1.0},
+  {1.0, 1.0},
+  {1.0, 1.0},
+  {1.0, 1.0},
+  
+  // position scales in main_fiducials are stretched to improve sensitivty to rotation
+  // in lensgrid chart type
+  {1.05, 1.58},
+  {1.05, 1.58},
+  {1.05, 1.58},
+  {1.05, 1.58},
+  {1.05, 1.58}
+};
+
+// this enum provides an index into fiducial_code_mapping
 typedef enum {
+  // focus chart type of various sizes
   A0 = 0,
   A1 = 1,
   A2 = 2,
   A3 = 3,
-  A4 = 4
+  A4 = 4,
+  
+  // lensgrid chart type of various sizes
+  A0L = 5,
+  A1L = 6,
+  A2L = 7,
+  A3L = 8,
+  A4L = 9
 } fiducial_mapping_index;
 
 #endif

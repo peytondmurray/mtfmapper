@@ -119,7 +119,7 @@ class Distance_scale {
                             e.code, e.centroid_x, e.centroid_y,
                             by_code[e.code]->centroid_x, by_code[e.code]->centroid_y
                         );
-                    }
+                    } 
                     by_code[e.code] = &e;
                 }
                 max_fiducial_diameter = max(e.major_axis, max_fiducial_diameter);
@@ -209,6 +209,7 @@ class Distance_scale {
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > ba_img_points;
                 vector<double> ba_img_rad;
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > ba_world_points;
+                logger.debug("principal point = (%lf, %lf)\n", prin.x, prin.y);
                 for (const auto& e: mtf_core.ellipses) {
                     if (!e.valid) continue;
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
@@ -223,12 +224,13 @@ class Distance_scale {
                     ba_img_points.emplace_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
                     ba_world_points.emplace_back(
                         Eigen::Vector3d(
-                            main_fiducials[main_idx].rcoords.y * fiducial_scale_factor[min_fid_coding], 
-                            main_fiducials[main_idx].rcoords.x * fiducial_scale_factor[min_fid_coding], 
-                            0.1
+                            main_fiducials[main_idx].rcoords.y * fiducial_scale_factor[min_fid_coding] * fiducial_position_scale_factor[min_fid_coding].second, 
+                            main_fiducials[main_idx].rcoords.x * fiducial_scale_factor[min_fid_coding] * fiducial_position_scale_factor[min_fid_coding].first, 
+                            1.0
                         )
                     );
                 }
+                
                 
                 vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  > projection_matrices;
                 vector<vector<double> > radial_distortions;
@@ -307,39 +309,79 @@ class Distance_scale {
                             }
                         }
                         
-                        if (rot_err < 0.01) { 
+                        if (rot_err < 0.01 && w > 0.3 && w < 52) { 
                             vector<double> residuals;
-                            
-                            // TODO: technically, we could re-run the five-point solver with eccentricity correction
-                            // but since this should have very little effect, rather leave that for the
-                            // final bundle adjustment
                             
                             Eigen::Matrix3d RMM(RM);
                             RMM.row(2) *= w;
                             Eigen::VectorXd TV = projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm();
                             
-                            double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
-                            double c = 1.0/w; // focal length, but in which units?
-                            Eigen::Vector3d ii = RMM.col(2); // already includes focal length scaling ... ?
+                            // TODO: technically, we could re-run the five-point solver with eccentricity correction
+                            // but since this should have very little effect, rather leave that for the
+                            // final bundle adjustment
+                            Eigen::Matrix3d R_star(RM); // camera rotation matrix
+                            Eigen::Vector3d N_p(0,0,1); // unit normal vector of target in world coords
+                            Eigen::Vector3d x = N_p.cross(R_star.row(2));
                             
-                            double max_err = 0;
+                            // TODO: if x.norm() is too small, eccentricy error is zero 
+                            x /= x.norm();
+                            
+                            Eigen::Vector3d z = N_p;
+                            Eigen::Vector3d y = z.cross(x);
+                            y /= y.norm();
+                            
+                            Eigen::Matrix3d R_o;
+                            R_o.row(0) = x;
+                            R_o.row(1) = y;
+                            R_o.row(2) = z;
+                            
+                            Eigen::Matrix3d oR_star = R_star * (R_o.transpose()); 
+                            
+                            // under the assumption that phi (the swing angle) is zero, 
+                            // we know that elements (2,2) and (0,0) of oR_star are formed
+                            // from only a single cosine (i.e., the phi rotation matrix has no effect on them)
+                            
+                            // omega is the tilt of the camera relative to target plane
+                            double omega = acos(oR_star(2,2));
+                            
+                            // kappa is azimuth angle between camera and target plane 
+                            double kappa = acos(oR_star(0,0));
+                            
+                            Eigen::Vector3d X_star = projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm(); // COP in world coordinates
+                            X_star[2] /= w; // undo focal length scaling of z-component
+                            
+                            double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
+                            double c = 1.0/w; // focal length (in normalized coordinates)
+                            
+                            // clean up this mess
+                            Eigen::Matrix3d invRMM = RMM.inverse();
+                            Eigen::Vector3d lcop = TV;
+                            lcop = - invRMM * (projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm());
+                            Eigen::Matrix3d lrotation = RM;
+                            Eigen::Vector3d ltranslation = TV;
+                            ltranslation[2] /= w;
+                            
                             vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
-                             
-                                Eigen::Vector3d v = TV - RMM*ba_world_points[i];
                                 
-                                Eigen::VectorXd a(5);
-                                a[0] = r*r*ii[0]*ii[0] - SQR(v[1]*ii[1] + v[2]*ii[2]) - ii[0]*ii[0]*(v[1]*v[1] + v[2]*v[2]);
-                                a[1] = 2*(r*r*ii[0]*ii[1] - (v[2]*ii[0] - v[0]*ii[2])*(v[2]*ii[1] - v[1]*ii[2]) + v[0]*v[1]);
-                                a[2] = r*r*ii[1]*ii[1] + SQR(v[0]*ii[2] - v[2]*ii[0]) - v[0]*v[0] - v[2]*v[2];
-                                a[3] = 2*c*(v[0]*v[2]*(ii[1]*ii[1] - 1) + v[1]*(-v[0]*ii[1]*ii[2] + v[1]*ii[0]*ii[2] - v[2]*ii[0]*ii[1]) - r*r*ii[0]*ii[2]);
-                                a[4] = 2*c*((v[0]*ii[2] - v[2]*ii[0])*(v[0]*ii[1] - v[1]*ii[0]) - v[1]*v[2] - r*r*ii[1]*ii[2]);
+                                Eigen::Vector3d X_p = ba_world_points[i];
+                                Eigen::Vector3d X_o = X_p + ((X_star - X_p).dot(x))*x;
                                 
-                                double d = c*c*(-SQR(v[1]*ii[0] - v[0]*ii[1]) + v[0]*v[0] + v[1]*v[1] - r*r*ii[2]*ii[2]);
-                                a /= d;
+                                double delta_y = y.dot(X_star - X_p);
+                                double delta_z = z.dot(X_star - X_p);
+                                double alpha = atan2(-delta_y, delta_z);
+                                double d = sqrt(SQR(delta_y) + SQR(delta_z));
+                                double x_p = (X_p - X_star).dot(x);
                                 
-                                double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
-                                double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
+                                double l = d * cos(omega - alpha);
+                                double so = sin(omega);
+                                double eup = (so*so*c*x_p/l) / (SQR(l/r) - so*so);
+                                double evp = (-c*(d/l)*so*cos(alpha))/(SQR(l/r) - so*so);
+                                
+                                double ck = cos(kappa);
+                                double sk = sin(kappa);
+                                double eu = ck*eup + sk*evp;
+                                double ev = -(-sk*eup + ck*evp); // flip y-axis, because we use top left (0,0) convention
                                 
                                 Eigen::Vector3d bp = RMM*ba_world_points[i] + TV;
                                 bp /= bp[2];
@@ -347,17 +389,14 @@ class Distance_scale {
                                 double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
                                 bp /= rad;
                                 
-                                Eigen::Vector2d ecor = Eigen::Vector2d(bp[0] - uc, bp[1] - vc);
-                                bool ec_is_sane = fabs(ecor[0]) < ba_img_rad[i]*0.1 && fabs(ecor[1]) < ba_img_rad[i]*0.1;
-                                
-                                Eigen::Vector2d corrected_img_point = ba_img_points[i] + ecor/img_scale;
+                                Eigen::Vector2d ecor = Eigen::Vector2d(eu, ev); 
+                                Eigen::Vector2d corrected_img_point = ba_img_points[i] - ecor;
                                 
                                 double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
-                                if (err*img_scale < inlier_threshold && ec_is_sane) {
+                                if (err*img_scale < inlier_threshold*0.75) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
-                                    max_err = max(err, max_err);
                                 } 
                             }
                             
@@ -404,36 +443,32 @@ class Distance_scale {
                         bpe_list.push_back(s.bpe);
                     }
                 }
-                logger.debug("total solutions: %lu, max inlier solutions: %lu\n", solutions.size(), bpe_list.size());
+                logger.debug("total solutions: %lu, max inlier solutions: %lu (#%d)\n", solutions.size(), bpe_list.size(), most_inliers);
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
-                double bpe_threshold = bpe_list[3*bpe_list.size()/10];
-                double focal_ratio_min = focal_ratio_list[5*focal_ratio_list.size()/1000];
-                double focal_ratio_max = focal_ratio_list[995*focal_ratio_list.size()/1000];
+                double bpe_threshold = bpe_list[0.05*bpe_list.size()];
+                double focal_ratio_min = focal_ratio_list[0.05*focal_ratio_list.size()];
+                double focal_ratio_max = focal_ratio_list[0.95*focal_ratio_list.size()];
                 logger.debug("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
                 vector<double> fr_keepers;
+                
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers &&
                         s.f >= focal_ratio_min &&
                         s.f <= focal_ratio_max) {
                         
                         fr_keepers.push_back(s.f);
+                        
                     }
                 }
+                sort(fr_keepers.begin(), fr_keepers.end());
                 
-                double mean_fr = 0;
-                for (double f: fr_keepers) {
-                    mean_fr += f;
-                }
-                mean_fr /= fr_keepers.size();
+                double median_fr = fr_keepers[fr_keepers.size()/2];
                 
                 vector<Cal_solution> kept_solutions;
-                double fr_err = 1e50;
-                kept_solutions.push_back(solutions[0]);
                 for (auto s: solutions) {
-                    if (s.inlier_list.size() == most_inliers && fabs(s.f - mean_fr) < fr_err && s.bpe <= bpe_threshold) {
-                        kept_solutions[0] = s;
-                        fr_err = fabs(s.f - mean_fr);
+                    if (s.inlier_list.size() == most_inliers && s.f == median_fr) {
+                        kept_solutions.push_back(s);
                     }
                 }
                 solutions = kept_solutions;
@@ -482,36 +517,69 @@ class Distance_scale {
                 Eigen::VectorXd TV = Pcop;
                 TV[2] *= w;
                 
+                Eigen::Matrix3d R_star(RM); // camera rotation matrix
+                Eigen::Vector3d N_p(0,0,1); // unit normal vector of target in world coords
+                Eigen::Vector3d x = N_p.cross(R_star.row(2));
+                
+                // TODO: if x.norm() is too small, eccentricy error is zero 
+                x /= x.norm();
+                
+                Eigen::Vector3d z = N_p;
+                Eigen::Vector3d y = z.cross(x);
+                y /= y.norm();
+                
+                Eigen::Matrix3d R_o;
+                R_o.row(0) = x;
+                R_o.row(1) = y;
+                R_o.row(2) = z;
+                
+                Eigen::Matrix3d oR_star = R_star * (R_o.transpose()); 
+                
+                // under the assumption that phi (the swing angle) is zero, 
+                // we know that elements (2,2) and (0,0) of oR_star are formed
+                // from only a single cosine (i.e., the phi rotation matrix has no effect on them)
+                
+                // omega is the tilt of the camera relative to target plane
+                double omega = acos(oR_star(2,2));
+                
+                // kappa is azimuth angle between camera and target plane 
+                double kappa = acos(oR_star(0,0));
+                
+                Eigen::Vector3d X_star = Pcop;
+                
+                double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
+                double c = 1.0/w; // focal length (in normalized coordinates)
+                
                 for (size_t k=0; k < inliers.size(); k++) {
                     
-                    double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
-                    double c = 1.0/w; // focal length, but in which units?
-                    Eigen::Vector3d i = RMM.col(2); // already includes focal length scaling ... ?
-                    Eigen::Vector3d v = TV - RMM*ba_world_points[inliers[k]];
+                    Eigen::Vector3d X_p = ba_world_points[inliers[k]];
+                    Eigen::Vector3d X_o = X_p + ((X_star - X_p).dot(x))*x;
                     
-                    Eigen::VectorXd a(5);
-                    a[0] = r*r*i[0]*i[0] - SQR(v[1]*i[1] + v[2]*i[2]) - i[0]*i[0]*(v[1]*v[1] + v[2]*v[2]);
-                    a[1] = 2*(r*r*i[0]*i[1] - (v[2]*i[0] - v[0]*i[2])*(v[2]*i[1] - v[1]*i[2]) + v[0]*v[1]);
-                    a[2] = r*r*i[1]*i[1] + SQR(v[0]*i[2] - v[2]*i[0]) - v[0]*v[0] - v[2]*v[2];
-                    a[3] = 2*c*(v[0]*v[2]*(i[1]*i[1] - 1) + v[1]*(-v[0]*i[1]*i[2] + v[1]*i[0]*i[2] - v[2]*i[0]*i[1]) - r*r*i[0]*i[2]);
-                    a[4] = 2*c*((v[0]*i[2] - v[2]*i[0])*(v[0]*i[1] - v[1]*i[0]) - v[1]*v[2] - r*r*i[1]*i[2]);
+                    double delta_y = y.dot(X_star - X_p);
+                    double delta_z = z.dot(X_star - X_p);
+                    double alpha = atan2(-delta_y, delta_z);
+                    double d = sqrt(SQR(delta_y) + SQR(delta_z));
+                    double x_p = (X_p - X_star).dot(x);
                     
-                    double d = c*c*(-SQR(v[1]*i[0] - v[0]*i[1]) + v[0]*v[0] + v[1]*v[1] - r*r*i[2]*i[2]);
-                    a /= d;
+                    double l = d * cos(omega - alpha);
+                    double so = sin(omega);
+                    double eup = (so*so*c*x_p/l) / (SQR(l/r) - so*so);
+                    double evp = (-c*(d/l)*so*cos(alpha))/(SQR(l/r) - so*so);
                     
-                    double uc = (a[1]*a[4] - 2*a[2]*a[3]) / (4*a[0]*a[2] - a[1]*a[1]);
-                    double vc = (a[1]*a[3] - 2*a[0]*a[4]) / (4*a[0]*a[2] - a[1]*a[1]);
+                    double ck = cos(kappa);
+                    double sk = sin(kappa);
+                    double eu = ck*eup + sk*evp;
+                    double ev = -(-sk*eup + ck*evp); // flip y-axis, because we use top left (0,0) convention
                     
                     Eigen::Vector3d bp = RMM*ba_world_points[inliers[k]] + TV;
                     bp /= bp[2];
                     
-                    logger.debug("point %d: [%lf %lf] -> ellipse centre [%lf %lf], point centre [%lf %lf]\n",
+                    logger.debug("point %d: [%lf %lf] ->  eccentricity error [%lf %lf]\n",
                         inliers[k], img_scale*bp[0] + prin.x, img_scale*bp[1] + prin.y,
-                        uc*img_scale + prin.x, vc*img_scale + prin.y, 
-                        (bp[0] - uc), (bp[1] - vc)
+                        eu*img_scale, ev*img_scale
                     );
                     
-                    inlier_feature_points[k] = ba_img_points[inliers[k]] + Eigen::Vector2d(bp[0] - uc, bp[1] - vc)/img_scale;
+                    inlier_feature_points[k] = ba_img_points[inliers[k]] - Eigen::Vector2d(eu, ev);
                     inlier_world_points[k] = ba_world_points[inliers[k]];
                 }
                 
@@ -523,14 +591,15 @@ class Distance_scale {
                     w,
                     img_scale
                 );
-                ba.focal_lower = focal_ratio_min;
-                ba.focal_upper = focal_ratio_max;
+                ba.focal_lower = focal_ratio_min/1.1;
+                ba.focal_upper = focal_ratio_max*1.1;
                 ba.focal_mode_constraint = acos(fabs(RM(2,2)))/M_PI*180 < 15 ? 1.0 : 0.0; // if the chart is flat, try to keep focal ratio near initial estimate
+                logger.debug("focal mode = %lf, f=%lf\n", ba.focal_mode_constraint, 1/w);
                 ba.solve();
                 ba.unpack(rotation, translation, distortion, w);
+                logger.debug("after: f=%lf, limits=(%lf, %lf)\n", 1/w, ba.focal_lower, ba.focal_upper);
                 bundle_rmse = ba.evaluate(ba.best_sol)*img_scale;
                 logger.debug("solution %d has rmse=%lf\n", min_idx, bundle_rmse);
-                
                 
                 double prev_rmse = bundle_rmse;
                 // take another stab, in case NM stopped at a point that
@@ -548,6 +617,11 @@ class Distance_scale {
                     }
                     prev_rmse = bundle_rmse;
                 } while (improved);
+                
+                bundle_rmse = ba.evaluate(ba.best_sol, 0.0)*img_scale; // calculate bundle rmse without constraints
+                logger.debug("final rmse (without penalty) = %lf\n", bundle_rmse);
+                
+                logger.debug("translation=[%lf %lf %lf]\n", translation[0], translation[1], translation[2]);
                 
                 focal_length = 1.0/w;
                 
@@ -577,9 +651,15 @@ class Distance_scale {
                     }
                     logger.debug("\n");
                 }
+                
+                double varphi = asin(rotation(0,1) / sqrt(1 - SQR(rotation(0,2))));
+                double theta  = asin(-rotation(0, 2));
+                double phi    = asin(rotation(1,2) / sqrt(1 - SQR(rotation(0,2))));
+                logger.debug("Tait-Bryan angles: %lf %lf %lf\n", varphi/M_PI*180, theta/M_PI*180, phi/M_PI*180);
+                
                 fiducials_found = true;
-                logger.debug("Chart z-angle=%.1lf degrees\n", get_normal_angle_z());
-                logger.debug("Chart y-angle=%.1lf degrees\n", get_normal_angle_y());
+                logger.debug("Chart z-angle=%.1lf degrees\n", theta/M_PI*180);
+                logger.debug("Chart y-angle=%.1lf degrees\n", phi/M_PI*180);
             }
             
             // construct a distance scale
