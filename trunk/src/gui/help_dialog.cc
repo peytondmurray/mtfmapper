@@ -63,7 +63,6 @@ Help_dialog::Help_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     
     connect(dismiss_button, SIGNAL(clicked()), this, SLOT( close() ));
     
-    setLayout(vlayout);
     setCentralWidget(body);
 }
 

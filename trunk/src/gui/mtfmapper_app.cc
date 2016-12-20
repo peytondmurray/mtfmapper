@@ -136,11 +136,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_layout->addWidget(save_subset_button, 3, 0);
     QGroupBox* vbox2 = new QGroupBox(tr("Data set control"));
     vbox2->setLayout(tb_layout);
-    QSizePolicy sizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
-    vbox2->setSizePolicy(sizePolicy);
     vbox2->setMinimumWidth(200);
-    vbox2->setMaximumWidth(200);
-
+    
     QGroupBox* v3GroupBox = new QGroupBox(tr("Image properties"));
     QGridLayout* hlayout = new QGridLayout;
     hlayout->addWidget(img_comment_label, 0, 0);
@@ -162,11 +159,19 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(v3GroupBox);
     vGroupBox->setLayout(vlayout);
     
+    splitter = new QSplitter(Qt::Horizontal);
+    splitter->addWidget(vGroupBox);
+    splitter->addWidget(vbox2);
+    splitter->setStretchFactor(0, 1);
+    splitter->setCollapsible(0, false);
+    splitter->setCollapsible(1, false);
+
+    
     abort_button = new QPushButton("Abort");
     abort_button->hide();
     
     QGridLayout *mainLayout = new QGridLayout;
-    mainLayout->addWidget(vGroupBox, 0, 0, 1, 2);
+    mainLayout->addWidget(splitter, 0, 0, 1, 2);
     mainLayout->addWidget(progress, 1, 0);
     mainLayout->addWidget(abort_button, 1, 1);
     img_frame->setLayout(mainLayout);
@@ -344,7 +349,7 @@ void mtfmapper_app::open() {
     open_dialog->setOption(QFileDialog::DontUseNativeDialog);
 
     QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
-    QGridLayout* ft_gridbox = new QGridLayout(open_dialog);
+    QGridLayout* ft_gridbox = new QGridLayout();
     if (ft_gridbox) {
         ft_gridbox->addWidget(tb_img_annotated, 0, 0);
         ft_gridbox->addWidget(tb_img_profile, 0, 1);
@@ -356,7 +361,6 @@ void mtfmapper_app::open() {
 
     QGridLayout* od_gridbox = qobject_cast<QGridLayout*>(open_dialog->layout());
     od_gridbox->addWidget(v4GroupBox);
-    open_dialog->setLayout(od_gridbox);
     open_dialog->setFileMode(QFileDialog::FileMode::ExistingFiles);
     
     // use the state from the settings menu as a starting point
