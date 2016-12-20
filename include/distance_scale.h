@@ -37,6 +37,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "fiducial_positions.h"
 #include "five_point_focal_length_radial_distortion.h"
 #include <Eigen/StdVector>
+#include "eccentricity_corrector.h"
 
 #include "bundle.h"
 
@@ -319,78 +320,21 @@ class Distance_scale {
                             // TODO: technically, we could re-run the five-point solver with eccentricity correction
                             // but since this should have very little effect, rather leave that for the
                             // final bundle adjustment
-                            Eigen::Matrix3d R_star(RM); // camera rotation matrix
-                            Eigen::Vector3d N_p(0,0,1); // unit normal vector of target in world coords
-                            Eigen::Vector3d x = N_p.cross(R_star.row(2));
+                            Eigen::Vector3d ec_cop = TV; // COP in world coordinates
+                            ec_cop[2] /= w; // undo focal length scaling of z-component
                             
-                            // TODO: if x.norm() is too small, eccentricy error is zero 
-                            x /= x.norm();
-                            
-                            Eigen::Vector3d z = N_p;
-                            Eigen::Vector3d y = z.cross(x);
-                            y /= y.norm();
-                            
-                            Eigen::Matrix3d R_o;
-                            R_o.row(0) = x;
-                            R_o.row(1) = y;
-                            R_o.row(2) = z;
-                            
-                            Eigen::Matrix3d oR_star = R_star * (R_o.transpose()); 
-                            
-                            // under the assumption that phi (the swing angle) is zero, 
-                            // we know that elements (2,2) and (0,0) of oR_star are formed
-                            // from only a single cosine (i.e., the phi rotation matrix has no effect on them)
-                            
-                            // omega is the tilt of the camera relative to target plane
-                            double omega = acos(oR_star(2,2));
-                            
-                            // kappa is azimuth angle between camera and target plane 
-                            double kappa = acos(oR_star(0,0));
-                            
-                            Eigen::Vector3d X_star = projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm(); // COP in world coordinates
-                            X_star[2] /= w; // undo focal length scaling of z-component
-                            
-                            double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
-                            double c = 1.0/w; // focal length (in normalized coordinates)
-                            
-                            // clean up this mess
-                            Eigen::Matrix3d invRMM = RMM.inverse();
-                            Eigen::Vector3d lcop = TV;
-                            lcop = - invRMM * (projection_matrices[k].col(3) / projection_matrices[k].block(0,0,1,3).norm());
-                            Eigen::Matrix3d lrotation = RM;
-                            Eigen::Vector3d ltranslation = TV;
-                            ltranslation[2] /= w;
+                            Eccentricity_corrector ecor(RM, ec_cop, 5.0 * fiducial_scale_factor[min_fid_coding], 1.0/w);
                             
                             vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
-                                
-                                Eigen::Vector3d X_p = ba_world_points[i];
-                                Eigen::Vector3d X_o = X_p + ((X_star - X_p).dot(x))*x;
-                                
-                                double delta_y = y.dot(X_star - X_p);
-                                double delta_z = z.dot(X_star - X_p);
-                                double alpha = atan2(-delta_y, delta_z);
-                                double d = sqrt(SQR(delta_y) + SQR(delta_z));
-                                double x_p = (X_p - X_star).dot(x);
-                                
-                                double l = d * cos(omega - alpha);
-                                double so = sin(omega);
-                                double eup = (so*so*c*x_p/l) / (SQR(l/r) - so*so);
-                                double evp = (-c*(d/l)*so*cos(alpha))/(SQR(l/r) - so*so);
-                                
-                                double ck = cos(kappa);
-                                double sk = sin(kappa);
-                                double eu = ck*eup + sk*evp;
-                                double ev = -(-sk*eup + ck*evp); // flip y-axis, because we use top left (0,0) convention
-                                
                                 Eigen::Vector3d bp = RMM*ba_world_points[i] + TV;
                                 bp /= bp[2];
                                 
                                 double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
                                 bp /= rad;
                                 
-                                Eigen::Vector2d ecor = Eigen::Vector2d(eu, ev); 
-                                Eigen::Vector2d corrected_img_point = ba_img_points[i] - ecor;
+                                Eigen::Vector2d ec_err = ecor.eccentricity(ba_world_points[i]);
+                                Eigen::Vector2d corrected_img_point = ba_img_points[i] - ec_err;
                                 
                                 double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
@@ -413,7 +357,7 @@ class Distance_scale {
                             
                             most_inliers = std::max(most_inliers, inliers.size());
                             
-                            solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers, c));
+                            solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers, 1.0/w));
                             if (bpr < global_bpr) {
                                 global_bpr = bpr;
                                 logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
@@ -507,7 +451,6 @@ class Distance_scale {
                 }
                 cv::Rodrigues(rot_matrix, rod_angles);
                 
-                
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > inlier_feature_points(inliers.size());
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > inlier_world_points(inliers.size());
                 
@@ -517,69 +460,20 @@ class Distance_scale {
                 Eigen::VectorXd TV = Pcop;
                 TV[2] *= w;
                 
-                Eigen::Matrix3d R_star(RM); // camera rotation matrix
-                Eigen::Vector3d N_p(0,0,1); // unit normal vector of target in world coords
-                Eigen::Vector3d x = N_p.cross(R_star.row(2));
-                
-                // TODO: if x.norm() is too small, eccentricy error is zero 
-                x /= x.norm();
-                
-                Eigen::Vector3d z = N_p;
-                Eigen::Vector3d y = z.cross(x);
-                y /= y.norm();
-                
-                Eigen::Matrix3d R_o;
-                R_o.row(0) = x;
-                R_o.row(1) = y;
-                R_o.row(2) = z;
-                
-                Eigen::Matrix3d oR_star = R_star * (R_o.transpose()); 
-                
-                // under the assumption that phi (the swing angle) is zero, 
-                // we know that elements (2,2) and (0,0) of oR_star are formed
-                // from only a single cosine (i.e., the phi rotation matrix has no effect on them)
-                
-                // omega is the tilt of the camera relative to target plane
-                double omega = acos(oR_star(2,2));
-                
-                // kappa is azimuth angle between camera and target plane 
-                double kappa = acos(oR_star(0,0));
-                
-                Eigen::Vector3d X_star = Pcop;
-                
-                double r = 5.0 * fiducial_scale_factor[min_fid_coding];   // radius of circle
-                double c = 1.0/w; // focal length (in normalized coordinates)
+                Eccentricity_corrector ecor(RM, Pcop, 5.0 * fiducial_scale_factor[min_fid_coding], 1.0/w);
                 
                 for (size_t k=0; k < inliers.size(); k++) {
-                    
-                    Eigen::Vector3d X_p = ba_world_points[inliers[k]];
-                    Eigen::Vector3d X_o = X_p + ((X_star - X_p).dot(x))*x;
-                    
-                    double delta_y = y.dot(X_star - X_p);
-                    double delta_z = z.dot(X_star - X_p);
-                    double alpha = atan2(-delta_y, delta_z);
-                    double d = sqrt(SQR(delta_y) + SQR(delta_z));
-                    double x_p = (X_p - X_star).dot(x);
-                    
-                    double l = d * cos(omega - alpha);
-                    double so = sin(omega);
-                    double eup = (so*so*c*x_p/l) / (SQR(l/r) - so*so);
-                    double evp = (-c*(d/l)*so*cos(alpha))/(SQR(l/r) - so*so);
-                    
-                    double ck = cos(kappa);
-                    double sk = sin(kappa);
-                    double eu = ck*eup + sk*evp;
-                    double ev = -(-sk*eup + ck*evp); // flip y-axis, because we use top left (0,0) convention
+                    Eigen::Vector2d ec_err = ecor.eccentricity(ba_world_points[inliers[k]]);
                     
                     Eigen::Vector3d bp = RMM*ba_world_points[inliers[k]] + TV;
                     bp /= bp[2];
                     
                     logger.debug("point %d: [%lf %lf] ->  eccentricity error [%lf %lf]\n",
                         inliers[k], img_scale*bp[0] + prin.x, img_scale*bp[1] + prin.y,
-                        eu*img_scale, ev*img_scale
+                        ec_err[0]*img_scale, ec_err[1]*img_scale
                     );
                     
-                    inlier_feature_points[k] = ba_img_points[inliers[k]] - Eigen::Vector2d(eu, ev);
+                    inlier_feature_points[k] = ba_img_points[inliers[k]] - ec_err;
                     inlier_world_points[k] = ba_world_points[inliers[k]];
                 }
                 
