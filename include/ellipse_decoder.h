@@ -137,7 +137,11 @@ class Ellipse_decoder {
             ones += bit;
         }
         
-        if (!ones && img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)) < otsu) {
+        int ix = lrint(e.centroid_x);
+        int iy = lrint(e.centroid_y);
+        if (!ones && ix > 0 && iy > 0 && ix < img.cols - 1 && iy < img.rows - 1 &&
+            img.at<uint16_t>(iy, ix) < otsu) {
+            
             code = -1;
             valid = false;
             return;

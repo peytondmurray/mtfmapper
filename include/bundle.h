@@ -96,7 +96,7 @@ class Bundle_adjuster {
         w = v[7];
     }
     
-    double evaluate(const Eigen::VectorXd& v) {
+    double evaluate(const Eigen::VectorXd& v, double penalty=1.0) {
         rod_angles.at<double>(0,0) = v[3];
         rod_angles.at<double>(1,0) = v[4];
         rod_angles.at<double>(2,0) = v[5];
@@ -123,7 +123,7 @@ class Bundle_adjuster {
             bp /= rad;
                         
             double err = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            double weight = world_points[i].norm();
+            double weight = world_points[i].squaredNorm();
             wsum += weight;
             sse += err*err*weight;
         }
@@ -131,9 +131,11 @@ class Bundle_adjuster {
         double fr = 1.0/v[7];
         double fd = fabs(1.0/v[7] - finit);
         return sqrt(sse/wsum) +  
-            (fr < focal_lower ? (fr - focal_lower)*(fr - focal_lower) : 0) +
-            (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) + 
-            focal_mode_constraint*((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0));
+            penalty * (
+              (fr < focal_lower ? (fr - focal_lower)*(fr - focal_lower) : 0) +
+              (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) + 
+              focal_mode_constraint*((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0))
+            );
     }
     
     void seed_simplex(VectorXd& v, const VectorXd& lambda) {
