@@ -70,6 +70,7 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_lensprofile;
     QCheckBox*  cb_autocrop;
     QCheckBox*  cb_lpmm;
+    QCheckBox*  cb_gnuplot_scaled;
     
     QRadioButton* rb_colour_none;
     QRadioButton* rb_colour_red;
@@ -88,6 +89,8 @@ class Settings_dialog : public QDialog
     QLineEdit*  dcraw_line;
     QPushButton* dcraw_button;
     
+    int gnuplot_img_width;
+    
   signals:
     void argument_string(QString s);  
     
@@ -97,7 +100,7 @@ class Settings_dialog : public QDialog
     void browse_for_gnuplot();
     void browse_for_exiv();
     void browse_for_dcraw();
-    
+    void set_gnuplot_img_width(int w);
 };
 
 #endif

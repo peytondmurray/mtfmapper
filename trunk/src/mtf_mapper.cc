@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_lp2("", "lp2", "Lens profile resolution 2 (lp/mm or c/p)", false, 30.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm or c/p)", false, 50.0, "lp/mm", cmd);
     TCLAP::ValueArg<string> tc_logfile("", "logfile", "Output written to <logfile> in stead of standard out", false, "", "filename", cmd);
+    TCLAP::ValueArg<int> tc_gpwidth("", "gnuplot-width", "Width of images rendered by gnuplot", false, 1024, "pixels", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -219,6 +220,7 @@ int main(int argc, char** argv) {
         cvimg = border;
     }
     
+    int gnuplot_width = std::max(1024, tc_gpwidth.getValue());
     
     // process working directory
     std::string wdir(tc_wdir.getValue());
@@ -366,11 +368,13 @@ int main(int argc, char** argv) {
             few_edges_warned = true;
         } else {
             Mtf_renderer_profile profile(
+                img_filename,
                 wdir, 
                 string("profile.txt"),
                 string("profile_peak.txt"),
                 tc_gnuplot.getValue(),
                 cvimg,
+                gnuplot_width,
                 lpmm_mode,
                 pixel_size
             );
@@ -403,6 +407,7 @@ int main(int argc, char** argv) {
                 string("grid.txt"),
                 tc_gnuplot.getValue(),
                 cvimg,
+                gnuplot_width,
                 lpmm_mode,
                 pixel_size
             );
@@ -466,6 +471,7 @@ int main(int argc, char** argv) {
             tc_gnuplot.getValue(),
             cvimg,
             resolutions,
+            gnuplot_width,
             lpmm_mode,
             pixel_size
         );

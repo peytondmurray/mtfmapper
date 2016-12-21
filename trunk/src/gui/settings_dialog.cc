@@ -56,6 +56,8 @@ const QString setting_autocrop = "setting_autocrop";
 const Qt::CheckState setting_autocrop_default = Qt::Unchecked;
 const QString setting_lpmm = "setting_lpmm";
 const Qt::CheckState setting_lpmm_default = Qt::Unchecked;
+const QString setting_gnuplot_scaled = "setting_gnuplot_scaled";
+const Qt::CheckState setting_gnuplot_scaled_default = Qt::Checked;
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
@@ -70,7 +72,7 @@ const QString setting_dcraw_default = "/usr/bin/dcraw";
 #endif
 
 Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
- : settings("mtfmapper", "mtfmapper")
+ : settings("mtfmapper", "mtfmapper"), gnuplot_img_width(1024)
 {
     arguments_label = new QLabel(tr("Arguments:"));
     arguments_line  = new QLineEdit;
@@ -104,6 +106,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_lensprofile  = new QCheckBox("Lens profile");
     cb_autocrop     = new QCheckBox("Autocrop");
     cb_lpmm         = new QCheckBox("Line pairs/mm units");
+    cb_gnuplot_scaled = new QCheckBox("Scale plots to window");
     
     rb_colour_none  = new QRadioButton("none");
     rb_colour_red   = new QRadioButton("red");
@@ -135,6 +138,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
     cb_lpmm->setCheckState(
         (Qt::CheckState)settings.value(setting_lpmm, setting_lpmm_default).toInt()
+    );
+    cb_gnuplot_scaled->setCheckState(
+        (Qt::CheckState)settings.value(setting_gnuplot_scaled, setting_gnuplot_scaled_default).toInt()
     );
     
     switch(settings.value(setting_bayer, 0).toInt()) {
@@ -168,6 +174,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_linear_gamma);
     cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
+    cb_layout->addWidget(cb_gnuplot_scaled);
     v2GroupBox->setLayout(cb_layout);
     
     QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"));
@@ -271,6 +278,10 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --bayer blue");
     }
     
+    if (cb_gnuplot_scaled->checkState()) {
+        args = args + QString(" --gnuplot-width %1").arg(gnuplot_img_width);
+    }
+    
     args = args + QString(" %1").arg(arguments_line->text());
     
     emit argument_string(args);
@@ -289,6 +300,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_focus, cb_focus->checkState());
     settings.setValue(setting_lensprofile, cb_lensprofile->checkState());
     settings.setValue(setting_autocrop, cb_autocrop->checkState());
+    settings.setValue(setting_gnuplot_scaled, cb_gnuplot_scaled->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());
@@ -389,6 +401,10 @@ void Settings_dialog::browse_for_dcraw(void) {
     }
 
     check_exiv2_binary();
+}
+
+void Settings_dialog::set_gnuplot_img_width(int w) {
+    gnuplot_img_width = w < 1024 ? 1024 : w;
 }
 
 QString Settings_dialog::get_gnuplot_binary(void) const {
