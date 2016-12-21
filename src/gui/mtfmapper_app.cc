@@ -377,6 +377,7 @@ void mtfmapper_app::open() {
         settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
         settings->cb_focus->setCheckState(tb_img_focus->checkState());
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
+        settings->set_gnuplot_img_width(int(qgv->size().height()*1.3));
         settings->send_argument_string();
 
         input_files = open_dialog->selectedFiles();
