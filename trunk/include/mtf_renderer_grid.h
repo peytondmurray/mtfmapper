@@ -258,7 +258,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
         );
         fprintf(gpf, "unset multiplot\n");
         fprintf(gpf, "unset label 11\n");
-        fprintf(gpf, "set pm3d hidden3d\n");
+        fprintf(gpf, "set pm3d hidden3d 1\n");
+        fprintf(gpf, "set style line 1 lc rgb \"black\" lw 0.75\n");
         fprintf(gpf, "set term png size %d, %d font \"arial,%d\"\n", 
             (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
             height_in_pixels_3d,

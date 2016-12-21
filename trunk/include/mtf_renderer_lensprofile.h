@@ -221,7 +221,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font 'Arial,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
         #endif
         
-        fprintf(gpf, "if (GPVAL_VERSION >= 5.0) {set linetype 12 dashtype 2;}\n"); // force dashed lines in meridional plot
+        fprintf(gpf, "if (GPVAL_VERSION >= 5.0) set linetype 12 dashtype 2;\n"); // force dashed lines in meridional plot
         fprintf(gpf, "set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb \"white\" behind\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
         if (img_filename.length() > 0) {
