@@ -138,7 +138,7 @@ class Bundle_adjuster {
             );
     }
     
-    void seed_simplex(VectorXd& v, const VectorXd& lambda) {
+    void seed_simplex(Eigen::VectorXd& v, const Eigen::VectorXd& lambda) {
         np = vector<Eigen::VectorXd>(v.size()+1);
         // seed the simplex
         for (int i = 0; i < v.size(); i++) {
@@ -147,14 +147,14 @@ class Bundle_adjuster {
         }
         np[v.size()] = v;
 
-        ny = VectorXd(v.size()+1);
+        ny = Eigen::VectorXd(v.size()+1);
         // now obtain their function values
         for (int i = 0; i < v.size() + 1; i++) {
             ny[i] = evaluate(np[i]);
         }
     }
     
-    inline void simplex_sum(VectorXd& psum) {
+    inline void simplex_sum(Eigen::VectorXd& psum) {
         psum.setZero();
         for (size_t m=0; m < np.size(); m++) {
             psum += np[m];
@@ -165,7 +165,7 @@ class Bundle_adjuster {
         const int max_allowed_iterations = 5000;
         const double epsilon = 1.0e-10;
 
-        VectorXd psum(np[0].size());
+        Eigen::VectorXd psum(np[0].size());
         num_evals = 0;
         simplex_sum(psum);
         
@@ -223,11 +223,11 @@ class Bundle_adjuster {
         }
     }
     
-    double try_solution(VectorXd& psum, const int ihi, const double fac) {
+    double try_solution(Eigen::VectorXd& psum, const int ihi, const double fac) {
 
         double fac1 = (1.0 - fac) / double (psum.size());
         double fac2 = fac1 - fac;
-        VectorXd ptry = psum * fac1 - np[ihi] * fac2;
+        Eigen::VectorXd ptry = psum * fac1 - np[ihi] * fac2;
         double ytry = evaluate(ptry);
 
         if (ytry < ny[ihi]) {
@@ -238,7 +238,7 @@ class Bundle_adjuster {
         return ytry;
     }
     
-    VectorXd iterate(double tol) {
+    Eigen::VectorXd iterate(double tol) {
     
         int evals = 0;
         const int tries = 2;
@@ -269,7 +269,7 @@ class Bundle_adjuster {
     
     // variables used by nelder-mead
     vector<Eigen::VectorXd> np;
-    VectorXd ny;
+    Eigen::VectorXd ny;
     bool nelder_mead_failed;
     Eigen::VectorXd initial;
     double focal_lower;
