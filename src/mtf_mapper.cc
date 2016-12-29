@@ -54,6 +54,7 @@ Logger logger;
 #include "include/mtf_renderer_esf.h"
 #include "include/mtf_renderer_edges.h"
 #include "include/mtf_renderer_lensprofile.h"
+#include "include/mtf_renderer_chart_orientation.h"
 #include "include/mtf_renderer_focus.h"
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
@@ -118,6 +119,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_sfr("f","sfr","Store raw SFR curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_esf("e","esf","Store raw ESF and PSF curves for each edge", cmd, false);
     TCLAP::SwitchArg tc_lensprof("","lensprofile","Render M/S lens profile plot", cmd, false);
+    TCLAP::SwitchArg tc_chart_orientation("","chart-orientation","Visualize chart orientation relative to camera", cmd, false);
     TCLAP::SwitchArg tc_border("b","border","Add a border of 20 pixels to the image", cmd, false);
     TCLAP::SwitchArg tc_absolute("","absolute-sfr","Generate absolute SFR curve (MTF) i.s.o. relative SFR curve", cmd, false);
     TCLAP::SwitchArg tc_smooth("","nosmoothing","Disable SFR curve (MTF) smoothing", cmd, false);
@@ -327,7 +329,7 @@ int main(int argc, char** argv) {
             mtf_core.set_samples_per_edge(5);
         }
     }
-    if (tc_lensprof.isSet()) {
+    if (tc_chart_orientation.isSet()) {
         mtf_core.set_find_fiducials(true);
     }
     
@@ -349,7 +351,7 @@ int main(int argc, char** argv) {
     
     
     Distance_scale distance_scale;
-    if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_lensprof.getValue()) {
+    if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
         distance_scale.construct(mtf_core, true, &img_dimension_correction);
     }
     
@@ -476,6 +478,19 @@ int main(int argc, char** argv) {
             pixel_size
         );
         printer.render(mtf_core.get_blocks());
+    }
+    
+    if (tc_chart_orientation.getValue()) {
+        Mtf_renderer_chart_orientation co_renderer(
+            img_filename,
+            wdir, 
+            string("chart_orientation.png"),
+            cvimg,
+            gnuplot_width,
+            distance_scale,
+            &img_dimension_correction
+        );
+        co_renderer.render(mtf_core.get_blocks());
     }
 
     if (tc_sfr.getValue() || tc_absolute.getValue()) {
