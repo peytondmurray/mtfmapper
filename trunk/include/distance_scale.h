@@ -38,6 +38,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "five_point_focal_length_radial_distortion.h"
 #include <Eigen/StdVector>
 #include "eccentricity_corrector.h"
+#include "point_helpers.h"
 
 #include "bundle.h"
 
@@ -360,8 +361,8 @@ class Distance_scale {
                             solutions.push_back(Cal_solution(bpr, projection_matrices[k], -radial_distortions[k][0], inliers, 1.0/w));
                             if (bpr < global_bpr) {
                                 global_bpr = bpr;
-                                logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu)\n",
-                                    k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size()
+                                logger.debug("%lu[%lu]: rotation error: %lf, bpr=%lf pixels, f=%lf pixels, inliers=%lu (#best=%lu), distortion=%lf\n",
+                                    k, ri, rot_err, bpr, img_scale/w, inliers.size(), solutions.size(), -radial_distortions[k][0]
                                 );
                             }
                         }
@@ -398,6 +399,7 @@ class Distance_scale {
                 
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers &&
+                        s.bpe <= bpe_threshold &&
                         s.f >= focal_ratio_min &&
                         s.f <= focal_ratio_max) {
                         
@@ -427,6 +429,7 @@ class Distance_scale {
                 
                 P = solutions[min_idx].proj;
                 distortion = solutions[min_idx].distort;
+                
                 vector<int>& inliers = solutions[min_idx].inlier_list;
                 
                 double r1n = (P.block(0,0,1,3)).norm();
@@ -440,8 +443,6 @@ class Distance_scale {
                 Eigen::MatrixXd RM = P.block(0,0,3,3);
                 Eigen::Vector3d Pcop = P.col(3);
                 
-                std::cout << "R=\n" << RM << std::endl;
-                std::cout << "T= " << Pcop.transpose() << std::endl;
                 logger.debug("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0 / w, img_scale / w);
                 
                 for (int rr=0; rr < 3; rr++) {
@@ -515,7 +516,7 @@ class Distance_scale {
                 bundle_rmse = ba.evaluate(ba.best_sol, 0.0)*img_scale; // calculate bundle rmse without constraints
                 logger.debug("final rmse (without penalty) = %lf\n", bundle_rmse);
                 
-                logger.debug("translation=[%lf %lf %lf]\n", translation[0], translation[1], translation[2]);
+                
                 
                 focal_length = 1.0/w;
                 
@@ -538,22 +539,23 @@ class Distance_scale {
                 centre_depth = backproject(zero.x, zero.y)[2];
                 
                 logger.debug("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
-                logger.debug("R=\n");
+                logger.debug("rotation=\n");
                 for (int r=0; r < 3; r++) {
                     for (int c=0; c < 3; c++) {
                         logger.debug("%12.8lf ", rotation(r, c));
                     }
                     logger.debug("\n");
                 }
+                logger.debug("translation=[%lf %lf %lf]\n", translation[0], translation[1], translation[2]);
                 
-                double varphi = asin(rotation(0,1) / sqrt(1 - SQR(rotation(0,2))));
-                double theta  = asin(-rotation(0, 2));
-                double phi    = asin(rotation(1,2) / sqrt(1 - SQR(rotation(0,2))));
-                logger.debug("Tait-Bryan angles: %lf %lf %lf\n", varphi/M_PI*180, theta/M_PI*180, phi/M_PI*180);
+                roll_angle  = asin(rotation(0,1) / sqrt(1 - SQR(rotation(0,2))));
+                yaw_angle   = asin(-rotation(0, 2));
+                pitch_angle = asin(rotation(1,2) / sqrt(1 - SQR(rotation(0,2))));
+                logger.debug("Tait-Bryan angles: %lf %lf %lf\n", roll_angle/M_PI*180, yaw_angle/M_PI*180, pitch_angle/M_PI*180);
                 
                 fiducials_found = true;
-                logger.debug("Chart z-angle=%.1lf degrees\n", theta/M_PI*180);
-                logger.debug("Chart y-angle=%.1lf degrees\n", phi/M_PI*180);
+                logger.debug("Chart z-angle=%.1lf degrees\n", pitch_angle/M_PI*180);
+                logger.debug("Chart y-angle=%.1lf degrees\n", yaw_angle/M_PI*180);
             }
             
             // construct a distance scale
@@ -770,6 +772,10 @@ class Distance_scale {
     
     double bundle_rmse;
     bool fiducials_found;
+    
+    double roll_angle = 0;
+    double yaw_angle = 0;
+    double pitch_angle = 0;
     
   private:
     template <typename T> int sgn(T val) const {
