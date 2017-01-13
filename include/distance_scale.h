@@ -378,6 +378,8 @@ class Distance_scale {
                     return;
                 }
                 
+                FILE* fout = fopen("parms.txt", "wt");
+                
                 // now try to characterize the "mean solution" amongst the
                 // better-performing solutions
                 vector<double> focal_ratio_list;
@@ -386,12 +388,14 @@ class Distance_scale {
                     if (s.inlier_list.size() == most_inliers) {
                         focal_ratio_list.push_back(s.f);
                         bpe_list.push_back(s.bpe);
+                        fprintf(fout, "%lf %lf\n", s.f, s.bpe);
                     }
                 }
+                fclose(fout);
                 logger.debug("total solutions: %lu, max inlier solutions: %lu (#%d)\n", solutions.size(), bpe_list.size(), most_inliers);
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
-                double bpe_threshold = bpe_list[0.05*bpe_list.size()];
+                double bpe_threshold = bpe_list[0.35*bpe_list.size()];
                 double focal_ratio_min = focal_ratio_list[0.05*focal_ratio_list.size()];
                 double focal_ratio_max = focal_ratio_list[0.95*focal_ratio_list.size()];
                 logger.debug("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
