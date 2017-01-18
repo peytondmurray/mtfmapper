@@ -209,10 +209,10 @@ class Distance_scale {
                 }
                 
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > ba_img_points;
-                vector<double> ba_img_rad;
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > ba_world_points;
                 logger.debug("principal point = (%lf, %lf)\n", prin.x, prin.y);
-                for (const auto& e: mtf_core.ellipses) {
+                for (auto it = by_code.begin(); it != by_code.end(); it++) {
+                    const Ellipse_detector& e = *it->second;
                     if (!e.valid) continue;
                     if (e.code == 0) continue; // we do not know how to tell the two zeros appart, so just skip them
                     int main_idx = -1;
@@ -222,7 +222,6 @@ class Distance_scale {
                         }
                     }
                     
-                    ba_img_rad.push_back(e.minor_axis);
                     ba_img_points.emplace_back(Eigen::Vector2d((e.centroid_x - prin.x)/img_scale, (e.centroid_y - prin.y)/img_scale));
                     ba_world_points.emplace_back(
                         Eigen::Vector3d(
@@ -339,7 +338,7 @@ class Distance_scale {
                                 
                                 double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
-                                if (err*img_scale < inlier_threshold*0.75) {
+                                if (err*img_scale < inlier_threshold*0.95) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
                                 } 
@@ -396,8 +395,8 @@ class Distance_scale {
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
                 double bpe_threshold = bpe_list[0.35*bpe_list.size()];
-                double focal_ratio_min = focal_ratio_list[0.05*focal_ratio_list.size()];
-                double focal_ratio_max = focal_ratio_list[0.95*focal_ratio_list.size()];
+                double focal_ratio_min = focal_ratio_list[0.15*focal_ratio_list.size()];
+                double focal_ratio_max = focal_ratio_list[0.85*focal_ratio_list.size()];
                 logger.debug("bpe threshold=%lf, fr min=%lf, fr max=%lf\n", bpe_threshold, focal_ratio_min, focal_ratio_max);
                 vector<double> fr_keepers;
                 
