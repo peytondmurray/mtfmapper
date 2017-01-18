@@ -70,7 +70,7 @@ class Bundle_adjuster {
         
         scale << 1e-6, 1e-6, 0.01,     // origin
                  1e-3, 1e-3, 1e-3,  // angles
-                 1e-7,              // distortion
+                 1e-5,              // distortion
                  0.025*img_scale;    // 1/focal length
         
         nelder_mead_failed = false;
