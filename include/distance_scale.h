@@ -37,7 +37,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "fiducial_positions.h"
 #include "five_point_focal_length_radial_distortion.h"
 #include <Eigen/StdVector>
-#include "eccentricity_corrector.h"
 #include "point_helpers.h"
 
 #include "bundle.h"
@@ -71,7 +70,7 @@ class Distance_scale {
     : chart_scale(1.0), largest_block_index(-1), focal_length(10000), fiducials_found(false) {
     }
     
-    void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL) {
+    void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL, double user_focal_ratio=-1) {
     
         int zcount = 0;
         
@@ -232,7 +231,6 @@ class Distance_scale {
                     );
                 }
                 
-                
                 vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  > projection_matrices;
                 vector<vector<double> > radial_distortions;
                 cv::Mat rot_matrix = cv::Mat(3, 3, CV_64FC1);
@@ -323,22 +321,17 @@ class Distance_scale {
                             Eigen::Vector3d ec_cop = TV; // COP in world coordinates
                             ec_cop[2] /= w; // undo focal length scaling of z-component
                             
-                            Eccentricity_corrector ecor(RM, ec_cop, 5.0 * fiducial_scale_factor[min_fid_coding], 1.0/w);
-                            
                             vector<int> inliers;
                             for (size_t i=0; i < ba_img_points.size(); i++) {
                                 Eigen::Vector3d bp = RMM*ba_world_points[i] + TV;
                                 bp /= bp[2];
                                 
-                                double rad = 1 + radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]);
+                                double rad = 1 - radial_distortions[k][0]*(bp[0]*bp[0] + bp[1]*bp[1]); // NB: note the sign of the distortion
                                 bp /= rad;
                                 
-                                Eigen::Vector2d ec_err = ecor.eccentricity(ba_world_points[i]);
-                                Eigen::Vector2d corrected_img_point = ba_img_points[i] - ec_err;
+                                double err = (ba_img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
                                 
-                                double err = (corrected_img_point - Eigen::Vector2d(bp[0], bp[1])).norm();
-                                
-                                if (err*img_scale < inlier_threshold*0.95) {
+                                if (err*img_scale < inlier_threshold*0.5) {
                                     residuals.push_back(err);
                                     inliers.push_back(i);
                                 } 
@@ -377,8 +370,6 @@ class Distance_scale {
                     return;
                 }
                 
-                FILE* fout = fopen("parms.txt", "wt");
-                
                 // now try to characterize the "mean solution" amongst the
                 // better-performing solutions
                 vector<double> focal_ratio_list;
@@ -387,10 +378,8 @@ class Distance_scale {
                     if (s.inlier_list.size() == most_inliers) {
                         focal_ratio_list.push_back(s.f);
                         bpe_list.push_back(s.bpe);
-                        fprintf(fout, "%lf %lf\n", s.f, s.bpe);
                     }
                 }
-                fclose(fout);
                 logger.debug("total solutions: %lu, max inlier solutions: %lu (#%d)\n", solutions.size(), bpe_list.size(), most_inliers);
                 sort(focal_ratio_list.begin(), focal_ratio_list.end());
                 sort(bpe_list.begin(), bpe_list.end());
@@ -415,6 +404,14 @@ class Distance_scale {
                 double median_fr = fr_keepers[fr_keepers.size()/2];
                 
                 vector<Cal_solution> kept_solutions;
+                if (user_focal_ratio > 0) {
+                    median_fr = 1e50;
+                    for (auto s: solutions) {
+                        if (s.inlier_list.size() == most_inliers && fabs(s.f - user_focal_ratio) < fabs(median_fr - user_focal_ratio)) {
+                            median_fr = s.f;
+                        }
+                    }
+                }
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers && s.f == median_fr) {
                         kept_solutions.push_back(s);
@@ -457,28 +454,16 @@ class Distance_scale {
                 
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > inlier_feature_points(inliers.size());
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > inlier_world_points(inliers.size());
-                
                 // prepate rotation matrix and 
                 Eigen::Matrix3d RMM(RM);
                 RMM.row(2) *= w;
                 Eigen::VectorXd TV = Pcop;
                 TV[2] *= w;
                 
-                Eccentricity_corrector ecor(RM, Pcop, 5.0 * fiducial_scale_factor[min_fid_coding], 1.0/w);
                 
                 for (size_t k=0; k < inliers.size(); k++) {
-                    Eigen::Vector2d ec_err = ecor.eccentricity(ba_world_points[inliers[k]]);
-                    
-                    Eigen::Vector3d bp = RMM*ba_world_points[inliers[k]] + TV;
-                    bp /= bp[2];
-                    
-                    logger.debug("point %d: [%lf %lf] ->  eccentricity error [%lf %lf]\n",
-                        inliers[k], img_scale*bp[0] + prin.x, img_scale*bp[1] + prin.y,
-                        ec_err[0]*img_scale, ec_err[1]*img_scale
-                    );
-                    
-                    inlier_feature_points[k] = ba_img_points[inliers[k]] - ec_err;
-                    inlier_world_points[k] = ba_world_points[inliers[k]];
+                    inlier_feature_points[k] = ba_img_points[inliers[k]];
+                    inlier_world_points[k]   = ba_world_points[inliers[k]];
                 }
                 
                 Bundle_adjuster ba(
@@ -487,6 +472,7 @@ class Distance_scale {
                     rod_angles,
                     distortion,
                     w,
+                    5.0 * fiducial_scale_factor[min_fid_coding],
                     img_scale
                 );
                 ba.focal_lower = focal_ratio_min/1.1;

@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm or c/p)", false, 50.0, "lp/mm", cmd);
     TCLAP::ValueArg<string> tc_logfile("", "logfile", "Output written to <logfile> in stead of standard out", false, "", "filename", cmd);
     TCLAP::ValueArg<int> tc_gpwidth("", "gnuplot-width", "Width of images rendered by gnuplot", false, 1024, "pixels", cmd);
+    TCLAP::ValueArg<double> tc_focal("", "focal-ratio", "Specify focal ratio for use in chart orientation estimation", false, -2, "ratio", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -352,7 +353,7 @@ int main(int argc, char** argv) {
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
-        distance_scale.construct(mtf_core, true, &img_dimension_correction);
+        distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue());
     }
     
     // now render the computed MTF values

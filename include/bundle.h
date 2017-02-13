@@ -44,8 +44,11 @@ class Bundle_adjuster {
         Eigen::Vector3d& t,
         cv::Mat in_rod_angles,
         double distortion,
-        double w, double img_scale=1.0) 
-         : img_points(img_points), world_points(world_points), img_scale(img_scale) {
+        double w, 
+        double fid_diameter,
+        double img_scale=1.0) 
+         : img_points(img_points), world_points(world_points), 
+           fid_diameter(fid_diameter), img_scale(img_scale) {
         
         rot_mat = cv::Mat(3, 3, CV_64FC1);
         rod_angles = cv::Mat(3, 1, CV_64FC1);
@@ -68,10 +71,10 @@ class Bundle_adjuster {
     void solve(void) {
         Eigen::VectorXd scale(best_sol.size());
         
-        scale << 1e-6, 1e-6, 0.01,     // origin
+        scale << 1e-6, 1e-6, 0.01,  // origin
                  1e-3, 1e-3, 1e-3,  // angles
                  1e-5,              // distortion
-                 0.025*img_scale;    // 1/focal length
+                 0.025*img_scale;   // 1/focal length
         
         nelder_mead_failed = false;
         seed_simplex(best_sol, scale);
@@ -107,33 +110,74 @@ class Bundle_adjuster {
         R << rot_mat.at<double>(0,0), rot_mat.at<double>(0,1), rot_mat.at<double>(0,2),
              rot_mat.at<double>(1,0), rot_mat.at<double>(1,1), rot_mat.at<double>(1,2),
              rot_mat.at<double>(2,0), rot_mat.at<double>(2,1), rot_mat.at<double>(2,2);
+
+        // we can backproject the centres of the circles, and compare that to the 
+        // centres of the ellipses extracted from the image.
+        // this will not compensate for the eccentricity (which moves the centre of a 
+        // projected circle so that it no longer coincides with the centre of the
+        // ellipse). We could compute an eccentricity correction following Ahn, but
+        // I choose to rather project the complete circle geometry from the world
+        // coordinate system into the image plane. 
+        // the resulting projected ellipse will naturally have the same centre as the
+        // ones we extract from the image, so eccentricity is corrected for
              
-        // we could orthogonalize R here using [U S V] = svd(R) -> Ro = U*V'
+        const double d = fid_diameter;
         
-        R.row(2) *= v[7]; // multiply by 1/f
-        Eigen::Vector3d t(v[0], v[1], v[2]*v[7]);
+        Eigen::Vector3d T(v[0], v[1], v[2]);
+        Eigen::Vector3d Cp(0, 0, img_scale/v[7]);
+        Eigen::MatrixXd Jp(3,2);
+        Jp << 1,0,0,1,0,0;
         
-        double sse = 0;
-        double wsum = 0;
+        double rmse = 0;
         for (size_t i=0; i < world_points.size(); i++) {
-            Eigen::Vector3d bp = R*world_points[i] + t;
-            bp /= bp[2];
+        
+            Eigen::Vector3d Ce = R * world_points[i] + T;
+            Eigen::Vector3d ebar = R.transpose()*(-Ce);
+            Eigen::Vector3d cbar = R.transpose()*Ce;
             
-            double rad = 1 + v[6]*(bp[0]*bp[0] + bp[1]*bp[1]);
-            bp /= rad;
-                        
-            double err = (img_points[i] - Eigen::Vector2d(bp[0], bp[1])).norm();
-            double weight = world_points[i].squaredNorm();
-            wsum += weight;
-            sse += err*err*weight;
+            Eigen::Matrix3d bA;
+            bA <<
+                1.0/(d*d),  0,  -ebar[0]/(ebar[2]*d*d),
+                0,  1.0/(d*d),  -ebar[1]/(ebar[2]*d*d),
+                -ebar[0]/(ebar[2]*d*d), -ebar[1]/(ebar[2]*d*d), (SQR(ebar[0]/d) + SQR(ebar[1]/d) - 1) / SQR(ebar[2]);
+            
+            Eigen::Vector3d bB;
+            bB << 0, 0, 2/ebar[2];
+            double bc = -1;
+            
+            Eigen::Matrix3d A = R*bA*R.transpose();
+            Eigen::Vector3d B = R*(bB - 2.0 * bA*cbar);
+            double c = (cbar.transpose()*bA*cbar - bB.transpose()*cbar)(0,0) + bc;
+            
+            Eigen::MatrixXd hA = Jp.transpose()*A*Jp;
+            Eigen::VectorXd hB = Jp.transpose()*(B + 2*A*Cp);
+            double hc = (Cp.transpose()*A*Cp + B.transpose()*Cp)(0,0) + c;
+            
+            Eigen::Matrix3d EM;
+            EM << hA(0,0), hA(0,1), 0.5*hB[0], 
+                  hA(0,1), hA(1,1), 0.5*hB[1], 
+                  0.5*hB[0], 0.5*hB[1], hc;
+            
+            Ellipse_detector ed;
+            ed._matrix_to_ellipse(EM);
+            Eigen::Vector2d srp = 1.0/img_scale*Eigen::Vector2d(ed.centroid_x, ed.centroid_y);
+            
+            // apply lens distortion to reconstructed ellipe centre
+            double rad = 1 + v[6]*(srp[0]*srp[0] + srp[1]*srp[1]);
+            srp /= rad;
+            
+            rmse += (srp - img_points[i]).squaredNorm(); 
         }
+        
+        rmse = sqrt(rmse/world_points.size());
+        
         double finit = 1.0/initial[7];
         double fr = 1.0/v[7];
         double fd = fabs(1.0/v[7] - finit);
-        return sqrt(sse/wsum) +  
+        return rmse + 
             penalty * (
               (fr < focal_lower ? (fr - focal_lower)*(fr - focal_lower) : 0) +
-              (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) + 
+              (fr > focal_upper ? (fr - focal_upper)*(fr - focal_upper) : 0) +
               focal_mode_constraint*((fd > 0.1*finit) ? fd*fd : ((fd > 0.05) ? fd*fd*fd*fd : 0))
             );
     }
@@ -265,6 +309,7 @@ class Bundle_adjuster {
     cv::Mat rot_mat;
     cv::Mat rod_angles;
     Eigen::VectorXd best_sol;
+    double fid_diameter;
     double img_scale;
     
     // variables used by nelder-mead
