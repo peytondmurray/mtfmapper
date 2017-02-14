@@ -398,7 +398,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     double dist_r = fabs(fine_col - samples[i].p.x)/cell_c;
                     double dist_c = fabs(fine_row - samples[i].p.y)/cell_r;
                     
-                    double scale = 10; 
+                    double scale = 11; 
                     
                     cover_sum += exp( -( (SQR(dist_r) + SQR(dist_c)) / scale) ) * ( (samples[i].mtf > 1e-6) ? 1 : 0 ) / (sqrt(2*scale*M_PI));
                     
