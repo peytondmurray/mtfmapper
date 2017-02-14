@@ -71,7 +71,7 @@ class Camera_draw {
                 z = -offset;
                 break;
             }
-            cpts.push_back(distance_scale.world_to_image(x, y, z));
+            cpts.push_back(distance_scale.world_to_image(psf*x, psf*y, psf*z));
         }
         curve(cpts, cv::Scalar(20,20,20), 4, cv::Scalar(20,20,20));
         curve(cpts, colour, 2, colour);
@@ -92,13 +92,13 @@ class Camera_draw {
                 Point2d pt;
                 switch(axis) {
                 case 0: // x-axis                    
-                    pt = distance_scale.world_to_image(dpts[i].y, y - (tp ? -1 : 1)*(dpts[i].x - (rad - aw)), z);
+                    pt = distance_scale.world_to_image(psf*dpts[i].y, psf*(y - (tp ? -1 : 1)*(dpts[i].x - (rad - aw))), psf*z);
                     break;
                 case 1: // y-axis
-                    pt = distance_scale.world_to_image(x - (tp ? -1 : 1)*(dpts[i].x - (rad - aw)), dpts[i].y, z);
+                    pt = distance_scale.world_to_image(psf*(x - (tp ? -1 : 1)*(dpts[i].x - (rad - aw))), psf*dpts[i].y, psf*z);
                     break;
                 case 2: // z-axis
-                    pt = distance_scale.world_to_image(x - (tp ? -1 : 1)*(dpts[i].x - (rad - aw)), y - dpts[i].y, z);
+                    pt = distance_scale.world_to_image(psf*(x - (tp ? -1 : 1)*(dpts[i].x - (rad - aw))), psf*(y - dpts[i].y), psf*z);
                     break;
                 }
                 
