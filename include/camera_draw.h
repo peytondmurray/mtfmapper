@@ -35,7 +35,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Camera_draw {
   public:
     Camera_draw(const cv::Mat& img, const Distance_scale& distance_scale, double scaling_factor=1.0, int pad=0) 
-    : img(img), distance_scale(distance_scale), scaling_factor(scaling_factor)
+    : img(img), distance_scale(distance_scale), scaling_factor(scaling_factor), psf(distance_scale.page_scale_factor)
     {
         rimg = gray_to_colour(img, scaling_factor, pad);
         if (scaling_factor != 1.0) {
@@ -158,6 +158,7 @@ class Camera_draw {
         merge(channels, merged);
         
         if (pad > 0) {
+            initial_rows = merged.rows;
             // TODO: maybe merge right column if image is too narrow
             merged.resize(merged.rows + 220); // TODO: adjustable padding size?
             rectangle(merged, Point2d(0, g_img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
@@ -216,7 +217,7 @@ class Camera_draw {
         Point2d czero = distance_scale.world_to_image(0, 0);
         
         for (int i=0; i < 4; i++) {
-            Point2d wp(10*cos(2.0*i*M_PI/4.0), 10*sin(2.0*i*M_PI/4.0));
+            Point2d wp(psf*10*cos(2.0*i*M_PI/4.0), psf*10*sin(2.0*i*M_PI/4.0));
             Point2d pt = distance_scale.world_to_image(wp.x, wp.y);
             cv::line(rimg, czero, pt, mark_col, 2, CV_AA);
         }
@@ -237,7 +238,7 @@ class Camera_draw {
             
             cv::Point pts[3];
             for (int i=0; i < 3; i++) {
-                Point2d pt = distance_scale.world_to_image(dpts[i].x, dpts[i].y);
+                Point2d pt = distance_scale.world_to_image(psf*dpts[i].x, psf*dpts[i].y);
                 pts[i].x = lrint(pt.x);
                 pts[i].y = lrint(pt.y);
             }
@@ -250,8 +251,6 @@ class Camera_draw {
         cv::Scalar reticle_col(0, 127-50, 255-50);
         cv::Point centre(dc_x, dc_y);
         
-        
-            
         const double rad = 25;
         cv::circle(rimg, centre, rad, cv::Scalar(20,20,20), 4, CV_AA);
         int i=0;
@@ -281,6 +280,87 @@ class Camera_draw {
         }
     }
     
+    void fail_circle(void) {
+        Point2d cent(rimg.cols/2, rimg.rows/2);
+        double rad = min(rimg.rows, rimg.cols)/2.0 - 20;
+        cv::Scalar red(30, 30, 255);
+        
+        cv::circle(rimg, cent, rad, red, 10, CV_AA);
+        Point2d dir(rad*sqrt(0.5)-2, rad*sqrt(0.5)-2);
+        cv::line(rimg, cent - dir, cent + dir, red, 10, CV_AA);
+    }
+    
+    void fail_with_message(const string& path, const string& s) {
+        fail_circle();
+        
+        char tbuffer[1024];
+        int font = cv::FONT_HERSHEY_DUPLEX; 
+        sprintf(tbuffer, "%s", s.c_str());
+        cv::putText(rimg, tbuffer, Point2d(50, initial_rows + (rimg.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        imwrite(path, rimg);
+    }
+    
+    void checkmark(const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point start(pos.x, pos.y);
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(45.0/180.0*M_PI);
+        tri[2].x = tri[1].x + 20*cos(-45.0/180.0*M_PI);
+        tri[2].y = tri[1].y + 20*sin(-45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 1*cos((180+45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 1*sin((180+45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(rimg, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(-45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(-45.0/180.0*M_PI);
+        tri[2].x = tri[1].x - 5*cos(45.0/180.0*M_PI);
+        tri[2].y = tri[1].y - 5*sin(45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 5*cos((180-45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 5*sin((180-45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(rimg, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+    }
+    
+    void crossmark(const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point cent(pos.x, pos.y);
+        
+        Point2d dir(cos(M_PI/4), sin(M_PI/4));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(rimg, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        dir = Point2d(cos(M_PI/4+M_PI/2), sin(M_PI/4+M_PI/2));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(rimg, (const cv::Point*)&tri, 4, colour, CV_AA);
+    }
+    
     void alpha_block(const Point2d& p, const cv::Size& s, const cv::Scalar& col, double alpha) {
         // trim to img bounds
         int e_width = std::min((int)p.x + (int)s.width, rimg.cols-1) - p.x;
@@ -291,11 +371,72 @@ class Camera_draw {
         cv::addWeighted(cblock, alpha, roi, 1.0 - alpha , 0.0, roi); 
     }
     
+    template <class... T> 
+    void text(double x, double y, double z, cv::Scalar& colour, T... t) { // x, y and z are in world coordinates
+    
+        const int font = cv::FONT_HERSHEY_DUPLEX; 
+        char tbuffer[4096];
+        
+        sprintf(tbuffer, t...);
+        Point2d textpos = distance_scale.world_to_image(x, y, z);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, CV_AA);
+    }
+    
+    template <class... T> 
+    void text(cv::Point2d pos, cv::Scalar& colour, T... t) { // pos is in pixel coordinates
+    
+        const int font = cv::FONT_HERSHEY_DUPLEX; 
+        char tbuffer[4096];
+        
+        sprintf(tbuffer, t...);
+        cv::putText(rimg, tbuffer, pos, font, 1, colour, 1, CV_AA);
+    }
+    
+    template <class... T> 
+    void text_block(double x, double y, double z, cv::Scalar& colour, T... t) {
+    
+        const int font = cv::FONT_HERSHEY_DUPLEX; 
+        int baseline;
+        cv::Size ts;
+        char tbuffer[4096];
+        
+        sprintf(tbuffer, t...);
+        Point2d textpos = distance_scale.world_to_image(x, y, z);
+        ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
+        alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, CV_AA);
+    }
+    
+    template <class... T> 
+    void text_block_ra(double x, double y, double z, cv::Scalar& colour, T... t) {
+    
+        const int font = cv::FONT_HERSHEY_DUPLEX; 
+        int baseline;
+        cv::Size ts;
+        char tbuffer[4096];
+        
+        sprintf(tbuffer, t...);
+        Point2d textpos = distance_scale.world_to_image(x, y, z);
+        ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
+        textpos.x -= ts.width;
+        alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, CV_AA);
+    }
+    
     const cv::Mat img;
     Distance_scale distance_scale;
     double scaling_factor;
     
     cv::Mat rimg; // rendered output image
+    double psf = 1.0; // page scale factor
+    
+    int initial_rows;
 };
 
 
