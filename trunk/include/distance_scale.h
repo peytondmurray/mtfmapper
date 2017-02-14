@@ -207,6 +207,8 @@ class Distance_scale {
                     img_scale = max(mtf_core.img.rows, mtf_core.img.cols);
                 }
                 
+                page_scale_factor = fiducial_scale_factor[min_fid_coding];
+                
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > ba_img_points;
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > ba_world_points;
                 logger.debug("principal point = (%lf, %lf)\n", prin.x, prin.y);
@@ -475,9 +477,15 @@ class Distance_scale {
                     5.0 * fiducial_scale_factor[min_fid_coding],
                     img_scale
                 );
-                ba.focal_lower = focal_ratio_min/1.1;
-                ba.focal_upper = focal_ratio_max*1.1;
-                ba.focal_mode_constraint = acos(fabs(RM(2,2)))/M_PI*180 < 15 ? 1.0 : 0.0; // if the chart is flat, try to keep focal ratio near initial estimate
+                if (user_focal_ratio < 0) {
+                    ba.focal_lower = focal_ratio_min/1.1;
+                    ba.focal_upper = focal_ratio_max*1.1;
+                    ba.focal_mode_constraint = acos(fabs(RM(2,2)))/M_PI*180 < 15 ? 1.0 : 0.0; // TODO: a bit crude ...
+                } else {
+                    ba.focal_lower = user_focal_ratio/1.1;
+                    ba.focal_upper = user_focal_ratio*1.1;
+                    ba.focal_mode_constraint = 1.0;
+                }
                 logger.debug("focal mode = %lf, f=%lf\n", ba.focal_mode_constraint, 1/w);
                 ba.solve();
                 ba.unpack(rotation, translation, distortion, w);
@@ -765,6 +773,8 @@ class Distance_scale {
     double roll_angle = 0;
     double yaw_angle = 0;
     double pitch_angle = 0;
+    
+    double page_scale_factor = 1;
     
   private:
     template <typename T> int sgn(T val) const {

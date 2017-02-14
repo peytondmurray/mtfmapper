@@ -77,56 +77,99 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
         cv::Scalar c_lblue(255, 182, 0);
         
         curve.clear();
-        for (double ystep=-100; ystep <= 0; ystep += 2) {
-            curve.push_back(distance_scale.world_to_image(-100, ystep));
+        const double border = 35;
+        double ymax = 0;
+        for (; ymax > -100; ymax -= 2) {
+            Point2d p = distance_scale.world_to_image(-draw.psf, ymax*draw.psf, 0);
+            if (p.x < border || p.y < border || p.x > draw.rimg.cols - 1 - border || p.y > draw.rimg.rows - 1 - border) break;
+        }
+        
+        double xmax = 0;
+        for (; xmax > -100; xmax -= 2) {
+            Point2d p = distance_scale.world_to_image(xmax*draw.psf, ymax*draw.psf, 0);
+            if (p.x < border || p.y < border || p.x > draw.rimg.cols - 1 - border || p.y > draw.rimg.rows - 1 - border) break;
+        }
+        
+        double zmax = 0;
+        for (; zmax > -100; zmax -= 2) {
+            Point2d p = distance_scale.world_to_image(xmax*draw.psf, ymax*draw.psf, zmax*draw.psf);
+            if (p.x < border || p.y < border || p.x > draw.rimg.cols - 1 - border || p.y > draw.rimg.rows - 1 - border) break;
+        }
+        
+        for (double ystep=ymax; ystep <= 0; ystep += 2) {
+            curve.push_back(distance_scale.world_to_image(xmax*draw.psf, ystep*draw.psf));
         }
         draw.curve(curve, c_dark, 3, c_dark);
         draw.curve(curve, c_green, 2, c_green);
+        
+        // in landscape orientation, dy > dy on the y axis
+        bool landscape = fabs(curve.front().y - curve.back().y) > fabs(curve.front().x - curve.back().x);
+        bool flipped = false;
+        if (landscape) {
+            flipped = curve.front().y < curve.back().y;
+        } else {
+            flipped = curve.front().x > curve.back().x;
+        }
+        
         curve.clear();
-        for (double xstep=-100; xstep <= 0; xstep += 2) {
-            curve.push_back(distance_scale.world_to_image(xstep, -100));
+        for (double xstep=xmax; xstep <= 0; xstep += 2) {
+            curve.push_back(distance_scale.world_to_image(xstep*draw.psf, ymax*draw.psf));
         }
         draw.curve(curve, c_dark, 3, c_dark);
         draw.curve(curve, c_red, 2, c_red);
+        
         curve.clear();
-        curve.push_back(distance_scale.world_to_image(-100, -100));
-        curve.push_back(distance_scale.world_to_image(-100, -100, -100));
+        
+        curve.push_back(distance_scale.world_to_image(xmax*draw.psf, ymax*draw.psf));
+        curve.push_back(distance_scale.world_to_image(xmax*draw.psf, ymax*draw.psf, zmax*draw.psf));
         draw.curve(curve, c_dark, 3, c_dark);
         draw.curve(curve, c_lblue, 2, c_lblue);
         
-        draw.arc_with_arrow(0, 10, 100, c_lred, distance_scale.pitch_angle < 0);
-        draw.arc_with_arrow(1, 10, 100, c_lgreen, distance_scale.yaw_angle < 0);
-        draw.arc_with_arrow(2, 10, 100, c_lblue, distance_scale.roll_angle < 0);
+        // if roll angle is close to 90 degrees, then assume we are in portrait mode
+        // and reduce angles appropriately
+        
+        double e_roll = distance_scale.roll_angle/M_PI*180;
+        double e_pitch = distance_scale.pitch_angle/M_PI*180;
+        double e_yaw = distance_scale.yaw_angle/M_PI*180;
+        if (fabs(e_roll - 90) < fabs(e_roll)) {
+            e_roll -= 90;
+            e_pitch = distance_scale.yaw_angle/M_PI*180;
+            e_yaw   = -distance_scale.pitch_angle/M_PI*180;
+        } else {
+            if (fabs(e_roll + 90) < fabs(e_roll)) {
+                e_roll += 90;
+                e_pitch = distance_scale.yaw_angle/M_PI*180;
+                e_yaw   = -distance_scale.pitch_angle/M_PI*180;
+            }
+        }
+        
+        draw.arc_with_arrow(0, 10, fabs(xmax), c_lred,   (e_pitch < 0) ^ flipped);
+        draw.arc_with_arrow(1, 10, fabs(ymax), c_lgreen, (e_yaw < 0) ^ flipped);
+        draw.arc_with_arrow(2, 10, fabs(zmax), c_lblue,  (e_roll < 0) ^ flipped);
 
-        int font = cv::FONT_HERSHEY_DUPLEX; 
-        char tbuffer[1024];
-        int baseline;
-        cv::Size ts;
         
-        // TODO: degree symbol. sigh.
-        sprintf(tbuffer, "Roll=%.2lf", distance_scale.roll_angle/M_PI*180);
-        Point2d textpos = distance_scale.world_to_image(-115, -115, -105);
-        ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
-        draw.alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, c_lblue, 1, CV_AA);
-        
-        sprintf(tbuffer, "Yaw=%.2lf", distance_scale.yaw_angle/M_PI*180);
-        textpos = distance_scale.world_to_image(-105, 10, 0);
-        ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
-        draw.alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, c_lgreen, 1, CV_AA);
-        
-        sprintf(tbuffer, "Pitch=%.2lf", distance_scale.pitch_angle/M_PI*180);
-        textpos = distance_scale.world_to_image(10, -105, 0);
-        ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
-        draw.alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
-        cv::putText(draw.rimg, tbuffer, textpos, font, 1, c_lred, 1, CV_AA);
+        if (flipped) {
+            if (landscape) {
+                draw.text_block_ra(xmax*draw.psf, ymax*draw.psf, zmax*draw.psf, c_lblue, "Roll=%.2lf", fabs(e_roll));
+                draw.text_block_ra(xmax*draw.psf, 15*draw.psf, 0, c_lgreen, "Yaw=%.2lf", fabs(e_yaw));
+                draw.text_block(10*draw.psf, (ymax+20)*draw.psf, 0, c_lred, "Pitch=%.2lf", fabs(e_pitch));
+            } else {
+                draw.text_block_ra(xmax*draw.psf, (ymax+20)*draw.psf, zmax*draw.psf, c_lblue, "Roll=%.2lf", fabs(e_roll));
+                draw.text_block((xmax+15)*draw.psf, 10*draw.psf, 0, c_lgreen, "Yaw=%.2lf", fabs(e_yaw));
+                draw.text_block_ra(10*draw.psf, ymax*draw.psf, 0, c_lred, "Pitch=%.2lf", fabs(e_pitch));
+            }
+        } else {
+            if (landscape) {
+                draw.text_block((xmax+20)*draw.psf, ymax*draw.psf, zmax*draw.psf, c_lblue, "Roll=%.2lf", fabs(e_roll));
+                draw.text_block(xmax*draw.psf, 10*draw.psf, 0, c_lgreen, "Yaw=%.2lf", fabs(e_yaw));
+                draw.text_block_ra(10*draw.psf, (ymax+20)*draw.psf, 0, c_lred, "Pitch=%.2lf", fabs(e_pitch));
+            } else {
+                draw.text_block(xmax*draw.psf, (ymax+20)*draw.psf, zmax*draw.psf, c_lblue, "Roll=%.2lf", fabs(e_roll));
+                draw.text_block_ra((xmax+20)*draw.psf, 10*draw.psf, 0, c_lgreen, "Yaw=%.2lf", fabs(e_yaw));
+                draw.text_block(10*draw.psf, ymax*draw.psf, 0, c_lred, "Pitch=%.2lf", fabs(e_pitch));
+            }
+            
+        }
         
         imwrite(wdir + '/' + co_fname, draw.rimg);
     }
