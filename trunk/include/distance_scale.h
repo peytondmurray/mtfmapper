@@ -405,14 +405,21 @@ class Distance_scale {
                 
                 double median_fr = fr_keepers[fr_keepers.size()/2];
                 
+                double median_distortion = -10;
                 vector<Cal_solution> kept_solutions;
                 if (user_focal_ratio > 0) {
+                    vector<double> distortion_list;
                     median_fr = 1e50;
                     for (auto s: solutions) {
                         if (s.inlier_list.size() == most_inliers && fabs(s.f - user_focal_ratio) < fabs(median_fr - user_focal_ratio)) {
                             median_fr = s.f;
                         }
+                        if (s.inlier_list.size() == most_inliers) {
+                            distortion_list.push_back(s.distort);
+                        }
                     }
+                    sort(distortion_list.begin(), distortion_list.end());
+                    median_distortion = distortion_list[distortion_list.size()/2];
                 }
                 for (auto s: solutions) {
                     if (s.inlier_list.size() == most_inliers && s.f == median_fr) {
@@ -445,6 +452,11 @@ class Distance_scale {
                 Eigen::MatrixXd RM = P.block(0,0,3,3);
                 Eigen::Vector3d Pcop = P.col(3);
                 
+                if (user_focal_ratio > 0) {
+                    w = 1.0/user_focal_ratio;
+                    distortion = median_distortion;
+                }
+                
                 logger.debug("focal length = %lf (times max sensor dim), or %lf pixels\n", 1.0 / w, img_scale / w);
                 
                 for (int rr=0; rr < 3; rr++) {
@@ -456,12 +468,6 @@ class Distance_scale {
                 
                 vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > inlier_feature_points(inliers.size());
                 vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > inlier_world_points(inliers.size());
-                // prepate rotation matrix and 
-                Eigen::Matrix3d RMM(RM);
-                RMM.row(2) *= w;
-                Eigen::VectorXd TV = Pcop;
-                TV[2] *= w;
-                
                 
                 for (size_t k=0; k < inliers.size(); k++) {
                     inlier_feature_points[k] = ba_img_points[inliers[k]];
