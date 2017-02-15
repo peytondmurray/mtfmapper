@@ -96,6 +96,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_focus->setChecked(true);
     tb_img_lensprofile = new QCheckBox("Lens profile");
     tb_img_lensprofile->setChecked(true);
+    tb_img_orientation = new QCheckBox("Chart orientation");
+    tb_img_orientation->setChecked(true);
     
     qgs = new QGraphicsScene;
     qgs->setSceneRect(0,0,400,400);
@@ -356,6 +358,7 @@ void mtfmapper_app::open() {
         ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
         ft_gridbox->addWidget(tb_img_focus, 1, 0);
         ft_gridbox->addWidget(tb_img_lensprofile, 1, 1);
+        ft_gridbox->addWidget(tb_img_orientation, 1, 2);
     }
     v4GroupBox->setLayout(ft_gridbox);
 
@@ -369,6 +372,7 @@ void mtfmapper_app::open() {
     tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
     tb_img_focus->setCheckState(settings->cb_focus->checkState());
     tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
+    tb_img_orientation->setCheckState(settings->cb_orientation->checkState());
 
     if (open_dialog->exec()) {
         // write state back to settings menu
@@ -377,6 +381,7 @@ void mtfmapper_app::open() {
         settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
         settings->cb_focus->setCheckState(tb_img_focus->checkState());
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
+        settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
         settings->set_gnuplot_img_width(int(qgv->size().height()*1.3));
         settings->send_argument_string();
 
@@ -395,6 +400,7 @@ void mtfmapper_app::open() {
             processor.set_files(input_files);
             processor.set_gnuplot_binary(settings->get_gnuplot_binary());
             processor.set_dcraw_binary(settings->get_dcraw_binary());
+            processor.set_exiv2_binary(settings->get_exiv2_binary());
             processor.start();
         }
     }
