@@ -221,10 +221,10 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
     vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
-    vlayout->addWidget(v3GroupBox, 3, 0, 1, 2);
-    vlayout->addWidget(advanced, 4, 0, 1, 2);
-    vlayout->addWidget(accept_button, 5, 0);
-    vlayout->addWidget(cancel_button, 5, 1);
+    vlayout->addWidget(v3GroupBox, 0, 3, 1, 2);
+    vlayout->addWidget(advanced, 1, 3, 1, 2);
+    vlayout->addWidget(accept_button, 3, 0);
+    vlayout->addWidget(cancel_button, 3, 1);
     vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
