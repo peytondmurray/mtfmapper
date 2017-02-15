@@ -160,7 +160,7 @@ class Camera_draw {
         if (pad > 0) {
             initial_rows = merged.rows;
             // TODO: maybe merge right column if image is too narrow
-            merged.resize(merged.rows + 220); // TODO: adjustable padding size?
+            merged.resize(merged.rows + pad); 
             rectangle(merged, Point2d(0, g_img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         }
        

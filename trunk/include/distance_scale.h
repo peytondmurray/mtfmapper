@@ -71,7 +71,7 @@ class Distance_scale {
     }
     
     void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL, double user_focal_ratio=-1) {
-    
+        user_provided_focal_ratio = user_focal_ratio;
         int zcount = 0;
         
         for (size_t i=0; i < (size_t)max(0, int(mtf_core.ellipses.size()) - 1); i++) {
@@ -762,6 +762,7 @@ class Distance_scale {
     
     Point2d prin;
     double focal_length;
+    double user_provided_focal_ratio;
     double centre_depth;
     double distortion;
     double img_scale;
