@@ -36,6 +36,7 @@ class Exiv2_property {
     typedef enum {
         NIKON=1,
         CANON,
+        OLYMPUS,
         OTHER,
         NONE
     } Exiv_mode;
@@ -67,6 +68,10 @@ class Exiv2_property {
     QString get_aperture(void) {
         return p_aperture;
     }
+    
+    QString get_focal_ratio(void) {
+        return p_focal_ratio;
+    }
 
 	void set_exiv2_binary(const QString& s) {
 		exiv2_binary = s;
@@ -79,6 +84,7 @@ class Exiv2_property {
     QString extract_focus_distance(void);
     QString extract_focal_length(void);
     QString extract_aperture(void);
+    QString extract_focal_ratio(void);
 
 
     char*   eat_whitespace(char* p);
@@ -94,6 +100,7 @@ class Exiv2_property {
     QString p_focus_distance;
     QString p_focal_length;
     QString p_aperture;
+    QString p_focal_ratio;
 };
 
 #endif

@@ -123,6 +123,7 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_gridimg;
     QCheckBox*      tb_img_focus;
     QCheckBox*      tb_img_lensprofile;
+    QCheckBox*      tb_img_orientation;
     
     QProgressBar*   progress;
     QPushButton*    abort_button;

@@ -70,6 +70,10 @@ void Worker_thread::run(void) {
              fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
              fi.suffix().compare(QString("IIQ"), Qt::CaseInsensitive) == 0 ||  // Phase One
              fi.suffix().compare(QString("MOS"), Qt::CaseInsensitive) == 0 ||  // Leaf
+             fi.suffix().compare(QString("ORF"), Qt::CaseInsensitive) == 0 ||  // Olympus
+             fi.suffix().compare(QString("RW2"), Qt::CaseInsensitive) == 0 ||  // Panasonic
+             fi.suffix().compare(QString("RAF"), Qt::CaseInsensitive) == 0 ||  // Fujifilm -> bayer mode will probably break horribly
+             fi.suffix().compare(QString("DNG"), Qt::CaseInsensitive) == 0 ||  // Pentax/Ricoh, maybe others
              fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
             input_file = QString(tempdir + "/" + fi.baseName() + QString(".tiff"));
@@ -98,11 +102,21 @@ void Worker_thread::run(void) {
             }
             emit send_delete_item(input_file);
         }
+        
+        QStringList mma;
+        
+        // if a "--focal-ratio" setting is already present, then assume this
+        // was a user-provided override, otherwise try to calculate it from the EXIF data
+        if (!arguments.contains("--focal-ratio")) {
+            Exiv2_property props(exiv2_binary, input_files.at(i), tempdir + "/exifinfo.txt");
+            mma << "--focal-ratio" << props.get_focal_ratio();
+        }
 
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
         mmp.setArguments(
-            QStringList() << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts)
+            mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
+                << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts)
         );
         logger.debug("arguments to mtf mapper:\n");
         for (int kk = 0; kk < mmp.arguments().size(); kk++) {
@@ -174,6 +188,11 @@ void Worker_thread::run(void) {
                 emit send_delete_item(lp_file);
                 emit send_delete_item(tempdir + QString("/lensprofile.txt"));
                 emit send_delete_item(tempdir + QString("/lensprofile.gnuplot"));
+            }
+            QString co_file = QString("%1/chart_orientation.png").arg(tempdir);
+            if (QFile().exists(co_file)) {
+                emit send_child_item(QString("chart orientation"), co_file);
+                emit send_delete_item(co_file);
             }
             emit send_close_item();
         }
