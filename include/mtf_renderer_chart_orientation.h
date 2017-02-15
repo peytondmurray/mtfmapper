@@ -48,7 +48,7 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
          wdir(wdir), co_fname(co_fname), 
          img(img), gnuplot_width(gnuplot_width),
          dimension_correction(dimension_correction),
-         draw(img, distance_scale, (gnuplot_width / double(img.cols))) {
+         draw(img, distance_scale, (gnuplot_width / double(img.cols)), 50) {
     
       
     }
@@ -168,8 +168,24 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
                 draw.text_block_ra((xmax+20)*draw.psf, 10*draw.psf, 0, c_lgreen, "Yaw=%.2lf", fabs(e_yaw));
                 draw.text_block(10*draw.psf, ymax*draw.psf, 0, c_lred, "Pitch=%.2lf", fabs(e_pitch));
             }
-            
         }
+        
+        cv::Scalar black(0, 0, 0);
+        
+        // ugly, but we have to obtain the text height somehow
+        char tbuffer[] = "dummy";
+        int baseline;
+        const int font = cv::FONT_HERSHEY_DUPLEX; 
+        cv::Size ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
+        
+        if (distance_scale.user_provided_focal_ratio > 0) {
+            draw.checkmark(Point2d(25, draw.initial_rows + ts.height*1*1.75), c_green);
+            draw.text(Point2d(50, draw.initial_rows + ts.height*1*1.75), black, "EXIF or user-provided focal ratio: %.2lf", distance_scale.user_provided_focal_ratio);
+        } else {
+            draw.crossmark(Point2d(35, draw.initial_rows + ts.height*0.75*1.75), c_red);
+            draw.text(Point2d(50, draw.initial_rows + ts.height*1*1.75), black, "Estimated focal ratio: %.2lf", distance_scale.focal_length);
+        }
+        
         
         imwrite(wdir + '/' + co_fname, draw.rimg);
     }
