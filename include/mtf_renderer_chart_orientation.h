@@ -57,6 +57,11 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
     
         Distance_scale& distance_scale = draw.distance_scale;
         
+        if (!distance_scale.fiducials_found) {
+            draw.fail_with_message(wdir + '/' + co_fname, string("Fiducials not found, probably incorrect chart type."));
+            return;
+        }
+        
         draw.chart_centre_marker();        
         
         // draw centre-of-camera marker
