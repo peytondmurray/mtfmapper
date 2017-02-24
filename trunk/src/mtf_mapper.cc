@@ -127,6 +127,9 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_focus("","focus","Compute focus depth using special 'focus' type chart", cmd, false);
     TCLAP::SwitchArg tc_log_append("", "log-append", "Append to log file in stead of overwriting log file", cmd, false);
     TCLAP::SwitchArg tc_debug("", "debug", "Enable debug output messages", cmd, false);
+    #ifdef MDEBUG
+    TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
+    #endif
     TCLAP::ValueArg<double> tc_angle("g", "angle", "Angular filter [0,360)", false, 0, "angle", cmd);
     TCLAP::ValueArg<double> tc_snap("", "snap-angle", "Snap-to angle modulus [0,90)", false, 1000, "angle", cmd);
     TCLAP::ValueArg<double> tc_thresh("t", "threshold", "Dark object threshold (0,1), default 0.55", false, 0.55, "threshold", cmd);
@@ -200,6 +203,7 @@ int main(int argc, char** argv) {
         logger.info("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
         cv::Mat dest;
         cv::cvtColor(cvimg, dest, CV_RGB2GRAY);  // force to grayscale
+        cvimg.release();
         cvimg = dest;
     }
     
@@ -292,14 +296,25 @@ int main(int argc, char** argv) {
         //imwrite(string("white.png"), cvimg);
     }
     
-    
-    logger.info("Computing gradients ...\n");
-    Gradient gradient(cvimg, false);
+    size_t nthreads = std::thread::hardware_concurrency();
+    ThreadPool tp (nthreads);
     
     logger.info("Thresholding image ...\n");
-    int brad_S = 2*min(cvimg.cols, cvimg.rows)/3;
+    int brad_S = max(200, min(cvimg.cols, cvimg.rows)/3); 
     double brad_threshold = tc_thresh.getValue();
-    bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
+    #ifdef MDEBUG
+        if (tc_bradley.getValue()) {
+            printf("using Bradley thresholding\n");
+            bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
+        } else {
+            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S, tp);
+        }
+    #else
+        sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S, tp);
+    #endif
+    
+    logger.info("Computing gradients ...\n");
+    Gradient gradient(cvimg);
     
     logger.info("Component labelling ...\n");
     Component_labeller::zap_borders(masked_img);    
@@ -336,8 +351,7 @@ int main(int argc, char** argv) {
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
-    size_t nthreads = std::thread::hardware_concurrency();
-    ThreadPool tp (nthreads);
+    
     
     #ifdef MDEBUG
     if (tc_single.getValue()) {
@@ -355,6 +369,11 @@ int main(int argc, char** argv) {
     if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
         distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue());
     }
+    
+    // release most of the resources we no longer need
+    masked_img.release();
+    gradient.release();
+    cl.release();
     
     // now render the computed MTF values
     if (tc_annotate.getValue()){

@@ -70,7 +70,7 @@ inline unsigned char reverse_gamma(double x) {
     return lrint(255 * ((1 + SRGB_a) * pow(x, 1.0/2.4) - SRGB_a));
 }
 
-inline double gamma(double x) { // x in [0,1]
+inline double fwd_gamma(double x) { // x in [0,1]
     const double S_linear = 12.9232102;
     const double C_srgb = 0.04045;
     const double SRGB_a = 0.055;

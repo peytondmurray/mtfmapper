@@ -46,14 +46,19 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Component_labeller {
 public:
     Component_labeller(void);
-    Component_labeller(const Component_labeller& b);
     Component_labeller(const cv::Mat& in_img,
         int min_boundary_length = 10, bool snapshot = false, 
         int max_boundary_length = 5000);
 
     ~Component_labeller(void);
-
-    Component_labeller& operator=(const Component_labeller& b);
+    
+    void release(void) {
+        _pix_data.clear();
+        _pix_data.shrink_to_fit();
+        _labels.clear();
+        _labels.shrink_to_fit();
+        configured = false;
+    }
 
     void configure(const cv::Mat& in_img,
         int min_boundary_length = 10, 
@@ -123,8 +128,9 @@ private:
     int _width;
     int _height;
 
-    unsigned char* _pix;
-    int* _labels;
+    vector<uint8_t> _pix_data;
+    uint8_t* _pix;
+    vector<int32_t> _labels;
     Boundarylist _boundaries;
 
     int _min_boundary_length;
