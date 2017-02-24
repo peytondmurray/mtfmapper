@@ -103,3 +103,105 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
     delete [] integralImg;
 }
 
+// Efficient Implementation of Local Adaptive Thresholding Techniques Using Integral Images,
+// F. Shafait, D. Keysers, T.M. Breuel, ...
+void sauvola_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double threshold, int S, ThreadPool& tp) {
+
+    out = cv::Mat(cvimg.rows, cvimg.cols, CV_8UC1);
+
+    uint64_t sum=0;
+    uint64_t sq_sum = 0;
+    const int s2 = S/2;
+    
+    // create the integral image
+    uint64_t* integralImg = new uint64_t[out.rows*out.cols];
+    uint64_t* sq_integralImg = new uint64_t[out.rows*out.cols];
+    
+    uint16_t scale = 0;
+
+    const uint16_t* it1 = cvimg.ptr<uint16_t>(0);
+    // complete first row, then move on to the rest
+    sum = sq_sum = 0;
+    for (int i=0; i < out.cols; i++) {
+        
+        scale = std::max(scale, *it1);
+        sum += uint64_t(*it1);
+        sq_sum += uint64_t(*it1) * uint64_t(*it1);
+        
+        integralImg[i] = sum;
+        sq_integralImg[i] = sq_sum;
+        ++it1;
+    }
+    
+    for (int j=1; j < out.rows; j++) {
+        // reset this row sum
+        sum = sq_sum = 0;
+        int index = j * out.cols; 
+
+        for (int i=0; i < out.cols; i++) {
+            
+            scale = std::max(scale, *it1);
+            sum += uint64_t(*it1);
+            sq_sum += uint64_t(*it1) * uint64_t(*it1);
+            
+            integralImg[index] = integralImg[index - out.cols] + sum;
+            sq_integralImg[index] = sq_integralImg[index - out.cols] + sq_sum;
+            
+            ++it1;
+            index++;
+        }
+    }
+    
+    double dscale = 2.0/double(scale);
+    
+    vector< std::future<void> > futures;
+    for (size_t block=0; block < tp.size(); block++) {
+        futures.emplace_back( 
+            tp.enqueue( [&, block] {
+                for (int j=block; j < out.rows; j += tp.size()) {
+                    int index_base = j*out.cols;
+                    const uint16_t* rowptr = cvimg.ptr<uint16_t>(0);
+                    
+                    for (int i=0; i < out.cols; i++) {
+
+                        int x1=i-s2; 
+                        int x2=i+s2;
+                        int y1=j-s2; 
+                        int y2=j+s2;
+
+                        // check the border
+                        x1 = max(0, x1);
+                        x2 = min(x2, out.cols - 1);
+                        y1 = max(0, y1);
+                        y2 = min(y2, out.rows -1);
+
+                        uint64_t count = (x2-x1)*(y2-y1);
+
+                        uint64_t bsum = integralImg[y2*out.cols+x2] -
+                              integralImg[y1*out.cols+x2] -
+                              integralImg[y2*out.cols+x1] +
+                              integralImg[y1*out.cols+x1];
+                              
+                        uint64_t bsq_sum = sq_integralImg[y2*out.cols+x2] -
+                                 sq_integralImg[y1*out.cols+x2] -
+                                 sq_integralImg[y2*out.cols+x1] +
+                                 sq_integralImg[y1*out.cols+x1];
+                                 
+                        double mean = double(bsum)/count;
+                        double sigma = sqrt(double(bsq_sum)/count - mean*mean);
+                        double t = mean*(1 + threshold*(sigma*dscale - 1));
+                        
+                        out.data[index_base + i] = (rowptr[index_base + i] < t) ? 0 : 255;
+                    }
+                }
+            })
+        );
+    }
+    for (size_t i=0; i < futures.size(); i++) {
+        futures[i].wait();
+    }
+
+    delete [] integralImg;
+    delete [] sq_integralImg;
+}
+

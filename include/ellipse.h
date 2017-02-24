@@ -42,8 +42,6 @@ class Ellipse_detector {
     int fit(const Component_labeller& cl, const Gradient& gradient,
         const Pointlist& raw_points, int tl_x, int tl_y, int dilate=1);
     
-    double calculate_curve_length(const Pointlist& points);
-
     bool gradient_check(const Component_labeller& cl, const Gradient& gradient, const Pointlist& raw_points);
     
     void set_code(int incode) {

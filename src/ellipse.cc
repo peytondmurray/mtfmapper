@@ -3,6 +3,8 @@
 #include "include/component_labelling.h"
 #include "include/point_helpers.h"
 
+#include "opencv2/imgproc/imgproc.hpp" // required for fitEllipse
+
 #include <cmath>
 #include <Eigen/Cholesky>
 #include <Eigen/Dense>
@@ -17,13 +19,16 @@ typedef Matrix<double, 5, 1> Vector5d;
 int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient,
     const Pointlist& raw_points, int tl_x, int tl_y, int dilate) {
     
+    if (raw_points.size() < 2) { // don't even bother
+        return 0;
+    }
     
     int width  = gradient.width();
     int height = gradient.height();
     
     const cv::Mat& grad_x = gradient.grad_x();
     const cv::Mat& grad_y = gradient.grad_y();
-    const cv::Mat& grad_m = gradient.grad_magnitude();
+    //const cv::Mat& grad_m = gradient.grad_magnitude();
 
     set<iPoint> boundary;
 
@@ -31,9 +36,28 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     bool edge_touched = false;
     double mx = 0;
     double my = 0;
+    double wsum = 0;
+    double cov_xx = 0;
+    double cov_yy = 0;
+    double cov_xy = 0;
+    double circ = 0; // circumference of curve
+    cv::Point2d prev_point = raw_points.back();
     for (size_t i=0; i < raw_points.size(); i++) {
-        mx += raw_points[i].x;
-        my += raw_points[i].y;
+    
+        double temp = wsum + 1.0;
+        double delta_x = raw_points[i].x - mx;
+        double delta_y = raw_points[i].y - my;
+        double rx = delta_x / temp;
+        double ry = delta_y / temp;
+        mx += rx;
+        my += ry;
+        
+        cov_xx += wsum * delta_x * rx;
+        cov_yy += wsum * delta_y * ry;
+        cov_xy += wsum * delta_x * ry;
+        
+        wsum = temp;
+    
         boundary.insert(iPoint(lrint(raw_points[i].x), lrint(raw_points[i].y)) );
         
         if (raw_points[i].x <= border || raw_points[i].x >= width - 1 - border ||
@@ -41,15 +65,43 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
             
             edge_touched = true;
         }
+        
+        
+        circ += sqrt(SQR(raw_points[i].x - prev_point.x) + SQR(raw_points[i].y - prev_point.y));
+        prev_point = raw_points[i];
     }
-    
-    mx /= raw_points.size();
-    my /= raw_points.size();
+    cov_xx /= wsum - 1;
+    cov_xy /= wsum - 1;
+    cov_yy /= wsum - 1;
     
     if (edge_touched) return 0; // skip objects that touch the edge of the image (ellipses not really allowed there)
 
     if (std::isnan(mx) || std::isnan(my)) {
         return 0; // 0 -> not a circle
+    }
+    
+    // use eigenvalues of covariance matrix to estimate ellipse
+    double tr = cov_xx + cov_yy;
+    double det = cov_xx*cov_yy - cov_xy*cov_xy;
+    
+    double pa=1.0;
+    double pb=-tr;
+    double pc=det;
+    
+    double q = -0.5 * (pb + sgn(pb)*sqrt(pb*pb - 4*pa*pc) );
+    double l1 = q/pa;
+    double l2 = pc / q;
+    
+    double i_maj = std::max(sqrt(2*l1), sqrt(2*l2));
+    double i_min = std::min(sqrt(2*l1), sqrt(2*l2));
+    
+    double h = SQR(i_maj - i_min)/SQR(i_maj + i_min);
+    double ell_circ = M_PI*(i_maj + i_min)*(1 + 3*h/(10 + sqrt(4 - 3*h))); // Ramanujan's approximation
+    
+    // early exit when the curve circumference is too different from the expected
+    // circumference of a best-fit ellipse estimated using PCA
+    if (fabs(circ / ell_circ - 1) > 0.25) { // this might be a fairly tight bound ... maybe it should depend on the size of the ellipse?
+        return 0;
     }
 
     _dilate(boundary, width, height, dilate);
@@ -76,7 +128,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         const int& x_pos = it->first;
         const int& y_pos = it->second;
 
-        if (grad_m.at<float>(y_pos, x_pos) > 1e-7) {
+        if (gradient.grad_magnitude(x_pos, y_pos) > 1e-7) {
             Vector3d v;
             v << x_pos,y_pos,1;
             double dist = sqrt( SQR(x_pos-mx) + SQR(y_pos-my) );
@@ -92,7 +144,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         const int& x_pos = it->first;
         const int& y_pos = it->second;
         
-        if (grad_m.at<float>(y_pos, x_pos) > 1e-7) {
+        if (gradient.grad_magnitude(x_pos, y_pos) > 1e-7) {
 
 
             l[0] = grad_x.at<float>(y_pos, x_pos);
@@ -128,10 +180,8 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
         exit(1);
     }
     
-    bool has_nans = false;
-    for (size_t ri=0; ri < rhs.rows(); ri++) {
+    for (size_t ri=0; ri < size_t(rhs.rows()); ri++) {
         if (std::isnan(rhs(ri,0))) {
-            has_nans = true;   
             return 0;
         }
     }
@@ -376,27 +426,6 @@ int Ellipse_detector::_matrix_to_ellipse(Matrix3d& C) {
     angle = thetarad;
 
     return 0;
-}
-
-double Ellipse_detector::calculate_curve_length(const Pointlist& points) {
-
-    int n = points.size();
-
-    // calculate the curve length of the  boundary
-    double curve_len = 0;
-    double prev_x = points[0].x - centroid_x;
-    double prev_y = points[0].y - centroid_y;
-    for (int i=1; i < n; i++) {
-        double x = points[i].x - centroid_x;
-        double y = points[i].y - centroid_y;
-        curve_len += sqrt(SQR(x - prev_x) + SQR(y - prev_y));
-        prev_x = x;
-        prev_y = y;
-    }
-    curve_len += sqrt(SQR(points[0].x - centroid_x - prev_x) +
-        SQR(points[0].y - centroid_y - prev_y));
-
-    return curve_len;
 }
 
 bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradient& gradient, const Pointlist& raw_points) {
