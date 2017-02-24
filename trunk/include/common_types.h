@@ -119,6 +119,10 @@ using std::make_pair;
     #endif
 #endif
 
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 #endif //COMMON_TYPES_H
 
 
