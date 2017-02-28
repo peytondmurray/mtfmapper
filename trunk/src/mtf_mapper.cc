@@ -307,10 +307,10 @@ int main(int argc, char** argv) {
             printf("using Bradley thresholding\n");
             bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
         } else {
-            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S, tp);
+            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp);
         }
     #else
-        sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S, tp);
+        sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp); // fudge the threshold to maintain backwards compatibility
     #endif
     
     logger.info("Computing gradients ...\n");
