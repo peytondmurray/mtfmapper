@@ -33,6 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 // A class for extracting the boundaries of a binary image.
 //
