@@ -68,7 +68,7 @@ class Mtf_renderer_stats : public Mtf_renderer {
             }
         }
         
-        if (unfiltered.size() < 2) {
+        if (unfiltered.size() < 1) {
             return;
         }
         

@@ -216,7 +216,7 @@ int main(int argc, char** argv) {
    
     assert(cvimg.type() == CV_16UC1);
 
-    const int border_width = 20;
+    const int border_width = 100;
     if (tc_border.getValue()) {
         logger.info("The -b option has been specified, adding a %d-pixel border to the image\n", border_width);
         double max_val = 0;
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
     ThreadPool tp (nthreads);
     
     logger.info("Thresholding image ...\n");
-    int brad_S = max(200, min(cvimg.cols, cvimg.rows)/3); 
+    int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(200, min(cvimg.cols, cvimg.rows)/3);
     double brad_threshold = tc_thresh.getValue();
     #ifdef MDEBUG
         if (tc_bradley.getValue()) {
