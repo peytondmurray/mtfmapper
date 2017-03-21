@@ -592,7 +592,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         }
     }
     
-    if (!done) {
+    if (!done || fabs(quad) < 0.1) {
         mtf50 = 0.125;
     }
     mtf50 *= 8;
