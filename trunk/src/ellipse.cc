@@ -430,44 +430,15 @@ int Ellipse_detector::_matrix_to_ellipse(Matrix3d& C) {
 
 bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradient& gradient, const Pointlist& raw_points) {
     
-    // gradient just outside ellipse must be perpendicular to ellipse tangent
+    // gradient just on ellipse perimeter must be perpendicular to ellipse tangent
     double cosa = cos(-angle);
     double sina = sin(-angle);
-    int neighbours[8][2] = {
-        {-1, -1}, {0, -1}, {1, -1}, 
-        {-1, 0}, {1, 0},
-        {-1,  1}, {0,  1}, {1, 1}
-    };
     
-    // TODO: we need improved handling for objects falling on the edge of the scene?
-    
-    int not_fg_count = 0;
     vector<double> phi_diff;
     for (size_t i=0; i < raw_points.size(); i++) {
         // now generate a point just outside the ellipse ....
-        int ox = lrint(raw_points[i].x);
-        int oy = lrint(raw_points[i].y);
-        int px = ox;
-        int py = oy;
-        double maxdist = sqrt((px - centroid_x)*(px - centroid_x) + (py - centroid_y)*(py - centroid_y));
-        for (int n=0; n < 8; n++) {
-            int lx = px + neighbours[n][0];
-            int ly = py + neighbours[n][1];
-            
-            if (lx >= 5 && lx < gradient.width() - 5 &&
-                ly >= 5 && ly < gradient.height() - 5) {
-            
-                double dist = sqrt((lx - centroid_x)*(lx - centroid_x) + (ly - centroid_y)*(ly - centroid_y));
-                if (dist > maxdist) {
-                    px = lx;
-                    py = ly;
-                    maxdist = dist;
-                }
-            }
-        }
-        
-        // points just outside ellipse should have labels of 0 or -1 (not foreground)
-        not_fg_count += cl(px, py) <= 0 ? 1 : 0;
+        int px = lrint(raw_points[i].x);
+        int py = lrint(raw_points[i].y);
         
         Point2d d(raw_points[i].x - centroid_x, raw_points[i].y - centroid_y);
         double rx = cosa*d.x - sina*d.y;
@@ -486,9 +457,6 @@ bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradie
         double phi = acos(dot);
         
         phi_diff.push_back(phi/M_PI*180 - 90);
-    }
-    if ((raw_points.size() - not_fg_count) > 1) {
-        return false; // we can leave early here ...
     }
     
     sort(phi_diff.begin(), phi_diff.end());
