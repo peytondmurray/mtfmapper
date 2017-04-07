@@ -357,8 +357,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
                         }
                     }
                     
-                    int ly = lrint(cent.y*grid_y_fine/img.rows); 
-                    int lx = lrint(cent.x*grid_x_fine/img.cols);
+                    int ly = lrint(cent.y*(grid_y_fine-1)/img.rows); 
+                    int lx = lrint(cent.x*(grid_x_fine-1)/img.cols);
 
                     if (val > grid_fine.at<float>(ly,lx) && edge_type == target_edge_type) { // max composite
                         grid_fine.at<float>(ly,lx) = val;
