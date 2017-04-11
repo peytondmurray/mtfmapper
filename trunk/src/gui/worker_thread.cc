@@ -147,6 +147,8 @@ void Worker_thread::run(void) {
             if (QFile().exists(an_file)) {
                 emit send_child_item(QString("annotated"), an_file);
                 emit send_delete_item(an_file);
+                emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
+                emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
             }
             QString pr_file = QString("%1/profile_image.png").arg(tempdir);
             if (QFile().exists(pr_file)) {

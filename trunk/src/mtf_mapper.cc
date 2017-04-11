@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
     ThreadPool tp (nthreads);
     
     logger.info("Thresholding image ...\n");
-    int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(200, min(cvimg.cols, cvimg.rows)/3);
+    int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(500, min(cvimg.cols, cvimg.rows)/3);
     double brad_threshold = tc_thresh.getValue();
     #ifdef MDEBUG
         if (tc_bradley.getValue()) {
@@ -363,6 +363,11 @@ int main(int argc, char** argv) {
     #else
     Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
     #endif
+    
+    if (mtf_core.get_blocks().size() == 0) {
+        logger.error("Error: No suitable target objects found.\n");
+        return 0;
+    }
     
     
     Distance_scale distance_scale;

@@ -249,6 +249,7 @@ void Settings_dialog::send_argument_string(void) {
     
     if (cb_annotation->checkState()) {
         args = args + QString(" -a");
+        args = args + QString(" -q");
     }
     
     if (cb_profile->checkState()) {

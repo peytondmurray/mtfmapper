@@ -33,6 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QFileDialog>
 #include <QStringList>
 #include <QList>
+#include <QtCharts>
 #include "settings_dialog.h"
 #include "worker_thread.h"
 #include "img_frame.h"
@@ -40,6 +41,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "about_dialog.h"
 #include "help_dialog.h"
 #include "imgviewer.h"
+#include "sfr_entry.h"
+
+#include <vector>
+using std::vector;
 
 class QPushButton;
 class QLabel;
@@ -54,6 +59,8 @@ class QThread;
 class QCheckBox;
 class QProgressBar;
 class QSplitter;
+
+using namespace QtCharts;
    
 class mtfmapper_app : public QMainWindow
 {
@@ -137,6 +144,8 @@ class mtfmapper_app : public QMainWindow
     QSplitter*      splitter;
 
     QIcon* mtfmapper_logo;
+    
+    vector<Sfr_entry> sfr_list;
 
   public slots:
     void open();
@@ -152,6 +161,8 @@ class mtfmapper_app : public QMainWindow
     void zoom_in(void);
     void zoom_out(void);  
     void zoom_to_100(void);
+    void edge_selected(int px, int py);
+    
 
     void hide_abort_button(void);
     void enable_clear_button(void);

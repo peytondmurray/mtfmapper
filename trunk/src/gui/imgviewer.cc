@@ -30,7 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 
 Imgviewer::Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent)
- : QGraphicsView(scene, parent), zoom_parent(zoom_parent) {
+ : QGraphicsView(scene, parent), scene(scene), zoom_parent(zoom_parent) {
         
 }
     
@@ -44,4 +44,11 @@ void Imgviewer::wheelEvent(QWheelEvent* event) {
     } else {
         QGraphicsView::wheelEvent(event);
     }
+}
+
+
+void Imgviewer::mouseReleaseEvent(QMouseEvent* event) {
+    printf("native pos: %d %d\n", event->pos().x(), event->pos().y());
+    zoom_parent->edge_selected(event->pos().x() + horizontalScrollBar()->value(), event->pos().y() + verticalScrollBar()->value());
+    QGraphicsView::mouseReleaseEvent(event); // pass along the event in case someone else needs it
 }
