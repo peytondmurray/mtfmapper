@@ -427,6 +427,35 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
     if (dataset_contents.itemFromIndex(index)->isEnabled()) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
+        if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
+            
+            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
+            // go and fetch the corresponding "edge_sfr" entries
+            FILE* fin = fopen(sfr_source.toLocal8Bit().data(), "rt");
+            if (fin) {
+                sfr_list.clear();
+                int dummy;
+                double ex;
+                double ey;
+                double dummy2, dummy3;
+                while (!feof(fin)) {
+                    int nread = fscanf(fin, "%d %lf %lf %lf %lf", &dummy, &ex, &ey, &dummy2, &dummy3);
+                    if (!feof(fin) && nread == 5) {
+                        vector<double> sfr(64, 0.0);
+                        for (int i=0; i < 64; i++) {
+                            fscanf(fin, "%lf", &sfr[i]);
+                        }
+                        // create new entry
+                        if (sfr[0] > 0.0) {
+                            sfr_list.push_back(Sfr_entry(ex, ey, sfr));
+                        }
+                    }
+                }
+            }
+            
+        } else {
+            sfr_list.clear();
+        }
     }
 }
 
@@ -685,6 +714,58 @@ void mtfmapper_app::check_if_helpers_exist(void) {
             QString("dcraw helper"), 
             QString("dcraw helper executable not found. Please configure this in the settings.")
         );
+    }
+}
+
+void mtfmapper_app::edge_selected(int px, int py) {
+    printf("mouse click at %d %d, sfr_list size = %ld\n", px, py, sfr_list.size());
+    // TODO: px, py should be scaled according to zoom factor?
+    if (sfr_list.size() > 0) {
+        
+        size_t close_idx = 0;
+        double close_dist = 1e50;
+        for (size_t i=0; i < sfr_list.size(); i++) {
+            double d = sfr_list[i].distance(px, py);
+            if (d < close_dist) {
+                close_dist = d;
+                close_idx = i;
+            }
+        }
+        
+        if (close_dist < 50) { // TODO: should be scaled?
+    
+            QDialog* mtf_window = new QDialog(this);
+            
+            QLineSeries* series = new QLineSeries();
+            
+            for (size_t i=0; i < 64; i++) {
+                series->append(i*(1.0/64.0), sfr_list[close_idx].sfr[i]);
+            }
+            
+            QChart* chart = new QChart();
+            chart->legend()->hide();
+            chart->addSeries(series);
+            
+            QValueAxis* x_axis = new QValueAxis();
+            x_axis->setRange(0, 1.0);
+            x_axis->setTickCount(11);
+            chart->addAxis(x_axis, Qt::AlignBottom);
+            
+            QValueAxis* y_axis = new QValueAxis();
+            y_axis->setRange(0, 1.05);
+            chart->addAxis(y_axis, Qt::AlignLeft);
+            
+            
+            QChartView* chartView = new QChartView(chart);
+            chartView->setRenderHint(QPainter::Antialiasing);
+            
+            QGridLayout* hlayout = new QGridLayout;
+            hlayout->addWidget(chartView, 0, 0);
+            mtf_window->setLayout(hlayout);
+            
+            mtf_window->resize(600, 300);
+            mtf_window->show();
+        }
     }
 }
 

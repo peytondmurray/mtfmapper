@@ -25,23 +25,29 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef IMGVIEWER_H
-#define IMGVIEWER_H
+#ifndef SFR_ENTRY_H
+#define SFR_ENTRY_H
 
-#include <QGraphicsView>
-#include <QWheelEvent>
+#include <vector>
+using std::vector;
 
-class mtfmapper_app;
-
-class Imgviewer : public QGraphicsView {
+class Sfr_entry {
   public:
-    Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent = 0);
-    void wheelEvent (QWheelEvent* event);
-    void mouseReleaseEvent (QMouseEvent* event);
+
+    Sfr_entry(void) : px(-1), py(-1), sfr(64, 0.0) {
+    }
     
-    QGraphicsScene* scene;
-    mtfmapper_app* zoom_parent;
+    Sfr_entry(const double px, const double py, const vector<double>& sfr) : px(px), py(py), sfr(sfr) {
+    }
     
+    double distance(const double nx, const double ny) {
+        return sqrt( (px-nx)*(px-nx) + (py-ny)*(py-ny) );
+    }
+    
+    double px;
+    double py;
+    vector<double> sfr;
 };
 
 #endif
+
