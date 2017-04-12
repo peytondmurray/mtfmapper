@@ -33,7 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "config.h"
 
 
-Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) {
+Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0) {
 
     series.push_back(new QLineSeries());
     
@@ -94,43 +94,47 @@ void Sfr_dialog::reject(void) {
 
 void Sfr_dialog::paintEvent(QPaintEvent* event) {
     
-
-    QVector<QPointF> pts = series.front()->pointsVector();
-    
-    double prev_val  = pts[0].y();
-    double mtf50 = 0;
-    
-    bool done = false;
-    for (int i=0; i < pts.size() && !done; i++) {
-        double mag = pts[i].y();
-        if (prev_val > 0.5 && mag <= 0.5) {
-            mtf50 = pts[i].x();
-            done = true;
-        }
-        prev_val = mag;
-    }
-    
-    double w = chart->size().width();
-    
-    QFontMetrics fm(QWidget::fontMetrics());
-    char mtf50_str[200];
-    sprintf(mtf50_str, "MTF50=%.3lf   ", mtf50);
-    int tw = fm.width(mtf50_str);
-    int th = fm.height();
-    
-    mtf50_text->setPos(w - tw, th); 
-    if (mtf50 < 1.0) {
-        mtf50_text->setText(mtf50_str);
-    } else {
-        mtf50_text->setText("");
-    }
-    
     double contrast = 0;
-    for (int i=0; i < pts.size() && pts[i].x() < cursor_domain_value; i++) {
-        contrast = pts[i].y();
+    if (series.size() > 0) {
+
+        QVector<QPointF> pts = series.front()->pointsVector();
+
+        double prev_val  = pts[0].y();
+        double mtf50 = 0;
+        // add MTF50 for all three colours?
+        bool done = false;
+        for (int i=0; i < pts.size() && !done; i++) {
+            double mag = pts[i].y();
+            if (prev_val > 0.5 && mag <= 0.5) {
+                mtf50 = pts[i].x();
+                done = true;
+            }
+            prev_val = mag;
+        }
+
+        double w = chart->size().width();
+
+        QFontMetrics fm(QWidget::fontMetrics());
+        char mtf50_str[200];
+        sprintf(mtf50_str, "MTF50=%.3lf", mtf50);
+        int tw = fm.width(mtf50_str) + 8*fm.width("m");
+        int th = fm.height();
+
+        mtf50_text->setPos(w - tw, th);
+        if (mtf50 < 1.0) {
+            mtf50_text->setText(mtf50_str);
+        } else {
+            mtf50_text->setText("");
+        }
+
+        for (int i = 0; i < pts.size() && pts[i].x() < cursor_domain_value; i++) {
+            contrast = pts[i].y();
+        }
     }
-    sprintf(mtf50_str, "frequency: %5.3lf contrast: %5.3lf", cursor_domain_value, contrast);
-    cursor_label->setText(mtf50_str);
+
+    char mtf_str[200];
+    sprintf(mtf_str, "frequency: %5.3lf contrast: %5.3lf", cursor_domain_value, contrast);
+    cursor_label->setText(mtf_str);
     
     QDialog::paintEvent(event);
 }
