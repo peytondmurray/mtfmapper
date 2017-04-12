@@ -33,7 +33,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QFileDialog>
 #include <QStringList>
 #include <QList>
-#include <QtCharts>
 #include "settings_dialog.h"
 #include "worker_thread.h"
 #include "img_frame.h"
@@ -42,6 +41,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "help_dialog.h"
 #include "imgviewer.h"
 #include "sfr_entry.h"
+#include "sfr_dialog.h"
 
 #include <vector>
 using std::vector;
@@ -60,8 +60,6 @@ class QCheckBox;
 class QProgressBar;
 class QSplitter;
 
-using namespace QtCharts;
-   
 class mtfmapper_app : public QMainWindow
 {
   Q_OBJECT
@@ -69,7 +67,10 @@ class mtfmapper_app : public QMainWindow
   public:
     mtfmapper_app(QWidget *parent = 0);
     virtual ~mtfmapper_app(void);
-
+    
+  protected:
+    void closeEvent(QCloseEvent* event) override;
+  
   private:
     void create_actions(void);
     void view_image(const QString& fname);
@@ -105,7 +106,7 @@ class mtfmapper_app : public QMainWindow
     
     QGroupBox*      horizgroup;
     
-    QGraphicsView*       qgv;
+    Imgviewer*           qgv;
     QGraphicsScene*      qgs;
     QGraphicsPixmapItem* qgpi;
     
@@ -145,6 +146,7 @@ class mtfmapper_app : public QMainWindow
 
     QIcon* mtfmapper_logo;
     
+    Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;
 
   public slots:
@@ -161,7 +163,7 @@ class mtfmapper_app : public QMainWindow
     void zoom_in(void);
     void zoom_out(void);  
     void zoom_to_100(void);
-    void edge_selected(int px, int py);
+    void edge_selected(int px, int py, bool crtl_down, bool shift_down);
     
 
     void hide_abort_button(void);

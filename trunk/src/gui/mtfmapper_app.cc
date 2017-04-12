@@ -45,7 +45,7 @@ using std::endl;
 using std::string; 
  
 mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
-  : processor(this)
+  : processor(this), sfr_dialog(nullptr)
 {
 
     zoom_spinbox = new QSpinBox;
@@ -428,6 +428,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
         if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
+            qgv->set_clickable(true);
             
             QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
             // go and fetch the corresponding "edge_sfr" entries
@@ -442,11 +443,12 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                     int nread = fscanf(fin, "%d %lf %lf %lf %lf", &dummy, &ex, &ey, &dummy2, &dummy3);
                     if (!feof(fin) && nread == 5) {
                         vector<double> sfr(64, 0.0);
+                        int nr2 = 0;
                         for (int i=0; i < 64; i++) {
-                            fscanf(fin, "%lf", &sfr[i]);
+                            nr2 += fscanf(fin, "%lf", &sfr[i]);
                         }
                         // create new entry
-                        if (sfr[0] > 0.0) {
+                        if (sfr[0] > 0.0 && nr2 == 64) {
                             sfr_list.push_back(Sfr_entry(ex, ey, sfr));
                         }
                     }
@@ -454,6 +456,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
             }
             
         } else {
+            qgv->set_clickable(false);
             sfr_list.clear();
         }
     }
@@ -717,7 +720,9 @@ void mtfmapper_app::check_if_helpers_exist(void) {
     }
 }
 
-void mtfmapper_app::edge_selected(int px, int py) {
+void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
+    px /= zoom_spinbox->value()/100.0;
+    py /= zoom_spinbox->value()/100.0;
     printf("mouse click at %d %d, sfr_list size = %ld\n", px, py, sfr_list.size());
     // TODO: px, py should be scaled according to zoom factor?
     if (sfr_list.size() > 0) {
@@ -732,40 +737,34 @@ void mtfmapper_app::edge_selected(int px, int py) {
             }
         }
         
-        if (close_dist < 50) { // TODO: should be scaled?
+        if (close_dist < 50) {
+            // TODO: some form of visual confirmation of a click would be nice
+            // we can probably just draw on the qgraphicsview of imgviewer?
     
-            QDialog* mtf_window = new QDialog(this);
-            
-            QLineSeries* series = new QLineSeries();
-            
-            for (size_t i=0; i < 64; i++) {
-                series->append(i*(1.0/64.0), sfr_list[close_idx].sfr[i]);
+            if (!sfr_dialog) {
+                sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
+            } else {
+                if (shift_down) {
+                    sfr_dialog->add_entry(sfr_list[close_idx]);
+                } else {
+                    sfr_dialog->replace_entry(sfr_list[close_idx]);
+                }
             }
             
-            QChart* chart = new QChart();
-            chart->legend()->hide();
-            chart->addSeries(series);
-            
-            QValueAxis* x_axis = new QValueAxis();
-            x_axis->setRange(0, 1.0);
-            x_axis->setTickCount(11);
-            chart->addAxis(x_axis, Qt::AlignBottom);
-            
-            QValueAxis* y_axis = new QValueAxis();
-            y_axis->setRange(0, 1.05);
-            chart->addAxis(y_axis, Qt::AlignLeft);
-            
-            
-            QChartView* chartView = new QChartView(chart);
-            chartView->setRenderHint(QPainter::Antialiasing);
-            
-            QGridLayout* hlayout = new QGridLayout;
-            hlayout->addWidget(chartView, 0, 0);
-            mtf_window->setLayout(hlayout);
-            
-            mtf_window->resize(600, 300);
-            mtf_window->show();
         }
     }
+}
+
+void mtfmapper_app::closeEvent(QCloseEvent* event) {
+    if (sfr_dialog && sfr_dialog->isVisible()) {
+        sfr_dialog->close();
+    } 
+    if (about && about->isVisible()) {
+        about->close();
+    }
+    if (help && help->isVisible()) {
+        help->close();
+    }
+    QMainWindow::closeEvent(event);
 }
 
