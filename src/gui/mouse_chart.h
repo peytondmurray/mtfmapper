@@ -25,30 +25,27 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef IMGVIEWER_H
-#define IMGVIEWER_H
+#ifndef MOUSE_CHART_H
+#define MOUSE_CHART_H
 
-#include <QGraphicsView>
-#include <QWheelEvent>
+#include <QDialog>
+#include <QtCharts>
+using namespace QtCharts;
 
-class mtfmapper_app;
+class Sfr_dialog;
 
-class Imgviewer : public QGraphicsView {
+class Mouse_chart : public QChartView  {
+
   public:
-    Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent = 0);
-    void wheelEvent(QWheelEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
+    Mouse_chart(QChart *chart, Sfr_dialog* sfr_dialog);
+    
+  protected:  
+    void mouseMoveEvent(QMouseEvent* event);
     void enterEvent(QEvent* event);
-    
-    void set_clickable(bool c) {
-        clickable = c;
-    }
-    
-    QGraphicsScene* scene;
-    mtfmapper_app* zoom_parent;
-    QPoint click_down_pos;
-    bool clickable;
+    QChart* chart;
+    Sfr_dialog* sfr_dialog;
+
 };
 
 #endif
+
