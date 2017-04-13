@@ -32,6 +32,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common.h"
 #include "config.h"
 
+static double multiple(double x) {
+    double rval = 0;
+    while (rval < (x+5e-4)) {
+        rval += 0.2;
+    }
+    return rval;
+}
+
 
 Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0) {
 
@@ -54,8 +62,10 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     x_axis->setLabelFormat("%3.1f");
     chart->addAxis(x_axis, Qt::AlignBottom);
     
+    double roundup_max = multiple(maxval);
     y_axis = new QValueAxis();
-    y_axis->setRange(0, maxval);
+    y_axis->setRange(0, roundup_max);
+    y_axis->setTickCount(roundup_max*5 + 1);
     y_axis->setTitleText("Contrast");
     chart->addAxis(y_axis, Qt::AlignLeft);
     
@@ -65,78 +75,155 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
     
-    cursor_label = new QLabel(this);
-    cursor_label->setText("Nothing near");
-    cursor_label->setAlignment(Qt::AlignHCenter);
-    cursor_label->setStyleSheet("QLabel { color : blue; }");
+    label_layout = new QGridLayout();
+    for (int i=0; i < 4; i++) {
+        cursor_label.push_back(new QLabel(this));
+        cursor_label.back()->setAlignment(i == 0 ? Qt::AlignRight : Qt::AlignLeft);
+        cursor_label.back()->setStyleSheet("font-weight: bold;");
+    }
+    label_layout->addWidget(cursor_label[0], 0, 0);
+    label_layout->addWidget(cursor_label[1], 0, 1);
+    label_layout->addWidget(cursor_label[2], 1, 1);
+    label_layout->addWidget(cursor_label[3], 2, 1);
+    cursor_label[2]->setMinimumHeight(0);
+    cursor_label[3]->setMinimumHeight(0);
+    cursor_label[2]->hide();
+    cursor_label[3]->hide();
+    label_layout->rowMinimumHeight(0);
+    label_layout->setVerticalSpacing(1);
     
-    QGridLayout* hlayout = new QGridLayout;
-    hlayout->addWidget(chart_view, 0, 0);
-    hlayout->addWidget(cursor_label, 1, 0);
+    QGroupBox* gbox = new QGroupBox("");
+    gbox->setLayout(label_layout);
+    
+    
+    QVBoxLayout* hlayout = new QVBoxLayout;
+    hlayout->addWidget(chart_view);
+    hlayout->addWidget(gbox);
     setLayout(hlayout);
     
-    mtf50_text = new QGraphicsSimpleTextItem(chart);
-    mtf50_text->setPen(QPen(series[0]->pen().color()));
-   
-    resize(600, 300);
-    setMinimumHeight(300);
-    setMinimumWidth(600);
+    for (int i=0; i < 3; i++) {
+        mtf50_text.push_back(new QGraphicsSimpleTextItem(chart));
+    }
+    
+    mtf50_rect = new QGraphicsRectItem(chart);
+    mtf50_rect->setRect(0,0,0,0);
+    QColor charcoal(54, 69, 79, 100);
+    mtf50_rect->setBrush(QBrush(charcoal));
+    mtf50_rect->setPen(charcoal);
+    
+    setAutoFillBackground(true); 
+    QPalette palette;
+    palette.setColor(backgroundRole(), Qt::white);
+    setPalette(palette);
+    
+    chart->resize(650, 350);
+    setMinimumHeight(400);
+    setMinimumWidth(750);
     setWindowTitle("SFR / MTF curve");
 
     show();
 }
 
-void Sfr_dialog::reject(void) {
+void Sfr_dialog::clear(void) {
     chart->removeAllSeries();
     series.clear();
+}
+
+void Sfr_dialog::reject(void) {
+    clear();
     QDialog::reject();
+    for (auto l: cursor_label) {
+        l->setText("");
+        l->hide();
+    }
+    for (auto m: mtf50_text) {
+        m->setText("");
+    }
 }
 
 void Sfr_dialog::paintEvent(QPaintEvent* event) {
+    QDialog::paintEvent(event);
     
-    double contrast = 0;
+    vector<double> contrast_list;
+    vector<double> mtf50_list;
     if (series.size() > 0) {
 
-        QVector<QPointF> pts = series.front()->pointsVector();
+        for (size_t si=0; si < series.size(); si++) {
+        
+            QVector<QPointF> pts = series[si]->pointsVector();
 
-        double prev_val  = pts[0].y();
-        double mtf50 = 0;
-        // add MTF50 for all three colours?
-        bool done = false;
-        for (int i=0; i < pts.size() && !done; i++) {
-            double mag = pts[i].y();
-            if (prev_val > 0.5 && mag <= 0.5) {
-                mtf50 = pts[i].x();
-                done = true;
+            double prev_val  = pts[0].y();
+            double mtf50 = 0;
+            
+            bool done = false;
+            for (int i=0; i < pts.size() && !done; i++) {
+                double mag = pts[i].y();
+                if (prev_val > 0.5 && mag <= 0.5) {
+                    mtf50 = pts[i].x();
+                    done = true;
+                }
+                prev_val = mag;
             }
-            prev_val = mag;
+            mtf50_list.push_back(mtf50);
+            
+            double contrast = pts[0].y();
+            for (int i = 0; i < pts.size() && pts[i].x() < cursor_domain_value; i++) {
+                contrast = pts[i].y();
+            }
+            
+            contrast_list.push_back(contrast);
         }
-
-        double w = chart->size().width();
+        
 
         QFontMetrics fm(QWidget::fontMetrics());
-        char mtf50_str[200];
-        sprintf(mtf50_str, "MTF50=%.3lf", mtf50);
-        int tw = fm.width(mtf50_str) + 8*fm.width("m");
         int th = fm.height();
-
-        mtf50_text->setPos(w - tw, th);
-        if (mtf50 < 1.0) {
-            mtf50_text->setText(mtf50_str);
-        } else {
-            mtf50_text->setText("");
-        }
-
-        for (int i = 0; i < pts.size() && pts[i].x() < cursor_domain_value; i++) {
-            contrast = pts[i].y();
+        char mtf50_str[200];
+        int text_end = chart->size().width() - 2*fm.width("m");
+        
+        // add mtf50 tags in reverse
+        for (int mi=mtf50_list.size()-1; mi >= 0; mi--) {
+            if (mtf50_list[mi] < 1.0) {
+                sprintf(mtf50_str, "MTF50=%.3lf", mtf50_list[mi]);
+            } else {
+                sprintf(mtf50_str, "MTF50=N/A");
+            }
+            
+            int tw = fm.width(mtf50_str) + 2*fm.width("m");
+            
+            mtf50_text[mi]->setBrush(series[mi]->pen().color());
+            mtf50_text[mi]->setPen(QPen(series[mi]->pen().color()));
+            mtf50_text[mi]->setPos(text_end - tw, th);
+            mtf50_text[mi]->setText(mtf50_str);
+            text_end -= tw;
         }
     }
-
-    char mtf_str[200];
-    sprintf(mtf_str, "frequency: %5.3lf contrast: %5.3lf", cursor_domain_value, contrast);
-    cursor_label->setText(mtf_str);
     
-    QDialog::paintEvent(event);
+    QPointF tpos(cursor_domain_value, y_axis->max() - 0.001);
+    QPointF bpos(cursor_domain_value, 0.001);
+    tpos = chart->mapToPosition(tpos);
+    bpos = chart->mapToPosition(bpos);
+    tpos.rx() = std::max(tpos.x()-1, chart->mapToPosition(QPointF(0, 0)).x());
+    bpos.rx() = std::min(bpos.x()+1, chart->mapToPosition(QPointF(1.0, 0)).x());
+    
+    mtf50_rect->setRect(tpos.x(), tpos.y(), bpos.x() - tpos.x(), bpos.y() - tpos.y());
+    
+    char mtf_str[200];
+    sprintf(mtf_str, "frequency: %5.3lf ", cursor_domain_value); 
+    cursor_label[0]->setText(mtf_str);
+    cursor_label[0]->show();
+    
+    char contrast_str[200];
+    for (size_t mi=0; mi < contrast_list.size(); mi++) {
+        sprintf(contrast_str, "contrast: %5.3lf ", contrast_list[mi]);
+        cursor_label[mi+1]->setText(contrast_str);
+        
+        QPalette palette = cursor_label[mi+1]->palette();
+        palette.setColor(cursor_label[mi+1]->foregroundRole(), series[mi]->pen().color());
+        cursor_label[mi+1]->setPalette(palette);
+        cursor_label[mi+1]->show();
+    }
+    
+    chart->update(); // this causes some lag, but it elliminates exposed cruft. a better solution would be nice
 }
 
 void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
@@ -147,13 +234,14 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
         series.back() = new QLineSeries();
     }
     
-    if (series.size() == 1) { // only recompute maxval for the first curve
-        double maxval = 0;
-        for (size_t i=0; i < 64; i++) {
-            maxval = std::max(entry.sfr[i], maxval);
-        }
-        y_axis->setRange(0, maxval);
+    double maxval = 0;
+    for (size_t i=0; i < 64; i++) {
+        maxval = std::max(entry.sfr[i], maxval);
     }
+    double roundup_max = multiple(maxval);
+    y_axis->setRange(0, roundup_max);
+    y_axis->setTickCount(roundup_max*5 + 1);
+        
     populate_series(entry, series.back());
     
     chart->addSeries(series.back());
@@ -168,17 +256,8 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
 void Sfr_dialog::add_entry(const Sfr_entry& entry) {
     if (series.size() < 3) {
         series.push_back(new QLineSeries());
-        
-        populate_series(entry, series.back());
-        
-        chart->addSeries(series.back());
-        series.back()->attachAxis(x_axis);
-        series.back()->attachAxis(y_axis);
-    }
-    update();
-    show();
-    raise();
-    activateWindow();
+    } 
+    replace_entry(entry);
 }
 
 void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
@@ -200,7 +279,14 @@ void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
     }
 }
 
-void Sfr_dialog::notify_mouse_position(double value) {
-    cursor_domain_value = value;
+void Sfr_dialog::notify_mouse_position(double value) { // we still need this to update the bottom label, but we could merge this in the chart?
+    cursor_domain_value = std::min(1.0, std::max(0.0, value));
+    
+    QPointF top(cursor_domain_value, 1);
+    QPointF bottom(cursor_domain_value, 0);
+    
+    top = chart->mapToPosition(top);
+    bottom = chart->mapToPosition(bottom);
+    
     update();
 }
