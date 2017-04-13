@@ -747,6 +747,7 @@ void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_dow
                 if (shift_down) {
                     sfr_dialog->add_entry(sfr_list[close_idx]);
                 } else {
+                    sfr_dialog->clear();
                     sfr_dialog->replace_entry(sfr_list[close_idx]);
                 }
             }

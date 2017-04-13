@@ -46,6 +46,7 @@ class Sfr_dialog : public QDialog {
     void replace_entry(const Sfr_entry& entry);
     void add_entry(const Sfr_entry& entry);
     void notify_mouse_position(double value);
+    void clear(void);
   
   protected:
     void paintEvent(QPaintEvent* event);
@@ -60,9 +61,11 @@ class Sfr_dialog : public QDialog {
     QValueAxis* x_axis;
     QValueAxis* y_axis;
     vector<QLineSeries*> series; 
-    QGraphicsSimpleTextItem* mtf50_text;
+    vector<QGraphicsSimpleTextItem*> mtf50_text;
     double cursor_domain_value;
-    QLabel* cursor_label;
+    vector<QLabel*> cursor_label;
+    QGraphicsRectItem* mtf50_rect;
+    QGridLayout* label_layout;
     
   public slots:
     
