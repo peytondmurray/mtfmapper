@@ -62,7 +62,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     series.back()->attachAxis(x_axis);
     series.back()->attachAxis(y_axis);
     
-    chart_view = new Mouse_chart(chart, this);
+    chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
     
     cursor_label = new QLabel(this);

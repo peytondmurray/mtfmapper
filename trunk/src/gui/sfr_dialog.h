@@ -33,7 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using namespace QtCharts;
 
 #include "sfr_entry.h"
-#include "mouse_chart.h"
+#include "sfr_chartview.h"
 
 #include <vector>
 using std::vector;
@@ -56,7 +56,7 @@ class Sfr_dialog : public QDialog {
   
     vector<Sfr_entry> entries;
     QChart* chart;
-    Mouse_chart* chart_view;
+    Sfr_chartview* chart_view;
     QValueAxis* x_axis;
     QValueAxis* y_axis;
     vector<QLineSeries*> series; 
