@@ -25,21 +25,27 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include <QtWidgets> 
-#include "mouse_chart.h"
-#include "sfr_dialog.h"
+#ifndef SFR_CHARTVIEW_H
+#define SFR_CHARTVIEW_H
 
-Mouse_chart::Mouse_chart(QChart* chart, Sfr_dialog* sfr_dialog) : QChartView(chart), chart(chart), sfr_dialog(sfr_dialog) {
-}
+#include <QDialog>
+#include <QtCharts>
+using namespace QtCharts;
 
-void Mouse_chart::mouseMoveEvent(QMouseEvent* event) {
-    QPointF pos = chart->mapToValue(event->pos());
-    sfr_dialog->notify_mouse_position(pos.x());
-    QChartView::mouseMoveEvent(event);
-}
+class Sfr_dialog;
 
-void Mouse_chart::enterEvent(QEvent* event) {
-    QChartView::enterEvent(event);
-    viewport()->setCursor(Qt::CrossCursor);
-}
+class Sfr_chartview : public QChartView  {
+
+  public:
+    Sfr_chartview(QChart *chart, Sfr_dialog* sfr_dialog);
+    
+  protected:  
+    void mouseMoveEvent(QMouseEvent* event);
+    void enterEvent(QEvent* event);
+    QChart* chart;
+    Sfr_dialog* sfr_dialog;
+
+};
+
+#endif
 
