@@ -723,8 +723,6 @@ void mtfmapper_app::check_if_helpers_exist(void) {
 void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
     px /= zoom_spinbox->value()/100.0;
     py /= zoom_spinbox->value()/100.0;
-    printf("mouse click at %d %d, sfr_list size = %ld\n", px, py, sfr_list.size());
-    // TODO: px, py should be scaled according to zoom factor?
     if (sfr_list.size() > 0) {
         
         size_t close_idx = 0;

@@ -66,6 +66,9 @@ class Sfr_dialog : public QDialog {
     vector<QLabel*> cursor_label;
     QGraphicsRectItem* mtf50_rect;
     QGridLayout* label_layout;
+    QPushButton* save_img_button;
+    QPushButton* save_data_button;
+    QIcon* mtfmapper_logo;
     
   public slots:
     
