@@ -71,7 +71,8 @@ class Sfr_dialog : public QDialog {
     QIcon* mtfmapper_logo;
     
   public slots:
-    
+    void save_image(void);
+    void save_data(void);
 };
 
 // least-squares fit (inverse of design matrix) of a cubic polynomial through 4 points [-1..2]/64.0
