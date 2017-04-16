@@ -60,8 +60,8 @@ About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     body->setFixedWidth(400);
     body->setReadOnly(true);
 
-    QGroupBox* vGroupBox = new QGroupBox(tr("About"));
-    QGridLayout* vlayout = new QGridLayout;
+    QGroupBox* vGroupBox = new QGroupBox(tr("About"), this);
+    QGridLayout* vlayout = new QGridLayout(this);
 
     vlayout->addWidget(body, 0, 0, 1, 3);
     vlayout->addWidget(dismiss_button, 1, 1);
