@@ -76,21 +76,71 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart_view->setRenderHint(QPainter::Antialiasing);
     
     label_layout = new QGridLayout();
+    
+    mtfmapper_logo = new QIcon;
+    mtfmapper_logo->addFile(":/Icons/AppIcon256");
+    
+    QFontMetrics fm(QWidget::fontMetrics());
+    int double_height = fm.height()*2 + 8;
+    
+    QString button_style(
+        "QPushButton:flat{ background-color: rgba(0, 0, 0, 7%); border: 1px solid rgba(0,0,0,20%); border-radius: 2px; } "
+        "QPushButton:flat::pressed{ background-color: rgba(0, 0, 0, 15%); border: 1px solid rgba(0,0,0,20%); border-radius: 2px; } "
+    );
+    
+    save_img_button = new QPushButton("Save\nimage", this);
+    save_img_button->setMinimumWidth(fm.width(save_img_button->text()));
+    save_img_button->setMaximumWidth(fm.width(save_img_button->text()));
+    save_img_button->setMinimumHeight(double_height);
+    save_img_button->setMaximumHeight(double_height);
+    save_img_button->setFlat(true);
+    save_img_button->setStyleSheet(button_style);
+    label_layout->addWidget(save_img_button, 0, 0, 3, 1);
+    
+    
     for (int i=0; i < 4; i++) {
         cursor_label.push_back(new QLabel(this));
         cursor_label.back()->setAlignment(i == 0 ? Qt::AlignRight : Qt::AlignLeft);
         cursor_label.back()->setStyleSheet("font-weight: bold;");
     }
-    label_layout->addWidget(cursor_label[0], 0, 0);
-    label_layout->addWidget(cursor_label[1], 0, 1);
-    label_layout->addWidget(cursor_label[2], 1, 1);
-    label_layout->addWidget(cursor_label[3], 2, 1);
+    label_layout->addWidget(cursor_label[0], 0, 2);
+    label_layout->addWidget(cursor_label[1], 0, 3);
+    label_layout->addWidget(cursor_label[2], 1, 3);
+    label_layout->addWidget(cursor_label[3], 2, 3);
     cursor_label[2]->setMinimumHeight(0);
     cursor_label[3]->setMinimumHeight(0);
     cursor_label[2]->hide();
     cursor_label[3]->hide();
     label_layout->rowMinimumHeight(0);
     label_layout->setVerticalSpacing(1);
+    
+    save_data_button = new QPushButton("Save\ndata", this);
+    save_data_button->setMinimumWidth(fm.width(save_data_button->text()));
+    save_data_button->setMaximumWidth(fm.width(save_data_button->text()));
+    save_data_button->setMinimumHeight(double_height);
+    save_data_button->setMaximumHeight(double_height);
+    save_data_button->setFlat(true);
+    save_data_button->setStyleSheet(button_style);
+    label_layout->addWidget(save_data_button, 0, 1, 3, 1);
+    
+    // generate an alpha-blended version of the logo
+    QPixmap logo_pixmap(mtfmapper_logo->pixmap(50));
+    QImage logo_image(logo_pixmap.size(), QImage::Format_ARGB32_Premultiplied);
+    logo_image.fill(Qt::transparent);
+    QPainter p(&logo_image);
+    p.setOpacity(0.5);
+    p.drawPixmap(0, 0, logo_pixmap);
+    p.end();
+    QPixmap blended_pixmap = QPixmap::fromImage(logo_image);
+    
+    QLabel* logo = new QLabel;
+    logo->setAlignment(Qt::AlignRight);
+    logo->setPixmap(blended_pixmap);
+    logo->setIndent(blended_pixmap.size().width());
+    logo->setMinimumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
+    logo->setMaximumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
+    label_layout->addWidget(logo, 0, 4, 3, 1);
+    
     
     QGroupBox* gbox = new QGroupBox("");
     gbox->setLayout(label_layout);
@@ -127,11 +177,6 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
 void Sfr_dialog::clear(void) {
     chart->removeAllSeries();
     series.clear();
-}
-
-void Sfr_dialog::reject(void) {
-    clear();
-    QDialog::reject();
     for (auto l: cursor_label) {
         l->setText("");
         l->hide();
@@ -139,6 +184,11 @@ void Sfr_dialog::reject(void) {
     for (auto m: mtf50_text) {
         m->setText("");
     }
+}
+
+void Sfr_dialog::reject(void) {
+    clear();
+    QDialog::reject();
 }
 
 void Sfr_dialog::paintEvent(QPaintEvent* event) {
@@ -234,7 +284,7 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
         series.back() = new QLineSeries();
     }
     
-    double maxval = 0;
+    double maxval = y_axis->max() - 6e-4;
     for (size_t i=0; i < 64; i++) {
         maxval = std::max(entry.sfr[i], maxval);
     }
