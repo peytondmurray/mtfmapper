@@ -69,6 +69,7 @@ class Sfr_dialog : public QDialog {
     QPushButton* save_img_button;
     QPushButton* save_data_button;
     QIcon* mtfmapper_logo;
+    QAtomicInt repainting;
     
   public slots:
     void save_image(void);
