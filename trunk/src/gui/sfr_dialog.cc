@@ -41,7 +41,7 @@ static double multiple(double x) {
 }
 
 
-Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0) {
+Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0), repainting(0) {
 
     series.push_back(new QLineSeries());
     
@@ -195,6 +195,7 @@ void Sfr_dialog::reject(void) {
 }
 
 void Sfr_dialog::paintEvent(QPaintEvent* event) {
+    repainting.testAndSetAcquire(0, 1);
     QDialog::paintEvent(event);
     
     vector<double> contrast_list;
@@ -277,13 +278,16 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     }
     
     chart->update(); // this causes some lag, but it elliminates exposed cruft. a better solution would be nice
+    repainting.testAndSetRelease(1, 0);
 }
 
 void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
     if (series.size() == 0) {
         series.push_back(new QLineSeries());
     } else {
-        chart->removeSeries(series.back());
+        if (chart->series().contains(series.back())) {
+            chart->removeSeries(series.back());
+        }
         series.back() = new QLineSeries();
     }
     
@@ -345,17 +349,22 @@ void Sfr_dialog::notify_mouse_position(double value) { // we still need this to 
 }
 
 void Sfr_dialog::save_image(void) {
-    // pop up a FileDialog
-    
     QString savename = QFileDialog::getSaveFileName(
         this,
-        tr("Choose file name to save plot image to"),
-        QDir::homePath(),
-        QString("*.png"),
-        new QString("plot.png")
+        tr("Save plot image"),
+        QString(),
+        QString("*.png")
     );
     
     // must append extension if none were specified
+    if (!savename.contains('.')) {
+        savename += ".png";
+    }
+    
+    while (repainting == 1) {
+        printf("sleeping for a bit\n");
+        QThread::msleep(100); // give the window a chance to repaint after qfiledialog exposes it
+    }
     
     QScreen* screen = QGuiApplication::primaryScreen();
     QPixmap grab(screen->grabWindow(this->winId()));
@@ -363,5 +372,44 @@ void Sfr_dialog::save_image(void) {
 }
 
 void Sfr_dialog::save_data(void) {
+    QString savename = QFileDialog::getSaveFileName(
+        this,
+        tr("Save CSV data"),
+        QString(),
+        QString("*.csv")
+    );
+    
+    // must append extension if none were specified
+    if (!savename.contains('.')) {
+        savename += ".csv";
+    }
+    
+    FILE* fout = fopen(savename.toLocal8Bit().data(), "wt");
+    if (fout) {
+        fprintf(fout, "frequency,");
+        if (series.size() == 1) {
+            fprintf(fout, "contrast\n");
+            for (int i=0; i < 64; i++) {
+                fprintf(fout, "%.4lf,%.8lf\n", series[0]->at(i*20).x(), series[0]->at(i*20).y());
+            }
+        } else {
+            int j;
+            for (j=0; j < (int)series.size() - 1; j++) {
+                fprintf(fout, "contrast_%d,", j);
+            }
+            fprintf(fout, "contrast_%d\n", j);
+            
+            for (int i=0; i < 64; i++) {
+                fprintf(fout, "%.4lf,", series[0]->at(i*20).x());
+                for (j=0; j < (int)series.size() - 1; j++) {
+                    fprintf(fout, "%.8lf,", series[j]->at(i*20).y());
+                }
+                fprintf(fout, "%.8lf\n", series[j]->at(i*20).y());
+            }
+        }
+        fclose(fout);
+    } else {
+        // display failure dialog
+    }
 }
 
