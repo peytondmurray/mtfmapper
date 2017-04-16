@@ -76,40 +76,40 @@ const QString setting_dcraw_default = "/usr/bin/dcraw";
 Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
  : settings("mtfmapper", "mtfmapper"), gnuplot_img_width(1024)
 {
-    arguments_label = new QLabel(tr("Arguments:"));
-    arguments_line  = new QLineEdit;
-    threshold_label = new QLabel(tr("Threshold:"));
-    threshold_line  = new QLineEdit;
-    pixsize_label   = new QLabel(tr("Pixel size:"));
-    pixsize_line    = new QLineEdit;
+    arguments_label = new QLabel(tr("Arguments:"), this);
+    arguments_line  = new QLineEdit(this);
+    threshold_label = new QLabel(tr("Threshold:"), this);
+    threshold_line  = new QLineEdit(this);
+    pixsize_label   = new QLabel(tr("Pixel size:"), this);
+    pixsize_line    = new QLineEdit(this);
 
-    gnuplot_label  = new QLabel(tr("gnuplot executable:"));
-    gnuplot_line   = new QLineEdit;
-    gnuplot_button = new QPushButton(tr("Browse"));
+    gnuplot_label  = new QLabel(tr("gnuplot executable:"), this);
+    gnuplot_line   = new QLineEdit(this);
+    gnuplot_button = new QPushButton(tr("Browse"), this);
 
-    exiv_label  = new QLabel(tr("exiv2 executable:"));
-    exiv_line   = new QLineEdit;
-    exiv_button = new QPushButton(tr("Browse"));
+    exiv_label  = new QLabel(tr("exiv2 executable:"), this);
+    exiv_line   = new QLineEdit(this);
+    exiv_button = new QPushButton(tr("Browse"), this);
 
-    dcraw_label  = new QLabel(tr("dcraw executable:"));
-    dcraw_line   = new QLineEdit;
-    dcraw_button = new QPushButton(tr("Browse"));
+    dcraw_label  = new QLabel(tr("dcraw executable:"), this);
+    dcraw_line   = new QLineEdit(this);
+    dcraw_button = new QPushButton(tr("Browse"), this);
 
-    accept_button = new QPushButton(tr("&Accept"));
+    accept_button = new QPushButton(tr("&Accept"), this);
     accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
-    cancel_button = new QPushButton(tr("&Cancel"));
+    cancel_button = new QPushButton(tr("&Cancel"), this);
     cancel_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     
-    cb_linear_gamma = new QCheckBox("Linear gamma (8 bit)");
-    cb_annotation   = new QCheckBox("Annotation");
-    cb_profile      = new QCheckBox("Profile");
-    cb_grid         = new QCheckBox("Grid");
-    cb_focus        = new QCheckBox("Focus");
-    cb_lensprofile  = new QCheckBox("Lens profile");
-    cb_orientation  = new QCheckBox("Chart orientation");
-    cb_autocrop     = new QCheckBox("Autocrop");
-    cb_lpmm         = new QCheckBox("Line pairs/mm units");
-    cb_gnuplot_scaled = new QCheckBox("Scale plots to window");
+    cb_linear_gamma = new QCheckBox("Linear gamma (8 bit)", this);
+    cb_annotation   = new QCheckBox("Annotation", this);
+    cb_profile      = new QCheckBox("Profile", this);
+    cb_grid         = new QCheckBox("Grid", this);
+    cb_focus        = new QCheckBox("Focus", this);
+    cb_lensprofile  = new QCheckBox("Lens profile", this);
+    cb_orientation  = new QCheckBox("Chart orientation", this);
+    cb_autocrop     = new QCheckBox("Autocrop", this);
+    cb_lpmm         = new QCheckBox("Line pairs/mm units", this);
+    cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
     
     rb_colour_none  = new QRadioButton("none");
     rb_colour_red   = new QRadioButton("red");
@@ -166,8 +166,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
     dcraw_line->setText(settings.value(setting_dcraw, setting_dcraw_default).toString());
 
-    QGroupBox* voGroupBox = new QGroupBox(tr("Output types"));
-    QVBoxLayout *vo_layout = new QVBoxLayout;
+    QGroupBox* voGroupBox = new QGroupBox(tr("Output types"), this);
+    QVBoxLayout *vo_layout = new QVBoxLayout(this);
     vo_layout->addWidget(cb_annotation);
     vo_layout->addWidget(cb_profile);
     vo_layout->addWidget(cb_grid);
@@ -176,24 +176,24 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vo_layout->addWidget(cb_orientation);
     voGroupBox->setLayout(vo_layout);
     
-    QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"));
-    QVBoxLayout *cb_layout = new QVBoxLayout;
+    QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"), this);
+    QVBoxLayout *cb_layout = new QVBoxLayout(this);
     cb_layout->addWidget(cb_linear_gamma);
     cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
     cb_layout->addWidget(cb_gnuplot_scaled);
     v2GroupBox->setLayout(cb_layout);
     
-    QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"));
-    QVBoxLayout *rb_layout = new QVBoxLayout;
+    QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"), this);
+    QVBoxLayout *rb_layout = new QVBoxLayout(this);
     rb_layout->addWidget(rb_colour_none);
     rb_layout->addWidget(rb_colour_red);
     rb_layout->addWidget(rb_colour_green);
     rb_layout->addWidget(rb_colour_blue);
     v4GroupBox->setLayout(rb_layout);
 
-    QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"));
-    QGridLayout *helper_layout = new QGridLayout;
+    QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
+    QGridLayout *helper_layout = new QGridLayout(this);
     helper_layout->addWidget(gnuplot_label, 0, 0);
     helper_layout->addWidget(gnuplot_line, 1, 0);
     helper_layout->addWidget(gnuplot_button, 1, 1);
@@ -205,8 +205,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     helper_layout->addWidget(dcraw_button, 5, 1);
     v3GroupBox->setLayout(helper_layout);
 
-    QGroupBox* advanced = new QGroupBox(tr("Advanced"));
-    QGridLayout* adv_layout = new QGridLayout;
+    QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
+    QGridLayout* adv_layout = new QGridLayout(this);
     adv_layout->addWidget(threshold_label, 0, 0);
     adv_layout->addWidget(threshold_line, 0, 1);
     adv_layout->addWidget(pixsize_label, 1, 0);
@@ -216,8 +216,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     advanced->setLayout(adv_layout);
 
     
-    QGroupBox* vGroupBox = new QGroupBox(tr("Settings"));
-    QGridLayout* vlayout = new QGridLayout;
+    QGroupBox* vGroupBox = new QGroupBox(tr("Settings"), this);
+    QGridLayout* vlayout = new QGridLayout(this);
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
     vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
