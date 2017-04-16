@@ -170,6 +170,9 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     setMinimumHeight(400);
     setMinimumWidth(750);
     setWindowTitle("SFR / MTF curve");
+    
+    connect(save_img_button, SIGNAL(clicked()), this, SLOT(save_image()));
+    connect(save_data_button, SIGNAL(clicked()), this, SLOT(save_data()));
 
     show();
 }
@@ -340,3 +343,25 @@ void Sfr_dialog::notify_mouse_position(double value) { // we still need this to 
     
     update();
 }
+
+void Sfr_dialog::save_image(void) {
+    // pop up a FileDialog
+    
+    QString savename = QFileDialog::getSaveFileName(
+        this,
+        tr("Choose file name to save plot image to"),
+        QDir::homePath(),
+        QString("*.png"),
+        new QString("plot.png")
+    );
+    
+    // must append extension if none were specified
+    
+    QScreen* screen = QGuiApplication::primaryScreen();
+    QPixmap grab(screen->grabWindow(this->winId()));
+    grab.save(savename);
+}
+
+void Sfr_dialog::save_data(void) {
+}
+
