@@ -30,6 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "svg_page.h"
 #include "include/mtf50_edge_quality_rating.h"
+#include "lightweight_polygon.h"
+
 #include <vector>
 #include <cmath>
 using std::vector;
@@ -43,7 +45,7 @@ using std::make_pair;
 class Svg_page_lensgrid : public Svg_page {
   public:
     Svg_page_lensgrid(const string& page_spec, const string& fname) 
-    : Svg_page(page_spec, fname), centre(0.5, 0.5*sqrt(2.0)),
+    : Svg_page(page_spec, fname), centre(0.5, 0.5*double(height_mm)/double(width_mm)),
       off(0), scale(10.0/100) {
       
         fiducial_scale_index = fiducial_mapping_index(int(fiducial_scale_index) + int(fiducial_mapping_index::A0L));
@@ -51,7 +53,7 @@ class Svg_page_lensgrid : public Svg_page {
     
     void render(void) {
         vector<Point2f> centers = coded_sector_circles(10*fiducial_scale);
-        grid(0.04, 17, 11, centers); 
+        grid(0.04, 17, (width_mm == height_mm) ? 17 : 11, centers); 
     }
     
   protected:
@@ -82,7 +84,7 @@ class Svg_page_lensgrid : public Svg_page {
         fprintf(fout, "%d,%d\" style=\"%s\"/>\n", p.x, p.y, style.c_str());
     }
     
-    void place_trapezoid(double xpos, double ypos, double width, double angle_thresh, const vector<Point2f>& circles) {
+    bool place_trapezoid(double xpos, double ypos, double width, double angle_thresh, const vector<Point2f>& circles) {
         vector<iPoint> coords(4);
         
         static double direction = 1;
@@ -198,10 +200,38 @@ class Svg_page_lensgrid : public Svg_page {
                     }
                 }
             }
+            
             if (mindist < 7.5*fiducial_scale*sscale) {
                 overlap = true;
             }
-            printf("tries = %d, mindist = %lf, thresh = %lf\n", tries, mindist, 10*fiducial_scale*sscale);
+            
+            vector<cv::Vec2d> verts;
+            double pc_x = 0;
+            double pc_y = 0;
+            for (int i=0; i < 4; i++) {
+                pc_x += coords[i].x*0.25;
+                pc_y += coords[i].y*0.25;
+            }
+            for (int i=0; i < 4; i++) {
+                verts.push_back(
+                    cv::Vec2d(
+                        coords[3-i].x + 0.5*(coords[3-i].x - pc_x), 
+                        coords[3-i].y + 0.5*(coords[3-i].y - pc_y)
+                    )
+                );
+            }
+            Convex_polygon pg(verts);
+            
+            bool all_clear = true;
+            for (size_t pi=0; all_clear && pi < existing_trapezoids.size(); pi++) {
+                if (pg.intersection_area(existing_trapezoids[pi]) > 0) {
+                    all_clear = false;
+                }
+            }
+            
+            if (!all_clear) {
+                overlap = true;
+            }
             
             tries++;
             if (tries > last_change+3) done = true;
@@ -214,6 +244,7 @@ class Svg_page_lensgrid : public Svg_page {
             
         } while (!done);
         
+        
         if (!overlap) {
             fprintf(fout, "  <polygon points=\"%d,%d ", coords[0].x, coords[0].y);
             //fprintf(stderr, "4\n%lf %lf\n", coords[0].y*scale + off, coords[0].x*scale + off);
@@ -223,7 +254,15 @@ class Svg_page_lensgrid : public Svg_page {
             //fprintf(stderr, "%lf %lf\n", coords[2].y*scale + off, coords[2].x*scale + off);
             fprintf(fout, "%d,%d\" style=\"%s\"/>\n", coords[3].x, coords[3].y, style.c_str());
             //fprintf(stderr, "%lf %lf\n", coords[3].y*scale + off, coords[3].x*scale + off);
+            
+            vector<cv::Vec2d> verts;
+            for (int i=0; i < 4; i++) {
+                verts.push_back(cv::Vec2d(coords[3-i].x, coords[3-i].y));
+            }
+            existing_trapezoids.push_back(verts);
         }
+        
+        return overlap;
     }
     
     vector<Point2f> coded_sector_circles(double swidth) {
@@ -241,33 +280,40 @@ class Svg_page_lensgrid : public Svg_page {
     }
 
     void grid(double swidth, size_t nrows, size_t ncols, const vector<Point2f>& circles) {
+        const double aspect = double(height_mm) / double(width_mm);
         
         const double phi = 1.9/180.0*M_PI;
         for (int row=0; row < (int)nrows; row++) {
             for (int col=0; col < (int)ncols; col++) {
                 if (row == (int)nrows/2 && col == (int)ncols/2) continue;
                 double sx = (col-int(ncols)/2)/double(ncols)*0.93;
-                double sy = sqrt(2.0)*(row-int(nrows)/2)/double(nrows)*0.93;
+                double sy = aspect*(row-int(nrows)/2)/double(nrows)*0.93;
                 double rx = sx*cos(phi) - sy*sin(phi);
                 double ry = sx*sin(phi) + sy*cos(phi);
-                place_trapezoid(
+                bool overlapped = place_trapezoid(
                     0.5 + rx,
-                    sqrt(0.5) + ry,
-                    swidth,
+                    0.5*aspect + ry,
+                    swidth*sqrt(0.5)*aspect,
                     (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5,
                     circles
                 );
+                
+                if (overlapped) {
+                    for (double dp=-2/180.0*M_PI; overlapped && dp < 2/180.0*M_PI; dp += 0.25/180.0*M_PI) {
+                        rx = sx*cos(phi + dp) - sy*sin(phi + dp);
+                        ry = sx*sin(phi + dp) + sy*cos(phi + dp);
+                        
+                        overlapped = place_trapezoid(
+                            0.5 + rx,
+                            0.5*aspect + ry,
+                            swidth*sqrt(0.5)*aspect,
+                            (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5,
+                            circles
+                        );
+                    }
+                }
             }
         }
-        
-        
-        
-        iPoint p = project(0.985, sqrt(2)*0.985);
-        fprintf(stderr, "3\n%lf %lf\n", p.y*scale + off, p.x*scale + off);
-        p = project(0.987, sqrt(2)*0.985);
-        fprintf(stderr, "%lf %lf\n", p.y*scale + off, p.x*scale + off);
-        p = project(0.987, sqrt(2)*0.9865);
-        fprintf(stderr, "%lf %lf\n", p.y*scale + off, p.x*scale + off);
         
         
         triangle(
@@ -296,15 +342,15 @@ class Svg_page_lensgrid : public Svg_page {
         );
         
         triangle(
-          dPoint(0, sqrt(2.0)),
-          dPoint(0, sqrt(2.0)-0.05),
-          dPoint(0.5,  sqrt(2.0))
+          dPoint(0, aspect),
+          dPoint(0, aspect-0.05),
+          dPoint(0.5,  aspect)
         );
         
         triangle(
-          dPoint(0.04, sqrt(2.0) - 0.05 + 0.04*0.1),
-          dPoint(0,  sqrt(2.0) - 0.05),
-          dPoint(0,  sqrt(2.0) - 0.1)
+          dPoint(0.04, aspect - 0.05 + 0.04*0.1),
+          dPoint(0,  aspect - 0.05),
+          dPoint(0,  aspect - 0.1)
         );
         
         triangle(
@@ -320,21 +366,23 @@ class Svg_page_lensgrid : public Svg_page {
         );
         
         triangle(
-          dPoint(1 - 0.05, sqrt(2.0)),
-          dPoint(1, sqrt(2.0) - 0.5),
-          dPoint(1, sqrt(2.0))
+          dPoint(1 - 0.05, aspect),
+          dPoint(1, aspect - 0.5),
+          dPoint(1, aspect)
         );
         
         triangle(
-          dPoint(1 - 0.05, sqrt(2.0)),
-          dPoint(1 - 0.1, sqrt(2.0)),
-          dPoint(1 - 0.05 + 0.04*0.1, sqrt(2.0) - 0.04)
+          dPoint(1 - 0.05, aspect),
+          dPoint(1 - 0.1, aspect),
+          dPoint(1 - 0.05 + 0.04*0.1, aspect - 0.04)
         );
     }
     
     dPoint centre;
     double off;
     double scale;
+    
+    vector<Convex_polygon> existing_trapezoids;
 };
 
 #endif

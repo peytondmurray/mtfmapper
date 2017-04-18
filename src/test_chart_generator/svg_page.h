@@ -64,6 +64,11 @@ class Svg_page {
             height_mm = 420;
             fiducial_scale_index = fiducial_mapping_index::A3;
         }
+        if (page_spec == "A3S" || page_spec == "a3s") {
+            width_mm = 420;
+            height_mm = 420;
+            fiducial_scale_index = fiducial_mapping_index::A3;
+        }
         if (page_spec == "A2" || page_spec == "a2") {
             width_mm = 420;
             height_mm = 594;
