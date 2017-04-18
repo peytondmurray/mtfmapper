@@ -59,6 +59,8 @@ int main(int argc, char** argv) {
     allowed_sizes.push_back("A4");
     allowed_sizes.push_back("a3");
     allowed_sizes.push_back("A3");
+    allowed_sizes.push_back("a3s");
+    allowed_sizes.push_back("A3S");
     allowed_sizes.push_back("a2");
     allowed_sizes.push_back("A2");
     allowed_sizes.push_back("a1");
