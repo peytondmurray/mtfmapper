@@ -127,6 +127,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_focus("","focus","Compute focus depth using special 'focus' type chart", cmd, false);
     TCLAP::SwitchArg tc_log_append("", "log-append", "Append to log file in stead of overwriting log file", cmd, false);
     TCLAP::SwitchArg tc_debug("", "debug", "Enable debug output messages", cmd, false);
+    TCLAP::SwitchArg tc_single_roi("", "single-roi", "Treat the entire input image as the ROI", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -320,7 +321,7 @@ int main(int argc, char** argv) {
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 8000);
 
-    if (cl.get_boundaries().size() == 0) {
+    if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
         logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
         return 0;
     }
@@ -351,18 +352,21 @@ int main(int argc, char** argv) {
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
     
-    
-    
-    #ifdef MDEBUG
-    if (tc_single.getValue()) {
-        ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
+    if (tc_single_roi.getValue()) {
+        mtf_core.set_border(0);
+        mtf_core.process_image_as_roi();
     } else {
-        logger.debug("Parallel MTF50 calculation\n");
+        #ifdef MDEBUG
+        if (tc_single.getValue()) {
+            ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
+        } else {
+            logger.debug("Parallel MTF50 calculation\n");
+            Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+        }
+        #else
         Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+        #endif
     }
-    #else
-    Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
-    #endif
     
     if (mtf_core.get_blocks().size() == 0) {
         logger.error("Error: No suitable target objects found.\n");
