@@ -148,6 +148,8 @@ class Mtf_core {
         find_fiducials = val;
     }
     
+    void process_image_as_roi(void);
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -207,7 +209,7 @@ class Mtf_core {
 
         Point2d mean_grad(cos(ea), sin(ea));
         Point2d edge_direction(-sin(ea), cos(ea));
-
+        
         if (bayer == Bayer::NONE) {
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;

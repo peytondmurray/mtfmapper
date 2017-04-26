@@ -38,8 +38,9 @@ const double adjust = 0.15;
 
 class Mrectangle {
   public:
-  
-    Mrectangle(void) { }
+    Mrectangle(void) : thetas(4, .0), centroids(4, Point2d(0.0,0.0)), valid(true), 
+        corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
+        normals(4, Point2d(0.0,0.0)) { }
     
     // build a rectangular buffer of "width" around midpoint of side k
     Mrectangle(const Mrectangle& b, size_t k, double width) 

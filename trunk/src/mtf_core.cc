@@ -896,3 +896,137 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         samples.insert(samples.end(), local_samples.begin(), local_samples.end());
     }
 }
+
+
+void Mtf_core::process_image_as_roi(void) { 
+    map<int, scanline> scanset;
+    Edge_record er;
+    for (int row=0; row < img.rows; row++) {
+        for (int col=0; col < img.cols; col++) {
+            er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
+            
+            
+            if (scanset.find(row) == scanset.end()) {
+                scanset[row] = scanline(col,col);
+            }
+            scanset[row].start = std::min(col, scanset[row].start);
+            scanset[row].end   = std::max(col, scanset[row].end);
+        }
+    }
+    
+    // ROI is the whole image. 
+    er.reduce();
+    Point2d cent(er.centroid);
+    printf("ER reduce grad estimate: %lf\n", er.angle/M_PI*180);
+    
+    
+    // scan the ROI to identify outliers, i.e., pixels far from the
+    // edge with large gradient values (indicative of contamination of the ROI)
+    Point2d mean_grad(cos(er.angle), sin(er.angle));
+    Point2d edge_direction(-sin(er.angle), cos(er.angle));
+    vector< vector<double> > binned_gradient(max_dot*4+1);
+    for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+        int y = it->first;
+        for (int x=it->second.start; x <= it->second.end; ++x) {
+            Point2d d((x) - cent.x, (y) - cent.y);
+            double dot = d.ddot(mean_grad); 
+            
+            int idot = lrint(dot*2) + max_dot;
+            if (idot >= 0 && idot < (int)binned_gradient.size()) {
+                binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+            }
+        }
+    }
+    for (size_t k=0; k < binned_gradient.size(); k++) {
+        auto& b = binned_gradient[k];
+        sort(b.begin(), b.end());
+    }
+    vector<int> skiplist;
+    for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+        int y = it->first;
+        for (int x=it->second.start; x <= it->second.end; ++x) {
+        
+            Point2d d((x) - cent.x, (y) - cent.y);
+            double dot = d.ddot(mean_grad); 
+            
+            if (fabs(dot) <= 2) {
+                // do nothing
+            } else {
+                int idot = lrint(dot*2) + max_dot;
+                if (idot >= 0 && idot < (int)binned_gradient.size() && binned_gradient[idot].size() > 3) {
+                    double upper = binned_gradient[idot][(int)floor(binned_gradient[idot].size()*0.95)];
+                    if (binned_gradient[idot].back() - binned_gradient[idot][binned_gradient[idot].size()-2] < 0.001) {
+                        continue;
+                    }
+                    
+                    if (g.grad_magnitude(x, y) >= upper) {
+                        skiplist.push_back(y*img.cols + x);
+                    } 
+                } 
+            }
+        }
+    }
+    sort(skiplist.begin(), skiplist.end());
+    
+    // iterate the edge record to both centre the edge, as well as refine the edge orientation
+    cent = er.centroid;
+    Point2d normal(cos(er.angle), sin(er.angle)); 
+    scanset.clear();
+    er.clear();
+    
+    for (int row=0; row < img.rows; row++) {
+        for (int col=0; col < img.cols; col++) {
+            Point2d p(col, row);
+            Point2d d = p - cent;
+            double dot = d.x*normal.x + d.y*normal.y;
+            
+            if (fabs(dot) < 12) {
+                int idx = row*img.cols + col;
+                if (!binary_search(skiplist.begin(), skiplist.end(), idx)) {
+                    er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
+                }
+            }
+            
+            if (row >= 1 && row <= img.rows - 2) {
+                if (scanset.find(row) == scanset.end()) {
+                    scanset[row] = scanline(col,col);
+                }
+                scanset[row].start = std::min(col, scanset[row].start);
+                scanset[row].end   = std::max(col, scanset[row].end);
+            }
+        } 
+    }
+    er.reduce();
+    printf("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
+        er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
+    );
+    
+    double quality;
+    
+    vector <double> sfr(NYQUIST_FREQ*2, 0);
+    vector <double> esf(FFT_SIZE/2, 0);
+    
+    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf /*, skiplist*/);
+    
+    // add a block with the correct properties ....
+    if (mtf50 <= 1.2) { 
+        Mrectangle rect;
+        rect.centroids[0] = er.centroid;
+        Block block(rect);
+        block.centroid = er.centroid; // just in case
+        block.set_mtf50_value(0, mtf50, quality);
+        block.set_normal(0, Point2d(cos(er.angle), sin(er.angle)));
+        
+        block.set_sfr(0, sfr);
+        block.set_esf(0, esf);
+        
+        for (int k=1; k < 4; k++) {
+            block.set_mtf50_value(k, 1.0, 0.0);
+            block.set_sfr(k, vector<double>(NYQUIST_FREQ*2, 0));
+            block.set_esf(k, vector<double>(FFT_SIZE/2, 0));
+        }
+        
+        shared_blocks_map[1] = block;
+        detected_blocks.push_back(block);
+    }
+}
