@@ -109,11 +109,13 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 Point2d cent = blocks[i].get_edge_centroid(l);
 
                 Point2d dir = cent - centr;
-                dir = dir * (1.0/norm(dir));
-
-                Point2d norm = blocks[i].get_normal(l);
-                double delta = dir.x*norm.x + dir.y*norm.y;
+                if (fabs(norm(dir)) > 1e-12) {
+                    dir = dir * (1.0 / norm(dir));
+                }
                 
+                Point2d norm = blocks[i].get_normal(l);
+
+                double delta = dir.x*norm.x + dir.y*norm.y;
                 fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);
                 
                 const vector<double>& sfr = blocks[i].get_sfr(l);
