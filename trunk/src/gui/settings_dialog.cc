@@ -104,7 +104,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_annotation   = new QCheckBox("Annotation", this);
     cb_profile      = new QCheckBox("Profile", this);
     cb_grid         = new QCheckBox("Grid", this);
-    cb_focus        = new QCheckBox("Focus", this);
+    cb_focus        = new QCheckBox("Focus position", this);
     cb_lensprofile  = new QCheckBox("Lens profile", this);
     cb_orientation  = new QCheckBox("Chart orientation", this);
     cb_autocrop     = new QCheckBox("Autocrop", this);

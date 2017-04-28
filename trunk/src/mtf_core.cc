@@ -917,7 +917,7 @@ void Mtf_core::process_image_as_roi(void) {
     // ROI is the whole image. 
     er.reduce();
     Point2d cent(er.centroid);
-    printf("ER reduce grad estimate: %lf\n", er.angle/M_PI*180);
+    logger.debug("ER reduce grad estimate: %lf\n", er.angle / M_PI * 180);
     
     
     // scan the ROI to identify outliers, i.e., pixels far from the
@@ -973,7 +973,7 @@ void Mtf_core::process_image_as_roi(void) {
     Point2d normal(cos(er.angle), sin(er.angle)); 
     scanset.clear();
     er.clear();
-    
+
     for (int row=0; row < img.rows; row++) {
         for (int col=0; col < img.cols; col++) {
             Point2d p(col, row);
@@ -987,17 +987,15 @@ void Mtf_core::process_image_as_roi(void) {
                 }
             }
             
-            if (row >= 1 && row <= img.rows - 2) {
-                if (scanset.find(row) == scanset.end()) {
-                    scanset[row] = scanline(col,col);
-                }
-                scanset[row].start = std::min(col, scanset[row].start);
-                scanset[row].end   = std::max(col, scanset[row].end);
+            if (scanset.find(row) == scanset.end()) {
+                scanset[row] = scanline(col,col);
             }
+            scanset[row].start = std::min(col, scanset[row].start);
+            scanset[row].end   = std::max(col, scanset[row].end);
         } 
     }
     er.reduce();
-    printf("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
+    logger.debug("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
         er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
     );
     
