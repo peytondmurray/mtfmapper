@@ -91,7 +91,7 @@ class Mtf_core {
     double compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset, 
                        Edge_record& er,
                        double& poor, 
-                       vector<double>& sfr, vector<double>& esf);
+                       vector<double>& sfr, vector<double>& esf, bool allow_peak_shift = false);
     
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
