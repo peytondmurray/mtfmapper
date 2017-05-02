@@ -101,7 +101,7 @@ inline double tri(double x) {
 }
 
 int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
-    const int fft_size, double lower, double upper, vector<double>& esf) {
+    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
 
     const double missing = -1e7;
     const double shift_tolerance = 4;
@@ -193,10 +193,12 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
-        abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
-        logger.debug("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
-        return -1;
+    if (!allow_peak_shift) {
+        if (abs(peak_slope_idx - fft_size / 2) > 2 * 8 &&    // peak is more than 2 pixels from centre
+            abs(peak_slope_idx - fft_size / 2) < 12 * 8) { // but not at the edge?
+            logger.debug("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size / 2) / 8.0);
+            return -1;
+        }
     }
     
     // compute central peak magnitude and sign

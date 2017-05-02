@@ -414,7 +414,7 @@ static double angle_reduce(double x) {
 
 double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset,
     Edge_record& er, double& quality,  
-    vector<double>& sfr, vector<double>& esf) {
+    vector<double>& sfr, vector<double>& esf, bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
     
@@ -440,7 +440,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         return 0;
     }
     
-    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
         logger.debug("failed edge\n");
@@ -1004,7 +1004,7 @@ void Mtf_core::process_image_as_roi(void) {
     vector <double> sfr(NYQUIST_FREQ*2, 0);
     vector <double> esf(FFT_SIZE/2, 0);
     
-    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf /*, skiplist*/);
+    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
