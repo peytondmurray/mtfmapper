@@ -224,7 +224,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         //    fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
         //    fprintf(gpf, "set bmargin 5\n");
         //}
-        fprintf(gpf, "set yrange [] reverse\n");
+        
         fprintf(gpf, "%s\n", diverging_palette.c_str());
         fprintf(gpf, "set cbrange [%lf:%lf]\n", 0.0, zmax);
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
@@ -241,18 +241,20 @@ class Mtf_renderer_grid : public Mtf_renderer {
         } else {
             fprintf(gpf, "set multiplot\n");
         }
-        fprintf(gpf, "set size 1,0.5\n");   
+        fprintf(gpf, "set size 1,0.5\n");
         fprintf(gpf, "set origin 0.0,0.5\n");
         fprintf(gpf, "set title \"Meridional\"\n");
-        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" i 2 t \"MTF50 (%s)\" w image\n", 
-            (img.cols-1)/pixel_size, (img.rows-1)/pixel_size,
+        fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
+        fprintf(gpf, "plot [0:%lf] \"%s\" i 2 t \"MTF50 (%s)\" w image\n", 
+            (img.cols-1)/pixel_size,
             (wdir+fname).c_str(),
             lpmm_mode ? "lp/mm" : "c/p"
         );
         fprintf(gpf, "set origin 0.0,0.0\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
-        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" i 3 t \"MTF50 (%s)\" w image\n", 
-            (img.cols-1)/pixel_size, (img.rows-1)/pixel_size,
+        fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
+        fprintf(gpf, "plot [0:%lf] \"%s\" i 3 t \"MTF50 (%s)\" w image\n", 
+            (img.cols-1)/pixel_size,
             (wdir+fname).c_str(),
             lpmm_mode ? "lp/mm" : "c/p"
         );
