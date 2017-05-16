@@ -58,7 +58,9 @@ class Mtf_renderer_annotate : public Mtf_renderer {
                 double val = blocks[i].get_mtf50_value(k);
                 if (val > 0) {
                     Point2d cent = blocks[i].get_edge_centroid(k);
-                    write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
+                    if (cent.x > 1 && cent.y > 1) {
+                        write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
+                    }
                 }
             }
         }    
