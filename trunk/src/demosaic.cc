@@ -195,6 +195,45 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
             }
         }
     }
+    
+    // pad out the border using nearest-neighbour interpolation
+    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+        for (size_t col=0; col < 4; col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == 0) { 
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
+            } else if (subset == 3) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            }
+        }
+        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == 0) { 
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col < size_t(cvimg.cols-1) ? col+1 : col-1);
+            } else if (subset == 3) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            }
+        }
+    }
+    
+    for (size_t col=4; col < (size_t)(cvimg.cols-4); col++) {
+        for (size_t row=0; row < 4; row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == 0) { 
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
+            } else if (subset == 3) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            }
+        }
+        for (size_t row=size_t(cvimg.rows-4); row < size_t(cvimg.rows); row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == 0) { 
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
+            } else if (subset == 3) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            }
+        }
+    }
 }
 
 void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer) {
@@ -251,6 +290,41 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
                         cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
                     }
                 }
+            }
+        }
+    }
+    
+    // pad out the border using nearest-neighbour interpolation
+    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+        for (size_t col=0; col < 4; col++) {
+            if (bayer == Bayer::RED) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
+            } else {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + (col < size_t(cvimg.cols-1) ? 1 : -1));
+            }
+        }
+        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
+            if (bayer == Bayer::RED) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
+            } else {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + (col < size_t(cvimg.cols-1) ? 1 : -1));
+            }
+        }
+    }
+    
+    for (size_t col=4; col < (size_t)(cvimg.cols-4); col++) {
+        for (size_t row=0; row < 4; row++) {
+            if (bayer == Bayer::RED) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
+            } else {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + 1, col - col%2 + 1);
+            }
+        }
+        for (size_t row=size_t(cvimg.rows-4); row < size_t(cvimg.rows); row++) {
+            if (bayer == Bayer::RED) {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
+            } else {
+                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + 1);
             }
         }
     }
