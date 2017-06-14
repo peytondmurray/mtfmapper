@@ -142,6 +142,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<string> tc_logfile("", "logfile", "Output written to <logfile> in stead of standard out", false, "", "filename", cmd);
     TCLAP::ValueArg<int> tc_gpwidth("", "gnuplot-width", "Width of images rendered by gnuplot", false, 1024, "pixels", cmd);
     TCLAP::ValueArg<double> tc_focal("", "focal-ratio", "Specify focal ratio for use in chart orientation estimation", false, -2, "ratio", cmd);
+    TCLAP::ValueArg<double> tc_equiangular("", "equiangular", "Treat input image as equi-angular mapping (fisheye) with the specified focal length", false, 8.0, "focal length(mm)", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -228,6 +229,11 @@ int main(int argc, char** argv) {
         cvimg = border;
     }
     
+    if (tc_equiangular.isSet() && !tc_pixelsize.isSet()) {
+        logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --equiangular option. Aborting.");
+        return -1;
+    }
+    
     int gnuplot_width = std::max(1024, tc_gpwidth.getValue());
     
     // process working directory
@@ -297,6 +303,13 @@ int main(int argc, char** argv) {
         //imwrite(string("white.png"), cvimg);
     }
     
+    Undistort* undistort = nullptr;
+    if (tc_equiangular.isSet()) {
+        logger.info("Treating input image as equi-angular with focal length %.2lf, unmapping\n", tc_equiangular.getValue());
+        undistort = new Undistort_equiangular(img_dimension_correction, tc_equiangular.getValue(), tc_pixelsize.getValue()/1000.0);
+        cvimg = undistort->unmap(cvimg);
+    }
+    
     size_t nthreads = std::thread::hardware_concurrency();
     ThreadPool tp (nthreads);
     
@@ -348,6 +361,10 @@ int main(int argc, char** argv) {
     }
     if (tc_chart_orientation.isSet()) {
         mtf_core.set_find_fiducials(true);
+    }
+    if (tc_equiangular.getValue()) {
+        logger.info("Adding equiangular undistortion to MTF core");
+        mtf_core.set_undistort(undistort);
     }
     
     Mtf_core_tbb_adaptor ca(&mtf_core);
