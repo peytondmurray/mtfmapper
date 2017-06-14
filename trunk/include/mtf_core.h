@@ -39,6 +39,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/afft.h"
 #include "include/mtf_profile_sample.h"
 #include "include/bayer.h"
+#include "include/undistort.h"
 
 #include <map>
 using std::map;
@@ -148,6 +149,10 @@ class Mtf_core {
         find_fiducials = val;
     }
     
+    void set_undistort(Undistort* u) {
+        undistort = u;
+    }
+    
     void process_image_as_roi(void);
     
     const Component_labeller& cl;
@@ -176,6 +181,7 @@ class Mtf_core {
     int samples_per_edge;
     int border_width;
     bool find_fiducials;
+    Undistort* undistort = nullptr;
     
     void process_with_sliding_window(Mrectangle& rrect);
   
@@ -210,54 +216,141 @@ class Mtf_core {
         Point2d mean_grad(cos(ea), sin(ea));
         Point2d edge_direction(-sin(ea), cos(ea));
         
-        if (bayer == Bayer::NONE) {
-            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
-                int y = it->first;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
-                for (int x=it->second.start; x <= it->second.end; ++x) {
+        if (!undistort) {
+            if (bayer == Bayer::NONE) {
+                for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                    int y = it->first;
+                    if (y < border_width || y > img.rows-1-border_width) continue;
                     
-                    if (x < border_width || x > img.cols-1-border_width) continue;
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        
+                        if (x < border_width || x > img.cols-1-border_width) continue;
+                        
+                        Point2d d((x) - cent.x, (y) - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        double dist_along_edge = d.ddot(edge_direction);
+                        if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                            local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                            max_along_edge = max(max_along_edge, dist_along_edge);
+                            min_along_edge = min(min_along_edge, dist_along_edge);
+                        }
+                    }
+                }
+            } else {
+                for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                    int y = it->first;
+                    int rowcode = (y & 1) << 1;
+                    if (y < border_width || y > img.rows-1-border_width) continue;
                     
-                    Point2d d((x) - cent.x, (y) - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
-                        max_along_edge = max(max_along_edge, dist_along_edge);
-                        min_along_edge = min(min_along_edge, dist_along_edge);
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        int code = rowcode | (x & 1);
+                        
+                        if (x < border_width || x > img.cols-1-border_width) continue;
+
+                        // skip the appropriate sites if we are operating only on a subset
+                        if (bayer == Bayer::RED && code != 0) {
+                            continue;
+                        } 
+                        if (bayer == Bayer::BLUE && code != 3) {
+                            continue;
+                        } 
+                        if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
+                            continue;
+                        }
+
+                        Point2d d((x) - cent.x, (y) - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        double dist_along_edge = d.ddot(edge_direction);
+                        if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                            local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
+                            max_along_edge = max(max_along_edge, dist_along_edge);
+                            min_along_edge = min(min_along_edge, dist_along_edge);
+                        }
                     }
                 }
             }
         } else {
+            // we have an undistortion model (e.g., equiangular mapping)
+            
+            // first construct a new scanset
+            map<int, scanline> m_scanset;
             for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                 int y = it->first;
-                int rowcode = (y & 1) << 1;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
                 for (int x=it->second.start; x <= it->second.end; ++x) {
-                    int code = rowcode | (x & 1);
-                    
-                    if (x < border_width || x > img.cols-1-border_width) continue;
-
-                    // skip the appropriate sites if we are operating only on a subset
-                    if (bayer == Bayer::RED && code != 0) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::BLUE && code != 3) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
-                        continue;
+                    cv::Point2i tp = undistort->transform_pixel(x, y);
+                    auto fit = m_scanset.find(tp.y);
+                    if (fit == m_scanset.end()) {
+                        m_scanset.insert(make_pair(tp.y, scanline(tp.x, tp.x)));
+                    } else {
+                        fit->second.update(tp.x);
                     }
+                }
+            }
+            
+            if (bayer == Bayer::NONE) {
+                // now visit each pixel in the distorted image, but use undistorted coordinates for ESF construction
+                for (map<int, scanline>::const_iterator it=m_scanset.begin(); it != m_scanset.end(); ++it) {
+                    int y = it->first;
+                    if (y < border_width || y > img.rows-1-border_width) continue;
+                    
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        
+                        if (x < border_width || x > img.cols-1-border_width) continue;
+                        
+                        // transform warped pixel to idealized rectilinear
+                        cv::Point2d tp = undistort->inverse_transform_point(x, y);
+                        
+                        /*
+                        cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(tp.y), lrint(tp.x));
+                        color[0] = 255;
+                        color[1] = 255;
+                        color[2] = 0;
+                        */
+                        
+                        Point2d d(tp.x - cent.x, tp.y - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        double dist_along_edge = d.ddot(edge_direction);
+                        if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                            local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) )); // TODO: hack --- we are abusing the bayer image?
+                            max_along_edge = max(max_along_edge, dist_along_edge);
+                            min_along_edge = min(min_along_edge, dist_along_edge);
+                        }
+                    }
+                }
+                
+            } else {
+                for (map<int, scanline>::const_iterator it=m_scanset.begin(); it != m_scanset.end(); ++it) {
+                    int y = it->first;
+                    int rowcode = (y & 1) << 1;
+                    if (y < border_width || y > img.rows-1-border_width) continue;
+                    
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        int code = rowcode | (x & 1);
+                        
+                        if (x < border_width || x > img.cols-1-border_width) continue;
 
-                    Point2d d((x) - cent.x, (y) - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                        local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
-                        max_along_edge = max(max_along_edge, dist_along_edge);
-                        min_along_edge = min(min_along_edge, dist_along_edge);
+                        // skip the appropriate sites if we are operating only on a subset
+                        if (bayer == Bayer::RED && code != 0) {
+                            continue;
+                        } 
+                        if (bayer == Bayer::BLUE && code != 3) {
+                            continue;
+                        } 
+                        if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
+                            continue;
+                        }
+                        
+                        // transform warped pixel to idealized rectilinear
+                        cv::Point2d tp = undistort->inverse_transform_point(x, y);
+
+                        Point2d d(tp.x - cent.x, tp.y - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        double dist_along_edge = d.ddot(edge_direction);
+                        if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                            local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
+                            max_along_edge = max(max_along_edge, dist_along_edge);
+                            min_along_edge = min(min_along_edge, dist_along_edge);
+                        }
                     }
                 }
             }
