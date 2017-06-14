@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 5)
-set(mtfmapper_VERSION_SUB 22) #increment on release
+set(mtfmapper_VERSION_SUB 23) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
