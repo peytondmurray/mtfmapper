@@ -310,7 +310,7 @@ int main(int argc, char** argv) {
     if (tc_equiangular.isSet()) {
         logger.info("Treating input image as equi-angular with focal length %.2lf, unmapping\n", tc_equiangular.getValue());
         undistort = new Undistort_equiangular(img_dimension_correction, tc_equiangular.getValue(), tc_pixelsize.getValue()/1000.0);
-        cvimg = undistort->unmap(cvimg);
+        cvimg = undistort->unmap(cvimg, rawimg);
         undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
     }
     
