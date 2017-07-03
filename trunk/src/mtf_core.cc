@@ -331,7 +331,8 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         double quality = 0;
         vector <double> sfr(NYQUIST_FREQ*2, 0);
         vector <double> esf(FFT_SIZE/2, 0);
-        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, sfr, esf);
+        vector <Point2d> ridge(1);
+        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, sfr, esf, ridge);
         
         allzero &= fabs(mtf50) < 1e-6;
         
@@ -344,6 +345,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_normal(k, Point2d(cos(edge_record[k].angle), sin(edge_record[k].angle)));
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
+            shared_blocks_map[label].set_ridge(k, ridge);
         }
     }
     if (allzero) {
@@ -414,7 +416,9 @@ static double angle_reduce(double x) {
 
 double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset,
     Edge_record& er, double& quality,  
-    vector<double>& sfr, vector<double>& esf, bool allow_peak_shift) {
+    vector<double>& sfr, vector<double>& esf, 
+    vector<Point2d>& ridge,
+    bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
     
@@ -432,7 +436,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
 
     vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
     
-    sample_at_angle(angle, ordered, scanset, cent, edge_length);
+    sample_at_angle(angle, ordered, scanset, cent, edge_length, ridge);
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
@@ -881,7 +885,8 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             double quality = 0;
             vector <double> sfr(NYQUIST_FREQ*2, 0);
             vector <double> esf(FFT_SIZE/2, 0);
-            double mtf50 = compute_mtf(edge_record.centroid, scanset, edge_record, quality, sfr, esf);
+            vector <Point2d> ridge(1);
+            double mtf50 = compute_mtf(edge_record.centroid, scanset, edge_record, quality, sfr, esf, ridge);
             
             if (mtf50 < 1.0 && quality > very_poor_quality) {
                 local_samples.push_back(Mtf_profile_sample(edge_record.centroid, mtf50, edge_record.angle, quality));
@@ -1003,8 +1008,8 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(NYQUIST_FREQ*2, 0);
     vector <double> esf(FFT_SIZE/2, 0);
-    
-    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, true);
+    vector <Point2d> ridge(1);
+    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, ridge, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
@@ -1017,6 +1022,7 @@ void Mtf_core::process_image_as_roi(void) {
         
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
+        block.set_ridge(0, ridge);
         
         for (int k=1; k < 4; k++) {
             block.set_mtf50_value(k, 1.0, 0.0);

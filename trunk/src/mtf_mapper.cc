@@ -63,6 +63,7 @@ Logger logger;
 #include "include/bayer.h"
 #include "include/demosaic.h"
 #include "include/stride_range.h"
+#include "include/distortion_optimizer.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -128,6 +129,8 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_log_append("", "log-append", "Append to log file in stead of overwriting log file", cmd, false);
     TCLAP::SwitchArg tc_debug("", "debug", "Enable debug output messages", cmd, false);
     TCLAP::SwitchArg tc_single_roi("", "single-roi", "Treat the entire input image as the ROI", cmd, false);
+    TCLAP::SwitchArg tc_distort_opt("", "optimize-distortion", "Optimize lens distortion coefficients", cmd, false);
+    TCLAP::SwitchArg tc_rectilinear("", "rectilinear-equivalent", "Measure MTF in rectilinear equivalent projection", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -308,6 +311,7 @@ int main(int argc, char** argv) {
         logger.info("Treating input image as equi-angular with focal length %.2lf, unmapping\n", tc_equiangular.getValue());
         undistort = new Undistort_equiangular(img_dimension_correction, tc_equiangular.getValue(), tc_pixelsize.getValue()/1000.0);
         cvimg = undistort->unmap(cvimg);
+        undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
     }
     
     size_t nthreads = std::thread::hardware_concurrency();
@@ -362,7 +366,7 @@ int main(int argc, char** argv) {
     if (tc_chart_orientation.isSet()) {
         mtf_core.set_find_fiducials(true);
     }
-    if (tc_equiangular.getValue()) {
+    if (tc_equiangular.isSet()) {
         logger.info("Adding equiangular undistortion to MTF core");
         mtf_core.set_undistort(undistort);
     }
@@ -388,6 +392,14 @@ int main(int argc, char** argv) {
     if (mtf_core.get_blocks().size() == 0) {
         logger.error("Error: No suitable target objects found.\n");
         return 0;
+    }
+    
+    if (tc_distort_opt.getValue()) {
+        Distortion_optimizer dist_opt(mtf_core.get_blocks(), Point2d(rawimg.cols/2, rawimg.rows/2));
+        dist_opt.solve();
+        cv::Mat warped = dist_opt.warp(rawimg);
+        imwrite("unwarped.png", warped);
+        printf("Optimal distortion coefficients: %lg %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1], dist_opt.best_sol[2]);
     }
     
     

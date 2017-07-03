@@ -50,14 +50,24 @@ class Undistort {
     
     virtual cv::Mat unmap(const cv::Mat& src) = 0;
     
+    bool rectilinear_equivalent(void) const {
+        return rectilinear;
+    }
+    
+    void set_rectilinear_equivalent(bool b) {
+        rectilinear = b;
+    }
+    
     
     cv::Point2d centre;
     cv::Point2d offset;
+    
+    bool rectilinear = false;
 };
 
 class Undistort_equiangular : public Undistort {
   public:
-    Undistort_equiangular(const cv::Rect& r, double f, double pitch) : Undistort(r), f(f), pitch(pitch) {}
+    Undistort_equiangular(const cv::Rect& r, double f, double pitch) : Undistort(r), f(f), pitch(pitch), rect_f(f) {}
     
     cv::Point2d transform_point(double col, double row) {
         double px = (col + offset.x - centre.x)*pitch;
@@ -66,7 +76,7 @@ class Undistort_equiangular : public Undistort {
         double rd = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
         double phi = atan2(py, px);
         
-        double theta = atan(rd/f);
+        double theta = atan(rd/rect_f);
         double ru = theta*f;
         
         px = ru*cos(phi);
@@ -86,7 +96,7 @@ class Undistort_equiangular : public Undistort {
         double phi = atan2(py, px);
         
         double theta = rd/f;
-        double ru = tan(theta)*f;
+        double ru = tan(theta)*rect_f;
         
         px = ru*cos(phi);
         py = ru*sin(phi);
@@ -111,7 +121,7 @@ class Undistort_equiangular : public Undistort {
                 double rd = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
                 double phi = atan2(py, px);
                 
-                double theta = atan(rd/f);
+                double theta = atan(rd/rect_f);
                 double rad = theta*f;
                 
                 px = rad*cos(phi);
@@ -132,6 +142,8 @@ class Undistort_equiangular : public Undistort {
     
     double f;
     double pitch;
+    double rect_f;
+    
 };
     
 #endif

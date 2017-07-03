@@ -40,12 +40,12 @@ class Block {
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
-        centroid(0,0), area(0.0), valid(true) {
+        ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4, vector<double>(32,0)), 
-        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0), valid(true) {
+        esf(4, vector<double>(2, 0)), ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -112,6 +112,14 @@ class Block {
 
     const vector<double>& get_esf(size_t edge_number) const {
         return esf[edge_number];
+    }
+    
+    void set_ridge(size_t edge_number, const vector<Point2d>& in_ridge) {
+        ridge[edge_number] = in_ridge;
+    }
+
+    const vector<Point2d>& get_ridge(size_t edge_number) const {
+        return ridge[edge_number];
     }
 
     void set_normal(size_t edge_number, const Point2d& rgrad) {
@@ -192,6 +200,7 @@ class Block {
     vector<double> quality;
     vector< vector<double> > sfr;
     vector< vector<double> > esf;
+    vector< vector<Point2d> > ridge;
     map<edge_position, size_t> edge_lut;
     Point2d centroid;
     double area;
