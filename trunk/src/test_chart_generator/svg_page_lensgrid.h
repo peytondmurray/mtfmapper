@@ -282,6 +282,25 @@ class Svg_page_lensgrid : public Svg_page {
     void grid(double swidth, size_t nrows, size_t ncols, const vector<Point2f>& circles) {
         const double aspect = double(height_mm) / double(width_mm);
         
+        /*
+        // If the chart is square, place an invisible rectangle down the centre
+        // this forces the trapesiums to avoid this central strip
+        // allowing the chart to be split in two.
+        if (height_mm == width_mm) {
+            vector<cv::Vec2d> verts;
+            const double sliver = 0.005;
+            iPoint p = project(0.5 - 2*sliver, 0.0);
+            verts.push_back(cv::Vec2d(p.x, p.y));
+            p = project(0.5 + sliver, 0.0);
+            verts.push_back(cv::Vec2d(p.x, p.y));
+            p = project(0.5 + sliver, aspect);
+            verts.push_back(cv::Vec2d(p.x, p.y));
+            p = project(0.5 - 2*sliver, 0.0);
+            verts.push_back(cv::Vec2d(p.x, p.y));
+            existing_trapezoids.push_back(verts);
+        }
+        */
+        
         const double phi = 1.9/180.0*M_PI;
         for (int row=0; row < (int)nrows; row++) {
             for (int col=0; col < (int)ncols; col++) {
@@ -299,7 +318,11 @@ class Svg_page_lensgrid : public Svg_page {
                 );
                 
                 if (overlapped) {
-                    for (double dp=-2/180.0*M_PI; overlapped && dp < 2/180.0*M_PI; dp += 0.25/180.0*M_PI) {
+                    double offset = 3.0;
+                    if (abs(row - (int)nrows/2) <= 1 || abs(col - (int)ncols/2) <= 1) {
+                        offset = 15.0;
+                    }
+                    for (double dp=0; overlapped && dp < offset/180.0*M_PI; dp += 0.25/180.0*M_PI) {
                         rx = sx*cos(phi + dp) - sy*sin(phi + dp);
                         ry = sx*sin(phi + dp) + sy*cos(phi + dp);
                         
@@ -310,6 +333,19 @@ class Svg_page_lensgrid : public Svg_page {
                             (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5,
                             circles
                         );
+                        
+                        if (overlapped) {
+                            rx = sx*cos(phi - dp) - sy*sin(phi - dp);
+                            ry = sx*sin(phi - dp) + sy*cos(phi - dp);
+                            
+                            overlapped = place_trapezoid(
+                                0.5 + rx,
+                                0.5*aspect + ry,
+                                swidth*sqrt(0.5)*aspect,
+                                (col == (int)ncols/2) || (row == (int)nrows/2) ? 3 : 1.5,
+                                circles
+                            );
+                        }
                     }
                 }
             }
