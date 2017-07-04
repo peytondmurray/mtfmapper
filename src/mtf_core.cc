@@ -36,6 +36,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/mtf50_edge_quality_rating.h"
 #include "include/mtf_tables.h"
 #include "include/ellipse_decoder.h"
+#include "include/edge_curve_model.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -1266,7 +1267,6 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
         // we have an undistortion model (e.g., equiangular mapping)
         
         // first construct a new scanset
-        Point2d distorted_cent = undistort->transform_pixel(cent.x, cent.y);
         map<int, scanline> m_scanset;
         for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
             int y = it->first;
@@ -1280,9 +1280,9 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                 }
                 
                 // find bounds on ROI in undistorted image 
-                Point2d d(x - cent.x, y - cent.y);
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
+                Point2d du(x - cent.x, y - cent.y);
+                double dot = du.ddot(mean_grad); 
+                double dist_along_edge = du.ddot(edge_direction);
                 if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                     max_along_edge = max(max_along_edge, dist_along_edge);
                     min_along_edge = min(min_along_edge, dist_along_edge);
@@ -1292,16 +1292,42 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
         
         // curve is ordered by dist_along_edge, so we can binary search later
         
-        vector< Ordered_point > curve;
+        // sample the edge curve uniformly in undistorted coordinates;
+        // this is perhaps not ideal, but we will interpolate in undistorted coordinates later,
+        // so this is good enough.
+        
+        vector< Edge_curve_point > curve;
         if (!undistort->rectilinear_equivalent()) {
-            for (double dperp = lrint(min_along_edge) - 1; dperp < lrint(max_along_edge) + 1; dperp += 1.0) {
-                Point2d sample = dperp * edge_direction + cent;
-                Point2d p = undistort->transform_point(sample.x, sample.y);
-                Point2d d(p - distorted_cent);
+            for (double dperp = lrint(min_along_edge) - 2; dperp < lrint(max_along_edge) + 2; dperp += 1.0) {
+            
+                // produce uniform sample spacing along the edge line in undistorted coordinates
+                Point2d sample_u = dperp * edge_direction + cent;
                 
-                double dot = d.ddot(mean_grad); 
-                double dist_along_edge = d.ddot(edge_direction);
-                curve.push_back(Ordered_point(dist_along_edge, dot));
+                // find equivalent point in distorted coordinate
+                Point2d sample_d = undistort->transform_point(sample_u.x, sample_u.y);
+                
+                // we index the point by its distance in undistorted coordinates, where
+                // the edge normal is constant, thus maximising our chances of hitting
+                // the closest sample in one go
+                
+                Point2d du(sample_u - cent);
+                double dist_along_edge = du.ddot(edge_direction);
+                
+                // how do we estimate the gradient here? Finite differences, of course!
+                const double h = 1e-4; 
+                Point2d sp_u = (dperp + h) * edge_direction + cent;
+                Point2d sm_u = (dperp - h) * edge_direction + cent;
+                Point2d delta = undistort->transform_point(sp_u.x, sp_u.y) - undistort->transform_point(sm_u.x, sm_u.y);
+                Point2d normal(-delta.y, delta.x);
+                normal *= 1.0 / norm(normal);
+                
+                // keep same sign convention as mean_grad
+                if (normal.ddot(mean_grad) < 0) {
+                    normal.x = -normal.x;
+                    normal.y = -normal.y;
+                }
+                
+                curve.push_back(Edge_curve_point(dist_along_edge, sample_d, normal));
             }
         }
         
@@ -1321,30 +1347,65 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                     bool inside_image = lrint(tp.x) >= 0 && lrint(tp.x) < g.width() && lrint(tp.y) >= 0 && lrint(tp.y) < g.height();
                     if (!inside_image) continue;
                     
-                    double dot = 0;
-                    double dist_along_edge = 0;
-                    if (undistort->rectilinear_equivalent()) {
+                    Point2d d(tp.x - cent.x, tp.y - cent.y);
+                    double dot = d.ddot(mean_grad); 
+                    double dist_along_edge = d.ddot(edge_direction);
+                    if (!undistort->rectilinear_equivalent()) {
+                        // now we have to find the closest sample
+                        int fidx = lower_bound(curve.begin(), curve.end(), Edge_curve_point(dist_along_edge)) - curve.begin();
+                        
                         /*
-                        cv::Vec3b& color = od_img.at<cv::Vec3b>(lrint(tp.y), lrint(tp.x));
-                        color[0] = 255;
-                        color[1] = 255;
-                        color[2] = 0;
+                        int lower_idx = std::max(1, fidx - 2);
+                        int upper_idx = std::min((int)curve.size()-1, fidx + 2);
+                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        double min_pardist = fabs(du.ddot(Point2d(-curve[fidx].normal.y, curve[fidx].normal.x)));
+                        
+                        for (int cidx=lower_idx; cidx < upper_idx; cidx++) {
+                            Point2d l(x - curve[cidx].position.x, y - curve[cidx].position.y);
+                            double pardist = fabs(l.ddot(Point2d(-curve[cidx].normal.y, curve[cidx].normal.x)));
+                            if (pardist < min_pardist) {
+                                min_pardist = pardist;
+                                fidx = cidx;
+                            }
+                        }
                         */
                         
-                        Point2d d(tp.x - cent.x, tp.y - cent.y);
-                        dot = d.ddot(mean_grad); 
-                        dist_along_edge = d.ddot(edge_direction);
-                    } else {
-                        Point2d d(x - distorted_cent.x, y - distorted_cent.y);
-                        dot = d.ddot(mean_grad); 
-                        dist_along_edge = d.ddot(edge_direction);
                         
-                        // now we have to find the closest sample
-                        int fidx = lower_bound(curve.begin(), curve.end(), dist_along_edge) - curve.begin();
+                        // update after locating closest point
+                        //du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        dot = du.ddot(curve[fidx].normal);
                         
-                        // curve is the ridge line of the edge
-                        // simply subtract the ridge for now
-                        dot -= curve[fidx].second;
+                        // quadratic interpolation through three closest points
+                        double x0 = curve[fidx-1].distance - curve[fidx].distance;
+                        double x1 = 0;
+                        double x2 = curve[fidx+1].distance - curve[fidx].distance;
+                        
+                        double y0 = Point2d(curve[fidx-1].position.x - curve[fidx].position.x, curve[fidx-1].position.y - curve[fidx].position.y).ddot(mean_grad);
+                        double y1 = 0;
+                        double y2 = Point2d(curve[fidx+1].position.x - curve[fidx].position.x, curve[fidx+1].position.y - curve[fidx].position.y).ddot(mean_grad);
+                        
+                        double fa = ((x1 - x0)*(y2 - y0) - (x2 - x0)*(y1 - y0)) / (x1*x1*(x0-x2) + x0*x0*(x2-x1) + x2*x2*(x1-x0) );
+                        double fb = (y2 - y0 - fa*(x2*x2 - x0*x0)) / (x2 - x0);
+                        double fc = y0 - fa*x0*x0 - fb*x0;
+                        
+                        double dx = dist_along_edge - curve[fidx].distance;
+                        double pred_perp = fa*dx*dx + fb*dx + fc;
+                        Point2d recon = curve[fidx].position + dx*edge_direction + pred_perp*mean_grad;
+                        
+                        Point2d dui(x - recon.x, y - recon.y);
+                        dot = dui.ddot(curve[fidx].normal);
+                        
+                        /*
+                        static int reps = 0;
+                        reps++;
+                        fprintf(stderr, "actual point (%lg, %lg), closest perpendicular point (%lg, %lg), distance (perp to normal): %lg\n",
+                            double(x), double(y), 
+                            recon.x, recon.y,
+                            dui.ddot(Point2d(-curve[fidx].normal.y, curve[fidx].normal.x))
+                        );
+                        if (reps >= 1000) exit(-1);
+                        */
                     }
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) )); // TODO: hack --- we are abusing the bayer image?
@@ -1397,16 +1458,48 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                     color[2] = 0;
                     
                     if (!undistort->rectilinear_equivalent()) {
-                        Point2d d(x - distorted_cent.x, y - distorted_cent.y);
-                        dot = d.ddot(mean_grad); 
-                        dist_along_edge = d.ddot(edge_direction);
-                        
                         // now we have to find the closest sample
-                        int fidx = lower_bound(curve.begin(), curve.end(), dist_along_edge) - curve.begin();
+                        int fidx = lower_bound(curve.begin(), curve.end(), Edge_curve_point(dist_along_edge)) - curve.begin();
                         
-                        // curve is the ridge line of the edge
-                        // simply subtract the ridge for now
-                        dot -= curve[fidx].second;
+                        /*
+                        int lower_idx = std::max(1, fidx - 2);
+                        int upper_idx = std::min((int)curve.size()-1, fidx + 2);
+                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        double min_pardist = fabs(du.ddot(Point2d(-curve[fidx].normal.y, curve[fidx].normal.x)));
+                        
+                        for (int cidx=lower_idx; cidx < upper_idx; cidx++) {
+                            Point2d l(x - curve[cidx].position.x, y - curve[cidx].position.y);
+                            double pardist = fabs(l.ddot(Point2d(-curve[cidx].normal.y, curve[cidx].normal.x)));
+                            if (pardist < min_pardist) {
+                                min_pardist = pardist;
+                                fidx = cidx;
+                            }
+                        }
+                        */
+                        
+                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        //du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        dot = du.ddot(curve[fidx].normal);
+                        
+                        // quadratic interpolation
+                        double x0 = curve[fidx-1].distance - curve[fidx].distance; // fixed spacing; we could actually exploit this
+                        double x1 = 0;
+                        double x2 = curve[fidx+1].distance - curve[fidx].distance;
+                        
+                        double y0 = Point2d(curve[fidx-1].position.x - curve[fidx].position.x, curve[fidx-1].position.y - curve[fidx].position.y).ddot(mean_grad);
+                        double y1 = 0;
+                        double y2 = Point2d(curve[fidx+1].position.x - curve[fidx].position.x, curve[fidx+1].position.y - curve[fidx].position.y).ddot(mean_grad);
+                        
+                        double fa = ((x1 - x0)*(y2 - y0) - (x2 - x0)*(y1 - y0)) / (x1*x1*(x0-x2) + x0*x0*(x2-x1) + x2*x2*(x1-x0) );
+                        double fb = (y2 - y0 - fa*(x2*x2 - x0*x0)) / (x2 - x0);
+                        double fc = y0 - fa*x0*x0 - fb*x0;
+                        
+                        double dx = dist_along_edge - curve[fidx].distance;
+                        double pred_perp = fa*dx*dx + fb*dx + fc;
+                        Point2d recon = curve[fidx].position + dx*edge_direction + pred_perp*mean_grad;
+                        
+                        Point2d dui(x - recon.x, y - recon.y);
+                        dot = dui.ddot(curve[fidx].normal);
                     }
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
