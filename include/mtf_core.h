@@ -202,7 +202,7 @@ class Mtf_core {
         edge_residual.erase(it1);
         it1 = edge_residual.end();
         it1--;
-        double edgelen = std::min(fabs(edge_residual.begin()->first), fabs(it1->first));
+        double edgelen = std::min(abs(edge_residual.begin()->first), abs(it1->first));
         
         // now fit a quadratic polynomial to smooth out the initial centerline
         Eigen::Matrix3d cov;

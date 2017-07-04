@@ -17,8 +17,8 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
-set(mtfmapper_VERSION_MINOR 5)
-set(mtfmapper_VERSION_SUB 23) #increment on release
+set(mtfmapper_VERSION_MINOR 6)
+set(mtfmapper_VERSION_SUB 0) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -129,9 +129,9 @@ set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 11)
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # custom install to make a whole windows installer, not necessary if building on Linux
-if(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base/")
-    install(DIRECTORY "C:/workspace/mtfmapper_windows_base/" DESTINATION bin)
-endif(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base/")
+if(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base64/")
+    install(DIRECTORY "C:/workspace/mtfmapper_windows_base64/" DESTINATION bin)
+endif(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base64/")
 
 include(InstallRequiredSystemLibraries)
 set(CPACK_PACKAGE_VENDOR "Frans van den Bergh")
