@@ -1298,7 +1298,7 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
         
         vector< Edge_curve_point > curve;
         if (!undistort->rectilinear_equivalent()) {
-            for (double dperp = lrint(min_along_edge) - 2; dperp < lrint(max_along_edge) + 2; dperp += 1.0) {
+            for (double dperp = lrint(min_along_edge) - 5; dperp < lrint(max_along_edge) + 5; dperp += 1.0) {
             
                 // produce uniform sample spacing along the edge line in undistorted coordinates
                 Point2d sample_u = dperp * edge_direction + cent;
@@ -1353,8 +1353,10 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                     if (!undistort->rectilinear_equivalent()) {
                         // now we have to find the closest sample
                         int fidx = lower_bound(curve.begin(), curve.end(), Edge_curve_point(dist_along_edge)) - curve.begin();
+
+                        fidx = std::max(1, std::min((int)curve.size() - 1, fidx));
                         
-                        /*
+                        
                         int lower_idx = std::max(1, fidx - 2);
                         int upper_idx = std::min((int)curve.size()-1, fidx + 2);
                         Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
@@ -1368,12 +1370,12 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                                 fidx = cidx;
                             }
                         }
-                        */
+                        
                         
                         
                         // update after locating closest point
-                        //du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
-                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        //Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
                         dot = du.ddot(curve[fidx].normal);
                         
                         // quadratic interpolation through three closest points
@@ -1395,17 +1397,6 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                         
                         Point2d dui(x - recon.x, y - recon.y);
                         dot = dui.ddot(curve[fidx].normal);
-                        
-                        /*
-                        static int reps = 0;
-                        reps++;
-                        fprintf(stderr, "actual point (%lg, %lg), closest perpendicular point (%lg, %lg), distance (perp to normal): %lg\n",
-                            double(x), double(y), 
-                            recon.x, recon.y,
-                            dui.ddot(Point2d(-curve[fidx].normal.y, curve[fidx].normal.x))
-                        );
-                        if (reps >= 1000) exit(-1);
-                        */
                     }
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) )); // TODO: hack --- we are abusing the bayer image?
@@ -1460,8 +1451,10 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                     if (!undistort->rectilinear_equivalent()) {
                         // now we have to find the closest sample
                         int fidx = lower_bound(curve.begin(), curve.end(), Edge_curve_point(dist_along_edge)) - curve.begin();
+
+                        fidx = std::max(1, std::min((int)curve.size() - 1, fidx));
                         
-                        /*
+                        
                         int lower_idx = std::max(1, fidx - 2);
                         int upper_idx = std::min((int)curve.size()-1, fidx + 2);
                         Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
@@ -1475,11 +1468,12 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                                 fidx = cidx;
                             }
                         }
-                        */
                         
-                        Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
-                        //du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        
+                        //Point2d du(x - curve[fidx].position.x, y - curve[fidx].position.y);
+                        du = Point2d(x - curve[fidx].position.x, y - curve[fidx].position.y);
                         dot = du.ddot(curve[fidx].normal);
+                        
                         
                         // quadratic interpolation
                         double x0 = curve[fidx-1].distance - curve[fidx].distance; // fixed spacing; we could actually exploit this
@@ -1500,6 +1494,7 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                         
                         Point2d dui(x - recon.x, y - recon.y);
                         dot = dui.ddot(curve[fidx].normal);
+                        
                     }
                     if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
