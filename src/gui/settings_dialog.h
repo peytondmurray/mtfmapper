@@ -36,6 +36,7 @@ class QLineEdit;
 class QPushButton;
 class QCheckBox;
 class QRadioButton;
+class QSlider;
 
 class Settings_dialog : public QDialog 
 {
@@ -89,6 +90,9 @@ class Settings_dialog : public QDialog
     QLabel*     dcraw_label;
     QLineEdit*  dcraw_line;
     QPushButton* dcraw_button;
+    
+    QLabel* zscale_label;
+    QSlider* zscale_slider;
     
     int gnuplot_img_width;
     

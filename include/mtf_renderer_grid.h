@@ -87,7 +87,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
         const std::string& wdir, const std::string& fname, 
         const std::string& gnuplot_binary, 
         const cv::Mat& img, int gnuplot_width,
-        bool lpmm_mode, double pixel_size)
+        bool lpmm_mode, double pixel_size,
+        double in_zscale)
       :  Mtf_renderer(img_filename),
          wdir(wdir), fname(fname), 
          gnuplot_binary(gnuplot_binary), img_y(img.rows), img_x(img.cols),
@@ -108,6 +109,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
             grid_x_fine = fine_grid_size;
             grid_y_fine = fine_grid_size * img.rows / img.cols;
         }
+        
+        zscale = std::max(0.0, std::min(in_zscale, 1.0));
     }
     
     void set_gnuplot_warning(bool gnuplot) {
@@ -144,6 +147,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         extract_mtf_grid(SAGITTAL, grid_sag_coarse, grid_sag_fine, blocks, m_upper);
         
         double zmax = 0;
+        double zmin = 1e30;
         FILE* file = fopen((wdir+fname).c_str(), "wt");
         fprintf(file, "#coarse meridional grid\n");
         for (int y=0; y < grid_mer_coarse.rows; y++) {
@@ -153,7 +157,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_mer_coarse.rows/pixel_size, 
                     grid_mer_coarse.at<float>(y,x)*pixel_size
                 );
-                zmax = max(zmax, (double)grid_mer_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -166,7 +169,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_sag_coarse.rows/pixel_size, 
                     grid_sag_coarse.at<float>(y,x)*pixel_size
                 );
-                zmax = max(zmax, (double)grid_sag_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -180,6 +182,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_mer_fine.rows/pixel_size, 
                     grid_mer_fine.at<float>(y,x)*pixel_size
                 );
+                zmax = std::max(zmax, (double)grid_mer_fine.at<float>(y,x)*pixel_size);
+                zmin = std::min(zmin, (double)grid_mer_fine.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -193,6 +197,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_sag_fine.rows/pixel_size, 
                     grid_sag_fine.at<float>(y,x)*pixel_size
                 );
+                zmax = std::max(zmax, (double)grid_sag_fine.at<float>(y,x)*pixel_size);
+                zmin = std::min(zmin, (double)grid_sag_fine.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -210,7 +216,15 @@ class Mtf_renderer_grid : public Mtf_renderer {
             }
         }
         
-        zmax *= 1.1;
+        double span = zmax - zmin;
+        zmax = zmax + 0.05*span;
+        zmin = zmin - 0.05*span;
+        zmin = std::max(zmin, 0.0);
+        
+        // adapt zmin according to zscale setting
+        // zscale = 0 -> use zmin=0
+        // zscale = 1 -> use measured zmin
+        zmin *= zscale;
 
         const int width_in_pixels = int(gnuplot_width*600.0/1024);
         const int height_in_pixels_3d = int(gnuplot_width*1200.0/1024);
@@ -226,7 +240,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         //}
         
         fprintf(gpf, "%s\n", diverging_palette.c_str());
-        fprintf(gpf, "set cbrange [%lf:%lf]\n", 0.0, zmax);
+        fprintf(gpf, "set cbrange [%lf:%lf]\n", zmin, zmax);
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", 
@@ -260,7 +274,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         );
         fprintf(gpf, "unset multiplot\n");
         fprintf(gpf, "unset label 11\n");
-        fprintf(gpf, "set pm3d hidden3d 1\n");
+        fprintf(gpf, "set pm3d hidden3d 1 corners2color median\n");
         fprintf(gpf, "set style line 1 lc rgb \"black\" lw 0.75\n");
         fprintf(gpf, "set term png size %d, %d font \"arial,%d\"\n", 
             (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
@@ -276,21 +290,21 @@ class Mtf_renderer_grid : public Mtf_renderer {
         } else {
             fprintf(gpf, "set multiplot\n");
         }
-        fprintf(gpf, "set ticslevel %lf\n", m_lower);
+        fprintf(gpf, "set ticslevel %lf\n", 0.0);
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Meridional\"\n");
         fprintf(gpf, "set size 1,0.5\n");   
         fprintf(gpf, "set origin 0.0,0.5\n");
-        fprintf(gpf, "splot [][][0:%lf] \"%s\" i 0 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-                zmax,
+        fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 0 w pm3d lc rgb \"black\" lw %lf notitle\n", 
+                zmin, zmax,
                 (wdir+fname).c_str(),
                 linewidth
         );
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
         fprintf(gpf, "set origin 0.0,0.0\n");
-        fprintf(gpf, "splot [][][0:%lf] \"%s\" i 1 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-                zmax,
+        fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 1 w pm3d lc rgb \"black\" lw %lf notitle\n", 
+                zmin, zmax,
                 (wdir+fname).c_str(),
                 linewidth
         );
@@ -524,6 +538,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
     double m_upper;
     
     int gnuplot_width;
+    double zscale = 0.0;
 };
 
 #endif
