@@ -109,27 +109,30 @@ class Distortion_optimizer {
             residuals.push_back(edge.residual);
         }
         
-        double mc = medcouple(residuals); // side effect: residuals is now sorted
-        double outlier_threshold = residuals[residuals.size()*0.75] + 1.5*exp(4*mc)*(residuals[residuals.size()*0.75] - residuals[residuals.size()*0.25]);
-        size_t outlier_count = 0;
-        for (auto& edge: ridges) {
-            if (edge.residual >= outlier_threshold) {
-                outlier_count++;
-                edge.weight = 0;
+        if (residuals.size() > 4) {
+        
+            double mc = medcouple(residuals); // side effect: residuals is now sorted
+            double outlier_threshold = residuals[residuals.size()*0.75] + 1.5*exp(4*mc)*(residuals[residuals.size()*0.75] - residuals[residuals.size()*0.25]);
+            size_t outlier_count = 0;
+            for (auto& edge: ridges) {
+                if (edge.residual >= outlier_threshold) {
+                    outlier_count++;
+                    edge.weight = 0;
+                }
+            }
+            logger.debug("medcouple=%lf, outlier threshold=%lf, min=%f, median=%f, max=%f\n", 
+                mc, outlier_threshold, residuals.front(), residuals[residuals.size()/2], residuals.back()
+            );
+            logger.debug("Found %ld outliers out of %ld values\n", outlier_count, ridges.size());
+            
+            
+            if (outlier_count > 0 && ridges.size() - outlier_count > ridges.size()*0.7) {
+                logger.debug("restarting after outlier suppression:\n");
+                best_sol = initial;
+                seed_simplex(best_sol, scale);
+                best_sol = iterate(1e-12);
             }
         }
-        logger.debug("medcouple=%lf, outlier threshold=%lf, min=%f, median=%f, max=%f\n", 
-            mc, outlier_threshold, residuals.front(), residuals[residuals.size()/2], residuals.back()
-        );
-        logger.debug("Found %ld outliers out of %ld values\n", outlier_count, ridges.size());
-        
-        
-        if (outlier_count > 0 && ridges.size() - outlier_count > ridges.size()*0.7) {
-            logger.debug("restarting after outlier suppression:\n");
-            best_sol = initial;
-            seed_simplex(best_sol, scale);
-            best_sol = iterate(1e-12);
-        }            
         
         double final_err = evaluate(best_sol, 0.0);
         logger.debug("final distortion rmse: %lf\n", final_err);
@@ -304,7 +307,6 @@ class Distortion_optimizer {
         
         Eigen::VectorXd inv_v = invert_distortion(v);
         
-        static int first = 1;
         double count = 0;
         double merr = 0;
         double maxrad = 0;
@@ -387,11 +389,6 @@ class Distortion_optimizer {
             double t_quad = fabs(sol[2] / sqrt(icov(2,2) * ressum));
             double t0 = t_quad / std::max(t_const, t_linear);;
             
-            /*
-            if (first && penalty == 0) {
-                fprintf(stderr, "%lf %lf %lf %lf\n", cent.x, cent.y, t0, edge.weight);
-            }
-            */
             
             if (std::isfinite(t0) && !std::isnan(t0)) {
                 edge.residual = t0;
@@ -402,8 +399,6 @@ class Distortion_optimizer {
             }
             
         }
-        
-        first = 0;
         
         merr /= count;
         return merr + penalty*(fabs(v[0]) + fabs(v[1]) + fabs(v[2]))/100.0;
