@@ -60,6 +60,8 @@ const QString setting_lpmm = "setting_lpmm";
 const Qt::CheckState setting_lpmm_default = Qt::Unchecked;
 const QString setting_gnuplot_scaled = "setting_gnuplot_scaled";
 const Qt::CheckState setting_gnuplot_scaled_default = Qt::Checked;
+const QString setting_zscale = "setting_zscale";
+const int setting_zscale_default = 0;
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
@@ -165,6 +167,16 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
     exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
     dcraw_line->setText(settings.value(setting_dcraw, setting_dcraw_default).toString());
+    
+    zscale_label = new QLabel("3D plot z-axis relative scale factor", this);
+    zscale_slider = new QSlider(Qt::Horizontal, this);
+    zscale_slider->setFocusPolicy(Qt::StrongFocus);
+    zscale_slider->setTickPosition(QSlider::TicksAbove);
+    zscale_slider->setMinimum(0);
+    zscale_slider->setMaximum(20);
+    zscale_slider->setTickInterval(5);
+    zscale_slider->setSingleStep(1);
+    zscale_slider->setValue(settings.value(setting_zscale, setting_zscale_default).toInt());
 
     QGroupBox* voGroupBox = new QGroupBox(tr("Output types"), this);
     QVBoxLayout *vo_layout = new QVBoxLayout(this);
@@ -211,8 +223,10 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     adv_layout->addWidget(threshold_line, 0, 1);
     adv_layout->addWidget(pixsize_label, 1, 0);
     adv_layout->addWidget(pixsize_line, 1, 1);
-    adv_layout->addWidget(arguments_label, 2, 0);
-    adv_layout->addWidget(arguments_line, 2, 1);
+    adv_layout->addWidget(zscale_label, 2, 0, 1, 2);
+    adv_layout->addWidget(zscale_slider, 3, 0, 1, 2);
+    adv_layout->addWidget(arguments_label, 4, 0);
+    adv_layout->addWidget(arguments_line, 4, 1);
     advanced->setLayout(adv_layout);
 
     
@@ -293,6 +307,7 @@ void Settings_dialog::send_argument_string(void) {
     if (cb_gnuplot_scaled->checkState()) {
         args = args + QString(" --gnuplot-width %1").arg(gnuplot_img_width);
     }
+    args = args + QString(" --zscale %1").arg(zscale_slider->value()/20.0);
     
     args = args + QString(" %1").arg(arguments_line->text());
     
@@ -317,6 +332,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());
+    settings.setValue(setting_zscale, zscale_slider->value());
     
     if (rb_colour_none->isChecked()) {
         settings.setValue(setting_bayer, 0);
