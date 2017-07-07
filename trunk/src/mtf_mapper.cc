@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
     
     cv::Mat rawimg = cvimg;
     if (tc_bayer.isSet()) {
-        simple_demosaic(cvimg, rawimg, Bayer::from_string(tc_bayer.getValue()));
+        simple_demosaic(cvimg, rawimg, Bayer::from_string(tc_bayer.getValue()), tc_single_roi.getValue());
         //imwrite(string("prewhite.png"), rawimg);
         //imwrite(string("white.png"), cvimg);
     }
@@ -390,7 +390,7 @@ int main(int argc, char** argv) {
         #endif
     }
     
-    if (mtf_core.get_blocks().size() == 0) {
+    if (mtf_core.get_blocks().size() == 0 && !tc_focus.getValue()) {
         logger.error("Error: No suitable target objects found.\n");
         return 0;
     }
