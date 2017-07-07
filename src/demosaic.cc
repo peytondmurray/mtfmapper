@@ -35,13 +35,13 @@ using std::vector;
 
 #include <opencv2/highgui/highgui.hpp>
 
-void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg);
+void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scene);
 void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
 
-void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer) {
+void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer, bool unbalanced_scene) {
     // switch on Bayer subset
     if (bayer == Bayer::GREEN) {
-        simple_demosaic_green(cvimg, rawimg);
+        simple_demosaic_green(cvimg, rawimg, unbalanced_scene);
     } else {
         if (bayer == Bayer::RED || bayer == Bayer::BLUE) {
             simple_demosaic_redblue(cvimg, rawimg, bayer);
@@ -68,91 +68,44 @@ static void match(const vector<int>& source, const vector<int>& target, vector<i
     }
 }
 
-void green_leveling(cv::Mat& img, double thresh = 0.1) {
-    cv::Mat dest = img.clone();
-    // for now, always interpolate subset 2 ??
+void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scene) {
+    rawimg = cvimg.clone();
     
-    for (int row=4; row < img.rows-4; row+=2) {
-        for (int col=5; col < img.cols; col+= 2) {
-            float d1_1 = img.at<uint16_t>(row-1, col-1);
-            float d1_2 = img.at<uint16_t>(row-1, col+1);
-            float d1_3 = img.at<uint16_t>(row+1, col-1);
-            float d1_4 = img.at<uint16_t>(row+1, col+1);
-            
-            float d2_1 = img.at<uint16_t>(row-2, col);
-            float d2_2 = img.at<uint16_t>(row+2, col);
-            float d2_3 = img.at<uint16_t>(row, col-2);
-            float d2_4 = img.at<uint16_t>(row, col+2);
-            
-            float d1 = (d1_1 + d1_2 + d1_3 + d1_4);
-            float d2 = (d2_1 + d2_2 + d2_3 + d2_4);
-            
-            float c1 = (fabs(d1_1 - d1_2) + fabs(d1_1 - d1_3) + fabs(d1_1 - d1_4) + fabs(d1_2 - d1_3) + fabs(d1_2 - d1_4) + fabs(d1_3 - d1_4))/6.0;
-            float c2 = (fabs(d2_1 - d2_2) + fabs(d2_1 - d2_3) + fabs(d2_1 - d2_4) + fabs(d2_2 - d2_3) + fabs(d2_2 - d2_4) + fabs(d2_3 - d2_4))/6.0;
-            
-            if ((c1 + c2) < thresh * fabs(d1 - d2)) { // gradients are small enough to allow interpolation
-                float vin = img.at<uint16_t>(row, col);
-                
-                float gse = img.at<uint16_t>(row+1, col+1) + 0.5 * (vin - img.at<uint16_t>(row+2, col+2));
-                float gnw = img.at<uint16_t>(row-1, col-1) + 0.5 * (vin - img.at<uint16_t>(row-2, col-2));
-                float gne = img.at<uint16_t>(row-1, col+1) + 0.5 * (vin - img.at<uint16_t>(row-2, col+2));
-                float gsw = img.at<uint16_t>(row+1, col-1) + 0.5 * (vin - img.at<uint16_t>(row+2, col-2));
-                
-                const float eps = 1e-5;
-                
-                float wtse = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col+2) - vin) + SQR(img.at<uint16_t>(row+3, col+3) - d1_4));
-                float wtnw = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col-2) - vin) + SQR(img.at<uint16_t>(row-3, col-3) - d1_1));
-                float wtne = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col+2) - vin) + SQR(img.at<uint16_t>(row-3, col+3) - d1_2));
-                float wtsw = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col-2) - vin) + SQR(img.at<uint16_t>(row+3, col-3) - d1_3));
-                
-                float iv = (gse*wtse + gnw*wtnw + gne*wtne + gsw*wtsw) / (wtse + wtnw + wtne + wtsw);
-                
-                if ( (iv - vin) < thresh*(iv + vin) ) {
-                    dest.at<uint16_t>(row, col) = lrint(0.5 * (vin + iv));
+    if (!unbalanced_scene) {
+        logger.debug("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
+        vector < vector<int> > hist(4, vector<int>(65536, 0));
+        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+            for (int col=0; col < cvimg.cols; col++) {
+                int val = cvimg.at<uint16_t>(row, col);
+                int subset = ((row & 1) << 1) | (col & 1);
+                hist[subset][val]++;
+            }
+        }
+        // convert histograms to cumulative histograms
+        for (int subset=0; subset < 4; subset++) {
+            int acc = 0;
+            for (size_t i=0; i < hist[subset].size(); i++) {
+                acc += hist[subset][i];
+                hist[subset][i] = acc;
+            }
+        }
+        
+        const int from_ss = 1;
+        const int to_ss = 2;
+        vector<int> m(65536, 0);
+        match(hist[to_ss], hist[from_ss], m);
+        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+            for (int col=0; col < cvimg.cols; col++) {
+                int subset = ((row & 1) << 1) | (col & 1);
+                if (subset == from_ss) { // TODO: optimize access pattern
+                    int val = cvimg.at<uint16_t>(row, col);
+                    cvimg.at<uint16_t>(row, col) = m[val];
                 }
             }
         }
+    } else {
+        logger.debug("ROI mode, not performing G1/G2 Bayer subset matching\n");
     }
-    img = dest; // copy back the result
-}
-
-void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
-    logger.debug("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
-    rawimg = cvimg.clone();
-    
-    vector < vector<int> > hist(4, vector<int>(65536, 0));
-    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-        for (int col=0; col < cvimg.cols; col++) {
-            int val = cvimg.at<uint16_t>(row, col);
-            int subset = ((row & 1) << 1) | (col & 1);
-            hist[subset][val]++;
-        }
-    }
-    // convert histograms to cumulative histograms
-    for (int subset=0; subset < 4; subset++) {
-        int acc = 0;
-        for (size_t i=0; i < hist[subset].size(); i++) {
-            acc += hist[subset][i];
-            hist[subset][i] = acc;
-        }
-    }
-    
-    const int from_ss = 1;
-    const int to_ss = 2;
-    vector<int> m(65536, 0);
-    match(hist[from_ss], hist[to_ss], m);
-    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-        for (int col=0; col < cvimg.cols; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == from_ss) { // TODO: optimize access pattern
-                int val = cvimg.at<uint16_t>(row, col);
-                cvimg.at<uint16_t>(row, col) = m[val];
-            }
-        }
-    }
-    
-    // apply green channel equilibration
-    green_leveling(cvimg, 0.2);
     
     // bilnear interpolation to get rid op R and B channels?
     for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {

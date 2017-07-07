@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/common_types.h"
 #include "include/bayer.h"
 
-void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
+void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer, bool unbalanced_scene);
 void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset=0);
 
 #endif
