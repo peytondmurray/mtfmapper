@@ -39,7 +39,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/afft.h"
 #include "include/mtf_profile_sample.h"
 #include "include/bayer.h"
+
 #include "include/undistort.h"
+#include "include/undistort_equiangular.h"
+#include "include/undistort_rectilinear.h"
 
 #include <map>
 using std::map;

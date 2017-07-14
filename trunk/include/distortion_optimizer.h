@@ -54,7 +54,7 @@ class Ridge {
 class Distortion_optimizer {
   public:
     Distortion_optimizer(const vector<Block>& in_blocks, const Point2d& prin) 
-    : prin(prin) {
+    : prin(prin), max_val(1,1) {
         
         radius_norm = sqrt(prin.x*prin.x + prin.y*prin.y); // corners are at radius 1
         
@@ -72,6 +72,10 @@ class Distortion_optimizer {
                         double w = fabs(radial.ddot(normal));
                         if (w > 0.17365) { // edge angle < 80 degrees w.r.t. radial direction
                             ridges.push_back(Ridge(block.get_ridge(k), block.get_edge_centroid(k), block.get_normal(k), w));
+                            double wrad = norm(cent - prin) / radius_norm;
+                            maxrad = std::max(wrad, maxrad);
+                            max_val.x = std::max(max_val.x, fabs(cent.x - prin.x));
+                            max_val.y = std::max(max_val.y, fabs(cent.y - prin.y));
                         }
                     }
                 }
@@ -81,20 +85,23 @@ class Distortion_optimizer {
         logger.debug("Kept %ld of %ld edges\n", ridges.size(), 4*in_blocks.size());
         
         // pack initial parameters
-        Eigen::VectorXd init(3);
+        Eigen::VectorXd init(2);
         
         init[0] = 0;
         init[1] = 0;
-        init[2] = 0;
         
         best_sol = initial = init;
+    }
+    
+    Point2d get_max_val(void) const {
+        return max_val;
     }
     
     void solve(void) {
         Eigen::VectorXd scale(best_sol.size());
         
-        scale << 1e-3, 1e-4, 1e-4;
-        
+        scale << 0.4995, 0.1665; // just inside valid region
+                
         double initial_err = evaluate(best_sol, 0.0);
         logger.debug("initial distortion rmse: %lf\n", initial_err);
         
@@ -136,131 +143,63 @@ class Distortion_optimizer {
         
         double final_err = evaluate(best_sol, 0.0);
         logger.debug("final distortion rmse: %lf\n", final_err);
-        Eigen::VectorXd inv_v = invert_distortion(best_sol);
-        logger.debug("final inverse distortion coeffs: ");
-        for (int i=0; i < inv_v.size(); i++) {
-            logger.debug("%lg, ", inv_v[i]);
-        }
-        logger.debug("\n");
     }
     
-    Point2d warp(const Point2d& p, const Eigen::VectorXd& v) {
-        Point2d delta = p - prin;
-        double rad = norm(delta) / radius_norm; // radius is now [0,1]
-        double rad2 = rad*rad;
-        
-        double rd = 1;
-        double radp = rad2;
-        for (int i=0; i < 3; i++) { // maybe we should add a fourth coefficient ...
-            rd += v[i]*radp;
-            radp *= rad2;
-        }
-        
-        return rd*delta + prin;
-    }
-    
+    // two-parameter division model; also works when k2(v[1]) == 0
     Point2d inv_warp(const Point2d& p, const Eigen::VectorXd& v) {
-        Point2d delta = p - prin;
-        double rad = norm(delta) / radius_norm;
-        double rad2 = rad*rad;
+        double px = (p.x - prin.x);
+        double py = (p.y - prin.y);
+    
+        const double rd = sqrt((px)*(px) + (py)*(py)) / radius_norm; 
+        const double r2 = rd*rd;
+        double ru = 1 + (v[0] + v[1]*r2)*r2;
         
-        if (v.size() != 9) {
-            printf("fatal error, v as %d components, expecting 9\n", (int)v.size());
-            exit(-1);
-        }
+        px = px/ru + prin.x;
+        py = py/ru + prin.y;
         
-        double rd = 1;
-        double radp = rad2;
-        for (int i=0; i < 9; i++) {
-            rd += v[i]*radp;
-            radp *= rad2;
-        }
-        
-        return rd*delta + prin;
+        return cv::Point2d(px, py);
     }
     
-    cv::Mat warp(const cv::Mat img) {
-        /*
-        cv::Mat warp_x(img.rows, img.cols, CV_32FC1);
-        cv::Mat warp_y(img.rows, img.cols, CV_32FC1);
-        for (int r=0; r < img.rows; r++) {
-            for (int c=0; c < img.cols; c++) {
-                Point2d p = inv_warp(Point2d(c, r), best_sol);
-                warp_x.at<float>(r, c) = p.x;
-                warp_y.at<float>(r, c) = p.y;
-            }
-        }
-        cv::Mat warped;
-        cv::remap(img, warped, warp_x, warp_y, cv::INTER_LINEAR);
-        return warped;
-        */
-        cv::Mat cam = cv::Mat::eye(3, 3, CV_32FC1); // we pre-normalize
-        cam.at<float>(0, 0) = radius_norm;
-        cam.at<float>(1, 1) = radius_norm;
-        cam.at<float>(0, 2) = prin.x;
-        cam.at<float>(1, 2) = prin.y;
-        vector<double> dist(5, 0.0);
-        dist[0] = best_sol[0];
-        dist[1] = best_sol[1];
-        dist[4] = best_sol[2];
-        cv::Mat warped;
-        cv::undistort(img, warped, cam, dist);
-        return warped;
-    }
-    
-    Eigen::VectorXd invert_distortion(const Eigen::VectorXd& v) {
-        Eigen::VectorXd b(9);
-        
+    double model_not_invertible(const Eigen::VectorXd& v) {
         const double k1 = v[0];
         const double k2 = v[1];
-        const double k3 = v[2];
-        const double k4 = 0;
+        const double r1 = 1.0;
+        const double r12 = r1*r1;
+        const double r14 = r12*r12;
         
-        b[0] = -k1;
-        
-        const double k1r2 = k1*k1;
-        
-        b[1] = 3*k1r2 - k2;
-        
-        const double k1r3 = k1r2*k1;
-        
-        b[2] = -12*k1r3 + 8*k1*k2 - k3;
-        
-        const double k1r4 = k1r2*k1r2;
-        const double k2r2 = k2*k2;
-        
-        b[3] = 55*k1r4 - 55*k1r2*k2 + 5*k2r2 + 10*k1*k3 - k4;
-        
-        const double k1r5 = k1r4*k1;
-        
-        b[4] = -273*k1r5 + 364*k1r3*k2 - 78*k1*k2r2 - 78*k1r2*k3 + 12*k2*k3 + 12*k1*k4;
-        
-        const double k1r6 = k1r5*k1;
-        const double k2r3 = k2r2*k2;
-        const double k3r2 = k3*k3;
-        
-        b[5] = 1428*k1r6 - 2380*k1r4*k2 + 840*k1r2*k2r2 - 35*k2r3 + 560*k1r3*k3 - 210*k1*k2*k3 + 7*k3r2 - 105*k1r2*k4 + 14*k2*k4;
-        
-        const double k1r7 = k1r6*k1;
-        
-        b[6] = -7752*k1r7 + 15504*k1r5*k2 - 7752*k1r3*k2r2 + 816*k1*k2r3 - 3876*k1r4*k3 + 2448*k1r2*k2*k3 - 
-            136*k2r2*k3 - 136*k1*k3r2 + 816*k1r3*k4 - 272*k1*k2*k4 + 16*k3*k4;
-            
-        const double k1r8 = k1r7*k1;
-        const double k2r4 = k2r3*k2;
-        const double k4r2 = k4*k4;
-        
-        b[7] = 43263*k1r8 - 100947*k1r6*k2 + 65835*k1r4*k2r2 - 11970*k1r2*k2r3 + 285*k2r4 + 26334*k1r5*k3 - 23940*k1r3*k2*k3 +
-            3420*k1*k2r2*k3 + 1710*k1r2*k3r2 - 171*k2*k3r2 - 5985*k1r4*k4 + 3420*k1r2*k2*k4 - 171*k2r2*k4 - 342*k1*k3*k4 + 9*k4r2;
-            
-        const double k1r9 = k1r8*k1;
-        const double k3r3 = k3r2*k3;
-        
-        b[8] = -246675*k1r9 + 657800*k1r7*k2 - 531300*k1r5*k2r2 + 141680*k1r3*k2r3 - 8855*k1*k2r4 - 177100*k1r6*k3 +
-            212520*k1r4*k2*k3 - 53130*k1r2*k2r2*k3 + 1540*k2r3*k3 - 17710*k1r3*k3r2 + 4620*k1*k2*k3r2 - 70*k3r3 + 42504*k1r5*k4 -
-            35420*k1r3*k2*k4 + 4620*k1*k2r2*k4 + 4620*k1r2*k3*k4 - 420*k2*k3*k4 - 210*k1*k4r2;
-        
-        return b;
+        if (k1*r12 <= -2) return 1.0;
+        if (k1*r12 < 2) {
+            if (k2*r14 <= -1 - k1*r12) return 1.0;
+            if (k2*r14 >= (1 - k1*r12)/3.0) return 1.0;
+            return 0.0;
+        }
+        // k1r12 >= 2
+        if (k2*r14 <= -1 - k1*r12) return 1.0;
+        if (k2*r14 >= -k1*k1*r14/12.0) return 1.0;
+        return 0.0;
+    }
+    
+    double eval_d2(const double x, const double a, const double b) {
+        const double x2 = x*x;
+        const double x3 = x2*x;
+        const double x4 = x2*x2;
+        double bottom = a*x2 + b*x4 + 1;
+        bottom *= bottom*bottom;
+        return (2*a*a*x3 + 6*a*x*(b*x4 - 1) + 4*b*x3*(3*b*x4 - 5)) / bottom;
+    }
+    
+    double d2_sign_change(const Eigen::VectorXd& v, double maxrad) {
+        const double r0 = 1e-4;
+        double prev = eval_d2(r0, v[0], v[1]);
+        double changes = 0;
+        for (double rd=r0; rd < 1.05*maxrad; rd += 0.01) {
+            double cur = eval_d2(rd, v[0], v[1]);
+            if (prev * cur < 0) {
+                changes++;
+                prev = cur;
+            }
+        }
+        return changes;
     }
     
     double medcouple(vector<float>& x) {
@@ -305,23 +244,18 @@ class Distortion_optimizer {
     double evaluate(const Eigen::VectorXd& v, double penalty=1.0) {
         // TODO: add support for autocropped images
         
-        Eigen::VectorXd inv_v = invert_distortion(v);
-        
         double count = 0;
         double merr = 0;
-        double maxrad = 0;
         for (auto& edge: ridges) {
-            double wrad = norm(edge.centroid - prin) / radius_norm;
-            maxrad = std::max(wrad, maxrad);
             
-            Point2d cent = inv_warp(edge.centroid, inv_v);
+            Point2d cent = inv_warp(edge.centroid, v);
             Point2d dir(-edge.normal.y, edge.normal.x);
             
             vector<Point2d> ridge(edge.ridge.size());
             
             // estimate edge length to establish scale
-            Point2d first_point = inv_warp(edge.ridge.front(), inv_v);
-            Point2d last_point = inv_warp(edge.ridge.back(), inv_v);
+            Point2d first_point = inv_warp(edge.ridge.front(), v);
+            Point2d last_point = inv_warp(edge.ridge.back(), v);
             double scale = std::max(fabs((first_point - cent).ddot(dir)), fabs((last_point - cent).ddot(dir)));
             
             Eigen::Matrix3d cov;
@@ -330,7 +264,7 @@ class Distortion_optimizer {
             yv.setZero();
             for (size_t ri=0; ri < edge.ridge.size(); ri++) {
                 
-                Point2d p = inv_warp(edge.ridge[ri], inv_v);
+                Point2d p = inv_warp(edge.ridge[ri], v);
                 
                 Point2d d = p - cent;
                 double perp = d.ddot(edge.normal); 
@@ -359,20 +293,6 @@ class Distortion_optimizer {
             Eigen::LDLT<Eigen::Matrix3d> qr(cov); // LDLT is probably good enough 
             Eigen::Vector3d sol = qr.solve(yv);
             
-            /*
-            if (penalty == 0) {
-                printf("quad fit: %lf + %lf*(x/%le) + %lf*(x/%le)*(x/%le)\n", sol[0], sol[1], scale, sol[2], scale, scale);
-                double xm = ridge.front().x;
-                double ym0 = sol[0] + sol[1]*xm + sol[2]*xm*xm;
-                xm = ridge.back().x;
-                double ym1 = sol[0] + sol[1]*xm + sol[2]*xm*xm;
-                double xp = -sol[1]/(2*sol[2]);
-                double yp = sol[0] + sol[1]*xp + sol[2]*xp*xp;
-                double height = fabs(yp - 0.5*(ym0+ym1));
-                printf("quad height: %lf  (x is %lf or %lf)\n\n", height, ridge.front().x, ridge.back().x);
-            }
-            */
-            
             // for now, do another pass to calculate the standard error
             // we can probably speed this up by using the fit directly
             double ressum = 0;
@@ -389,7 +309,6 @@ class Distortion_optimizer {
             double t_quad = fabs(sol[2] / sqrt(icov(2,2) * ressum));
             double t0 = t_quad / std::max(t_const, t_linear);;
             
-            
             if (std::isfinite(t0) && !std::isnan(t0)) {
                 edge.residual = t0;
                 merr += t0 * edge.weight;
@@ -400,8 +319,13 @@ class Distortion_optimizer {
             
         }
         
+        if (penalty == 0) {
+            logger.debug("maxrad = %lf k1 = %lf k2 = %lf sign changes = %lf\n", maxrad, v[0], v[1], d2_sign_change(v, maxrad));
+        }
+        
         merr /= count;
-        return merr + penalty*(fabs(v[0]) + fabs(v[1]) + fabs(v[2]))/100.0;
+        return merr + penalty*(model_not_invertible(v)*1e4 + merr*d2_sign_change(v, maxrad)/100.0 + merr*sqrt(std::min(fabs(v[0]),fabs(v[1])))/100.0);
+        //return merr + penalty*(model_not_invertible(v)*1e4);
     }
     
     void seed_simplex(Eigen::VectorXd& v, const Eigen::VectorXd& lambda) {
@@ -530,6 +454,8 @@ class Distortion_optimizer {
     Point2d prin;
     double radius_norm;
     Eigen::VectorXd best_sol;
+    Point2d max_val;
+    double maxrad;
     
     // variables used by nelder-mead
     vector<Eigen::VectorXd> np;

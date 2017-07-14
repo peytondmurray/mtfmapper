@@ -26,56 +26,27 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
-#ifndef UNDISTORT_H
-#define UNDISTORT_H
+#ifndef UNDISTORT_EQUIANGULAR_H
+#define UNDISTORT_EQUIANGULAR_H
 
-#include "common_types.h"
-#include "include/logger.h"
-#include <opencv2/imgproc/imgproc.hpp>
+#include "include/undistort.h"
 
-#include <map>
-using std::map;
-
-#include <cmath>
-
-class Undistort { 
+class Undistort_equiangular : public Undistort {
   public:
-    Undistort(const cv::Rect& r) : centre(r.width/2, r.height/2), offset(r.x, r.y), radmap(0), max_val(1,1) {};
+    Undistort_equiangular(const cv::Rect& r, double f, double pitch) 
+    : Undistort(r), f(f), pitch(pitch), rect_f(f) {}
     
-    cv::Point2i transform_pixel(int col, int row) {
-        cv::Point2d tp = transform_point(double(col), double(row));
-        return cv::Point2i(lrint(tp.x), lrint(tp.y));
-    }
+    cv::Point2d slow_transform_point(double col, double row);
+    cv::Point2d inverse_transform_point(double col, double row);
     
-    cv::Point2d transform_point(double px, double py); // this function interpolates radmap
-    virtual cv::Point2d slow_transform_point(double px, double py) = 0; // the "real" forward transformation, which could be slow
-    virtual cv::Point2d inverse_transform_point(double px, double py) = 0;
+    cv::Mat unmap(const cv::Mat& in_src, cv::Mat& rawimg);
     
-    virtual cv::Mat unmap(const cv::Mat& src, cv::Mat& rawimg) = 0;
+    double f;
+    double pitch;
+    double rect_f;
     
-    bool rectilinear_equivalent(void) const {
-        return rectilinear;
-    }
-    
-    void set_rectilinear_equivalent(bool b) {
-        rectilinear = b;
-    }
-    
-    void set_max_val(const Point2d& maxv) { 
-        max_val = maxv;
-    }
-    
-    cv::Point2d centre;
-    cv::Point2d offset;
-    vector<double> radmap; // a vector of the transformed radius sampled at uniform spacing in the untransformed radius
-    Point2d max_val;
-    
-    bool rectilinear = false;
-    
-    
-  protected:  
-    void build_radmap(void); // called from derived class constructor once parameters are known
 };
+
     
 #endif
     
