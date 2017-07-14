@@ -290,6 +290,9 @@ int main(int argc, char** argv) {
 	
 	// initialize the global mtf correction instance
 	global_mtf_correction_instance = new Mtf_correction();
+	
+	size_t nthreads = std::thread::hardware_concurrency();
+    ThreadPool tp (nthreads);
 
     cv::Mat masked_img;
     
@@ -311,283 +314,300 @@ int main(int argc, char** argv) {
     if (tc_equiangular.isSet()) {
         logger.info("Treating input image as equi-angular with focal length %.2lf, unmapping\n", tc_equiangular.getValue());
         undistort = new Undistort_equiangular(img_dimension_correction, tc_equiangular.getValue(), tc_pixelsize.getValue()/1000.0);
-        cvimg = undistort->unmap(cvimg, rawimg);
         undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
     }
     
-    size_t nthreads = std::thread::hardware_concurrency();
-    ThreadPool tp (nthreads);
+    bool finished;
+    bool distortion_applied = false;
+    do {
+        finished = true;
     
-    logger.info("Thresholding image ...\n");
-    int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(500, min(cvimg.cols, cvimg.rows)/3);
-    double brad_threshold = tc_thresh.getValue();
-    #ifdef MDEBUG
-        if (tc_bradley.getValue()) {
-            printf("using Bradley thresholding\n");
-            bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
-        } else {
-            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp);
+        if (undistort) {
+            cvimg = undistort->unmap(cvimg, rawimg);
+            imwrite("unwarped.png", cvimg);
         }
-    #else
-        sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp); // fudge the threshold to maintain backwards compatibility
-    #endif
-    
-    logger.info("Computing gradients ...\n");
-    Gradient gradient(cvimg);
-    
-    logger.info("Component labelling ...\n");
-    Component_labeller::zap_borders(masked_img);    
-    Component_labeller cl(masked_img, 60, false, 8000);
-
-    if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
-        logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
-        return 0;
-    }
-    
-    // now we can destroy the thresholded image
-    masked_img = cv::Mat(1,1, CV_8UC1);
-    
-    Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
-    mtf_core.set_absolute_sfr(tc_absolute.getValue());
-    mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
-    if (tc_border.getValue()) {
-        logger.debug("setting border to %d\n", border_width);
-        mtf_core.set_border(border_width+1);
-    }
-    
-    if (tc_snap.isSet()) {
-        mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
-    }
-    if (tc_focus.isSet() || tc_mf_profile.getValue()) {
-        mtf_core.set_sliding(true);
-        if (tc_mf_profile.getValue()) {
-            mtf_core.set_samples_per_edge(5);
-        }
-    }
-    if (tc_chart_orientation.isSet()) {
-        mtf_core.set_find_fiducials(true);
-    }
-    if (tc_equiangular.isSet()) {
-        logger.info("Adding equiangular undistortion to MTF core");
-        mtf_core.set_undistort(undistort);
-    }
-    
-    Mtf_core_tbb_adaptor ca(&mtf_core);
-    
-    if (tc_single_roi.getValue()) {
-        mtf_core.set_border(0);
-        mtf_core.process_image_as_roi();
-    } else {
+        
+        logger.info("Thresholding image ...\n");
+        int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(500, min(cvimg.cols, cvimg.rows)/3);
+        double brad_threshold = tc_thresh.getValue();
         #ifdef MDEBUG
-        if (tc_single.getValue()) {
-            ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
-        } else {
-            logger.debug("Parallel MTF50 calculation\n");
-            Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
-        }
+            if (tc_bradley.getValue()) {
+                printf("using Bradley thresholding\n");
+                bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
+            } else {
+                sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp);
+            }
         #else
-        Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp); // fudge the threshold to maintain backwards compatibility
         #endif
-    }
-    
-    if (mtf_core.get_blocks().size() == 0 && !tc_focus.getValue()) {
-        logger.error("Error: No suitable target objects found.\n");
-        return 0;
-    }
-    
-    if (tc_distort_opt.getValue()) {
-        Distortion_optimizer dist_opt(mtf_core.get_blocks(), Point2d(rawimg.cols/2, rawimg.rows/2));
-        dist_opt.solve();
-        cv::Mat warped = dist_opt.warp(rawimg);
-        imwrite("unwarped.png", warped);
-        printf("Optimal distortion coefficients: %lg %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1], dist_opt.best_sol[2]);
-    }
-    
-    
-    Distance_scale distance_scale;
-    if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
-        distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue());
-    }
-    
-    // release most of the resources we no longer need
-    masked_img.release();
-    gradient.release();
-    cl.release();
-    
-    // now render the computed MTF values
-    if (tc_annotate.getValue()){
-        Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"), lpmm_mode, pixel_size);
-        annotate.render(mtf_core.get_blocks());
-    }
-    
-    bool gnuplot_warning = true;
-    bool few_edges_warned = false;
-    
-    if (tc_profile.getValue()) {
-        if (mtf_core.get_blocks().size() < 10) {
-            logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
-            few_edges_warned = true;
+        
+        logger.info("Computing gradients ...\n");
+        Gradient gradient(cvimg);
+        
+        logger.info("Component labelling ...\n");
+        Component_labeller::zap_borders(masked_img);    
+        Component_labeller cl(masked_img, 60, false, 8000);
+
+        if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
+            logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
+            return 0;
+        }
+        
+        // now we can destroy the thresholded image
+        masked_img = cv::Mat(1,1, CV_8UC1);
+        
+        Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
+        mtf_core.set_absolute_sfr(tc_absolute.getValue());
+        mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
+        if (tc_border.getValue()) {
+            logger.debug("setting border to %d\n", border_width);
+            mtf_core.set_border(border_width+1);
+        }
+        
+        if (tc_snap.isSet()) {
+            mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
+        }
+        if (tc_focus.isSet() || tc_mf_profile.getValue()) {
+            mtf_core.set_sliding(true);
+            if (tc_mf_profile.getValue()) {
+                mtf_core.set_samples_per_edge(5);
+            }
+        }
+        if (tc_chart_orientation.isSet()) {
+            mtf_core.set_find_fiducials(true);
+        }
+        if (undistort) {
+            logger.info("Adding undistortion to MTF core");
+            mtf_core.set_undistort(undistort);
+        }
+        
+        Mtf_core_tbb_adaptor ca(&mtf_core);
+        
+        if (tc_single_roi.getValue()) {
+            mtf_core.set_border(0);
+            mtf_core.process_image_as_roi();
         } else {
-            Mtf_renderer_profile profile(
+            #ifdef MDEBUG
+            if (tc_single.getValue()) {
+                ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
+            } else {
+                logger.debug("Parallel MTF50 calculation\n");
+                Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+            }
+            #else
+            Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+            #endif
+        }
+        
+        if (mtf_core.get_blocks().size() == 0 && !tc_focus.getValue()) {
+            logger.error("Error: No suitable target objects found.\n");
+            return 0;
+        }
+        
+        if (tc_distort_opt.getValue() && !distortion_applied) { 
+            Distortion_optimizer dist_opt(mtf_core.get_blocks(), Point2d(rawimg.cols/2, rawimg.rows/2));
+            dist_opt.solve();
+            logger.debug("Optimal distortion coefficients: %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1]);
+            
+            vector<double> coeffs(3);
+            for (int i=0; i < 3; i++) {
+                coeffs[i] = dist_opt.best_sol[i];
+            }
+            undistort = new Undistort_rectilinear(img_dimension_correction, coeffs);
+            undistort->set_max_val(dist_opt.get_max_val());
+            
+            finished = false;
+            distortion_applied = true;
+            logger.info("Performing second pass on undistorted image.\n");
+            continue; // effectively jump back to the start
+        }
+        
+        
+        Distance_scale distance_scale;
+        if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
+            distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue());
+        }
+        
+        // release most of the resources we no longer need
+        masked_img.release();
+        gradient.release();
+        cl.release();
+        
+        // now render the computed MTF values
+        if (tc_annotate.getValue()){
+            Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"), lpmm_mode, pixel_size);
+            annotate.render(mtf_core.get_blocks());
+        }
+        
+        bool gnuplot_warning = true;
+        bool few_edges_warned = false;
+        
+        if (tc_profile.getValue()) {
+            if (mtf_core.get_blocks().size() < 10) {
+                logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+                few_edges_warned = true;
+            } else {
+                Mtf_renderer_profile profile(
+                    img_filename,
+                    wdir, 
+                    string("profile.txt"),
+                    string("profile_peak.txt"),
+                    tc_gnuplot.getValue(),
+                    cvimg,
+                    gnuplot_width,
+                    lpmm_mode,
+                    pixel_size
+                );
+                profile.render(mtf_core.get_blocks());
+                gnuplot_warning = !profile.gnuplot_failed();
+            }
+        }
+        
+        if (tc_mf_profile.getValue()) {
+            Mtf_renderer_mfprofile profile(
+                distance_scale,
+                wdir, 
+                string("focus_peak.png"),
+                cvimg,
+                lpmm_mode,
+                pixel_size
+            );
+            profile.render(mtf_core.get_samples());
+        }
+
+        if (tc_surface.getValue()) {
+            if (mtf_core.get_blocks().size() < 10) {
+                if (!few_edges_warned) {
+                    logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+                }
+            } else {
+                Mtf_renderer_grid grid(
+                    img_filename,
+                    wdir, 
+                    string("grid.txt"),
+                    tc_gnuplot.getValue(),
+                    cvimg,
+                    gnuplot_width,
+                    lpmm_mode,
+                    pixel_size,
+                    tc_zscale.getValue()
+                );
+                grid.set_gnuplot_warning(gnuplot_warning);
+                grid.render(mtf_core.get_blocks());
+            }
+        }
+        
+        if (tc_print.getValue()) {
+            Mtf_renderer_print printer(
+                wdir + string("raw_mtf_values.txt"), 
+                tc_angle.isSet(), 
+                tc_angle.getValue()/180.0*M_PI,
+                lpmm_mode,
+                pixel_size
+            );
+            printer.render(mtf_core.get_blocks());
+        }
+        
+        if (tc_edges.getValue()) {
+            Mtf_renderer_edges printer(
+                wdir + string("edge_mtf_values.txt"), 
+                wdir + string("edge_sfr_values.txt"),
+                lpmm_mode, pixel_size
+            );
+            printer.render(mtf_core.get_blocks());
+        }
+        
+        if (tc_lensprof.getValue()) {
+        
+            vector<double> resolutions;
+            // try to infer what resolutions the user wants
+            if (!(tc_lp1.isSet() || tc_lp2.isSet() || tc_lp3.isSet())) {
+                if (lpmm_mode) {
+                    // if nothing is specified explicitly, use the first two defaults
+                    resolutions.push_back(tc_lp1.getValue());
+                    resolutions.push_back(tc_lp2.getValue());
+                } else {
+                    // otherwise just pick some arbitrary values
+                    resolutions.push_back(0.1);
+                    resolutions.push_back(0.2);
+                }
+            } else {
+                if (tc_lp1.isSet()) {
+                    resolutions.push_back(tc_lp1.getValue());
+                }
+                if (tc_lp2.isSet()) {
+                    resolutions.push_back(tc_lp2.getValue());
+                }
+                if (tc_lp3.isSet()) {
+                    resolutions.push_back(tc_lp3.getValue());
+                }
+            }
+
+            sort(resolutions.begin(), resolutions.end());
+            
+            Mtf_renderer_lensprofile printer(
                 img_filename,
                 wdir, 
-                string("profile.txt"),
-                string("profile_peak.txt"),
+                string("lensprofile.txt"),
                 tc_gnuplot.getValue(),
                 cvimg,
+                resolutions,
                 gnuplot_width,
                 lpmm_mode,
                 pixel_size
             );
-            profile.render(mtf_core.get_blocks());
-            gnuplot_warning = !profile.gnuplot_failed();
+            printer.render(mtf_core.get_blocks());
         }
-    }
-    
-    if (tc_mf_profile.getValue()) {
-        Mtf_renderer_mfprofile profile(
-            distance_scale,
-            wdir, 
-            string("focus_peak.png"),
-            cvimg,
-            lpmm_mode,
-            pixel_size
-        );
-        profile.render(mtf_core.get_samples());
-    }
-
-    if (tc_surface.getValue()) {
-        if (mtf_core.get_blocks().size() < 10) {
-            if (!few_edges_warned) {
-                logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
-            }
-        } else {
-            Mtf_renderer_grid grid(
+        
+        if (tc_chart_orientation.getValue()) {
+            Mtf_renderer_chart_orientation co_renderer(
                 img_filename,
                 wdir, 
-                string("grid.txt"),
-                tc_gnuplot.getValue(),
+                string("chart_orientation.png"),
                 cvimg,
                 gnuplot_width,
-                lpmm_mode,
-                pixel_size,
-                tc_zscale.getValue()
+                distance_scale,
+                &img_dimension_correction
             );
-            grid.set_gnuplot_warning(gnuplot_warning);
-            grid.render(mtf_core.get_blocks());
-        }
-    }
-    
-    if (tc_print.getValue()) {
-        Mtf_renderer_print printer(
-            wdir + string("raw_mtf_values.txt"), 
-            tc_angle.isSet(), 
-            tc_angle.getValue()/180.0*M_PI,
-            lpmm_mode,
-            pixel_size
-        );
-        printer.render(mtf_core.get_blocks());
-    }
-    
-    if (tc_edges.getValue()) {
-        Mtf_renderer_edges printer(
-            wdir + string("edge_mtf_values.txt"), 
-            wdir + string("edge_sfr_values.txt"),
-            lpmm_mode, pixel_size
-        );
-        printer.render(mtf_core.get_blocks());
-    }
-    
-    if (tc_lensprof.getValue()) {
-    
-        vector<double> resolutions;
-        // try to infer what resolutions the user wants
-        if (!(tc_lp1.isSet() || tc_lp2.isSet() || tc_lp3.isSet())) {
-            if (lpmm_mode) {
-                // if nothing is specified explicitly, use the first two defaults
-                resolutions.push_back(tc_lp1.getValue());
-                resolutions.push_back(tc_lp2.getValue());
-            } else {
-                // otherwise just pick some arbitrary values
-                resolutions.push_back(0.1);
-                resolutions.push_back(0.2);
-            }
-        } else {
-            if (tc_lp1.isSet()) {
-                resolutions.push_back(tc_lp1.getValue());
-            }
-            if (tc_lp2.isSet()) {
-                resolutions.push_back(tc_lp2.getValue());
-            }
-            if (tc_lp3.isSet()) {
-                resolutions.push_back(tc_lp3.getValue());
-            }
+            co_renderer.render(mtf_core.get_blocks());
         }
 
-        sort(resolutions.begin(), resolutions.end());
+        if (tc_sfr.getValue() || tc_absolute.getValue()) {
+            Mtf_renderer_sfr sfr_writer(
+                wdir + string("raw_sfr_values.txt"), 
+                lpmm_mode,
+                pixel_size
+            );
+            sfr_writer.render(mtf_core.get_blocks());
+        }
         
-        Mtf_renderer_lensprofile printer(
-            img_filename,
-            wdir, 
-            string("lensprofile.txt"),
-            tc_gnuplot.getValue(),
-            cvimg,
-            resolutions,
-            gnuplot_width,
-            lpmm_mode,
-            pixel_size
-        );
-        printer.render(mtf_core.get_blocks());
-    }
-    
-    if (tc_chart_orientation.getValue()) {
-        Mtf_renderer_chart_orientation co_renderer(
-            img_filename,
-            wdir, 
-            string("chart_orientation.png"),
-            cvimg,
-            gnuplot_width,
-            distance_scale,
-            &img_dimension_correction
-        );
-        co_renderer.render(mtf_core.get_blocks());
-    }
-
-    if (tc_sfr.getValue() || tc_absolute.getValue()) {
-        Mtf_renderer_sfr sfr_writer(
-            wdir + string("raw_sfr_values.txt"), 
-            lpmm_mode,
-            pixel_size
-        );
-        sfr_writer.render(mtf_core.get_blocks());
-    }
-    
-    if (tc_esf.getValue()) {
-        Mtf_renderer_esf esf_writer(
-            wdir + string("raw_esf_values.txt"), 
-            wdir + string("raw_psf_values.txt")
-        );
-        esf_writer.render(mtf_core.get_blocks());
-    }
-    
-    if (tc_focus.getValue()) {
-        Mtf_renderer_focus profile(
-            distance_scale,
-            wdir, 
-            string("focus_peak.png"),
-            cvimg,
-            lpmm_mode,
-            pixel_size
-        );
-        profile.render(mtf_core.get_samples(), mtf_core.bayer, &mtf_core.ellipses, &img_dimension_correction);
-    }
-    
-    Mtf_renderer_stats stats(lpmm_mode, pixel_size);
-    if (tc_focus.getValue() || tc_mf_profile.getValue()) {
-        stats.render(mtf_core.get_samples());
-    } else {
-        stats.render(mtf_core.get_blocks());
-    }
+        if (tc_esf.getValue()) {
+            Mtf_renderer_esf esf_writer(
+                wdir + string("raw_esf_values.txt"), 
+                wdir + string("raw_psf_values.txt")
+            );
+            esf_writer.render(mtf_core.get_blocks());
+        }
+        
+        if (tc_focus.getValue()) {
+            Mtf_renderer_focus profile(
+                distance_scale,
+                wdir, 
+                string("focus_peak.png"),
+                cvimg,
+                lpmm_mode,
+                pixel_size
+            );
+            profile.render(mtf_core.get_samples(), mtf_core.bayer, &mtf_core.ellipses, &img_dimension_correction);
+        }
+        
+        Mtf_renderer_stats stats(lpmm_mode, pixel_size);
+        if (tc_focus.getValue() || tc_mf_profile.getValue()) {
+            stats.render(mtf_core.get_samples());
+        } else {
+            stats.render(mtf_core.get_blocks());
+        }
+    } while (!finished);
     
     return 0;
 }

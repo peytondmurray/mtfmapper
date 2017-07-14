@@ -1312,7 +1312,7 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                         // (x, y) are equi-angular, but we need the rectilinear
                         // coordinates to go with the gradient image (which is rectilinear)
                         // TODO: should we use rounding, or floor here ?
-                        update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
+                        //update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
                     }
                 }
             }
@@ -1338,7 +1338,7 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                         lrint(tp.x) >= 0 && lrint(tp.x) < g.width() && lrint(tp.y) >= 0 && lrint(tp.y) < g.height();
                     if (!inside_roi) continue;
                     
-                    update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
+                    //update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
 
                     // skip the appropriate sites if we are operating only on a subset
                     if (bayer == Bayer::RED && code != 0) {
@@ -1367,6 +1367,6 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
         }
     }
 
-    extract_ridge(edge_residual, cent, mean_grad, edge_direction, ridge);
+    if (!undistort) extract_ridge(edge_residual, cent, mean_grad, edge_direction, ridge);
     edge_length = max_along_edge - min_along_edge;
 }
