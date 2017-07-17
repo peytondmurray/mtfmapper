@@ -35,7 +35,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::cout;
 using std::endl;
 
-const QString setting_threshold = "setting_threshold";
+const QString setting_threshold = "setting_threshold_sauvola";
 const QString setting_threshold_default = "0.55";
 const QString setting_pixsize = "setting_pixelsize";
 const QString setting_pixsize_default = "4.78";
