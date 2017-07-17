@@ -44,6 +44,12 @@ class Sfr_entry {
         return sqrt( (px-nx)*(px-nx) + (py-ny)*(py-ny) );
     }
     
+    void clear(void) {
+        for (size_t i=0; i < sfr.size(); i++) {
+            sfr[i] = 0.0;
+        }
+    }
+    
     double px;
     double py;
     vector<double> sfr;
