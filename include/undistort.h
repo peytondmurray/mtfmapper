@@ -64,6 +64,10 @@ class Undistort {
     void set_max_val(const Point2d& maxv) { 
         max_val = maxv;
     }
+
+    void set_allow_crop(bool crop) {
+        allow_crop = crop;
+    }
     
     cv::Point2d centre;
     cv::Point2d offset;
@@ -71,11 +75,13 @@ class Undistort {
     Point2d max_val;
     
     bool rectilinear = false;
+    bool allow_crop = true;
     
     
   protected:  
     void build_radmap(void); // called from derived class constructor once parameters are known
     cv::Mat unmap_base(const cv::Mat& src, cv::Mat& rawimg, int pad_left, int pad_top);
+    void estimate_padding(const cv::Mat& src, int& pad_left, int& pad_top);
 };
     
 #endif

@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_single_roi("", "single-roi", "Treat the entire input image as the ROI", cmd, false);
     TCLAP::SwitchArg tc_distort_opt("", "optimize-distortion", "Optimize lens distortion coefficients", cmd, false);
     TCLAP::SwitchArg tc_rectilinear("", "rectilinear-equivalent", "Measure MTF in rectilinear equivalent projection", cmd, false);
+    TCLAP::SwitchArg tc_distort_crop("", "no-undistort-crop", "Do not crop undistorted image (equiangular, stereographic)", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -334,6 +335,9 @@ int main(int argc, char** argv) {
         logger.info("Treating input image as stereographic with focal length %.2lf, unmapping\n", tc_stereographic.getValue());
         undistort = new Undistort_stereographic(img_dimension_correction, tc_stereographic.getValue(), tc_pixelsize.getValue()/1000.0);
         undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
+    }
+    if (undistort) {
+        undistort->set_allow_crop(!tc_distort_crop.getValue());
     }
     
     bool finished;
