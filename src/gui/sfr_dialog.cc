@@ -187,6 +187,10 @@ void Sfr_dialog::clear(void) {
     for (auto m: mtf50_text) {
         m->setText("");
     }
+    for (auto e: entries) {
+        e.clear();
+    }
+    y_axis->setMax(0.1);
 }
 
 void Sfr_dialog::reject(void) {
