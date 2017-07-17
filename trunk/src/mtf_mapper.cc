@@ -64,6 +64,9 @@ Logger logger;
 #include "include/demosaic.h"
 #include "include/stride_range.h"
 #include "include/distortion_optimizer.h"
+#include "include/undistort_rectilinear.h"
+#include "include/undistort_equiangular.h"
+#include "include/undistort_stereographic.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -239,6 +242,16 @@ int main(int argc, char** argv) {
         return -1;
     }
     
+    if (tc_stereographic.isSet() && !tc_pixelsize.isSet()) {
+        logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --stereographic option. Aborting.");
+        return -1;
+    }
+    
+    if (tc_stereographic.isSet() && tc_equiangular.isSet()) {
+        logger.error("Fatal error: You may only specify one of --stereographic and --equiangular. Aborting\n");
+        return -1;
+    }
+    
     int gnuplot_width = std::max(1024, tc_gpwidth.getValue());
     
     // process working directory
@@ -317,6 +330,11 @@ int main(int argc, char** argv) {
         undistort = new Undistort_equiangular(img_dimension_correction, tc_equiangular.getValue(), tc_pixelsize.getValue()/1000.0);
         undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
     }
+    if (tc_stereographic.isSet()) {
+        logger.info("Treating input image as stereographic with focal length %.2lf, unmapping\n", tc_stereographic.getValue());
+        undistort = new Undistort_stereographic(img_dimension_correction, tc_stereographic.getValue(), tc_pixelsize.getValue()/1000.0);
+        undistort->set_rectilinear_equivalent(tc_rectilinear.getValue());
+    }
     
     bool finished;
     bool distortion_applied = false;
@@ -325,7 +343,6 @@ int main(int argc, char** argv) {
     
         if (undistort) {
             cvimg = undistort->unmap(cvimg, rawimg);
-            imwrite("unwarped.png", cvimg);
         }
         
         logger.info("Thresholding image ...\n");
@@ -378,7 +395,7 @@ int main(int argc, char** argv) {
             mtf_core.set_find_fiducials(true);
         }
         if (undistort) {
-            logger.info("Adding undistortion to MTF core");
+            logger.info("Adding undistortion to MTF core\n");
             mtf_core.set_undistort(undistort);
         }
         

@@ -206,64 +206,12 @@ cv::Point2d Undistort_rectilinear::inverse_transform_point(double col, double ro
 // note: second parameter is the raw Bayer image, which must also be padded out
 cv::Mat Undistort_rectilinear::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
     
-    #if 0
-    double mr_pix = maxrad_hint * radius_norm;
-    double desc = mr_pix*mr_pix - centre.x*centre.x;
-    Point2d pp;
-    if (desc < 0) { // maxrad does not intersect left edge of image
-        pp = Point2d(std::max(centre.x - mr_pix, 0.0), centre.y);
-    } else {
-        pp = Point2d(0, centre.y - sqrt(mr_pix*mr_pix - centre.x*centre.x));
-    }
-    Point2d pi = inverse_transform_point(pp.x, pp.y);
-    int pad_left = pi.x < 0 ? ceil(-pi.x) : 0;
-    
-    desc = mr_pix*mr_pix - centre.y*centre.y;
-    if (desc < 0) { // maxrad does not intersect top edge of image
-        pp = Point2d(centre.x, std::max(0.0, centre.y - mr_pix));
-    } else {
-        Point2d pp(centre.x - sqrt(mr_pix*mr_pix - centre.y*centre.y), 0);
-    }
-    pi = inverse_transform_point(pp.x, pp.y);
-    int pad_top = pi.y < 0 ? ceil(-pi.y) : 0;
-    #else
     const double buffer = 0.025;
     Point2d pi = inverse_transform_point(centre.x - (max_val.x+buffer*std::max(in_src.cols, in_src.rows)), centre.y);
     int pad_left = pi.x < 0 ? ceil(-pi.x) : 0;
     pi = inverse_transform_point(centre.x, centre.y - (max_val.y+buffer*std::max(in_src.cols, in_src.rows)));
     int pad_top = pi.y < 0 ? ceil(-pi.y) : 0;
-    #endif
     
-    // to preserve Bayer CFA alignment
-    pad_left += pad_left % 2;
-    pad_top += pad_top % 2;
-    
-    cv::Mat src;
-    copyMakeBorder(in_src, src, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    centre.x = src.cols / 2;
-    centre.y = src.rows / 2;
-    
-    logger.debug("Padding with %d left/right pixels, %d top/bottom pixels\n", pad_left, pad_top);
-    
-    if (pad_left > 0 || pad_top > 0) {
-        logger.debug("Padding distorted/Bayer image\n");
-        cv::Mat rcopy = rawimg.clone();
-        copyMakeBorder(rcopy, rawimg, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    }
-    
-    build_radmap();
-
-    cv::Mat map_x(src.rows, src.cols, CV_32FC1);
-    cv::Mat map_y(src.rows, src.cols, CV_32FC1);
-    
-    for (int r=0; r < src.rows; r++) {
-        for (int c=0; c < src.cols; c++) {
-            Point2d tp = transform_point(c, r);
-            map_x.at<float>(r, c) = tp.x;
-            map_y.at<float>(r, c) = tp.y;
-        }
-    }
-    cv::Mat timg;
     #if 0
     // TODO: we can add some box blur here to prevent the target squares from 
     // developing ragged edges
@@ -271,13 +219,11 @@ cv::Mat Undistort_rectilinear::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
     // adjust the size of the box blur locally. It might be worthwhile to construct an
     // integral image to speed this up a bit
     cv::Mat bimg;
-    cv::blur(src, bimg, cv::Size(5,5));
+    cv::blur(in_src, bimg, cv::Size(5,5));
     cv::remap(bimg, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    #else
-    cv::remap(src, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
     #endif
     
-    return timg;
+    return unmap_base(in_src, rawimg, pad_left, pad_top);
 }
     
     

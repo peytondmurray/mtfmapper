@@ -34,7 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Undistort_equiangular : public Undistort {
   public:
     Undistort_equiangular(const cv::Rect& r, double f, double pitch) 
-    : Undistort(r), f(f), pitch(pitch), rect_f(f) {}
+    : Undistort(r), f(f), pitch(pitch) {}
     
     cv::Point2d slow_transform_point(double col, double row);
     cv::Point2d inverse_transform_point(double col, double row);
@@ -43,8 +43,6 @@ class Undistort_equiangular : public Undistort {
     
     double f;
     double pitch;
-    double rect_f;
-    
 };
 
     
