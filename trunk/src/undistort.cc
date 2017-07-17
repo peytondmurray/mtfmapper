@@ -107,3 +107,58 @@ cv::Mat Undistort::unmap_base(const cv::Mat& in_src, cv::Mat& rawimg, int pad_le
     
     return timg;
 }
+
+void Undistort::estimate_padding(const cv::Mat& src, int& pad_left, int& pad_top) {
+    // this method scans along the longest edge of the image to see if an edge of reasonable length,
+    // say 80 pixels will map to a marginal-length edge (say 20 pixels)
+    // this becomes the cut-off on the longest edge, which also 
+    // defines the short edge cut-off
+
+    const double src_w = 80;  // pixels
+    const double dest_w = 20; // do not try to expand beyond this
+
+    Point2d extreme = inverse_transform_point(1, 1);
+
+    if (!allow_crop) {
+        pad_left = extreme.x < 0 ? -ceil(extreme.x) : 0;
+        pad_top = extreme.y < 0 ? -ceil(extreme.y) : 0;
+        printf("extreme: %lf, %lf. pad_left=%d, pad_top=%d\n", extreme.x, extreme.y, pad_left, pad_top);
+        return;
+    }
+
+    Point2d sdir(1, 0);
+    if (src.rows > src.cols) {
+        sdir = Point2d(0, 1);
+    }
+
+    const double rad_min = centre.ddot(sdir);
+    double rad_max = centre.ddot(sdir) - extreme.ddot(sdir);
+    Point2d dir = centre * (1.0 / norm(centre));
+    double rad = rad_min;
+    // rather sweep along the top and left edges (but still measure radially?)
+    for (; rad <= rad_max; rad += 10.0) {
+        Point2d p;
+        if (sdir.x == 1.0) {
+            p = Point2d(centre.x - rad, 0);
+        }
+        else {
+            p = Point2d(0, centre.y - rad);
+        }
+        Point2d p2 = p - src_w*dir;
+
+        Point2d tp = slow_transform_point(p.x, p.y);
+        Point2d tp2 = slow_transform_point(p2.x, p2.y);
+        double dist = norm(tp2 - tp);
+        if (dist < dest_w) break;
+    }
+    if (sdir.x == 1.0) {
+        pad_left = std::max(-(centre.x - rad - src_w), 0.0);
+        Point2d fwd = slow_transform_point(-pad_left, 0);
+        pad_top = fwd.y + src_w;
+    }
+    else {
+        pad_top = std::max(-(centre.y - rad - src_w), 0.0);
+        Point2d fwd = slow_transform_point(0, -pad_top);
+        pad_left = fwd.x + src_w;
+    }
+}
