@@ -60,6 +60,10 @@ class Settings_dialog : public QDialog
     QLineEdit*  threshold_line;
     QLabel*     pixsize_label;
     QLineEdit*  pixsize_line;
+    QLabel*     ea_f_label;
+    QLineEdit*  ea_f_line;
+    QLabel*     sg_f_label;
+    QLineEdit*  sg_f_line;
     QPushButton* accept_button;
     QPushButton* cancel_button;
     
@@ -78,6 +82,11 @@ class Settings_dialog : public QDialog
     QRadioButton* rb_colour_red;
     QRadioButton* rb_colour_green;
     QRadioButton* rb_colour_blue;
+    
+    QRadioButton* rb_lens_none;
+    QRadioButton* rb_lens_radial;
+    QRadioButton* rb_lens_equiangular;
+    QRadioButton* rb_lens_stereo;
 
     QLabel*     gnuplot_label;
     QLineEdit*  gnuplot_line;
@@ -106,6 +115,8 @@ class Settings_dialog : public QDialog
     void browse_for_exiv();
     void browse_for_dcraw();
     void set_gnuplot_img_width(int w);
+    void equiangular_toggled();
+    void stereographic_toggled();
 };
 
 #endif

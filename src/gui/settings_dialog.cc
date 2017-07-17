@@ -62,9 +62,14 @@ const QString setting_gnuplot_scaled = "setting_gnuplot_scaled";
 const Qt::CheckState setting_gnuplot_scaled_default = Qt::Checked;
 const QString setting_zscale = "setting_zscale";
 const int setting_zscale_default = 0;
+const QString setting_ea_f = "setting_equiangular_f";
+const QString setting_ea_f_default = "16.0";
+const QString setting_sg_f = "setting_stereographic_f";
+const QString setting_sg_f_default = "8.0";
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
+const QString setting_lens = "setting_lens_type";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -80,10 +85,16 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
 {
     arguments_label = new QLabel(tr("Arguments:"), this);
     arguments_line  = new QLineEdit(this);
+    
+    QDoubleValidator* dv_thresh = new QDoubleValidator(0.0, 1.0, 3, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
     threshold_line  = new QLineEdit(this);
+    threshold_line->setValidator(dv_thresh);
+    
+    QDoubleValidator* dv_pixsize = new QDoubleValidator(0.0, 999.0, 3, this);
     pixsize_label   = new QLabel(tr("Pixel size:"), this);
     pixsize_line    = new QLineEdit(this);
+    pixsize_line->setValidator(dv_pixsize);
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"), this);
     gnuplot_line   = new QLineEdit(this);
@@ -117,6 +128,23 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     rb_colour_red   = new QRadioButton("red");
     rb_colour_green = new QRadioButton("green");
     rb_colour_blue  = new QRadioButton("blue");
+    
+    rb_lens_none  = new QRadioButton("none");
+    rb_lens_radial = new QRadioButton("radial");
+    rb_lens_equiangular = new QRadioButton("equiangular");
+    rb_lens_stereo = new QRadioButton("stereographic");
+    
+    QDoubleValidator* dv_f = new QDoubleValidator(0.0, 999.0, 2, this);
+    ea_f_label = new QLabel(tr("focal length"), this);
+    ea_f_line = new QLineEdit(this);
+    ea_f_line->setMaxLength(5);
+    ea_f_line->setText(settings.value(setting_ea_f, setting_ea_f_default).toString());
+    ea_f_line->setValidator(dv_f);
+    sg_f_label = new QLabel(tr("focal length"), this);
+    sg_f_line = new QLineEdit(this);
+    sg_f_line->setMaxLength(5);
+    sg_f_line->setText(settings.value(setting_sg_f, setting_sg_f_default).toString());
+    sg_f_line->setValidator(dv_f);
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
@@ -156,6 +184,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
         case 1: rb_colour_none->setChecked(false); rb_colour_red->setChecked(true); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(false); break;
         case 2: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(true); rb_colour_blue->setChecked(false); break;
         case 3: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(true); break;
+    }
+    
+    switch(settings.value(setting_lens, 0).toInt()) {
+        case 0: rb_lens_none->setChecked(true); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(false); break;
+        case 1: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(true); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(false); break;
+        case 2: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(true); rb_lens_stereo->setChecked(false); break;
+        case 3: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(true); break;
     }
 
     #ifdef _WIN32
@@ -216,6 +251,18 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     helper_layout->addWidget(dcraw_line, 5, 0);
     helper_layout->addWidget(dcraw_button, 5, 1);
     v3GroupBox->setLayout(helper_layout);
+    
+    QGroupBox* lens = new QGroupBox(tr("Lens distortion correction"), this);
+    QGridLayout* lens_layout = new QGridLayout(this);
+    lens_layout->addWidget(rb_lens_none, 0, 0);
+    lens_layout->addWidget(rb_lens_radial, 1, 0);
+    lens_layout->addWidget(rb_lens_equiangular, 2, 0);
+    lens_layout->addWidget(rb_lens_stereo, 3, 0);
+    lens_layout->addWidget(ea_f_label, 2, 1);
+    lens_layout->addWidget(ea_f_line, 2, 2);
+    lens_layout->addWidget(sg_f_label, 3, 1);
+    lens_layout->addWidget(sg_f_line, 3, 2);
+    lens->setLayout(lens_layout);
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
     QGridLayout* adv_layout = new QGridLayout(this);
@@ -236,7 +283,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
     vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
     vlayout->addWidget(v3GroupBox, 0, 3, 1, 2);
-    vlayout->addWidget(advanced, 1, 3, 1, 2);
+    vlayout->addWidget(lens, 1, 3, 1, 2);
+    vlayout->addWidget(advanced, 2, 3, 1, 2);
     vlayout->addWidget(accept_button, 3, 0);
     vlayout->addWidget(cancel_button, 3, 1);
     vGroupBox->setLayout(vlayout);
@@ -246,6 +294,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     connect(gnuplot_button, SIGNAL(clicked()), this, SLOT( browse_for_gnuplot() ));
     connect(exiv_button, SIGNAL(clicked()), this, SLOT( browse_for_exiv() ));
     connect(dcraw_button, SIGNAL(clicked()), this, SLOT( browse_for_dcraw() ));
+    connect(rb_lens_equiangular, SIGNAL(clicked()), this, SLOT( equiangular_toggled() ));
+    connect(rb_lens_stereo, SIGNAL(clicked()), this, SLOT( stereographic_toggled() ));
     
     setLayout(vlayout);
 }
@@ -304,6 +354,16 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --bayer blue");
     }
     
+    if (rb_lens_radial->isChecked()) {
+        args = args + QString(" --optimize-distortion");
+    }
+    if (rb_lens_equiangular->isChecked()) {
+        args = args + QString(" --equiangular %1").arg(ea_f_line->text());
+    }
+    if (rb_lens_stereo->isChecked()) {
+        args = args + QString(" --stereographic %1").arg(sg_f_line->text());
+    }
+    
     if (cb_gnuplot_scaled->checkState()) {
         args = args + QString(" --gnuplot-width %1").arg(gnuplot_img_width);
     }
@@ -345,6 +405,23 @@ void Settings_dialog::save_and_close() {
     }
     if (rb_colour_blue->isChecked()) {
         settings.setValue(setting_bayer, 3);
+    }
+    
+    if (rb_lens_none->isChecked()) {
+        settings.setValue(setting_lens, 0);
+    }
+    if (rb_lens_radial->isChecked()) {
+        settings.setValue(setting_lens, 1);
+    }
+    if (rb_lens_equiangular->isChecked()) {
+        settings.setValue(setting_lens, 2);
+        cb_lpmm->setCheckState(Qt::Checked);
+        settings.setValue(setting_lpmm, cb_lpmm->checkState());
+    }
+    if (rb_lens_stereo->isChecked()) {
+        settings.setValue(setting_lens, 3);
+        cb_lpmm->setCheckState(Qt::Checked);
+        settings.setValue(setting_lpmm, cb_lpmm->checkState());
     }
     
     send_argument_string();
@@ -446,4 +523,16 @@ QString Settings_dialog::get_exiv2_binary(void) const {
 
 QString Settings_dialog::get_dcraw_binary(void) const {
     return dcraw_line->text();
+}
+
+void Settings_dialog::equiangular_toggled() {
+    if (rb_lens_equiangular->isChecked() && cb_lpmm->checkState() == Qt::Unchecked) {
+        cb_lpmm->setCheckState(Qt::Checked);
+    }
+}
+
+void Settings_dialog::stereographic_toggled() {
+    if (rb_lens_stereo->isChecked() && cb_lpmm->checkState() == Qt::Unchecked) {
+        cb_lpmm->setCheckState(Qt::Checked);
+    }
 }
