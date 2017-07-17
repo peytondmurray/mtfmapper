@@ -71,3 +71,39 @@ void Undistort::build_radmap(void) {
         radmap.push_back(rd);
     }
 }
+
+cv::Mat Undistort::unmap_base(const cv::Mat& in_src, cv::Mat& rawimg, int pad_left, int pad_top) {
+    // to preserve Bayer CFA alignment
+    pad_left += pad_left % 2;
+    pad_top += pad_top % 2;
+    
+    cv::Mat src;
+    copyMakeBorder(in_src, src, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    centre.x = src.cols / 2;
+    centre.y = src.rows / 2;
+    
+    logger.debug("Padding with %d left/right pixels, %d top/bottom pixels\n", pad_left, pad_top);
+    
+    if (pad_left > 0 || pad_top > 0) {
+        logger.debug("Padding distorted/Bayer image\n");
+        cv::Mat rcopy = rawimg.clone();
+        copyMakeBorder(rcopy, rawimg, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    }
+    
+    build_radmap();
+
+    cv::Mat map_x(src.rows, src.cols, CV_32FC1);
+    cv::Mat map_y(src.rows, src.cols, CV_32FC1);
+    
+    for (int r=0; r < src.rows; r++) {
+        for (int c=0; c < src.cols; c++) {
+            Point2d tp = transform_point(c, r);
+            map_x.at<float>(r, c) = tp.x;
+            map_y.at<float>(r, c) = tp.y;
+        }
+    }
+    cv::Mat timg;
+    cv::remap(src, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    
+    return timg;
+}

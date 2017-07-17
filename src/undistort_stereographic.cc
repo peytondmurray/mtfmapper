@@ -26,15 +26,15 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
-#include "include/undistort_equiangular.h"
+#include "include/undistort_stereographic.h"
     
-cv::Point2d Undistort_equiangular::slow_transform_point(double col, double row) {
+cv::Point2d Undistort_stereographic::slow_transform_point(double col, double row) {
     double px = (col + offset.x - centre.x)*pitch;
     double py = (row + offset.y - centre.y)*pitch;
 
     double rd = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
     double theta = atan(rd/f);
-    double ru = theta*f;
+    double ru = tan(0.5*theta)*f*2.0;
     
     px = px*ru/rd / pitch + centre.x - offset.x;
     py = py*ru/rd / pitch + centre.y - offset.y;
@@ -42,13 +42,13 @@ cv::Point2d Undistort_equiangular::slow_transform_point(double col, double row) 
     return cv::Point2d(px, py);
 }
 
-cv::Point2d Undistort_equiangular::inverse_transform_point(double col, double row) {
+cv::Point2d Undistort_stereographic::inverse_transform_point(double col, double row) {
     double px = (col + offset.x - centre.x)*pitch;
     double py = (row + offset.y - centre.y)*pitch;
-
+    
     double ru = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
-    double theta = ru/f;
-    double rd = tan(theta)*f;
+    double theta = atan(0.5*ru/f);
+    double rd = tan(2*theta)*f;
     
     px = px*rd/ru / pitch + centre.x - offset.x;
     py = py*rd/ru / pitch + centre.y - offset.y;
@@ -57,10 +57,9 @@ cv::Point2d Undistort_equiangular::inverse_transform_point(double col, double ro
 }
 
 // note: second parameter is the raw Bayer image, which must also be padded out
-cv::Mat Undistort_equiangular::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
-
-    // TODO: add a way to override cropping
-    // TODO: this will not work in portrait mode ...
+cv::Mat Undistort_stereographic::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
+    
+    // TODO: add some way to override cropping if required
     
     Point2d extreme_h = inverse_transform_point(0, in_src.rows/2);
     int pad_left = extreme_h.x < 0 ? ceil(-extreme_h.x) : 0;
@@ -72,25 +71,23 @@ cv::Mat Undistort_equiangular::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
     int ph = pad_top;
     
     if (pad_left > 0) {
-        Point2d fw = slow_transform_point(-3*pw, extreme_h.y);
+        Point2d fw = slow_transform_point(-1.75*pw, extreme_h.y);
         extreme_h = inverse_transform_point(fw.x, in_src.rows/2);
         pad_left = extreme_h.x < 0 ? ceil(-extreme_h.x) : 0;
     }
     
     if (pad_top > 0) {
-        Point2d fw = slow_transform_point(extreme_v.x, -3*ph);
+        Point2d fw = slow_transform_point(extreme_v.x, -1.75*ph);
         extreme_v = inverse_transform_point(in_src.cols/2, fw.y);
         pad_top = extreme_v.y < 0 ? ceil(-extreme_v.y) : 0;
     }
-    
     
     // now we have an updated pad_left and pad_top
     // clip pad_left to projection of (0, extreme_v.y) ??
     if (pad_left > 0) {
         extreme_h = inverse_transform_point(0, pad_top);
-        pad_left = 0.5*(pad_left + (extreme_h.x < 0 ? ceil(-extreme_h.x) : 0));
+        pad_left = extreme_h.x < 0 ? ceil(-extreme_h.x) : 0;
     }
-    
     
     return unmap_base(in_src, rawimg, pad_left, pad_top);
 }
