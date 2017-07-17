@@ -145,7 +145,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<string> tc_logfile("", "logfile", "Output written to <logfile> in stead of standard out", false, "", "filename", cmd);
     TCLAP::ValueArg<int> tc_gpwidth("", "gnuplot-width", "Width of images rendered by gnuplot", false, 1024, "pixels", cmd);
     TCLAP::ValueArg<double> tc_focal("", "focal-ratio", "Specify focal ratio for use in chart orientation estimation", false, -2, "ratio", cmd);
-    TCLAP::ValueArg<double> tc_equiangular("", "equiangular", "Treat input image as equi-angular mapping (fisheye) with the specified focal length", false, 8.0, "focal length(mm)", cmd);
+    TCLAP::ValueArg<double> tc_equiangular("", "equiangular", "Treat input image as equi-angular mapping (fisheye) with the specified focal length", false, 16.0, "focal length(mm)", cmd);
+    TCLAP::ValueArg<double> tc_stereographic("", "stereographic", "Treat input image as stereographic mapping (fisheye) with the specified focal length", false, 8.0, "focal length(mm)", cmd);
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
