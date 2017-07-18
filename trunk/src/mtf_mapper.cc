@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
             #endif
         }
         
-        if (mtf_core.get_blocks().size() == 0 && !tc_focus.getValue()) {
+        if (mtf_core.get_blocks().size() == 0 && !(tc_focus.getValue() || tc_mf_profile.getValue())) {
             logger.error("Error: No suitable target objects found.\n");
             return 0;
         }

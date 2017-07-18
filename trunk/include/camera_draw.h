@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/common_types.h"
 #include "include/distance_scale.h"
+#include "include/srgb_render.h"
 
 class Camera_draw {
   public:
@@ -122,40 +123,8 @@ class Camera_draw {
         } else {
             g_img = ig_img.clone();
         }
-        channel = cv::Mat(g_img.rows, g_img.cols, CV_8UC1);
-       
-        double imin;
-        double imax;
-        vector<uint64_t> histo(65537, 0);
-        uint16_t* dptr = (uint16_t*)g_img.data;
-        uint16_t* sentinel = dptr + g_img.rows*g_img.cols;
-        while (dptr < sentinel) {
-            histo[(*dptr)&0xffff]++;
-            dptr += 8; // only sample every 8th pixel to speed things up??
-        }
-        uint64_t sum = histo[0];
-        for (size_t i=1; i < histo.size(); i++) {
-            histo[i-1] = sum;
-            sum += histo[i];
-        }
-        histo.back() = sum;
-        // find 2% max brightness
-        uint64_t target = lrint(0.98*sum);
-        imax = histo.size() - 1;
-        while (imax > 0 && histo[imax] > target) imax--;
-        target = lrint(0.02*sum);
-        imin = 0;
-        while (imin < imax && histo[imin] < target) imin++;
-        double scale = 255.0/(imax - imin);
-        double offset = -imin*scale;
-        g_img.convertTo(channel, CV_8U, scale, offset);
-       
-        vector<cv::Mat> channels;
-        channels.push_back(channel);
-        channels.push_back(channel);
-        channels.push_back(channel);
-        cv::Mat merged;
-        merge(channels, merged);
+        
+        cv::Mat merged = Srgb_render::linear_to_sRGB(g_img);
         
         if (pad > 0) {
             initial_rows = merged.rows;
