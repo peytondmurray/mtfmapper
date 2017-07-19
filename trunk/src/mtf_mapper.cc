@@ -431,8 +431,8 @@ int main(int argc, char** argv) {
             dist_opt.solve();
             logger.debug("Optimal distortion coefficients: %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1]);
             
-            vector<double> coeffs(3);
-            for (int i=0; i < 3; i++) {
+            vector<double> coeffs(2);
+            for (int i=0; i < 2; i++) {
                 coeffs[i] = dist_opt.best_sol[i];
             }
             undistort = new Undistort_rectilinear(img_dimension_correction, coeffs);
