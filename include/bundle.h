@@ -285,10 +285,8 @@ class Bundle_adjuster {
     Eigen::VectorXd iterate(double tol) {
     
         int evals = 0;
-        const int tries = 2;
-        for (int i = 0; i < tries; i++) {
-            nelder_mead(tol, evals);
-        }
+        nelder_mead(tol, evals);
+        
         int min_idx = 0;
         for (size_t i=0; i < (size_t)ny.size(); i++) {
             if (ny[i] < ny[min_idx]) {
