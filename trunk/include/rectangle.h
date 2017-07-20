@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common_types.h"
 #include "peak_detector.h"
 #include "edge_record.h"
+#include "include/gradient.h"
 
 const double rect_il_thresh = 3.75;
 const double adjust = 0.15;
