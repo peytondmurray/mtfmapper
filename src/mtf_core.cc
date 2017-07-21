@@ -437,6 +437,9 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
     
     sample_at_angle(angle, ordered, scanset, cent, edge_length, ridge);
+    if (ridges_only) {
+        return 0.01; // dummy MTF50 value
+    }
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {

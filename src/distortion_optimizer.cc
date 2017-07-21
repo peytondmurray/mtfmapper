@@ -29,8 +29,17 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/distortion_optimizer.h"
 
 #include <cmath>
+#include "include/distribution_f.h"
 
-double model_penalty(const Eigen::VectorXd& v);
+double f_distribution_p_value(double x) {
+    x = std::max(0.0, x);
+    size_t k = floor(x*20);
+    if (k >= 999) {
+        return 1.0;
+    }
+    double w = 20*x - k;
+    return distribution_f[k]*(1-w) + distribution_f[k+1]*w;
+}
 
 Distortion_optimizer::Distortion_optimizer(const vector<Block>& in_blocks, const Point2d& prin) 
     : prin(prin), max_val(1,1), maxrad(0) {
@@ -78,6 +87,9 @@ void Distortion_optimizer::solve(void) {
     
     scale << 1e-2, 1e-2;
     
+    double initial_err = evaluate(best_sol, 0.0);
+    logger.debug("initial distortion rmse: %lf\n", initial_err);
+    
     // TODO: this could be parallelised
     double minerr = 1e30;
     Eigen::VectorXd v(2);
@@ -91,12 +103,12 @@ void Distortion_optimizer::solve(void) {
                     minerr = err;
                     best_sol = v;
                 }
+                //fprintf(stderr, "%lf %lf %lf\n", k1, k2, err);
             }
         }
     }
             
-    double initial_err = evaluate(best_sol, 0.0);
-    logger.debug("initial distortion rmse: %lf\n", initial_err);
+    
     
     nelder_mead_failed = false;
     seed_simplex(best_sol, scale);
@@ -178,9 +190,12 @@ Point2d Distortion_optimizer::inv_warp(const Point2d& p, const Eigen::VectorXd& 
 double Distortion_optimizer::model_not_invertible(const Eigen::VectorXd& v) {
     const double k1 = v[0];
     const double k2 = v[1];
-    const double r1 = std::min(maxrad*1.05, 1.0);
+    const double r1 = std::max(0.5, std::min(maxrad*1.05, 1.0));
     const double r12 = r1*r1;
     const double r14 = r12*r12;
+    
+    const double hard_threshold = 3;
+    if (fabs(k1) > hard_threshold || fabs(k2) > hard_threshold) return 1.0;
     
     if (k1*r12 <= -2) return 1.0;
     if (k1*r12 < 2) {
@@ -235,7 +250,6 @@ double Distortion_optimizer::medcouple(vector<float>& x) {
 
 
 double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) {
-    // TODO: add support for autocropped images
     double count = 0;
     double merr = 0;
     for (auto& edge: ridges) {
@@ -254,6 +268,11 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
         Eigen::Vector3d yv;
         cov.setZero();
         yv.setZero();
+        
+        double sum_x = 0;
+        double sum_y = 0;
+        double sum_xx = 0;
+        double sum_xy = 0;
         for (size_t ri=0; ri < edge.ridge.size(); ri++) {
             
             Point2d p = inv_warp(edge.ridge[ri], v);
@@ -274,6 +293,11 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
             yv(0,0) += perp;
             yv(1,0) += par*perp;
             yv(2,0) += par*par*perp;
+            
+            sum_x += par;
+            sum_y += perp;
+            sum_xx += par*par;
+            sum_xy += par*perp;
         }
         
         // complete cov matrix
@@ -285,31 +309,35 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
         Eigen::LDLT<Eigen::Matrix3d> qr(cov); // LDLT is probably good enough 
         Eigen::Vector3d sol = qr.solve(yv);
         
+        double n = edge.ridge.size();
+        double beta = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x);
+        double alpha = (sum_y - beta*sum_x)/n;
+        double mu_y = sum_y / n;
+        
         // for now, do another pass to calculate the standard error
         // we can probably speed this up by using the fit directly
-        double ressum = 0;
+        double quad_ssr = 0;
+        double lin_ssr = 0;
+        double ss_yy = 0;
         for (size_t ri=0; ri < ridge.size(); ri++) {
             double sx = ridge[ri].x;
             double res = (sol[0] + sx*sol[1] + sx*sx*sol[2]) - ridge[ri].y;
-            ressum += res*res;
+            quad_ssr += res*res;
+            res = (alpha + beta*sx) - ridge[ri].y;
+            lin_ssr += res*res;
+            ss_yy += (ridge[ri].y - mu_y) * (ridge[ri].y - mu_y);
         }
         
-        ressum /= ridge.size() - 2;
-        Eigen::Matrix3d icov = cov.inverse();
-        double t_const  = fabs(sol[0] / sqrt(icov(0,0)*ressum));
-        double t_linear = fabs(sol[1] / sqrt(icov(1,1)*ressum));
-        double t_quad = fabs(sol[2] / sqrt(icov(2,2) * ressum));
-        double t0 = t_quad / std::max(t_const, t_linear);
+        // r^2 = ssr/ss_yy
+        double quad_rsq = 1.0 - quad_ssr / ss_yy;
+        double lin_rsq = 1.0 - lin_ssr / ss_yy;
+        double F = (quad_rsq - lin_rsq) / (1 - quad_rsq); // should actually multiply by df, and then convert to a p-value ??
         
-        double t1 = t0;
-        const double cutoff = 0.35;
-        if (t0 > cutoff) {
-            t0 = (t0 - cutoff)/100.0 + cutoff;
-        } 
-        t0 = log(1.0 + t0);
+        // compute the p-value of the hypothesis that the quadratic model is a better fit than the linear model
+        double t0 = f_distribution_p_value(F);
         
         if (std::isfinite(t0) && !std::isnan(t0)) {
-            edge.residual = t1;
+            edge.residual = t0;
             merr += t0 * edge.weight;
             count += edge.weight;
         } else {
@@ -319,7 +347,7 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
     }
     
     merr /= count;
-    return merr + penalty*model_not_invertible(v)*1e4;
+    return merr + penalty*(model_not_invertible(v)*1e4 + merr*(sqrt(fabs(v[0]))+sqrt(fabs(v[1])))/10.0);
 }
 
 
