@@ -26,6 +26,7 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/srgb_render.h"
+#include <stdint.h>
 
 cv::Mat Srgb_render::linear_to_sRGB(const cv::Mat& img) {
     // quantize the range [0, 65535] to [0, 8191] to keep histogram smaller
