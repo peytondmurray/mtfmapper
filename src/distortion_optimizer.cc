@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/distortion_optimizer.h"
 
 #include <cmath>
+#include <stdint.h>
 #include "include/distribution_f.h"
 
 double f_distribution_p_value(double x) {
