@@ -95,15 +95,34 @@ cv::Mat Undistort::unmap_base(const cv::Mat& in_src, cv::Mat& rawimg, int pad_le
     cv::Mat map_x(src.rows, src.cols, CV_32FC1);
     cv::Mat map_y(src.rows, src.cols, CV_32FC1);
     
+    cv::Mat blurred;
+    cv::blur(src, blurred, cv::Size(3, 3));
+    
+    Point2d prev;
     for (int r=0; r < src.rows; r++) {
+        prev = transform_point(-1, r);
         for (int c=0; c < src.cols; c++) {
             Point2d tp = transform_point(c, r);
             map_x.at<float>(r, c) = tp.x;
             map_y.at<float>(r, c) = tp.y;
+            
+            // add some blurring to suppress noise before magnification
+            // this avoids the edges becoming so rough that the rectangle
+            // test on the undistorted image fails
+            double stretch = norm(prev - tp);
+            if (stretch > 0.9) {
+                blurred.at<uint16_t>(r, c) = src.at<uint16_t>(r, c);
+            } else {
+                // 0.9 -> src 
+                // 0.4 -> blurred 
+                double w = stretch < 0.4 ? 0 : 2*(stretch - 0.4);
+                blurred.at<uint16_t>(r, c) = w*src.at<uint16_t>(r, c) + (1-w)*blurred.at<uint16_t>(r, c);
+            }
+            prev = tp;
         }
     }
     cv::Mat timg;
-    cv::remap(src, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+    cv::remap(blurred, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
     
     return timg;
 }

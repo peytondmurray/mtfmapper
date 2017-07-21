@@ -212,17 +212,6 @@ cv::Mat Undistort_rectilinear::unmap(const cv::Mat& in_src, cv::Mat& rawimg) {
     pi = inverse_transform_point(centre.x, centre.y - (max_val.y+buffer*std::max(in_src.cols, in_src.rows)));
     int pad_top = pi.y < 0 ? ceil(-pi.y) : 0;
     
-    #if 0
-    // TODO: we can add some box blur here to prevent the target squares from 
-    // developing ragged edges
-    // ideally, we should use the magnification norm(map_x(r,c) - c, map_y(r,c) - r) to
-    // adjust the size of the box blur locally. It might be worthwhile to construct an
-    // integral image to speed this up a bit
-    cv::Mat bimg;
-    cv::blur(in_src, bimg, cv::Size(5,5));
-    cv::remap(bimg, timg, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar::all(0));
-    #endif
-    
     return unmap_base(in_src, rawimg, pad_left, pad_top);
 }
     
