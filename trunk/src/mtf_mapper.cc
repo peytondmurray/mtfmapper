@@ -402,6 +402,9 @@ int main(int argc, char** argv) {
             logger.info("Adding undistortion to MTF core\n");
             mtf_core.set_undistort(undistort);
         }
+        if (tc_distort_opt.getValue() && !distortion_applied) {
+            mtf_core.set_ridges_only(true);
+        }
         
         Mtf_core_tbb_adaptor ca(&mtf_core);
         
@@ -429,7 +432,7 @@ int main(int argc, char** argv) {
         if (tc_distort_opt.getValue() && !distortion_applied) { 
             Distortion_optimizer dist_opt(mtf_core.get_blocks(), Point2d(rawimg.cols/2, rawimg.rows/2));
             dist_opt.solve();
-            logger.debug("Optimal distortion coefficients: %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1]);
+            logger.info("Optimal distortion coefficients: %lg %lg\n", dist_opt.best_sol[0], dist_opt.best_sol[1]);
             
             vector<double> coeffs(2);
             for (int i=0; i < 2; i++) {
