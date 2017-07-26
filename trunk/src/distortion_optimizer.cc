@@ -30,17 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <cmath>
 #include <stdint.h>
-#include "include/distribution_f.h"
-
-double f_distribution_p_value(double x) {
-    x = std::max(0.0, x);
-    size_t k = floor(x*20);
-    if (k >= 999) {
-        return 1.0;
-    }
-    double w = 20*x - k;
-    return distribution_f[k]*(1-w) + distribution_f[k+1]*w;
-}
 
 Distortion_optimizer::Distortion_optimizer(const vector<Block>& in_blocks, const Point2d& prin) 
     : prin(prin), max_val(1,1), maxrad(0) {
@@ -104,12 +93,9 @@ void Distortion_optimizer::solve(void) {
                     minerr = err;
                     best_sol = v;
                 }
-                //fprintf(stderr, "%lf %lf %lf\n", k1, k2, err);
             }
         }
     }
-            
-    
     
     nelder_mead_failed = false;
     seed_simplex(best_sol, scale);
@@ -249,7 +235,6 @@ double Distortion_optimizer::medcouple(vector<float>& x) {
     return h[h.size()/2];
 }
 
-
 double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) {
     double count = 0;
     double merr = 0;
@@ -264,11 +249,6 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
         Point2d first_point = inv_warp(edge.ridge.front(), v);
         Point2d last_point = inv_warp(edge.ridge.back(), v);
         double scale = std::max(fabs((first_point - cent).ddot(dir)), fabs((last_point - cent).ddot(dir)));
-        
-        Eigen::Matrix3d cov;
-        Eigen::Vector3d yv;
-        cov.setZero();
-        yv.setZero();
         
         double sum_x = 0;
         double sum_y = 0;
@@ -285,60 +265,35 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
             // keep the refined values
             ridge[ri] = Point2d(par, perp);
             
-            cov(0,0) += 1;
-            cov(0,1) += par;
-            cov(0,2) += par*par;
-            cov(1,2) += par*par*par;
-            cov(2,2) += par*par*par*par;
-            
-            yv(0,0) += perp;
-            yv(1,0) += par*perp;
-            yv(2,0) += par*par*perp;
-            
             sum_x += par;
             sum_y += perp;
             sum_xx += par*par;
             sum_xy += par*perp;
         }
         
-        // complete cov matrix
-        cov(1,0) = cov(0,1);
-        cov(1,1) = cov(0,2);
-        cov(2,0) = cov(0,2);
-        cov(2,1) = cov(1,2);
-        
-        Eigen::LDLT<Eigen::Matrix3d> qr(cov); // LDLT is probably good enough 
-        Eigen::Vector3d sol = qr.solve(yv);
-        
         double n = edge.ridge.size();
         double beta = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x);
         double alpha = (sum_y - beta*sum_x)/n;
-        double mu_y = sum_y / n;
         
         // for now, do another pass to calculate the standard error
         // we can probably speed this up by using the fit directly
-        double quad_ssr = 0;
-        double lin_ssr = 0;
-        double ss_yy = 0;
+        vector<double> residual(ridge.size());
         for (size_t ri=0; ri < ridge.size(); ri++) {
-            double sx = ridge[ri].x;
-            double res = (sol[0] + sx*sol[1] + sx*sx*sol[2]) - ridge[ri].y;
-            quad_ssr += res*res;
-            res = (alpha + beta*sx) - ridge[ri].y;
-            lin_ssr += res*res;
-            ss_yy += (ridge[ri].y - mu_y) * (ridge[ri].y - mu_y);
+            double res = (alpha + beta*ridge[ri].x) - ridge[ri].y;
+            residual[ri] = res;
         }
         
-        // r^2 = ssr/ss_yy
-        double quad_rsq = 1.0 - quad_ssr / ss_yy;
-        double lin_rsq = 1.0 - lin_ssr / ss_yy;
-        double F = (quad_rsq - lin_rsq) / (1 - quad_rsq); // should actually multiply by df, and then convert to a p-value ??
-        
-        // compute the p-value of the hypothesis that the quadratic model is a better fit than the linear model
-        double t0 = f_distribution_p_value(F);
+        // Durbin-Watson test to see if the residuals are correlated i.t.o AR(1)
+        double res_sq_sum = residual[0]*residual[0];
+        double res_delta_sq_sum = 0;
+        for (size_t i=1; i < residual.size(); i++) {
+            res_sq_sum += residual[i]*residual[i];
+            res_delta_sq_sum += (residual[i] - residual[i-1])*(residual[i] - residual[i-1]);
+        }
+        double t0 = 1.0 / (res_delta_sq_sum / res_sq_sum);
         
         if (std::isfinite(t0) && !std::isnan(t0)) {
-            edge.residual = t0;
+            edge.residual = log1p(t0); // squash the residuals seen by the outlier detection
             merr += t0 * edge.weight;
             count += edge.weight;
         } else {
@@ -348,7 +303,7 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
     }
     
     merr /= count;
-    return merr + penalty*(model_not_invertible(v)*1e4 + merr*(sqrt(fabs(v[0]))+sqrt(fabs(v[1])))/10.0);
+    return merr + penalty*(model_not_invertible(v)*1e4 + merr*( (fabs(v[0]) < 0.005 ? fabs(v[0]) : 0) + (fabs(v[1]) < 0.005 ? fabs(v[1]) : 0) ) );
 }
 
 
