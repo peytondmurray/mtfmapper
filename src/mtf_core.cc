@@ -1054,47 +1054,45 @@ void Mtf_core::extract_ridge(map< int, pair<double, double> >& edge_residual,
     it1--;
     double edgelen = std::min(abs(edge_residual.begin()->first), abs(it1->first));
     
-    // now fit a quadratic polynomial to smooth out the initial centerline
-    Eigen::Matrix3d cov;
-    Eigen::Vector3d yv;
-    cov.setZero();
-    yv.setZero();
-    for (const auto& ee: edge_residual) {
-        double perp = ee.second.second;
-        double par = ee.first;
-        
-        if (fabs(par) < edgelen - 1) {
-        
-            cov(0,0) += 1;
-            cov(0,1) += par;
-            cov(0,2) += par*par;
-            cov(1,2) += par*par*par;
-            cov(2,2) += par*par*par*par;
+    // apply some smoothing to the initial ridge to squash any severe outliers
+    vector<Ordered_point> op_ridge(edge_residual.size());
+    size_t idx = 0;
+    for (auto& ee: edge_residual) {
+        op_ridge[idx++] = Ordered_point(ee.first, ee.second.second);
+    }
+    
+    sort(op_ridge.begin(), op_ridge.end());
+    
+    // smooth the first-order differences, rather than the actual signal
+    vector<double> delta_perp(op_ridge.size()-1);
+    double prev = op_ridge[0].second;
+    for (size_t i=0; i < op_ridge.size() - 1; i++) {
+        delta_perp[i] = op_ridge[i].second - prev;
+        prev = op_ridge[i].second;
+    }
+    
+    int hw = 3;
+    vector<double> smoothed_delta(delta_perp.size(), 0);
+    prev = op_ridge[0].second;
+    for (int i=0; i < (int)delta_perp.size(); i++) {
+        double wsum = 0;
+        for (int j=-hw; j <= hw; j++) {
+            if (i+j >= 0 && i+j < (int)delta_perp.size()) {
+                wsum += 1;
+                smoothed_delta[i] += delta_perp[i+j];
+            }
             
-            yv(0,0) += perp;
-            yv(1,0) += par*perp;
-            yv(2,0) += par*par*perp;
         }
+        smoothed_delta[i] /= wsum;
+        double recon = prev + smoothed_delta[i];
+        prev = recon;
+        op_ridge[i].second = recon;
     }
     
-    // complete cov matrix
-    cov(1,0) = cov(0,1);
-    cov(1,1) = cov(0,2);
-    cov(2,0) = cov(0,2);
-    cov(2,1) = cov(1,2);
-    
-    Eigen::LDLT<Eigen::Matrix3d> qr(cov); // LDLT is probably good enough 
-    Eigen::Vector3d sol = qr.solve(yv);
-    
-    for (auto& ee: edge_residual) {
-        double x = ee.first;
-        ee.second.second = sol[0] + sol[1]*x + sol[2]*x*x;
-    }
-    
-    // now estimate the centroid at each bin, using the gradient magnitude as weight
+    // now estimate the ridge using the gradient image as weight
     ridge = vector<Point2d>();
-    for (auto& ee: edge_residual) {
-        double pd = ee.second.second;
+    for (auto& ee: op_ridge) {
+        double pd = ee.second;
         double cd = ee.first;
         
         double wsum = 0;
@@ -1126,15 +1124,14 @@ void Mtf_core::extract_ridge(map< int, pair<double, double> >& edge_residual,
                     end_weight *= 2.0/(1 + fabs(pardot));
                 }
                 
-                
                 // downrate the edges of the ROI
                 if (fabs(Point2d(lx - cent.x, ly - cent.y).ddot(edge_direction)) > edgelen+1) {
                     end_weight *= 0.5;
                 }
                 
-                
+                // limit the window in the along-edge direction, but keep it rather wide initially to smooth out the estimate
                 if (fabs(pardot) > 5) {  
-                    end_weight = 0;
+                    continue; // equivalent to setting end_weight to zero
                 }
                 
                                         
@@ -1151,7 +1148,110 @@ void Mtf_core::extract_ridge(map< int, pair<double, double> >& edge_residual,
         // keep the refined values
         ridge.push_back(Point2d(xsum, ysum));
     }
+    
+    // iterate a few times to converge with tighter bounds
+    vector<Point2d> ridge_copy;
+    for (int rep=0; rep < 4; rep++) {
+        ridge_copy = ridge;
+        ridge.clear();
+        for (auto& p: ridge_copy) {
+            double wsum = 0;
+            double xsum = 0;
+            double ysum = 0;
+            for (int ly = int(p.y-8); ly <= int(p.y+8); ly++) {
+                for (int lx = int(p.x-8); lx <= int(p.x+8); lx++) {
+                
+                    if (lx < 0 || ly < 0 || lx > g.width()-1 || ly > g.height()-1) continue;
+                    
+                    Point2d rd(lx - p.x, ly - p.y);
+                    double pardot = rd.ddot(edge_direction);
+                    double perpdot = rd.ddot(mean_grad);
+                    
+                    double end_weight = 1.0;
+                    
+                    if (fabs(perpdot) >  0.15) {
+                        end_weight *= 1.0/(1 + fabs(perpdot));
+                    }
+                    
+                    if (fabs(pardot) > 0.5) {
+                        end_weight *= 2.0/(1 + fabs(pardot));
+                    }
+                    
+                    // downrate the edges of the ROI
+                    if (fabs(Point2d(lx - cent.x, ly - cent.y).ddot(edge_direction)) > edgelen+1) {
+                        end_weight *= 0.5;
+                    }
+                    
+                    // limit the window in the along-edge direction, but keep the window tight to reduce serial correlation
+                    if (fabs(pardot) > 1.0) {  
+                        continue; // equivalent to setting end_weight to zero
+                    }
+                    
+                                            
+                    double w = g.grad_magnitude(lx, ly);
+                    w *= w;
+                    xsum += lx * w * end_weight;
+                    ysum += ly * w * end_weight;
+                    wsum += w * end_weight;
+                }
+            }
+            xsum /= wsum;
+            ysum /= wsum;
+            
+            // keep the refined values
+            ridge.push_back(Point2d(xsum, ysum));
+        }
+    }
+    
+    // construct a heavily smoothed copy of the rige 
+    // detect potential outliers by their distance from this smoothed ridge
+    idx = 0;
+    for (auto& p: ridge) {
+        double perp = (p - cent).ddot(mean_grad);
+        double par = (p - cent).ddot(edge_direction);
+        op_ridge[idx++] = Ordered_point(par, perp);
+    }
+    
+    prev = op_ridge[0].second;
+    for (size_t i=0; i < op_ridge.size() - 1; i++) {
+        delta_perp[i] = op_ridge[i].second - prev;
+        prev = op_ridge[i].second;
+    }
+    
+    vector<double> smoothed_recon(op_ridge.size());
+    vector<double> residuals(smoothed_delta.size());
+    hw = 9;
+    prev = op_ridge[0].second;
+    smoothed_recon[0] = op_ridge[0].second;
+    for (int i=0; i < (int)delta_perp.size(); i++) {
+        double wsum = 0;
+        smoothed_delta[i] = 0;
+        for (int j=-hw; j <= hw; j++) {
+            if (i+j >= 0 && i+j < (int)delta_perp.size()) {
+                wsum += 1;
+                smoothed_delta[i] += delta_perp[i+j];
+            }
+            
+        }
+        smoothed_delta[i] /= wsum;
+        double recon = prev + smoothed_delta[i];
+        prev = recon;
+        smoothed_recon[i+1] = recon;
+        residuals[i] = fabs(recon - op_ridge[i].second);
+    }
+    
+    sort(residuals.begin(), residuals.end());
+    double thresh = residuals[0.9*residuals.size()]; // we can use a different test, perhaps look for a step in the residuals
+    
+    // convert back to ridge, but skip points that look like outliers
+    ridge.clear();
+    for (size_t i=0; i < op_ridge.size(); i++) {
+        if (fabs(smoothed_recon[i] - op_ridge[i].second) < thresh) {
+            ridge.push_back(cent + op_ridge[i].first * edge_direction + op_ridge[i].second * mean_grad);
+        }
+    }
 }
+
 
 inline void Mtf_core::update_gradient_peak(map< int, pair<double, double> >& edge_residual, 
     const double& dist_along_edge, const double& perp_dist, const double& grad_mag) {

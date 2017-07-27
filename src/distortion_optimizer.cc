@@ -235,6 +235,15 @@ double Distortion_optimizer::medcouple(vector<float>& x) {
     return h[h.size()/2];
 }
 
+double weight_penalty(double x) {
+    x = fabs(x);
+    if (x > 0.05)  return 0.01;
+    if (x < 0.005) return x;
+    const double c = 0.05/0.045;
+    const double m = -1.0/0.045;
+    return x * ((x - 0.005)*m + c + 0.01);
+}
+
 double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) {
     double count = 0;
     double merr = 0;
@@ -303,7 +312,7 @@ double Distortion_optimizer::evaluate(const Eigen::VectorXd& v, double penalty) 
     }
     
     merr /= count;
-    return merr + penalty*(model_not_invertible(v)*1e4 + merr*( (fabs(v[0]) < 0.005 ? fabs(v[0]) : 0) + (fabs(v[1]) < 0.005 ? fabs(v[1]) : 0) ) );
+    return merr + penalty*(model_not_invertible(v)*1e4 + merr*( weight_penalty(v[0])/100.0 + weight_penalty(v[1])/20.0 ) );
 }
 
 
