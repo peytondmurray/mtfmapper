@@ -36,24 +36,44 @@ cv::Mat Srgb_render::linear_to_sRGB(const cv::Mat& img) {
     while (p < sentinel) {
         histo[*p++ >> 3]++;
     }
+    
+    size_t maximum = histo.size() - 1;
+    while (maximum > 0 && histo[maximum] == 0) {
+        maximum--;
+    }
+    
+    size_t minimum = 0;
+    while (minimum < histo.size()-1 && histo[minimum] == 0) {
+        minimum++;
+    }
 
     // compute 2% and 98% cut-off points
-    float csum = histo.back();
-    size_t maxval = histo.size() - 1;
+    float csum = histo[maximum];
+    size_t maxval = maximum;
     while (maxval > 0 && csum < 0.02*img.total()) {
         maxval--;
         csum += histo[maxval];
     }
-    maxval *= 8; 
-    csum = histo.front();
-    size_t minval = 0;
+    
+    csum = histo[minimum];
+    size_t minval = minimum;
     while (minval < histo.size()-1 && csum < 0.02*img.total()) {
         minval++;
         csum += histo[minval];
     }
+    
+    if (fabs(maxval - minval) < 0.05*(maximum - minimum)) {
+        // we are probably looking at a synthetic image with insufficient dark areas to
+        // make the 2% threshold meaningful
+        // just go with the min/max
+        minval = minimum;
+        maxval = maximum;
+    }
+    
     minval *= 8;
-
-    // scale intenisty so that 2% -> 0 and 98% -> 255
+    maxval *= 8; 
+    
+    // scale intenisty so that minval -> 0 and maxval -> 255
     double alpha = 1;
     double beta = 0;
     if (maxval > minval) {
