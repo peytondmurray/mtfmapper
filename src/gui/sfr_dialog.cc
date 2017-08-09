@@ -25,6 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include <QtWidgets> 
 #include "sfr_dialog.h"
 #include "sfr_dialog.moc"
@@ -46,7 +47,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     series.push_back(new QLineSeries());
     
     double maxval = 0;
-    for (size_t i=0; i < 64; i++) {
+    for (size_t i=0; i < entry.sfr.size(); i++) {
         maxval = std::max(entry.sfr[i], maxval);
     }
     populate_series(entry, series[0]);
@@ -55,8 +56,10 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart->legend()->hide();
     chart->addSeries(series[0]);
     
+    logger.info("sfr entry size: %ld\n", entry.sfr.size());
+
     x_axis = new QValueAxis();
-    x_axis->setRange(0, 1.0);
+    x_axis->setRange(0, entry.sfr.size() > 64 ? 2.0 : 1.0);
     x_axis->setTickCount(11);
     x_axis->setTitleText("Frequency (c/p)");
     x_axis->setLabelFormat("%3.1f");
@@ -261,7 +264,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     tpos = chart->mapToPosition(tpos);
     bpos = chart->mapToPosition(bpos);
     tpos.rx() = std::max(tpos.x()-1, chart->mapToPosition(QPointF(0, 0)).x());
-    bpos.rx() = std::min(bpos.x()+1, chart->mapToPosition(QPointF(1.0, 0)).x());
+    bpos.rx() = std::min(bpos.x()+1, chart->mapToPosition(QPointF(x_axis->max(), 0)).x());
     
     mtf50_rect->setRect(tpos.x(), tpos.y(), bpos.x() - tpos.x(), bpos.y() - tpos.y());
     
@@ -296,7 +299,7 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
     }
     
     double maxval = y_axis->max() - 6e-4;
-    for (size_t i=0; i < 64; i++) {
+    for (size_t i=0; i < entry.sfr.size(); i++) {
         maxval = std::max(entry.sfr[i], maxval);
     }
     double roundup_max = multiple(maxval);
@@ -322,13 +325,20 @@ void Sfr_dialog::add_entry(const Sfr_entry& entry) {
 }
 
 void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
-    for (size_t i=0; i < 64; i++) {
+    for (size_t i=0; i < entry.sfr.size(); i++) {
         double coef[4] = {0,0,0,0};
-        for (int si=int(i)-1,ri=0; si <= int(i) + 2; si++,ri++) {
-            int ei = si < 0 ? 0 : (si > 63 ? 63 : si); // assume MTF curve is constant outside of range
-            
-            for (int c=0; c < 4; c++) {
-                coef[c] += entry.sfr[ei] * sfr_cubic_weights[c][ri];
+        
+        for (int si = int(i) - 1, ri = 0; si <= int(i) + 2; si++, ri++) {
+            int ei = si < 0 ? 0 : si;
+            double eiv = 0;
+            if (ei > entry.sfr.size() - 1) {
+                eiv = (entry.sfr[entry.sfr.size() - 1] - entry.sfr[entry.sfr.size() - 2]) * (ei - (entry.sfr.size() - 1)) + entry.sfr[entry.sfr.size() - 1]; // extend last point linearly
+            } else {
+                eiv = entry.sfr[ei];
+            }
+
+            for (int c = 0; c < 4; c++) {
+                coef[c] += eiv * sfr_cubic_weights[c][ri];
             }
         }
         // now we can evaluate points at position x in [0,1) using the fitted polynomial
@@ -341,7 +351,7 @@ void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
 }
 
 void Sfr_dialog::notify_mouse_position(double value) { // we still need this to update the bottom label, but we could merge this in the chart?
-    cursor_domain_value = std::min(1.0, std::max(0.0, value));
+    cursor_domain_value = std::min(x_axis->max(), std::max(0.0, value));
     
     QPointF top(cursor_domain_value, 1);
     QPointF bottom(cursor_domain_value, 0);
@@ -393,22 +403,27 @@ void Sfr_dialog::save_data(void) {
         fprintf(fout, "frequency,");
         if (series.size() == 1) {
             fprintf(fout, "contrast\n");
-            for (int i=0; i < 64; i++) {
+            for (int i=0; i < series[0]->count(); i++) {
                 fprintf(fout, "%.4lf,%.8lf\n", series[0]->at(i*20).x(), series[0]->at(i*20).y());
             }
         } else {
+            size_t max_size = 0;
+            for (size_t i = 0; i < series.size(); i++) {
+                max_size = std::max(max_size, size_t(series[i]->count()));
+            }
+            max_size /= 20;
             int j;
             for (j=0; j < (int)series.size() - 1; j++) {
                 fprintf(fout, "contrast_%d,", j);
             }
             fprintf(fout, "contrast_%d\n", j);
             
-            for (int i=0; i < 64; i++) {
-                fprintf(fout, "%.4lf,", series[0]->at(i*20).x());
+            for (size_t i=0; i < max_size; i++) {
+                fprintf(fout, "%.4lf,", i*20 < series[0]->count() ? series[0]->at(i*20).x() : 0.0);
                 for (j=0; j < (int)series.size() - 1; j++) {
-                    fprintf(fout, "%.8lf,", series[j]->at(i*20).y());
+                    fprintf(fout, "%.8lf,", i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
                 }
-                fprintf(fout, "%.8lf\n", series[j]->at(i*20).y());
+                fprintf(fout, "%.8lf\n", i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
             }
         }
         fclose(fout);
