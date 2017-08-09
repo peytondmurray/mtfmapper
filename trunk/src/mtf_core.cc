@@ -329,7 +329,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     bool allzero = true;
     for (size_t k=0; k < 4; k++) {
         double quality = 0;
-        vector <double> sfr(NYQUIST_FREQ*2, 0);
+        vector <double> sfr(mtf_width, 0);
         vector <double> esf(FFT_SIZE/2, 0);
         vector <Point2d> ridge(1);
         double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, sfr, esf, ridge);
@@ -458,8 +458,8 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     double quad = angle_reduce(angle);
     
     double n0 = fabs(fft_out_buffer[0]);
-    vector<double> magnitude(NYQUIST_FREQ*3);
-    for (int i=0; i < NYQUIST_FREQ*3; i++) {
+    vector<double> magnitude(NYQUIST_FREQ*4);
+    for (int i=0; i < NYQUIST_FREQ*4; i++) {
         magnitude[i] = sqrt(SQR(fft_out_buffer[i]) + SQR(fft_out_buffer[FFT_SIZE - i])) / n0;
     }
     
@@ -482,9 +482,9 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         // narrow filters reduce bias in lower frequencies
         // wide filter perform the requisite strong filtering at high frequencies
         const int sgh = 7;
-        vector<double> smoothed(NYQUIST_FREQ*3, 0);
+        vector<double> smoothed(NYQUIST_FREQ*4, 0);
         const double* sgw = 0;
-        for (int idx=0; idx <= NYQUIST_FREQ*2; idx++) {
+        for (int idx=0; idx < NYQUIST_FREQ*4 - sgh; idx++) {
             if (idx < sgh) {
                 smoothed[idx] = magnitude[idx];
             } else {
@@ -497,9 +497,12 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
                 }
             }
         }
+        for (int idx = NYQUIST_FREQ * 4 - sgh; idx < NYQUIST_FREQ * 4; idx++) {
+            smoothed[idx] = magnitude[idx];
+        }
         assert(fabs(magnitude[0] - 1.0) < 1e-6);
         assert(fabs(smoothed[0] - 1.0) < 1e-6);
-        for (int idx=0; idx < NYQUIST_FREQ*2; idx++) {
+        for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
             magnitude[idx] = smoothed[idx]/smoothed[0];
         }
     }
@@ -604,11 +607,11 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     mtf50 *= 8;
 
     if (absolute_sfr) {
-        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+        for (size_t i=0; i < sfr.size();  i++) {
             sfr[i] = (n0*magnitude[i] / base_mtf[i])/(65536*2);
         }
     } else {
-        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+        for (size_t i=0; i < sfr.size();  i++) {
             sfr[i] = magnitude[i] / base_mtf[i];
         }
     }
@@ -885,7 +888,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             color[2] = 0;
             
             double quality = 0;
-            vector <double> sfr(NYQUIST_FREQ*2, 0);
+            vector <double> sfr(mtf_width, 0);
             vector <double> esf(FFT_SIZE/2, 0);
             vector <Point2d> ridge(1);
             double mtf50 = compute_mtf(edge_record.centroid, scanset, edge_record, quality, sfr, esf, ridge);
@@ -1008,7 +1011,7 @@ void Mtf_core::process_image_as_roi(void) {
     
     double quality;
     
-    vector <double> sfr(NYQUIST_FREQ*2, 0);
+    vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
     vector <Point2d> ridge(1);
     double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, ridge, true);

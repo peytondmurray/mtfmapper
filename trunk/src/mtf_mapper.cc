@@ -135,6 +135,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_distort_opt("", "optimize-distortion", "Optimize lens distortion coefficients", cmd, false);
     TCLAP::SwitchArg tc_rectilinear("", "rectilinear-equivalent", "Measure MTF in rectilinear equivalent projection", cmd, false);
     TCLAP::SwitchArg tc_distort_crop("", "no-undistort-crop", "Do not crop undistorted image (equiangular, stereographic)", cmd, false);
+    TCLAP::SwitchArg tc_full_sfr("", "full-sfr", "Output the full SFR/MTF curve (up to 4 c/p) when combined with -q or -f", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -404,6 +405,10 @@ int main(int argc, char** argv) {
         }
         if (tc_distort_opt.getValue() && !distortion_applied) {
             mtf_core.set_ridges_only(true);
+        }
+
+        if (tc_full_sfr.getValue()) {
+            mtf_core.use_full_sfr();
         }
         
         Mtf_core_tbb_adaptor ca(&mtf_core);

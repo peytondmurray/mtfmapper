@@ -39,6 +39,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <string>
 #include <iostream>
+#include <fstream>
 
 using std::cout;
 using std::endl;
@@ -429,32 +430,24 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         display_exif_properties(count_before);
         if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
             qgv->set_clickable(true);
+            sfr_list.clear();
             
             QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
             // go and fetch the corresponding "edge_sfr" entries
-            FILE* fin = fopen(sfr_source.toLocal8Bit().data(), "rt");
-            if (fin) {
-                sfr_list.clear();
-                int dummy;
-                double ex;
-                double ey;
-                double dummy2, dummy3;
-                while (!feof(fin)) {
-                    int nread = fscanf(fin, "%d %lf %lf %lf %lf", &dummy, &ex, &ey, &dummy2, &dummy3);
-                    if (!feof(fin) && nread == 5) {
-                        vector<double> sfr(64, 0.0);
-                        int nr2 = 0;
-                        for (int i=0; i < 64; i++) {
-                            nr2 += fscanf(fin, "%lf", &sfr[i]);
-                        }
-                        // create new entry
-                        if (sfr[0] > 0.0 && nr2 == 64) {
-                            sfr_list.push_back(Sfr_entry(ex, ey, sfr));
-                        }
-                    }
+            std::ifstream ifile(sfr_source.toLocal8Bit().data());
+            string line;
+            while (!ifile.fail()) {
+                std::getline(ifile, line);
+                std::istringstream is(line);
+                vector<double> values;
+                std::copy(std::istream_iterator<double>(is), std::istream_iterator<double>(), std::back_inserter(values));
+                if (values.size() > 6 && values[5] > 0.0) {
+                    vector<double> sfr;
+                    std::copy(values.begin() + 5, values.end(), std::back_inserter(sfr));
+                    logger.info("read %ld entries from SFR file\n", sfr.size());
+                    sfr_list.push_back(Sfr_entry(values[1], values[2], sfr));
                 }
             }
-            
         } else {
             qgv->set_clickable(false);
             sfr_list.clear();
@@ -745,8 +738,10 @@ void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_dow
                 if (shift_down) {
                     sfr_dialog->add_entry(sfr_list[close_idx]);
                 } else {
-                    sfr_dialog->clear();
-                    sfr_dialog->replace_entry(sfr_list[close_idx]);
+                    delete sfr_dialog;
+                    sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
+                    //sfr_dialog->clear();
+                    //sfr_dialog->replace_entry(sfr_list[close_idx]);
                 }
             }
             

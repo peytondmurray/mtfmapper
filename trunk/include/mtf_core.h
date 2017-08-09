@@ -161,6 +161,10 @@ class Mtf_core {
     void set_ridges_only(bool b) {
         ridges_only = b;
     }
+
+    void use_full_sfr(void) {
+        mtf_width = 4 * NYQUIST_FREQ;
+    }
     
     void process_image_as_roi(void);
     
@@ -192,6 +196,7 @@ class Mtf_core {
     bool find_fiducials;
     Undistort* undistort = nullptr;
     bool ridges_only;
+    size_t mtf_width = 2 * NYQUIST_FREQ;
     
     void process_with_sliding_window(Mrectangle& rrect);
     
