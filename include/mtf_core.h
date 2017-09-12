@@ -207,6 +207,9 @@ class Mtf_core {
     inline void update_gradient_peak(map< int, pair<double, double> >& edge_residual, 
         const double& dist_along_edge, const double& perp_dist, const double& grad_mag);
     
+    Point2d bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt);
+    Point2d derivative(double t0, const Point2d& l, const Point2d& p);
+    
     void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
         const map<int, scanline>& scanset, const Point2d& cent,
         double& edge_length, vector<Point2d>& ridge);
