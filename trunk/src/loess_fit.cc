@@ -328,7 +328,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         int left = max(fft_left, cbin-nbins);
         int right = min(fft_right-1, cbin+nbins);
         for (int b=left; b <= right; b++) {
-            double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
+            double mid = b*scale*(upper-lower)/double(fft_size) + scale*lower;
             double w = 1; // in extreme tails, just plain box filter
             const double bwidth = 2;
             const double lwidth = 0.5;
