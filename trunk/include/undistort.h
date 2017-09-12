@@ -48,8 +48,13 @@ class Undistort {
     }
     
     cv::Point2d transform_point(double px, double py); // this function interpolates radmap
+    
     virtual cv::Point2d slow_transform_point(double px, double py) = 0; // the "real" forward transformation, which could be slow
     virtual cv::Point2d inverse_transform_point(double px, double py) = 0;
+    
+    cv::Point2d transform_point(const cv::Point2d& p) {
+        return transform_point(p.x, p.y);
+    }
     
     virtual cv::Mat unmap(const cv::Mat& src, cv::Mat& rawimg) = 0;
     

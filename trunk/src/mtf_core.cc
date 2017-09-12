@@ -1272,6 +1272,72 @@ inline void Mtf_core::update_gradient_peak(map< int, pair<double, double> >& edg
     }
 }
 
+Point2d Mtf_core::bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt) {
+    double h = 0.01;
+    Point2d p_t0 = undistort->transform_point(t0*l + p);
+    double d_t0 = norm(p_t0 - pt);
+    Point2d p_tph = undistort->transform_point((t0+h)*l + p);
+    double d_tph = norm(p_tph - pt);
+    
+    double a;
+    double b;
+    double eta;
+    
+    if (d_t0 > d_tph) {
+        // forward step
+        a = t0;
+        eta = t0 + h;
+        while (true) { // TODO: add a way to break out
+            h = h*2;
+            b = a + h;
+            
+            Point2d p_b = undistort->transform_point(b*l + p);
+            double d_b = norm(p_b - pt);
+            Point2d p_eta = undistort->transform_point(eta*l + p);
+            double d_eta = norm(p_eta - pt);
+            
+            if (d_b >= d_eta) {
+                return Point2d(a, b);
+            }
+            a = eta;
+            eta = b;
+        }
+    } else {
+        // backward step
+        eta = t0;
+        b = t0 + h;
+        while (true) {
+            h = h*2;
+            a = b - h;
+            
+            Point2d p_a = undistort->transform_point(a*l + p);
+            double d_a = norm(p_a - pt);
+            Point2d p_eta = undistort->transform_point(eta*l + p);
+            double d_eta = norm(p_eta - pt);
+            
+            if (d_a >= d_eta) {
+                return Point2d(a, b);
+            }
+            b = eta;
+            eta = a;
+        }
+    }
+}
+
+Point2d Mtf_core::derivative(double t0, const Point2d& l, const Point2d& p) {
+    const double epsilon = 1e-8;
+    Point2d p_t = undistort->transform_point(t0*l + p);
+    Point2d p_th = undistort->transform_point((t0+epsilon)*l + p);
+    return (1.0/epsilon) * (p_th - p_t);
+}
+
+double quadmin(const Point2d& a, const Point2d& b, const Point2d& c) {
+    double denom = (b.x - a.x)*(b.y - c.y) - (b.x - c.x)*(b.y - a.y);
+    double num = (b.x - a.x)*(b.x - a.x)*(b.y - c.y) - (b.x - c.x)*(b.x - c.x)*(b.y - a.y);
+    return b.x - 0.5*num/denom;
+}
+
+
 void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
     const map<int, scanline>& scanset, const Point2d& cent,
     double& edge_length, vector<Point2d>& ridge) {
@@ -1371,6 +1437,9 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
         // we have an undistortion model (e.g., equiangular mapping)
         
         // first construct a new scanset in distorted image coordinates
+        
+        // TODO: this could be too small if significant compression is present, i.e., we might
+        // have to expand this ROI
         map<int, scanline> m_scanset;
         for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
             int y = it->first;
@@ -1408,9 +1477,27 @@ void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered,
                         Point2d base_u = dist_along_edge*edge_direction + cent; // on the linearized edge
                         Point2d base_d = undistort->transform_point(base_u.x, base_u.y);
                         Point2d dv = Point2d(x, y) - base_d;
-                        dot = norm(dv) * (dv.ddot(mean_grad) < 0 ? -1.0 : 1.0);
+                        
+                        // distance_along_edge is gamma from the paper
+                        // apply bracketing
+                        Point2d pd(x, y);
+                        Point2d bracketed = bracket_minimum(dist_along_edge, edge_direction, cent, pd);
+                        
+                        // apply quadratic interpolation
+                        Point2d p1(bracketed.x, norm(undistort->transform_point(bracketed.x*edge_direction + cent) - pd));
+                        Point2d p2(0.5*(bracketed.x+bracketed.y), norm(undistort->transform_point((0.5*(bracketed.x+bracketed.y))*edge_direction + cent) - pd));
+                        Point2d p3(bracketed.y, norm(undistort->transform_point(bracketed.y*edge_direction + cent) - pd));
+                        double tau_star = quadmin(p1, p2, p3);
+                        
+                        // find tangent, then project onto normal
+                        Point2d tangent = derivative(tau_star, edge_direction, cent);
+                        tangent *= 1.0/norm(tangent);
+                        Point2d lnorm(-tangent.y, tangent.x);
+                        Point2d ppd = undistort->transform_point(tau_star*edge_direction + cent);
+                        
+                        dot = (pd - ppd).ddot(lnorm);
                     }
-                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                    if (fabs(dot) < max_dot) {
                         local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) )); // TODO: hack --- we are abusing the bayer image?
                         max_along_edge = max(max_along_edge, dist_along_edge);
                         min_along_edge = min(min_along_edge, dist_along_edge);
