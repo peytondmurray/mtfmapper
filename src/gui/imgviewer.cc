@@ -27,7 +27,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "imgviewer.h"
 #include "mtfmapper_app.h"
-
+#include <cmath>
 
 Imgviewer::Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent)
  : QGraphicsView(scene, parent), scene(scene), zoom_parent(zoom_parent), clickable(false) {

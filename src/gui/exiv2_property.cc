@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cmath>
 
 using std::string;
 using std::ifstream;
