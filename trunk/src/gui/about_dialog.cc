@@ -67,9 +67,12 @@ About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     vlayout->addWidget(dismiss_button, 1, 1);
     vGroupBox->setLayout(vlayout);
     
+    QGridLayout* main_layout = new QGridLayout(this);
+    main_layout->addWidget(vGroupBox, 0, 0);
+    
     connect(dismiss_button, SIGNAL(clicked()), this, SLOT( close() ));
     
-    setLayout(vlayout);
+    setLayout(main_layout);
 }
 
 
