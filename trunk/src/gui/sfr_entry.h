@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef SFR_ENTRY_H
 #define SFR_ENTRY_H
 
+#include <cmath>
 #include <vector>
 using std::vector;
 
