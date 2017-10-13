@@ -121,7 +121,6 @@ class Mtf_core {
     double compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset, 
                        double& poor, 
                        vector<double>& sfr, vector<double>& esf, 
-                       const vector<Point2d>& ridge,
                        bool allow_peak_shift = false);
     
     vector<Block>& get_blocks(void) {
