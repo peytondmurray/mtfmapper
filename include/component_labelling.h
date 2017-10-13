@@ -34,6 +34,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <map>
 
 // A class for extracting the boundaries of a binary image.
 //
@@ -70,6 +71,14 @@ public:
     const Boundarylist& get_boundaries(void) const {
         assert(configured);
         return _boundaries;
+    }
+    
+    int largest_hole(int label) const {
+        auto it = _holes.find(label);
+        if (it != _holes.end()) {
+            return it->second;
+        }
+        return 0;
     }
 
     inline int operator[](int index) const {
@@ -133,6 +142,7 @@ private:
     uint8_t* _pix;
     vector<int32_t> _labels;
     Boundarylist _boundaries;
+    std::map<int, int> _holes;
 
     int _min_boundary_length;
     int _max_boundary_length;

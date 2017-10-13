@@ -25,23 +25,56 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
+#ifndef ESF_SAMPLER_H
+#define ESF_SAMPLER_H
 
-#include <vector>
-using std::vector;
-
+#include "include/logger.h"
 #include "include/common_types.h"
 #include "include/ordered_point.h"
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol);
+#include "include/bayer.h"
+#include "include/edge_model.h"
+#include <map>
+using std::map;
+
+class Esf_sampler {
+  public:
     
-int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
+    // enumeration and string array (see .cc file) should be kept synchronized
+    typedef enum {
+        LINE=0,
+        QUAD,
+        PIECEWISE_QUAD,
+        DEFERRED
+    } esf_sampler_t;
+    
+    const static std::array<string, 4> esf_sampler_names;
+    
+    static esf_sampler_t from_string(const string& s) {
+        for (size_t i=0; i < esf_sampler_names.size(); i++) {
+            if (s.compare(esf_sampler_names[i]) == 0) {
+                return static_cast<esf_sampler_t>(i);
+            }
+        }
+        return LINE; // fallback
+    }
+  
+    Esf_sampler(double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double max_edge_length=1e6, double border_width=0) 
+    : max_dot(max_dot), cfa_mask(cfa_mask), max_edge_length(max_edge_length), border_width(border_width) {
+        
+    }
+    
+    virtual void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
+        const map<int, scanline>& scanset, double& edge_length,
+        const cv::Mat& geom_img, const cv::Mat& sampling_img) = 0;
+    
+  protected:
+    double max_dot;
+    Bayer::cfa_mask_t cfa_mask;
+    double max_edge_length;
+    double border_width;
+};
 
-#ifndef SQR
-#define SQR(x) ((x)*(x))
 #endif
-
-#endif // LOESS_FIT_H

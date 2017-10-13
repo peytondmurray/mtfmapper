@@ -25,23 +25,25 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
+#ifndef ESF_SAMPLER_PIECEWISE_QUAD_H
+#define ESF_SAMPLER_PIECEWISE_QUAD_H
 
-#include <vector>
-using std::vector;
+#include "include/esf_sampler_quad.h"
 
-#include "include/common_types.h"
-#include "include/ordered_point.h"
-
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol);
+class Esf_sampler_piecewise_quad : public Esf_sampler_quad {
+  public:
+    Esf_sampler_piecewise_quad(double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double border_width=0) 
+    : Esf_sampler_quad(max_dot, cfa_mask, border_width) {
+        
+    }
     
-int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
+    void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
+        const map<int, scanline>& scanset, double& edge_length,
+        const cv::Mat& geom_img, const cv::Mat& sampling_img);
+        
+  protected:
+    vector<double> piecewise_quadfit(const vector<Point2d>& pts);
+      
+};
 
-#ifndef SQR
-#define SQR(x) ((x)*(x))
 #endif
-
-#endif // LOESS_FIT_H

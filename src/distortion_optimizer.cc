@@ -31,6 +31,26 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <cmath>
 #include <stdint.h>
 
+// we can safely reduce the number of ridge points because of the
+// serial corellation we expect from the algorithm that extracted
+// the ridge (in edge_model)
+vector<Point2d> downsample(const vector<Point2d>& pts) {
+    const size_t minimum_ridge_length = 30;
+    if (pts.size() < minimum_ridge_length) return pts;
+    
+    size_t step = 3;
+    if (pts.size() > 3*minimum_ridge_length) {
+        step = 5;
+    }
+    
+    vector<Point2d> out_pts;
+    
+    for (size_t i=0; i < pts.size(); i += step) {
+        out_pts.push_back(pts[i]);
+    }
+    return out_pts;
+}
+
 Distortion_optimizer::Distortion_optimizer(const vector<Block>& in_blocks, const Point2d& prin) 
     : prin(prin), max_val(1,1), maxrad(0) {
     
@@ -50,7 +70,7 @@ Distortion_optimizer::Distortion_optimizer(const vector<Block>& in_blocks, const
                     double w = fabs(radial.ddot(normal));
                     if (w > 0.17365) { // edge angle < 80 degrees w.r.t. radial direction
                         double wrad = norm(cent - prin) / radius_norm;
-                        ridges.push_back(Ridge(block.get_ridge(k), block.get_edge_centroid(k), block.get_normal(k), w));
+                        ridges.push_back(Ridge(downsample(block.get_ridge(k)), block.get_edge_centroid(k), block.get_normal(k), w));
                         maxrad = std::max(wrad, maxrad);
                         max_val.x = std::max(max_val.x, fabs(cent.x - prin.x));
                         max_val.y = std::max(max_val.y, fabs(cent.y - prin.y));

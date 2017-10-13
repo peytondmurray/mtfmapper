@@ -40,6 +40,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "include/edge_model.h" // TODO: just to test compilation, for now
+
 #include <mutex>
 
 // global lock to prevent race conditions on detected_blocks
@@ -50,7 +52,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     Mrectangle rrect;
     bool valid = extract_rectangle(cent, label, rrect);
     
-    if (!valid && find_fiducials) {
+    if (!valid && find_fiducials && cl.largest_hole(label) > 0) {
         // this may be an ellipse. check it ...
         Boundarylist::const_iterator it = cl.get_boundaries().find(label);
         Ellipse_detector e;
@@ -138,62 +140,81 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         return;
     }
     
+    if (!ridges_only) {
+        if (!homogenous(cent, label, rrect)) {
+            logger.debug("discarding inhomogenous object\n");
+            return;
+        }
+    }
+    
+    
+    for (size_t k=0; k < 4; k++) {
+        if (rrect.corners[k].x >= 0 && rrect.corners[k].x < g.width() &&
+            rrect.corners[k].y >= 0 && rrect.corners[k].y < g.height()) {
+            
+            cv::Vec3b& color = od_img.at<cv::Vec3b>(rrect.corners[k].y, rrect.corners[k].x);
+            color[0] = 255;
+            color[1] = 255;
+            color[2] = 0;
+        }
+    }
+    
     vector<Edge_record> edge_record(4);
     vector< map<int, scanline> > scansets(4); 
+    vector<Edge_model> edge_model(4);
     bool reduce_success = true;
+    bool small_target = false;
     for (size_t k=0; k < 4; k++) {
         // now construct buffer around centroid, aligned with direction, of width max_dot
-        Mrectangle nr(rrect, k, max_dot+0.5);
+        Mrectangle nr(rrect, k, (undistort ? 4 : 1)*max_dot+0.5);
         
-        // TODO: connected-component based masking
-        //cv::Mat limg(nr.br.y - nr.tl.y + 1, nr.br.x - nr.tl.x + 1, CV_8UC1, cv::Scalar::all(1));
-        //cv::Mat roiimg(nr.br.y - nr.tl.y + 1, nr.br.x - nr.tl.x + 1, CV_8UC1, cv::Scalar::all(0));
+        for (int kk=0; kk < 4; kk++) {
+            cv::line(od_img, nr.corners[kk], nr.corners[(kk+1)%4], cv::Scalar(0, 255, 128));
+        }
+        
+        edge_model[k] = Edge_model(rrect.centroids[k], rrect.edges[k], rrect.quad_coeffs[k]);
+        
+        double perp_threshold = nr.length >= 45 ? 12.0 : 8.0;
+        small_target |= nr.length < 45;
         
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
                 Point2d p(x,y);
                 Point2d d = p - rrect.centroids[k];
                 double dot = d.x*rrect.normals[k].x + d.y*rrect.normals[k].y;
-                if (nr.is_inside(p) && fabs(dot) < 14) {
+                if (nr.is_inside(p)) {
                 
                     int iy = lrint(y);
                     int ix = lrint(x);
-                    if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
+                    if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols && fabs(dot) < perp_threshold) {
                         edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                     }
                     
-                    // TODO: connected-component based masking
-                    //roiimg.at<uint8_t>(iy - nr.tl.y, ix - nr.tl.x) = 255;
-                }
-                
-                /*
-                // TODO: connected-component based masking
-                int iy = lrint(y);
-                int ix = lrint(x);
-                limg.at<uint8_t>(iy - nr.tl.y, ix - nr.tl.x) = cl(ix, iy) > 0 ? 0 : 1;
-                */
+                    if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
+                        edge_model[k].add_point(x, y, g.grad_magnitude(ix, iy), perp_threshold);
+                    }
+                    
+                    map<int, scanline>::iterator it = scansets[k].find(iy);
+                    if (it == scansets[k].end()) {
+                        scanline sl(ix,ix);
+                        scansets[k].insert(make_pair(iy, sl));
+                    }
+                    if (ix < scansets[k][iy].start) {
+                        scansets[k][iy].start = ix;
+                    }
+                    if (ix > scansets[k][iy].end) {
+                        scansets[k][iy].end = ix;
+                    }
+                } 
             }
         }
         
-        /*
-        // TODO: connected-component based masking
-        cv::Mat dest;
-        cv::Mat labels;
-        cv::distanceTransform(limg, dest, labels, CV_DIST_L1, 3);
-        // The cc-labelled image works well, but a scan set is no longer convex
-        // scan sets would have to be replaced by actual images ?
-        // allocating a new cv::Mat for every ROI will cause a lot of memory allocations
-        // but what else can we do?
-        cv::imwrite("labels_" + std::to_string(k) + ".png", limg);
-        cv::imwrite("dist_" + std::to_string(k) + ".png", labels);
-        cv::imwrite("roi_" + std::to_string(k) + ".png", roiimg);
-        */
-        
+        edge_model[k].estimate_ridge();
         reduce_success &= edge_record[k].reduce();
     }
     
     double max_shift = 0;
-    if (reduce_success) {
+    if (!ridges_only && !small_target && reduce_success) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
@@ -201,12 +222,13 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             return;
         }
         
-        
         scansets = vector< map<int, scanline> >(4); // re-initialise
         for (size_t k=0; k < 4; k++) {
             // now construct buffer around centroid, aligned with direction, of width max_dot
-            Mrectangle nr(newrect, k, max_dot+0.5);
+            Mrectangle nr(newrect, k, (undistort ? 4 : 1)*max_dot+0.5);
             edge_record[k].clear();
+            
+            double perp_threshold = nr.length >= 45 ? 12.0 : 6.0;
             
             for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
                 for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
@@ -220,7 +242,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                             Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
                         
-                            if (fabs(dot) < 12) {
+                            if (fabs(dot) < perp_threshold) {
                                 edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                             }
                             
@@ -248,7 +270,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         rrect = newrect;
     }
     
-    if (reduce_success && max_shift > 1) {
+    if (!ridges_only && !small_target && reduce_success && max_shift > 1) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
@@ -260,9 +282,11 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         scansets = vector< map<int, scanline> >(4); // re-initialise
         for (size_t k=0; k < 4; k++) {
             // now construct buffer around centroid, aligned with direction, of width max_dot
-            Mrectangle nr(newrect, k, max_dot+0.5);
+            Mrectangle nr(newrect, k, (undistort ? 4 : 1)*max_dot+0.5);
             edge_record[k].clear();
             scansets[k].clear();
+            
+            double perp_threshold = nr.length >= 45 ? 12.0 : 6.0;
             
             for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
                 for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
@@ -276,7 +300,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                             Point2d d = p - newrect.centroids[k];
                             double dot = d.x*newrect.normals[k].x + d.y*newrect.normals[k].y;
                         
-                            if (fabs(dot) < 12) {
+                            if (fabs(dot) < perp_threshold) {
                                 edge_record[k].add_point(x, y, fabs(g.grad_x(ix,iy)), fabs(g.grad_y(ix,iy)));
                             }
 
@@ -298,6 +322,8 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             reduce_success &= edge_record[k].reduce();
         }
     }
+    
+    done:
     
     if (!reduce_success) {
         logger.debug("reduce failed, probably not a rectangle/quadrangle\n");
@@ -331,8 +357,38 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         double quality = 0;
         vector <double> sfr(mtf_width, 0);
         vector <double> esf(FFT_SIZE/2, 0);
-        vector <Point2d> ridge(1);
-        double mtf50 = compute_mtf(edge_record[k].centroid, scansets[k], edge_record[k], quality, sfr, esf, ridge);
+        
+        double ea = edge_record[k].angle;
+        if (snap_to) {
+            
+            double max_dot_angle = snap_to_angle;
+            double max_dot = 0;
+            
+            double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
+            
+            for (int k=0; k < 4; k++) {
+            
+                double sa = angles[k];
+                
+                double dot = cos(edge_record[k].angle)*cos(sa) + sin(edge_record[k].angle)*sin(sa);
+                if (dot > max_dot) {
+                    max_dot = dot;
+                    max_dot_angle = sa;
+                }
+            }
+            
+            ea = max_dot_angle;
+        }
+        
+        edge_model[k].update_location(
+            edge_record[k].centroid,
+            Point2d(-sin(ea), cos(ea))
+        );
+        
+        double mtf50 = 0.01;
+        if (!ridges_only) {
+            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf, edge_model[k].ridge);
+        }
         
         allzero &= fabs(mtf50) < 1e-6;
         
@@ -345,7 +401,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_normal(k, Point2d(cos(edge_record[k].angle), sin(edge_record[k].angle)));
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
-            shared_blocks_map[label].set_ridge(k, ridge);
+            shared_blocks_map[label].set_ridge(k, edge_model[k].ridge);
         }
     }
     if (allzero) {
@@ -405,6 +461,86 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     return rrect.valid;
 }
 
+bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const {
+    // check if this connected component has a proper interior hole
+    if (cl.largest_hole(label) > std::max(size_t(5), rrect.boundary_length/100)) return false;
+    // otherwise look for a concave region enclosed on three sides in the scan set
+
+    // first build a scanset for this contour
+    map<int, scanline> scanset;
+    for (int y=rrect.tl.y; y < rrect.br.y; y++) {
+        for (int x=rrect.tl.x; x < rrect.br.x; x++) {
+            if (cl(x, y) == label) {
+                map<int, scanline>::iterator it = scanset.find(y);
+                if (it == scanset.end()) {
+                    scanline sl(x, x);
+                    scanset.insert(make_pair(y, sl));
+                }
+                if (x < scanset[y].start) {
+                    scanset[y].start = x;
+                }
+                if (x > scanset[y].end) {
+                    scanset[y].end = x;
+                }
+            }
+        }
+    }
+    if (scanset.size() < 8) return false; // minimum object height is 8 pixels
+    
+    // we can skip some of the first and last rows, especially on larger objects
+    int skiprows = scanset.size() > 80 ? 7 : (scanset.size() > 40 ? 5 : 2);
+    
+    int y_start = scanset.begin()->first + skiprows;
+    int y_end = scanset.rbegin()->first - skiprows;
+    
+    int holes = 0;
+    int cc_size = 0;
+    
+    for (int y=y_start; y <= y_end; y++) {
+        int x_start = scanset[y].start + 1;
+        int x_end = scanset[y].end - 1;
+        
+        scanline top = scanset[y-1];
+        scanline bot = scanset[y+1];
+        
+        if (x_start+1 < x_end) { // make sure we have some pixels to process
+            for (int x=x_start; x <= x_end; x++) {
+                // we know that we have filled pixels to our left and right
+                // so if the current column is in the span of either the previous or
+                // the next row, and it is not filled, then it is a hole
+                if (cl(x, y) != label) {
+                    if ( (x >= top.start && x <= top.end) ||
+                         (x >= bot.start && x <= bot.end) ) {
+                        holes++;
+                    }
+                } else {
+                    cc_size++;
+                }
+            }
+        }
+    }
+    
+    
+    
+    // pick the allowed hole fraction
+    double hole_fraction = 0.005;
+    const double lower_hole_fraction = 0.005;
+    const double upper_hole_fraction = 0.05;
+    const int lower_size = 2500; // a 50x50 block
+    const int upper_size = 200000;
+    if (cc_size < lower_size) {
+        hole_fraction = lower_hole_fraction;
+    } else {
+        if (cc_size > upper_size) {
+            hole_fraction = upper_hole_fraction;
+        } else {
+            hole_fraction = (upper_hole_fraction-lower_hole_fraction) * double(cc_size - lower_size) / (upper_size - lower_size) + lower_hole_fraction;
+        }
+    }
+    
+    return cc_size > 0 && (holes <= 3 || double(holes)/cc_size < hole_fraction);
+}
+
 static double angle_reduce(double x) {
     double quad1 = fabs(fmod(x, M_PI/2.0));
     if (quad1 > M_PI/4.0) {
@@ -414,32 +550,20 @@ static double angle_reduce(double x) {
     return quad1;
 }
 
-double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset,
-    Edge_record& er, double& quality,  
+double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset,
+    double& quality,  
     vector<double>& sfr, vector<double>& esf, 
-    vector<Point2d>& ridge,
+    const vector<Point2d>& ridge,
     bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
     
-    Point2d cent(in_cent);
-    
-    Point2d mean_grad(0,0);
-   
-
-    double angle = er.angle;
-    mean_grad.x = cos(angle);
-    mean_grad.y = sin(angle);
-
     vector<Ordered_point> ordered;
     double edge_length = 0;
 
     vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
     
-    sample_at_angle(angle, ordered, scanset, cent, edge_length, ridge);
-    if (ridges_only) {
-        return 0.01; // dummy MTF50 value
-    }
+    esf_sampler->sample(edge_model, ordered, scanset, edge_length, img, bayer_img);
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
@@ -455,7 +579,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     }
     afft.realfft(fft_out_buffer.data());
 
-    double quad = angle_reduce(angle);
+    double quad = angle_reduce(atan2(edge_model.get_direction().y, edge_model.get_direction().x));
     
     double n0 = fabs(fft_out_buffer[0]);
     vector<double> magnitude(NYQUIST_FREQ*4);
@@ -890,8 +1014,8 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             double quality = 0;
             vector <double> sfr(mtf_width, 0);
             vector <double> esf(FFT_SIZE/2, 0);
-            vector <Point2d> ridge(1);
-            double mtf50 = compute_mtf(edge_record.centroid, scanset, edge_record, quality, sfr, esf, ridge);
+            Edge_model edge_model(edge_record.centroid, Point2d(-sin(edge_record.angle), cos(edge_record.angle)));
+            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf, edge_model.ridge);
             
             if (mtf50 < 1.0 && quality > very_poor_quality) {
                 local_samples.push_back(Mtf_profile_sample(edge_record.centroid, mtf50, edge_record.angle, quality));
@@ -983,6 +1107,8 @@ void Mtf_core::process_image_as_roi(void) {
     Point2d normal(cos(er.angle), sin(er.angle)); 
     scanset.clear();
     er.clear();
+    
+    Edge_model em(cent, Point2d(-normal.y, normal.x));
 
     for (int row=0; row < img.rows; row++) {
         for (int col=0; col < img.cols; col++) {
@@ -994,6 +1120,7 @@ void Mtf_core::process_image_as_roi(void) {
                 int idx = row*img.cols + col;
                 if (!binary_search(skiplist.begin(), skiplist.end(), idx)) {
                     er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
+                    em.add_point(col, row, g.grad_magnitude(col, row), 12);
                 }
             }
             
@@ -1005,6 +1132,7 @@ void Mtf_core::process_image_as_roi(void) {
         } 
     }
     er.reduce();
+    em.estimate_ridge();
     logger.debug("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
         er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
     );
@@ -1013,8 +1141,7 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
-    vector <Point2d> ridge(1);
-    double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, ridge, true);
+    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, em.ridge, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
@@ -1027,7 +1154,7 @@ void Mtf_core::process_image_as_roi(void) {
         
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
-        block.set_ridge(0, ridge);
+        block.set_ridge(0, em.ridge);
         
         for (int k=1; k < 4; k++) {
             block.set_mtf50_value(k, 1.0, 0.0);
@@ -1040,526 +1167,3 @@ void Mtf_core::process_image_as_roi(void) {
     }
 }
 
-void Mtf_core::extract_ridge(map< int, pair<double, double> >& edge_residual, 
-    const Point2d& cent, const Point2d& mean_grad, const Point2d& edge_direction,
-    vector<Point2d>& ridge) {
-    
-    // we could just drop the first two and last two samples on principle
-    edge_residual.erase(edge_residual.begin());
-    edge_residual.erase(edge_residual.begin());
-    auto it1 = edge_residual.end();
-    it1--;
-    edge_residual.erase(it1);
-    it1 = edge_residual.end();
-    it1--;
-    edge_residual.erase(it1);
-    it1 = edge_residual.end();
-    it1--;
-    double edgelen = std::min(abs(edge_residual.begin()->first), abs(it1->first));
-    
-    // apply some smoothing to the initial ridge to squash any severe outliers
-    vector<Ordered_point> op_ridge(edge_residual.size());
-    size_t idx = 0;
-    for (auto& ee: edge_residual) {
-        op_ridge[idx++] = Ordered_point(ee.first, ee.second.second);
-    }
-    
-    sort(op_ridge.begin(), op_ridge.end());
-    
-    // smooth the first-order differences, rather than the actual signal
-    vector<double> delta_perp(op_ridge.size()-1);
-    double prev = op_ridge[0].second;
-    for (size_t i=0; i < op_ridge.size() - 1; i++) {
-        delta_perp[i] = op_ridge[i].second - prev;
-        prev = op_ridge[i].second;
-    }
-    
-    int hw = 3;
-    vector<double> smoothed_delta(delta_perp.size(), 0);
-    prev = op_ridge[0].second;
-    for (int i=0; i < (int)delta_perp.size(); i++) {
-        double wsum = 0;
-        for (int j=-hw; j <= hw; j++) {
-            if (i+j >= 0 && i+j < (int)delta_perp.size()) {
-                wsum += 1;
-                smoothed_delta[i] += delta_perp[i+j];
-            }
-            
-        }
-        smoothed_delta[i] /= wsum;
-        double recon = prev + smoothed_delta[i];
-        prev = recon;
-        op_ridge[i].second = recon;
-    }
-    
-    // now estimate the ridge using the gradient image as weight
-    ridge = vector<Point2d>();
-    for (auto& ee: op_ridge) {
-        double pd = ee.second;
-        double cd = ee.first;
-        
-        double wsum = 0;
-        double xsum = 0;
-        double ysum = 0;
-        Point2d recon_cent = cent + mean_grad*pd + edge_direction*cd;
-        int lcx = recon_cent.x;
-        int lcy = recon_cent.y;
-        for (int ly = lcy-15; ly <= lcy+15; ly++) {
-            for (int lx = lcx-15; lx <= lcx+15; lx++) {
-            
-                if (lx < 0 || ly < 0 || lx > g.width()-1 || ly > g.height()-1) continue;
-                
-                // TODO: we should taper the weights near the edge of the ROI
-                // in the along-edge direction
-                //Point2d d(lx - cent.x, ly - cent.y);
-                
-                Point2d rd(lx - recon_cent.x, ly - recon_cent.y);
-                double pardot = rd.ddot(edge_direction);
-                double perpdot = rd.ddot(mean_grad);
-                
-                double end_weight = 1.0;
-                
-                if (fabs(perpdot) >  0.15) {
-                    end_weight *= 1.0/(1 + fabs(perpdot));
-                }
-                
-                if (fabs(pardot) > 0.5) {
-                    end_weight *= 2.0/(1 + fabs(pardot));
-                }
-                
-                // downrate the edges of the ROI
-                if (fabs(Point2d(lx - cent.x, ly - cent.y).ddot(edge_direction)) > edgelen+1) {
-                    end_weight *= 0.5;
-                }
-                
-                // limit the window in the along-edge direction, but keep it rather wide initially to smooth out the estimate
-                if (fabs(pardot) > 5) {  
-                    continue; // equivalent to setting end_weight to zero
-                }
-                
-                                        
-                double w = g.grad_magnitude(lx, ly);
-                w *= w;
-                xsum += lx * w * end_weight;
-                ysum += ly * w * end_weight;
-                wsum += w * end_weight;
-            }
-        }
-        xsum /= wsum;
-        ysum /= wsum;
-        
-        // keep the refined values
-        ridge.push_back(Point2d(xsum, ysum));
-    }
-    
-    // iterate a few times to converge with tighter bounds
-    vector<Point2d> ridge_copy;
-    for (int rep=0; rep < 4; rep++) {
-        ridge_copy = ridge;
-        ridge.clear();
-        for (auto& p: ridge_copy) {
-            double wsum = 0;
-            double xsum = 0;
-            double ysum = 0;
-            for (int ly = int(p.y-8); ly <= int(p.y+8); ly++) {
-                for (int lx = int(p.x-8); lx <= int(p.x+8); lx++) {
-                
-                    if (lx < 0 || ly < 0 || lx > g.width()-1 || ly > g.height()-1) continue;
-                    
-                    Point2d rd(lx - p.x, ly - p.y);
-                    double pardot = rd.ddot(edge_direction);
-                    double perpdot = rd.ddot(mean_grad);
-                    
-                    double end_weight = 1.0;
-                    
-                    if (fabs(perpdot) >  0.15) {
-                        end_weight *= 1.0/(1 + fabs(perpdot));
-                    }
-                    
-                    if (fabs(pardot) > 0.5) {
-                        end_weight *= 2.0/(1 + fabs(pardot));
-                    }
-                    
-                    // downrate the edges of the ROI
-                    if (fabs(Point2d(lx - cent.x, ly - cent.y).ddot(edge_direction)) > edgelen+1) {
-                        end_weight *= 0.5;
-                    }
-                    
-                    // limit the window in the along-edge direction, but keep the window tight to reduce serial correlation
-                    if (fabs(pardot) > 1.0) {  
-                        continue; // equivalent to setting end_weight to zero
-                    }
-                    
-                                            
-                    double w = g.grad_magnitude(lx, ly);
-                    w *= w;
-                    xsum += lx * w * end_weight;
-                    ysum += ly * w * end_weight;
-                    wsum += w * end_weight;
-                }
-            }
-            xsum /= wsum;
-            ysum /= wsum;
-            
-            // keep the refined values
-            ridge.push_back(Point2d(xsum, ysum));
-        }
-    }
-    
-    // construct a heavily smoothed copy of the rige 
-    // detect potential outliers by their distance from this smoothed ridge
-    idx = 0;
-    for (auto& p: ridge) {
-        double perp = (p - cent).ddot(mean_grad);
-        double par = (p - cent).ddot(edge_direction);
-        op_ridge[idx++] = Ordered_point(par, perp);
-    }
-    
-    prev = op_ridge[0].second;
-    for (size_t i=0; i < op_ridge.size() - 1; i++) {
-        delta_perp[i] = op_ridge[i].second - prev;
-        prev = op_ridge[i].second;
-    }
-    
-    vector<double> smoothed_recon(op_ridge.size());
-    vector<double> residuals(smoothed_delta.size());
-    hw = 9;
-    prev = op_ridge[0].second;
-    smoothed_recon[0] = op_ridge[0].second;
-    for (int i=0; i < (int)delta_perp.size(); i++) {
-        double wsum = 0;
-        smoothed_delta[i] = 0;
-        for (int j=-hw; j <= hw; j++) {
-            if (i+j >= 0 && i+j < (int)delta_perp.size()) {
-                wsum += 1;
-                smoothed_delta[i] += delta_perp[i+j];
-            }
-            
-        }
-        smoothed_delta[i] /= wsum;
-        double recon = prev + smoothed_delta[i];
-        prev = recon;
-        smoothed_recon[i+1] = recon;
-        residuals[i] = fabs(recon - op_ridge[i].second);
-    }
-    
-    sort(residuals.begin(), residuals.end());
-    double thresh = residuals[0.9*residuals.size()]; // we can use a different test, perhaps look for a step in the residuals
-    
-    // convert back to ridge, but skip points that look like outliers
-    ridge.clear();
-    for (size_t i=0; i < op_ridge.size(); i++) {
-        if (fabs(smoothed_recon[i] - op_ridge[i].second) < thresh) {
-            ridge.push_back(cent + op_ridge[i].first * edge_direction + op_ridge[i].second * mean_grad);
-        }
-    }
-}
-
-
-inline void Mtf_core::update_gradient_peak(map< int, pair<double, double> >& edge_residual, 
-    const double& dist_along_edge, const double& perp_dist, const double& grad_mag) {
-    
-    // discretize dist_along_edge, then bin it
-    // then keep the pair <max_grad, dot> for each bin ...
-    int dae_bin = lrint(dist_along_edge); // discretize at full-pixel intervals
-    auto it = edge_residual.find(dae_bin);
-    if (it == edge_residual.end()) {
-        edge_residual.insert(make_pair(dae_bin, make_pair(grad_mag, perp_dist)));
-    } else {
-        if (grad_mag > it->second.first) {
-            it->second = make_pair(grad_mag, perp_dist);
-        }
-    }
-}
-
-Point2d Mtf_core::bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt) {
-    double h = 0.01;
-    Point2d p_t0 = undistort->transform_point(t0*l + p);
-    double d_t0 = norm(p_t0 - pt);
-    Point2d p_tph = undistort->transform_point((t0+h)*l + p);
-    double d_tph = norm(p_tph - pt);
-    
-    double a;
-    double b;
-    double eta;
-    
-    if (d_t0 > d_tph) {
-        // forward step
-        a = t0;
-        eta = t0 + h;
-        while (true) { // TODO: add a way to break out
-            h = h*2;
-            b = a + h;
-            
-            Point2d p_b = undistort->transform_point(b*l + p);
-            double d_b = norm(p_b - pt);
-            Point2d p_eta = undistort->transform_point(eta*l + p);
-            double d_eta = norm(p_eta - pt);
-            
-            if (d_b >= d_eta) {
-                return Point2d(a, b);
-            }
-            a = eta;
-            eta = b;
-        }
-    } else {
-        // backward step
-        eta = t0;
-        b = t0 + h;
-        while (true) {
-            h = h*2;
-            a = b - h;
-            
-            Point2d p_a = undistort->transform_point(a*l + p);
-            double d_a = norm(p_a - pt);
-            Point2d p_eta = undistort->transform_point(eta*l + p);
-            double d_eta = norm(p_eta - pt);
-            
-            if (d_a >= d_eta) {
-                return Point2d(a, b);
-            }
-            b = eta;
-            eta = a;
-        }
-    }
-}
-
-Point2d Mtf_core::derivative(double t0, const Point2d& l, const Point2d& p) {
-    const double epsilon = 1e-8;
-    Point2d p_t = undistort->transform_point(t0*l + p);
-    Point2d p_th = undistort->transform_point((t0+epsilon)*l + p);
-    return (1.0/epsilon) * (p_th - p_t);
-}
-
-double quadmin(const Point2d& a, const Point2d& b, const Point2d& c) {
-    double denom = (b.x - a.x)*(b.y - c.y) - (b.x - c.x)*(b.y - a.y);
-    double num = (b.x - a.x)*(b.x - a.x)*(b.y - c.y) - (b.x - c.x)*(b.x - c.x)*(b.y - a.y);
-    return b.x - 0.5*num/denom;
-}
-
-
-void Mtf_core::sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
-    const map<int, scanline>& scanset, const Point2d& cent,
-    double& edge_length, vector<Point2d>& ridge) {
-
-    double max_along_edge = -1e50;
-    double min_along_edge = 1e50;
-    
-    if (snap_to) {
-        
-        double max_dot_angle = snap_to_angle;
-        double max_dot = 0;
-        
-        double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
-        
-        for (int k=0; k < 4; k++) {
-        
-            double sa = angles[k];
-            
-            double dot = cos(ea)*cos(sa) + sin(ea)*sin(sa);
-            if (dot > max_dot) {
-                max_dot = dot;
-                max_dot_angle = sa;
-            }
-        }
-        
-        ea = max_dot_angle;
-    }
-
-    Point2d mean_grad(cos(ea), sin(ea));
-    Point2d edge_direction(-sin(ea), cos(ea));
-    
-    map< int, pair<double, double> > edge_residual;
-    
-    if (!undistort) {
-        if (bayer == Bayer::NONE) {
-            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
-                int y = it->first;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
-                for (int x=it->second.start; x <= it->second.end; ++x) {
-                    
-                    if (x < border_width || x > img.cols-1-border_width) continue;
-                    
-                    Point2d d((x) - cent.x, (y) - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
-                        max_along_edge = max(max_along_edge, dist_along_edge);
-                        min_along_edge = min(min_along_edge, dist_along_edge);
-                        
-                        update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(x, y));
-                    }
-                }
-            }
-            
-        } else {
-            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
-                int y = it->first;
-                int rowcode = (y & 1) << 1;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
-                for (int x=it->second.start; x <= it->second.end; ++x) {
-                    int code = rowcode | (x & 1);
-                    
-                    if (x < border_width || x > img.cols-1-border_width) continue;
-                    
-                    Point2d d((x) - cent.x, (y) - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    
-                    bool inside_roi = fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length;
-                    if (!inside_roi) continue;
-                    
-                    // we can update the ridge on all Bayer subsets, since the gradient was computed
-                    // on the interpolated/demosaiced image
-                    update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(x, y));
-
-                    // skip the appropriate sites if we are operating only on a subset
-                    if (bayer == Bayer::RED && code != 0) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::BLUE && code != 3) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
-                        continue;
-                    }
-
-                    local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
-                    max_along_edge = max(max_along_edge, dist_along_edge);
-                    min_along_edge = min(min_along_edge, dist_along_edge);
-                }
-            }
-        }
-    } else {
-        // we have an undistortion model (e.g., equiangular mapping)
-        
-        // first construct a new scanset in distorted image coordinates
-        
-        // TODO: this could be too small if significant compression is present, i.e., we might
-        // have to expand this ROI
-        map<int, scanline> m_scanset;
-        for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
-            int y = it->first;
-            for (int x=it->second.start; x <= it->second.end; ++x) {
-                cv::Point2i tp = undistort->transform_pixel(x, y);
-                auto fit = m_scanset.find(tp.y);
-                if (fit == m_scanset.end()) {
-                    m_scanset.insert(make_pair(tp.y, scanline(tp.x, tp.x)));
-                } else {
-                    fit->second.update(tp.x);
-                }
-            }
-        }
-        
-        if (bayer == Bayer::NONE) {
-            // now visit each pixel in the distorted image, but use undistorted coordinates to aid ESF construction
-            for (map<int, scanline>::const_iterator it=m_scanset.begin(); it != m_scanset.end(); ++it) {
-                int y = it->first;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
-                for (int x=it->second.start; x <= it->second.end; ++x) {
-                    
-                    if (x < border_width || x > img.cols-1-border_width) continue;
-                    
-                    // transform warped pixel to idealized rectilinear
-                    cv::Point2d tp = undistort->inverse_transform_point(x, y);
-                    
-                    bool inside_image = lrint(tp.x) >= 0 && lrint(tp.x) < g.width() && lrint(tp.y) >= 0 && lrint(tp.y) < g.height();
-                    if (!inside_image) continue;
-                    
-                    Point2d d(tp.x - cent.x, tp.y - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    if (!undistort->rectilinear_equivalent()) {
-                        Point2d base_u = dist_along_edge*edge_direction + cent; // on the linearized edge
-                        Point2d base_d = undistort->transform_point(base_u.x, base_u.y);
-                        Point2d dv = Point2d(x, y) - base_d;
-                        
-                        // distance_along_edge is gamma from the paper
-                        // apply bracketing
-                        Point2d pd(x, y);
-                        Point2d bracketed = bracket_minimum(dist_along_edge, edge_direction, cent, pd);
-                        
-                        // apply quadratic interpolation
-                        Point2d p1(bracketed.x, norm(undistort->transform_point(bracketed.x*edge_direction + cent) - pd));
-                        Point2d p2(0.5*(bracketed.x+bracketed.y), norm(undistort->transform_point((0.5*(bracketed.x+bracketed.y))*edge_direction + cent) - pd));
-                        Point2d p3(bracketed.y, norm(undistort->transform_point(bracketed.y*edge_direction + cent) - pd));
-                        double tau_star = quadmin(p1, p2, p3);
-                        
-                        // find tangent, then project onto normal
-                        Point2d tangent = derivative(tau_star, edge_direction, cent);
-                        tangent *= 1.0/norm(tangent);
-                        Point2d lnorm(-tangent.y, tangent.x);
-                        Point2d ppd = undistort->transform_point(tau_star*edge_direction + cent);
-                        
-                        dot = (pd - ppd).ddot(lnorm);
-                    }
-                    if (fabs(dot) < max_dot) {
-                        local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) )); // TODO: hack --- we are abusing the bayer image?
-                        max_along_edge = max(max_along_edge, dist_along_edge);
-                        min_along_edge = min(min_along_edge, dist_along_edge);
-                        
-                        // (x, y) are equi-angular, but we need the rectilinear
-                        // coordinates to go with the gradient image (which is rectilinear)
-                        // TODO: should we use rounding, or floor here ?
-                        //update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
-                    }
-                }
-            }
-        } else {
-            for (map<int, scanline>::const_iterator it=m_scanset.begin(); it != m_scanset.end(); ++it) {
-                int y = it->first;
-                int rowcode = (y & 1) << 1;
-                if (y < border_width || y > img.rows-1-border_width) continue;
-                
-                for (int x=it->second.start; x <= it->second.end; ++x) {
-                    int code = rowcode | (x & 1);
-                    
-                    if (x < border_width || x > img.cols-1-border_width) continue;
-                    
-                    // transform warped pixel to idealized rectilinear
-                    cv::Point2d tp = undistort->inverse_transform_point(x, y);
-                    
-                    Point2d d(tp.x - cent.x, tp.y - cent.y);
-                    double dot = d.ddot(mean_grad); 
-                    double dist_along_edge = d.ddot(edge_direction);
-                    
-                    bool inside_roi = fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length && 
-                        lrint(tp.x) >= 0 && lrint(tp.x) < g.width() && lrint(tp.y) >= 0 && lrint(tp.y) < g.height();
-                    if (!inside_roi) continue;
-                    
-                    //update_gradient_peak(edge_residual, dist_along_edge, dot, g.grad_magnitude(lrint(tp.x), lrint(tp.y)));
-
-                    // skip the appropriate sites if we are operating only on a subset
-                    if (bayer == Bayer::RED && code != 0) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::BLUE && code != 3) {
-                        continue;
-                    } 
-                    if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
-                        continue;
-                    }
-                    
-                    if (!undistort->rectilinear_equivalent()) {
-                        Point2d base_u = dist_along_edge*edge_direction + cent; // on the linearized edge
-                        Point2d base_d = undistort->transform_point(base_u.x, base_u.y);
-                        Point2d dv = Point2d(x, y) - base_d;
-                        dot = norm(dv) * (dv.ddot(mean_grad) < 0 ? -1.0 : 1.0);
-                    }
-                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
-                        local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
-                        max_along_edge = max(max_along_edge, dist_along_edge);
-                        min_along_edge = min(min_along_edge, dist_along_edge);
-                    }
-                }
-            }
-        }
-    }
-
-    if (!undistort) extract_ridge(edge_residual, cent, mean_grad, edge_direction, ridge);
-    edge_length = max_along_edge - min_along_edge;
-}
