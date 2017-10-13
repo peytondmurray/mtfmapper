@@ -141,7 +141,7 @@ void Undistort::estimate_padding(const cv::Mat& src, int& pad_left, int& pad_top
     if (!allow_crop) {
         pad_left = extreme.x < 0 ? -ceil(extreme.x) : 0;
         pad_top = extreme.y < 0 ? -ceil(extreme.y) : 0;
-        printf("extreme: %lf, %lf. pad_left=%d, pad_top=%d\n", extreme.x, extreme.y, pad_left, pad_top);
+        logger.debug("extreme: %lf, %lf. pad_left=%d, pad_top=%d\n", extreme.x, extreme.y, pad_left, pad_top);
         return;
     }
 

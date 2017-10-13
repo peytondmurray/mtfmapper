@@ -25,23 +25,21 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
+#ifndef ESF_SAMPLER_LINE_H
+#define ESF_SAMPLER_LINE_H
 
-#include <vector>
-using std::vector;
+#include "include/esf_sampler.h"
 
-#include "include/common_types.h"
-#include "include/ordered_point.h"
-
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol);
+class Esf_sampler_line : public Esf_sampler {
+  public:
+    Esf_sampler_line(double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double border_width=0) 
+    : Esf_sampler(max_dot, cfa_mask, 200 /*max_edge_length*/, border_width) {
+        
+    }
     
-int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
+    void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
+        const map<int, scanline>& scanset, double& edge_length,
+        const cv::Mat& geom_img, const cv::Mat& sampling_img);
+};
 
-#ifndef SQR
-#define SQR(x) ((x)*(x))
 #endif
-
-#endif // LOESS_FIT_H

@@ -39,7 +39,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/afft.h"
 #include "include/mtf_profile_sample.h"
 #include "include/bayer.h"
+#include "include/esf_sampler.h"
 
+
+#include "include/esf_sampler_line.h"
+#include "include/esf_sampler_deferred.h"
+#include "include/esf_sampler_quad.h"
+#include "include/esf_sampler_piecewise_quad.h"
 #include "include/undistort.h"
 
 
@@ -57,21 +63,41 @@ const double max_dot = 28;
 const int SAMPLES_PER_PIXEL = 32;
 const size_t FFT_SIZE = int(16)*SAMPLES_PER_PIXEL;
 const int NYQUIST_FREQ = FFT_SIZE/16;
-const double max_edge_length = 200;
 
 class Mtf_core {
   public:
     
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
-             const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
+             const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset,
+             std::string esf_sampler_name, Undistort* undistort=nullptr, int border_width=0)
+             
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false), samples_per_edge(0), border_width(0), find_fiducials(false),
-        ridges_only(false) {
+        sliding(false), samples_per_edge(0), border_width(border_width), find_fiducials(false),
+        undistort(undistort), ridges_only(false) {
 
         bayer = Bayer::from_string(bayer_subset);
         logger.debug("bayer subset is %d\n", bayer);
+        
+        switch (Esf_sampler::from_string(esf_sampler_name)) {
+        case Esf_sampler::LINE:
+            esf_sampler = new Esf_sampler_line(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            break;
+        case Esf_sampler::QUAD:
+            esf_sampler = new Esf_sampler_quad(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            break;
+        case Esf_sampler::PIECEWISE_QUAD:
+            esf_sampler = new Esf_sampler_piecewise_quad(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            break;
+        case Esf_sampler::DEFERRED:
+            if (!undistort) { // hopefully we stop it before this point ...
+                logger.error("Fatal error: No undistortion model provided to Esf_sampler_deferred. Aborting\n");
+                exit(-1);
+            }
+            esf_sampler = new Esf_sampler_deferred(undistort, max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            break;
+        };
       
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
@@ -92,11 +118,10 @@ class Mtf_core {
     
     void search_borders(const Point2d& cent, int label);
     bool extract_rectangle(const Point2d& cent, int label, Mrectangle& rect);
-    double compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset, 
-                       Edge_record& er,
+    double compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset, 
                        double& poor, 
                        vector<double>& sfr, vector<double>& esf, 
-                       vector<Point2d>& ridge,
+                       const vector<Point2d>& ridge,
                        bool allow_peak_shift = false);
     
     vector<Block>& get_blocks(void) {
@@ -146,16 +171,8 @@ class Mtf_core {
         snap_to_angle = angle;
     }
     
-    void set_border(int in_border_width) {
-        border_width = in_border_width;
-    }
-    
     void set_find_fiducials(bool val) {
         find_fiducials = val;
-    }
-    
-    void set_undistort(Undistort* u) {
-        undistort = u;
     }
     
     void set_ridges_only(bool b) {
@@ -185,6 +202,7 @@ class Mtf_core {
     vector<Mtf_profile_sample> samples;
     
     cv::Mat od_img;
+    
   private:
     bool absolute_sfr;
     bool snap_to;
@@ -197,22 +215,10 @@ class Mtf_core {
     Undistort* undistort = nullptr;
     bool ridges_only;
     size_t mtf_width = 2 * NYQUIST_FREQ;
+    Esf_sampler* esf_sampler = nullptr;
     
     void process_with_sliding_window(Mrectangle& rrect);
-    
-    void extract_ridge(map< int, pair<double, double> >& edge_residual, 
-        const Point2d& cent, const Point2d& mean_grad, const Point2d& edge_direction,
-        vector<Point2d>& ridge);
-
-    inline void update_gradient_peak(map< int, pair<double, double> >& edge_residual, 
-        const double& dist_along_edge, const double& perp_dist, const double& grad_mag);
-    
-    Point2d bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt);
-    Point2d derivative(double t0, const Point2d& l, const Point2d& p);
-    
-    void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
-        const map<int, scanline>& scanset, const Point2d& cent,
-        double& edge_length, vector<Point2d>& ridge);
+    bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
 };
 
 #endif

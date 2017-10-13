@@ -404,7 +404,7 @@ void Sfr_dialog::save_data(void) {
         if (series.size() == 1) {
             fprintf(fout, "contrast\n");
             for (int i=0; i < series[0]->count()/20; i++) {
-                fprintf(fout, "%.4lf,%.8lf\n", i*20 < series[0]->count() < series[0]->at(i*20).x(), series[0]->at(i*20).y());
+                fprintf(fout, "%.4lf,%.8lf\n", series[0]->at(i*20).x(), series[0]->at(i*20).y());
             }
         } else {
             size_t max_size = 0;

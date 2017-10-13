@@ -25,23 +25,10 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
 
-#include <vector>
-using std::vector;
+#include "include/esf_sampler.h"
 
-#include "include/common_types.h"
-#include "include/ordered_point.h"
+const std::array<string, 4> Esf_sampler::esf_sampler_names  = {{
+    "line", "quadratic", "piecewise-quadratic", "deferred"
+}};
 
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol);
-    
-int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
-
-#ifndef SQR
-#define SQR(x) ((x)*(x))
-#endif
-
-#endif // LOESS_FIT_H

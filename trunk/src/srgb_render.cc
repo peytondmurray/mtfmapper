@@ -35,6 +35,7 @@ cv::Mat Srgb_render::linear_to_sRGB(const cv::Mat& img) {
     const uint16_t* sentinel = p + img.total();
     while (p < sentinel) {
         histo[*p++ >> 3]++;
+        p += 7; // no need so sample every single pixel
     }
     
     size_t maximum = histo.size() - 1;

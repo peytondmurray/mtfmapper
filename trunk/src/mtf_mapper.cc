@@ -67,6 +67,7 @@ Logger logger;
 #include "include/undistort_rectilinear.h"
 #include "include/undistort_equiangular.h"
 #include "include/undistort_stereographic.h"
+#include "include/esf_sampler.h"
 #include "config.h"
 
 void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
@@ -166,7 +167,17 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<std::string> tc_bayer("", "bayer", "Select Bayer subset", false, "none", &bayer_constraints );
     cmd.add(tc_bayer);
     
+    vector<string> allowed_esf_samplers;
+    for (const auto& s: Esf_sampler::esf_sampler_names) {
+        allowed_esf_samplers.push_back(s);
+    }
+    TCLAP::ValuesConstraint<string> esf_sampler_constraints(allowed_esf_samplers);
+    TCLAP::ValueArg<std::string> tc_esf_sampler("", "esf-sampler", "Select ESF sampler type", false, "piecewise-quadratic", &esf_sampler_constraints);
+    cmd.add(tc_esf_sampler);
+    
     cmd.parse(argc, argv);
+    
+    string esf_sampler_name = tc_esf_sampler.getValue();
 
     if (tc_logfile.isSet()) {
         logger.redirect(tc_logfile.getValue(), tc_log_append.getValue());
@@ -339,6 +350,20 @@ int main(int argc, char** argv) {
     }
     if (undistort) {
         undistort->set_allow_crop(!tc_distort_crop.getValue());
+        if (esf_sampler_name.compare("deferred") != 0) {
+            logger.info("Warning: Because you specified an undistortion model,"
+                " your ESF sampler choice of '%s' has been changed to 'deferred'\n", 
+                esf_sampler_name.c_str()
+            );
+        }
+    }
+    
+    if (esf_sampler_name.compare("deferred") == 0 && !undistort) {
+        if (!tc_distort_opt.getValue()) {
+            logger.error("Error: Deferred ESF sampler cannot be used if no undistortion model is specified."
+                "See '--optimize-distortion, --equiangular, or --stereographic' options\n");
+            return -1;
+        }
     }
     
     bool finished;
@@ -379,12 +404,16 @@ int main(int argc, char** argv) {
         // now we can destroy the thresholded image
         masked_img = cv::Mat(1,1, CV_8UC1);
         
-        Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
+        Mtf_core mtf_core(
+            cl, gradient, cvimg, rawimg, tc_bayer.getValue(), 
+            undistort ? "deferred" : (tc_distort_opt.getValue() ? "line" : esf_sampler_name), // force deferred sampler if an undistortion model is specified
+            undistort, 
+            tc_border.getValue() ? border_width+1 : 0 
+        );
         mtf_core.set_absolute_sfr(tc_absolute.getValue());
         mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
         if (tc_border.getValue()) {
             logger.debug("setting border to %d\n", border_width);
-            mtf_core.set_border(border_width+1);
         }
         
         if (tc_snap.isSet()) {
@@ -399,10 +428,7 @@ int main(int argc, char** argv) {
         if (tc_chart_orientation.isSet()) {
             mtf_core.set_find_fiducials(true);
         }
-        if (undistort) {
-            logger.info("Adding undistortion to MTF core\n");
-            mtf_core.set_undistort(undistort);
-        }
+        
         if (tc_distort_opt.getValue() && !distortion_applied) {
             mtf_core.set_ridges_only(true);
         }
@@ -414,7 +440,6 @@ int main(int argc, char** argv) {
         Mtf_core_tbb_adaptor ca(&mtf_core);
         
         if (tc_single_roi.getValue()) {
-            mtf_core.set_border(0);
             mtf_core.process_image_as_roi();
         } else {
             #ifdef MDEBUG

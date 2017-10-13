@@ -210,6 +210,16 @@ void Component_labeller::_contour_tracing(int x, int y, int label, mode_type mod
         boundary.size() <= (size_t)_max_boundary_length) {
         _boundaries.insert(make_pair(label, boundary));
     }
+    
+    if (mode == INTERNAL && boundary.size() >= 2) {
+        auto it = _holes.find(label);
+        if (it != _holes.end()) {
+            _holes[label] = std::max(_holes[label], int(boundary.size()));
+        } else {
+            _holes.insert(make_pair(label, int(boundary.size())));
+        }
+    }
+    
 
 }
 

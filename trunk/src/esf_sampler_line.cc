@@ -25,23 +25,39 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef LOESS_FIT_H
-#define LOESS_FIT_H
 
-#include <vector>
-using std::vector;
+#include "include/esf_sampler_line.h"
 
-#include "include/common_types.h"
-#include "include/ordered_point.h"
-
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol);
+void Esf_sampler_line::sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
+    const map<int, scanline>& scanset, double& edge_length,
+    const cv::Mat& geom_img, const cv::Mat& sampling_img) {
     
-int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
+    double max_along_edge = -1e50;
+    double min_along_edge = 1e50;
+    
+    for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+        int y = it->first;
+        if (y < border_width || y > geom_img.rows-1-border_width) continue;
+        int rowcode = (y & 1) << 1;
+        
+        for (int x=it->second.start; x <= it->second.end; ++x) {
+            
+            if (x < border_width || x > geom_img.cols-1-border_width) continue;
+            
+            int code = 1 << ( (rowcode | (x & 1)) ^ 3 );
+            if ((code & cfa_mask) == 0) continue;
+            
+            Point2d d = Point2d(x, y) - edge_model.get_centroid();
+            double perp = d.ddot(edge_model.get_normal()); 
+            double par = d.ddot(edge_model.get_direction());
+            if (fabs(perp) < max_dot && fabs(par) < max_edge_length) {
+                local_ordered.push_back(Ordered_point(perp, sampling_img.at<uint16_t>(y,x) ));
+                max_along_edge = max(max_along_edge, par);
+                min_along_edge = min(min_along_edge, par);
+            }
+        }
+    }
+        
+    edge_length = max_along_edge - min_along_edge;
+}
 
-#ifndef SQR
-#define SQR(x) ((x)*(x))
-#endif
-
-#endif // LOESS_FIT_H
