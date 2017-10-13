@@ -57,11 +57,16 @@ class Edge_model {
     Edge_model(void) {}
     
     Edge_model(const Point2d& centroid, const Point2d& direction) 
-    : centroid{centroid}, direction{direction}, normal{-direction.y, direction.x} {}
+    : centroid{centroid}, direction{direction}, normal{-direction.y, direction.x}  {
+        coeff[0] = coeff[1] = coeff[2]; 
+    }
     
     Edge_model(const Point2d& centroid, const Point2d& direction, const double coeffs[3]) 
-    : centroid{centroid}, direction{direction}, normal{-direction.y, direction.x}, 
-      coeff{coeffs[0], coeffs[1], coeffs[2]} {}
+    : centroid{centroid}, direction{direction}, normal{-direction.y, direction.x} {
+        coeff[0] = coeffs[0];
+        coeff[1] = coeffs[1];
+        coeff[2] = coeffs[2];
+    }
     
     void add_point(double x, double y, double weight, double distance_threshold=100) {
         Point2d delta = Point2d(x, y) - centroid;
@@ -268,7 +273,7 @@ class Edge_model {
     Point2d centroid = {0, 0};
     Point2d direction = {0, 0};
     Point2d normal = {0, 0};
-    std::array<double, 3> coeff = {{0,0,0}}; // least squares quadratic fit
+    std::array<double, 3> coeff; // least squares quadratic fit
     bool coeffs_invalidated = false;
     
     multimap<int, cv::Point3d > points;
