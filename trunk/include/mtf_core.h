@@ -69,7 +69,8 @@ class Mtf_core {
     
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
-             const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset,
+             const cv::Mat& in_img, const cv::Mat& in_bayer_img, 
+             std::string bayer_subset, std::string cfa_pattern_name,
              std::string esf_sampler_name, Undistort* undistort=nullptr, int border_width=0)
              
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
@@ -78,24 +79,25 @@ class Mtf_core {
         undistort(undistort), ridges_only(false) {
 
         bayer = Bayer::from_string(bayer_subset);
-        logger.debug("bayer subset is %d\n", bayer);
+        Bayer::cfa_pattern_t cfa_pattern = Bayer::from_cfa_string(cfa_pattern_name);
+        logger.debug("Bayer subset is %d, CFA pattern type is %d\n", bayer, cfa_pattern);
         
         switch (Esf_sampler::from_string(esf_sampler_name)) {
         case Esf_sampler::LINE:
-            esf_sampler = new Esf_sampler_line(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            esf_sampler = new Esf_sampler_line(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
             break;
         case Esf_sampler::QUAD:
-            esf_sampler = new Esf_sampler_quad(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            esf_sampler = new Esf_sampler_quad(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
             break;
         case Esf_sampler::PIECEWISE_QUAD:
-            esf_sampler = new Esf_sampler_piecewise_quad(max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            esf_sampler = new Esf_sampler_piecewise_quad(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
             break;
         case Esf_sampler::DEFERRED:
             if (!undistort) { // hopefully we stop it before this point ...
                 logger.error("Fatal error: No undistortion model provided to Esf_sampler_deferred. Aborting\n");
                 exit(-1);
             }
-            esf_sampler = new Esf_sampler_deferred(undistort, max_dot, Bayer::to_cfa_mask(bayer), border_width);
+            esf_sampler = new Esf_sampler_deferred(undistort, max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
             break;
         };
       

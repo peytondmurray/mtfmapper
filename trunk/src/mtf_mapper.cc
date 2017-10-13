@@ -175,6 +175,15 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<std::string> tc_esf_sampler("", "esf-sampler", "Select ESF sampler type", false, "piecewise-quadratic", &esf_sampler_constraints);
     cmd.add(tc_esf_sampler);
     
+    vector<string> allowed_cfa_patterns;
+    allowed_cfa_patterns.push_back("rggb");
+    allowed_cfa_patterns.push_back("bggr");
+    allowed_cfa_patterns.push_back("grbg");
+    allowed_cfa_patterns.push_back("gbrg");
+    TCLAP::ValuesConstraint<string> cfa_pattern_constraints(allowed_cfa_patterns);
+    TCLAP::ValueArg<std::string> tc_cfa_pattern("", "cfa-pattern", "Select CFA pattern", false, "rggb", &cfa_pattern_constraints);
+    cmd.add(tc_cfa_pattern);
+    
     cmd.parse(argc, argv);
     
     string esf_sampler_name = tc_esf_sampler.getValue();
@@ -332,7 +341,10 @@ int main(int argc, char** argv) {
     
     cv::Mat rawimg = cvimg;
     if (tc_bayer.isSet()) {
-        simple_demosaic(cvimg, rawimg, Bayer::from_string(tc_bayer.getValue()), tc_single_roi.getValue());
+        simple_demosaic(cvimg, rawimg, 
+            Bayer::from_cfa_string(tc_cfa_pattern.getValue()), 
+            Bayer::from_string(tc_bayer.getValue()), tc_single_roi.getValue()
+        );
         //imwrite(string("prewhite.png"), rawimg);
         //imwrite(string("white.png"), cvimg);
     }
@@ -405,7 +417,7 @@ int main(int argc, char** argv) {
         masked_img = cv::Mat(1,1, CV_8UC1);
         
         Mtf_core mtf_core(
-            cl, gradient, cvimg, rawimg, tc_bayer.getValue(), 
+            cl, gradient, cvimg, rawimg, tc_bayer.getValue(), tc_cfa_pattern.getValue(),
             undistort ? "deferred" : (tc_distort_opt.getValue() ? "line" : esf_sampler_name), // force deferred sampler if an undistortion model is specified
             undistort, 
             tc_border.getValue() ? border_width+1 : 0 
