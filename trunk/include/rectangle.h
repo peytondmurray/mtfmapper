@@ -63,14 +63,27 @@ class Mrectangle {
   public:
     Mrectangle(void) : thetas(4, .0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
-        normals(4, Point2d(0.0,0.0)) { }
+        normals(4, Point2d(0.0,0.0)) { 
+
+        for (int i=0; i < 4; i++) {
+            for (int j=0; j < 3; j++) {
+                quad_coeffs[i][j] = 0;
+            }
+        }
+    }
     
     // build a rectangular buffer of "width" around midpoint of side k
     Mrectangle(const Mrectangle& b, size_t k, double width) 
       : thetas(4, .0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
         normals(4, Point2d(0.0,0.0)), boundary_length(0) {
-        
+
+        for (int i=0; i < 4; i++) {
+            for (int j=0; j < 3; j++) {
+                quad_coeffs[i][j] = 0;
+            }
+        }
+                
         assert(k < b.centroids.size());
         assert(b.corners.size() == 4);
         assert(b.corner_map[k].size() == 2);
@@ -171,6 +184,12 @@ class Mrectangle {
       : thetas(4, 0.0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
         normals(4, Point2d(0.0,0.0)), boundary_length(0) {
+
+        for (int i=0; i < 4; i++) {
+            for (int j=0; j < 3; j++) {
+                quad_coeffs[i][j] = 0;
+            }
+        }
         
         Point2d sq_centre(0,0);
         for (int k=0; k < 4; k++) {
@@ -285,6 +304,12 @@ class Mrectangle {
       : thetas(in_thetas), centroids(4, Point2d(0.0,0.0)), valid(false), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
         normals(4, Point2d(0.0,0.0)), corner_map(4) {
+
+        for (int i=0; i < 4; i++) {
+            for (int j=0; j < 3; j++) {
+                quad_coeffs[i][j] = 0;
+            }
+        }
       
         if (thetas.size() == 4) {
             vector<double> c_weight(4, 0);
@@ -685,7 +710,7 @@ class Mrectangle {
     vector<Point2d>  edges;
     vector<Point2d>  normals;
     vector< vector<int> > corner_map;
-    double quad_coeffs[4][3] = {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}};
+    double quad_coeffs[4][3];
     Point2d          tl;
     Point2d          br;
     size_t         boundary_length;
