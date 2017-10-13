@@ -387,7 +387,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         
         double mtf50 = 0.01;
         if (!ridges_only) {
-            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf, edge_model[k].ridge);
+            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf);
         }
         
         allzero &= fabs(mtf50) < 1e-6;
@@ -553,7 +553,6 @@ static double angle_reduce(double x) {
 double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset,
     double& quality,  
     vector<double>& sfr, vector<double>& esf, 
-    const vector<Point2d>& ridge,
     bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
@@ -1015,7 +1014,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             vector <double> sfr(mtf_width, 0);
             vector <double> esf(FFT_SIZE/2, 0);
             Edge_model edge_model(edge_record.centroid, Point2d(-sin(edge_record.angle), cos(edge_record.angle)));
-            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf, edge_model.ridge);
+            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf);
             
             if (mtf50 < 1.0 && quality > very_poor_quality) {
                 local_samples.push_back(Mtf_profile_sample(edge_record.centroid, mtf50, edge_record.angle, quality));
@@ -1141,7 +1140,7 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
-    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, em.ridge, true);
+    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 

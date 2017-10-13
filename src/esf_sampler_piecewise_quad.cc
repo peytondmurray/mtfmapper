@@ -72,15 +72,6 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     // sol[0-5] : quadratic parameters
     // sol[6-7] : constraints values (not used)
     
-    for (size_t r=0; r < pts.size(); r++) {
-        double pred = 0;
-        if (pts[r].x <= T) {
-            pred = sol[0]*pts[r].x*pts[r].x + sol[1]*pts[r].x + sol[2];
-        } else {
-            pred = sol[3]*pts[r].x*pts[r].x + sol[4]*pts[r].x + sol[5];
-        }
-    }
-    
     vector<double> parms(7);
     parms[0] = T;
     parms[1] = sol[0];
