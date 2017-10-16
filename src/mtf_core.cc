@@ -1136,6 +1136,11 @@ void Mtf_core::process_image_as_roi(void) {
         er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
     );
     
+    em.update_location(
+        er.centroid,
+        Point2d(-sin(er.angle), cos(er.angle))
+    );
+    
     double quality;
     
     vector <double> sfr(mtf_width, 0);
