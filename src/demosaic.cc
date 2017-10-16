@@ -166,23 +166,38 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
         std::swap(tss1, tss2);
     }
     
-    // pad out the border using nearest-neighbour interpolation
+    // pad out the border using three-sample averaging; this leaves 
+    // some zippering, but this should not matter too much downstream
     for (size_t row=0; row < (size_t)cvimg.rows; row++) {
         for (size_t col=0; col < 4; col++) {
             int subset = ((row & 1) << 1) | (col & 1);
             
-            if (subset == tss1) { 
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
-            } else if (subset == tss2) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            if (row == 0 || row == (size_t)(cvimg.rows-1)) {
+                if (subset == tss1) { 
+                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
+                } else if (subset == tss2) {
+                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+                }
+            } else {
+                if (subset == tss1 || subset == tss2) { 
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col) + cvimg.at<uint16_t>(row, col+1))/3;
+                }
             }
+            
         }
         for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
             int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == tss1) { 
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col < size_t(cvimg.cols-1) ? col+1 : col-1);
-            } else if (subset == tss2) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            
+            if (row == 0 || row == (size_t)(cvimg.rows-1)) {
+                if (subset == tss1) { 
+                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col < size_t(cvimg.cols-1) ? col+1 : col-1);
+                } else if (subset == tss2) {
+                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+                }
+            } else {
+                if (subset == tss1 || subset == tss2) { 
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col) + cvimg.at<uint16_t>(row, col-1))/3;
+                }
             }
         }
     }
@@ -190,18 +205,14 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
     for (size_t col=4; col < (size_t)(cvimg.cols-4); col++) {
         for (size_t row=0; row < 4; row++) {
             int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == tss1) { 
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
-            } else if (subset == tss2) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            if (subset == tss1 || subset == tss2) { 
+                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col+1) + cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row+1, col))/3;
             }
         }
         for (size_t row=size_t(cvimg.rows-4); row < size_t(cvimg.rows); row++) {
             int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == tss1) { 
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
-            } else if (subset == tss2) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
+            if (subset == tss1 || subset == tss2) { 
+                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col+1) + cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row-1, col))/3;
             }
         }
     }
@@ -211,21 +222,24 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
     // no need to white balance, only one channel?
     rawimg = cvimg.clone();
     
+    int h_ss = 0;
+    int v_ss = 3;
+    
     // first subset is the complement, i.e., the one to replace
     int first_subset = 3;
     if (bayer == Bayer::RED) {
         switch(cfa_pattern) {
-        case Bayer::RGGB: first_subset = 3; break;
-        case Bayer::BGGR: first_subset = 0; break;
-        case Bayer::GRBG: first_subset = 2; break;
-        case Bayer::GBRG: first_subset = 1; break;
+        case Bayer::RGGB: first_subset = 3; h_ss = 1; v_ss = 2; break;
+        case Bayer::BGGR: first_subset = 0; h_ss = 2; v_ss = 1; break;
+        case Bayer::GRBG: first_subset = 2; h_ss = 0; v_ss = 3; break;
+        case Bayer::GBRG: first_subset = 1; h_ss = 3; v_ss = 0; break;
         }
     } else { // blue, of course
         switch(cfa_pattern) {
-        case Bayer::RGGB: first_subset = 0; break;
-        case Bayer::BGGR: first_subset = 3; break;
-        case Bayer::GRBG: first_subset = 1; break;
-        case Bayer::GBRG: first_subset = 2; break;
+        case Bayer::RGGB: first_subset = 0; h_ss = 2; v_ss = 1; break;
+        case Bayer::BGGR: first_subset = 3; h_ss = 1; v_ss = 2; break;
+        case Bayer::GRBG: first_subset = 1; h_ss = 3; v_ss = 0; break;
+        case Bayer::GBRG: first_subset = 2; h_ss = 0; v_ss = 3; break;
         }
     }
     
@@ -254,19 +268,12 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
         }
     }
     
-    int tss1 = 1;
-    int tss2 = 2;
-    if (cfa_pattern == Bayer::RGGB || cfa_pattern == Bayer::BGGR) {
-        tss1 = 0;
-        tss2 = 3;
-    }
-    
     // interpolate the two green channels
     for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
         for (int col=4; col < cvimg.cols-4; col++) {
             int subset = ((row & 1) << 1) | (col & 1);
             
-            if (subset == tss1 || subset == tss2) {
+            if (subset == h_ss || subset == v_ss) {
             
                 double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1)));
                 double vgrad = fabs(double(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col)));
@@ -288,37 +295,124 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
         }
     }
     
-    // pad out the border using nearest-neighbour interpolation
-    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+    // on the first pass, interpolate the green channels
+    for (size_t row=1; row < (size_t)cvimg.rows-1; row++) {
         for (size_t col=0; col < 4; col++) {
-            if (bayer == Bayer::RED) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
-            } else {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + (col < size_t(cvimg.cols-1) ? 1 : -1));
+            int subset = ((row & 1) << 1) | (col & 1);
+            
+            if (subset == h_ss || subset == v_ss) {
+                if (subset == h_ss) {
+                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col + (col > 0 ? -1 : 1) ) + 
+                        cvimg.at<uint16_t>(row, col+1) )/2;
+                } else {
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
+                }
             }
         }
-        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
-            if (bayer == Bayer::RED) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
-            } else {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + (col < size_t(cvimg.cols-1) ? 1 : -1));
+        for (size_t col=size_t(cvimg.cols-5); col < size_t(cvimg.cols); col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            
+            if (subset == h_ss || subset == v_ss) {
+                if (subset == h_ss) {
+                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col-1) + 
+                        cvimg.at<uint16_t>(row, col + (col < size_t(cvimg.cols - 1) ? 1 : -1)) )/2;
+                } else {
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
+                }
             }
         }
     }
     
-    for (size_t col=4; col < (size_t)(cvimg.cols-4); col++) {
-        for (size_t row=0; row < 4; row++) {
-            if (bayer == Bayer::RED) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
-            } else {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + 1, col - col%2 + 1);
+    for (size_t col=1; col < size_t(cvimg.cols - 1); col++) {
+        for (size_t row=0; row <= 4; row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            
+            if (subset == h_ss || subset == v_ss) {
+                if (subset == h_ss) {
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1))/2;
+                } else {
+                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row + (row > 0 ? -1 : 1), col) + 
+                        cvimg.at<uint16_t>(row+1, col) )/2;
+                }
             }
         }
-        for (size_t row=size_t(cvimg.rows-4); row < size_t(cvimg.rows); row++) {
-            if (bayer == Bayer::RED) {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2, col - col%2);
-            } else {
-                cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row - row%2 + (row < size_t(cvimg.rows-1) ? 1 : -1), col - col%2 + 1);
+        for (size_t row=size_t(cvimg.rows-5); row < size_t(cvimg.rows); row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            
+            if (subset == h_ss || subset == v_ss) {
+                if (subset == h_ss) {
+                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col + 1))/2;
+                } else {
+                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row-1, col) + 
+                        cvimg.at<uint16_t>(row + (row < size_t(cvimg.rows-1) ? 1 : -1), col) )/2;
+                }
+            }
+        }
+    }
+    
+    // second pass, interpolate the remaining red or blue channel
+    for (size_t row=1; row < (size_t)cvimg.rows-1; row++) {
+        for (size_t col=0; col < 4; col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == first_subset) {
+                cvimg.at<uint16_t>(row, col) = 
+                        (cvimg.at<uint16_t>(row-1, col) + 
+                        cvimg.at<uint16_t>(row+1, col) + 
+                        cvimg.at<uint16_t>(row, col+1)) / 3;
+                
+            }
+        }
+        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == first_subset) {
+                cvimg.at<uint16_t>(row, col) = 
+                        (cvimg.at<uint16_t>(row-1, col) + 
+                        cvimg.at<uint16_t>(row+1, col) + 
+                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                
+            }
+        }
+    }
+    for (size_t col=1; col < (size_t)cvimg.cols-1; col++) {
+        for (size_t row=0; row < 4; row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == first_subset) {
+                cvimg.at<uint16_t>(row, col) = 
+                        (cvimg.at<uint16_t>(row, col+1) + 
+                        cvimg.at<uint16_t>(row+1, col) + 
+                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                
+            }
+        }
+        
+        for (size_t row=size_t(cvimg.rows-5); row < size_t(cvimg.rows); row++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == first_subset) {
+                cvimg.at<uint16_t>(row, col) = 
+                        (cvimg.at<uint16_t>(row-1, col) + 
+                        cvimg.at<uint16_t>(row, col+1) + 
+                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                
+            }
+        }
+    }
+    
+    // nearest-neighbour interpolate the corners
+    int self = 3 - first_subset;
+    int corner[4][2] = { {0,0}, {cvimg.cols-2, 0}, {0, cvimg.rows-2}, {cvimg.cols-2, cvimg.rows-2}};
+    uint16_t self_v[4];
+    
+    for (int cnr=0; cnr < 4; cnr++) {
+        self_v[cnr] = cvimg.at<uint16_t>(
+            corner[cnr][1] + ((self >> 1) & 1), 
+            corner[cnr][0] + (self & 1)
+        );
+    }
+    
+    for (int dr=0; dr <= 1; dr++) {
+        for (int dc=0; dc <= 1; dc++) {
+            for (int cnr=0; cnr < 4; cnr++) {
+                cvimg.at<uint16_t>(corner[cnr][1] + dr, corner[cnr][0] + dc) = self_v[cnr];
             }
         }
     }
