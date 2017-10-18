@@ -101,6 +101,7 @@ class Edge_model {
         
         if (samples.size() < 9) {
             logger.debug("too few points in estimate_ridge\n");
+            return;
         }
         
         // At this point we have an estimate of the ridge curve, but we are almost guaranteed to have some contamination

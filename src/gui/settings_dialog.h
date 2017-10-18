@@ -83,6 +83,8 @@ class Settings_dialog : public QDialog
     QRadioButton* rb_colour_green;
     QRadioButton* rb_colour_blue;
     
+    QRadioButton* rb_lens_pw_quad;
+    QRadioButton* rb_lens_quad;
     QRadioButton* rb_lens_none;
     QRadioButton* rb_lens_radial;
     QRadioButton* rb_lens_equiangular;
