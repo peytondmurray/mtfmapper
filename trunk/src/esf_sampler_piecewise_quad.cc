@@ -29,6 +29,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/esf_sampler_piecewise_quad.h"
 #include <Eigen/Dense>
 
+inline double tricube(double d) {
+    double w = (1 - fabs(d)*fabs(d)*fabs(d));
+    return w*w*w;
+}
+
 vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2d>& pts) {
     /// assumes pts.size() >= 3 
 
@@ -40,21 +45,27 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     
     A.setZero();
     
+    double span = fabs(pts.back().x - pts.front().x);
+    
     // constraints: first row is f(T) = g(T), second row is f'(T) = g'(T)
     C << T*T, T, 1, -T*T, -T, -1,
          2*T, 1, 0, -2*T, -1,  0;
          
+    int lower_thresh = std::max(-span/3.0, -30.0);
+    int upper_thresh = std::min(span/3.0, 30.0);
+         
     for (size_t r=0; r < pts.size(); r++) {
-        if (pts[r].x <= T) {
-            A(r, 0) = pts[r].x*pts[r].x;
-            A(r, 1) = pts[r].x;
-            A(r, 2) = 1.0;
-        } else {
-            A(r, 3) = pts[r].x*pts[r].x;
-            A(r, 4) = pts[r].x;
-            A(r, 5) = 1.0;
-        }
-        b[r] = pts[r].y;
+        double w1 = pts[r].x <= T ? 1 : pts[r].x < upper_thresh ? tricube((pts[r].x - T)/(upper_thresh - T)) : 0.0;
+        A(r, 0) = w1*pts[r].x*pts[r].x;
+        A(r, 1) = w1*pts[r].x;
+        A(r, 2) = w1*1.0;
+        
+        double w2 = pts[r].x > T ? 1 : pts[r].x > lower_thresh ? tricube((T - pts[r].x)/(T - lower_thresh)) : 0.0;
+        A(r, 3) = w2*pts[r].x*pts[r].x;
+        A(r, 4) = w2*pts[r].x;
+        A(r, 5) = w2*1.0;
+        
+        b[r] = pts[r].y * (w1 + w2);
     }
     
     Eigen::MatrixXd design(6 + 2, 6 + 2);
