@@ -444,7 +444,6 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                 if (values.size() > 6 && values[5] > 0.0) {
                     vector<double> sfr;
                     std::copy(values.begin() + 5, values.end(), std::back_inserter(sfr));
-                    logger.info("read %ld entries from SFR file\n", sfr.size());
                     sfr_list.push_back(Sfr_entry(values[1], values[2], sfr));
                 }
             }

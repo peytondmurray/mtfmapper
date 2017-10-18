@@ -69,7 +69,7 @@ const QString setting_sg_f_default = "8.0";
 const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
-const QString setting_lens = "setting_lens_type";
+const QString setting_lens = "setting_lens_correction_type";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -129,6 +129,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     rb_colour_green = new QRadioButton("green");
     rb_colour_blue  = new QRadioButton("blue");
     
+    rb_lens_pw_quad  = new QRadioButton("piecewise-quadratic");
+    rb_lens_quad  = new QRadioButton("quadratic");
     rb_lens_none  = new QRadioButton("none");
     rb_lens_radial = new QRadioButton("radial");
     rb_lens_equiangular = new QRadioButton("equiangular");
@@ -186,11 +188,20 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
         case 3: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(true); break;
     }
     
+    rb_lens_pw_quad->setChecked(false);
+    rb_lens_quad->setChecked(false);
+    rb_lens_none->setChecked(false);
+    rb_lens_radial->setChecked(false);
+    rb_lens_equiangular->setChecked(false);
+    rb_lens_stereo->setChecked(false);
+    
     switch(settings.value(setting_lens, 0).toInt()) {
-        case 0: rb_lens_none->setChecked(true); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(false); break;
-        case 1: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(true); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(false); break;
-        case 2: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(true); rb_lens_stereo->setChecked(false); break;
-        case 3: rb_lens_none->setChecked(false); rb_lens_radial->setChecked(false); rb_lens_equiangular->setChecked(false); rb_lens_stereo->setChecked(true); break;
+        case 0: rb_lens_pw_quad->setChecked(true); break;
+        case 1: rb_lens_quad->setChecked(true); break;
+        case 2: rb_lens_none->setChecked(true); break;
+        case 3: rb_lens_radial->setChecked(true); break;
+        case 4: rb_lens_equiangular->setChecked(true); break;
+        case 5: rb_lens_stereo->setChecked(true); break;
     }
 
     #ifdef _WIN32
@@ -254,14 +265,16 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     
     QGroupBox* lens = new QGroupBox(tr("Lens distortion correction"), this);
     QGridLayout* lens_layout = new QGridLayout(this);
-    lens_layout->addWidget(rb_lens_none, 0, 0);
-    lens_layout->addWidget(rb_lens_radial, 1, 0);
-    lens_layout->addWidget(rb_lens_equiangular, 2, 0);
-    lens_layout->addWidget(rb_lens_stereo, 3, 0);
-    lens_layout->addWidget(ea_f_label, 2, 1);
-    lens_layout->addWidget(ea_f_line, 2, 2);
-    lens_layout->addWidget(sg_f_label, 3, 1);
-    lens_layout->addWidget(sg_f_line, 3, 2);
+    lens_layout->addWidget(rb_lens_pw_quad, 0, 0);
+    lens_layout->addWidget(rb_lens_quad, 1, 0);
+    lens_layout->addWidget(rb_lens_none, 2, 0);
+    lens_layout->addWidget(rb_lens_radial, 3, 0);
+    lens_layout->addWidget(rb_lens_equiangular, 4, 0);
+    lens_layout->addWidget(rb_lens_stereo, 5, 0);
+    lens_layout->addWidget(ea_f_label, 4, 1);
+    lens_layout->addWidget(ea_f_line, 4, 2);
+    lens_layout->addWidget(sg_f_label, 5, 1);
+    lens_layout->addWidget(sg_f_line, 5, 2);
     lens->setLayout(lens_layout);
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
@@ -354,6 +367,16 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --bayer blue");
     }
     
+    
+    if (rb_lens_pw_quad->isChecked()) {
+        args = args + QString(" --esf-sampler piecewise-quadratic");
+    }
+    if (rb_lens_quad->isChecked()) {
+        args = args + QString(" --esf-sampler quadratic");
+    }
+    if (rb_lens_none->isChecked()) {
+        args = args + QString(" --esf-sampler line");
+    }
     if (rb_lens_radial->isChecked()) {
         args = args + QString(" --optimize-distortion");
     }
@@ -406,20 +429,26 @@ void Settings_dialog::save_and_close() {
     if (rb_colour_blue->isChecked()) {
         settings.setValue(setting_bayer, 3);
     }
-    
-    if (rb_lens_none->isChecked()) {
+
+    if (rb_lens_pw_quad->isChecked()) {
         settings.setValue(setting_lens, 0);
     }
-    if (rb_lens_radial->isChecked()) {
+    if (rb_lens_quad->isChecked()) {
         settings.setValue(setting_lens, 1);
+    }    
+    if (rb_lens_none->isChecked()) {
+        settings.setValue(setting_lens, 2);
+    }
+    if (rb_lens_radial->isChecked()) {
+        settings.setValue(setting_lens, 3);
     }
     if (rb_lens_equiangular->isChecked()) {
-        settings.setValue(setting_lens, 2);
+        settings.setValue(setting_lens, 4);
         cb_lpmm->setCheckState(Qt::Checked);
         settings.setValue(setting_lpmm, cb_lpmm->checkState());
     }
     if (rb_lens_stereo->isChecked()) {
-        settings.setValue(setting_lens, 3);
+        settings.setValue(setting_lens, 5);
         cb_lpmm->setCheckState(Qt::Checked);
         settings.setValue(setting_lpmm, cb_lpmm->checkState());
     }
