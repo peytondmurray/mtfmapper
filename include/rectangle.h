@@ -625,6 +625,10 @@ class Mrectangle {
                     min_side = std::min(min_side, norm(corners[k] - corners[(k+1)%4]));
                 }
                 valid = min_side > minimum_object_width;
+                
+                // estimate area using the right triangle areas
+                area = 0.5 * norm(corners[0] - corners[1]) * norm(corners[2] - corners[1]) +
+                    0.5 * norm(corners[0] - corners[3]) * norm(corners[2] - corners[3]);
             
                 tl.x = 1e50;
                 br.x = -1e50;
@@ -715,6 +719,7 @@ class Mrectangle {
     Point2d          br;
     size_t         boundary_length;
     double length = 0; // measured along major axis
+    double area = 0;
 };
 
 #endif
