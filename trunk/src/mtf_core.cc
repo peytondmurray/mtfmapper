@@ -423,11 +423,6 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
         return false;
     }
     
-    // catch some of the non-convex object that might slip through
-    if (cl(ix,iy) != label) {
-        return false;
-    }
-    
     Pointlist points = cl.get_boundaries().find(label)->second;
     
     vector<double> thetas(points.size(), 0);
@@ -444,26 +439,15 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     Mrectangle rrect(main_thetas, thetas, points, g);
     rect = rrect;
     
-    /*
-    // TODO: rethink this test
-    for (int ci=0; ci < 4; ci++) {
-        if (cl(lrint(0.5*(ix+rrect.centroids[0].x)), lrint(0.5*(iy+rrect.centroids[0].y))) != label) {
-            logger.debug("block with centroid (%d, %d) failed interior check\n", ix, iy);
-            return false;
-        }
-        if (cl(lrint(0.5*(ix+rrect.corners[0].x)), lrint(0.5*(iy+rrect.corners[0].y))) != label) {
-            logger.debug("block with centroid (%d, %d) failed interior (corner) check\n", ix, iy);
-            return false;
-        }
-    }
-    */
-    
     return rrect.valid;
 }
 
 bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const {
     // check if this connected component has a proper interior hole
-    if (cl.largest_hole(label) > std::max(size_t(5), rrect.boundary_length/100)) return false;
+    if (cl.largest_hole(label) > std::max(5.0, rrect.area/100)) {
+        logger.debug("failed largest hole test: hole size = %d, boundary/100 = %d\n", cl.largest_hole(label), rrect.area/100);
+        return false;
+    }
     // otherwise look for a concave region enclosed on three sides in the scan set
 
     // first build a scanset for this contour
