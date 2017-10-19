@@ -107,7 +107,14 @@ void Esf_sampler_piecewise_quad::sample(Edge_model& edge_model, vector<Ordered_p
         local_pts.push_back(Point2d(delta.ddot(edge_model.get_direction()), delta.ddot(edge_model.get_normal())));
     }
     
-    vector<double> qpp = piecewise_quadfit(local_pts);
+    vector<double> qpp(7, 0.0);
+    if (local_pts.size() < 20) { // if we have a really short edge, fall back on quad estimated from target edge
+        qpp[1] = qpp[4] = edge_model.quad_coeffs()[0];
+        qpp[2] = qpp[5] = edge_model.quad_coeffs()[1];
+        qpp[3] = qpp[6] = edge_model.quad_coeffs()[2];
+    } else {
+        qpp = piecewise_quadfit(local_pts);
+    }
     std::array<double, 3> qp;
         
     for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
