@@ -81,6 +81,11 @@ class Edge_model {
     }
     
     void estimate_ridge(void) {
+        if (points.size() < 9) {
+            logger.debug("too few points in estimate_ridge\n");
+            return;
+        }
+    
         double min_par = points.begin()->first;
         double max_par = points.rbegin()->first;
         
@@ -214,9 +219,13 @@ class Edge_model {
             }
         }
         
+        // scale the x values to improve the condition number
+        double span = (ridge.back() - centroid).ddot(direction) - (ridge.front() - centroid).ddot(direction);
+        double x_scale = fabs(span)*0.5/sqrt(0.5);
+        
         for (size_t i=0; i < ridge.size(); i++) {
             Point2d delta = ridge[i] - centroid;
-            double par = delta.ddot(direction);
+            double par = delta.ddot(direction) / x_scale;
             double perp = delta.ddot(normal);
             
             D[0][0] += 1;
@@ -264,8 +273,8 @@ class Edge_model {
             -D[0][1] * (D[1][0]*B[2]    - B[1]   *D[2][0]) +
                 B[0] * (D[1][0]*D[2][1] - D[1][1]*D[2][0]);
         
-        coeff[0] = det_2/det_D;
-        coeff[1] = det_1/det_D;
+        coeff[0] = det_2/det_D / (x_scale * x_scale);
+        coeff[1] = det_1/det_D / x_scale;
         coeff[2] = det_0/det_D;
         
         coeffs_invalidated = false;
