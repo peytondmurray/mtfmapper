@@ -84,9 +84,6 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     
     Eigen::VectorXd sol = design.colPivHouseholderQr().solve(b_d);
     
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(design);
-    double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
-    
     sol[0] /= x_scale*x_scale;
     sol[1] /= x_scale;
     sol[3] /= x_scale*x_scale;
