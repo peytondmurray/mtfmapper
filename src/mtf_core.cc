@@ -323,8 +323,6 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         }
     }
     
-    done:
-    
     if (!reduce_success) {
         logger.debug("reduce failed, probably not a rectangle/quadrangle\n");
         return;
