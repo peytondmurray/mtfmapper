@@ -37,7 +37,7 @@ inline double tricube(double d) {
 vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2d>& pts) {
     /// assumes pts.size() >= 3 
 
-    const double T = 1.0; // we could find T by looking for the peak in the second difference ??
+    
     
     Eigen::MatrixXd A(pts.size(), 6);
     Eigen::VectorXd b(pts.size());
@@ -46,23 +46,27 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     A.setZero();
     
     double span = fabs(pts.back().x - pts.front().x);
+    double x_scale = span*0.5/sqrt(0.5);
+    
+    const double T = 1.0/x_scale; // we could find T by looking for the peak in the second difference ??
     
     // constraints: first row is f(T) = g(T), second row is f'(T) = g'(T)
     C << T*T, T, 1, -T*T, -T, -1,
          2*T, 1, 0, -2*T, -1,  0;
          
-    int lower_thresh = std::max(-span/3.0, -30.0);
-    int upper_thresh = std::min(span/3.0, 30.0);
+    int lower_thresh = std::max(-span/3.0, -30.0)/x_scale;
+    int upper_thresh = std::min(span/3.0, 30.0)/x_scale;
          
     for (size_t r=0; r < pts.size(); r++) {
-        double w1 = pts[r].x <= T ? 1 : pts[r].x < upper_thresh ? tricube((pts[r].x - T)/(upper_thresh - T)) : 0.0;
-        A(r, 0) = w1*pts[r].x*pts[r].x;
-        A(r, 1) = w1*pts[r].x;
+        double sx = pts[r].x / x_scale;
+        double w1 = sx <= T ? 1 : sx < upper_thresh ? tricube((sx - T)/(upper_thresh - T)) : 0.0;
+        A(r, 0) = w1*sx*sx;
+        A(r, 1) = w1*sx;
         A(r, 2) = w1*1.0;
         
-        double w2 = pts[r].x > T ? 1 : pts[r].x > lower_thresh ? tricube((T - pts[r].x)/(T - lower_thresh)) : 0.0;
-        A(r, 3) = w2*pts[r].x*pts[r].x;
-        A(r, 4) = w2*pts[r].x;
+        double w2 = sx > T ? 1 : sx > lower_thresh ? tricube((T - sx)/(T - lower_thresh)) : 0.0;
+        A(r, 3) = w2*sx*sx;
+        A(r, 4) = w2*sx;
         A(r, 5) = w2*1.0;
         
         b[r] = pts[r].y * (w1 + w2);
@@ -80,11 +84,19 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     
     Eigen::VectorXd sol = design.colPivHouseholderQr().solve(b_d);
     
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(design);
+    double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
+    
+    sol[0] /= x_scale*x_scale;
+    sol[1] /= x_scale;
+    sol[3] /= x_scale*x_scale;
+    sol[4] /= x_scale;
+    
     // sol[0-5] : quadratic parameters
     // sol[6-7] : constraints values (not used)
     
     vector<double> parms(7);
-    parms[0] = T;
+    parms[0] = T * x_scale;
     parms[1] = sol[0];
     parms[2] = sol[1];
     parms[3] = sol[2];

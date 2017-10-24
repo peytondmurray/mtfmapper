@@ -440,6 +440,32 @@ class Mrectangle {
                     }
                 }
                 
+                Point2d extrema[4];
+                for (size_t k=0; k < 4; k++) {
+                    extrema[k] = Point2d(1e15, -1e15);
+                }
+                
+                for (size_t i=0; i < points.size(); i++) {
+                    if (associated_edge[i] >= 0) {
+                        int& k = associated_edge[i];
+                        
+                        Point2d delta = points[i] - centroids[k];
+                        double par = delta.ddot(edges[k]);
+                        extrema[k].x = std::min(extrema[k].x, par);
+                        extrema[k].y = std::max(extrema[k].y, par);
+                    }
+                }
+                
+                double x_scale[4];
+                for (size_t k=0; k < 4; k++) {
+                    if (extrema[k].x > 0 || extrema[k].y < 0) { // for some reason, no points were associated with this edge
+                        x_scale[k] = 1.0;
+                    } else {
+                        x_scale[k] = fabs(extrema[k].y - extrema[k].x)*0.5/sqrt(0.5);
+                    }
+                    x_scale[k] = std::max(1.0, x_scale[k]); // catch the case where only one point is associated with this edge
+                }
+                
                 // ok, so we have refined the edge centroid and normal
                 // now we can fit a quadratic, and apply a stricter inlier test
                 double D[4][3][3];
@@ -452,12 +478,13 @@ class Mrectangle {
                         }
                     }
                 }
+                
                 for (size_t i=0; i < points.size(); i++) {
                     if (associated_edge[i] >= 0) {
                         int& k = associated_edge[i];
                         
                         Point2d delta = points[i] - centroids[k];
-                        double par = delta.ddot(edges[k]);
+                        double par = delta.ddot(edges[k]) / x_scale[k];
                         double perp = delta.ddot(normals[k]);
                         
                         D[k][0][0] += 1;
@@ -506,8 +533,8 @@ class Mrectangle {
                         -D[k][0][1] * (D[k][1][0]*B[k][2]    - B[k][1]   *D[k][2][0]) +
                             B[k][0] * (D[k][1][0]*D[k][2][1] - D[k][1][1]*D[k][2][0]);
                     
-                    quad_coeffs[k][0] = det_2/det_D;
-                    quad_coeffs[k][1] = det_1/det_D;
+                    quad_coeffs[k][0] = det_2/det_D / (x_scale[k] * x_scale[k]);
+                    quad_coeffs[k][1] = det_1/det_D / x_scale[k];
                     quad_coeffs[k][2] = det_0/det_D;
                 }
                 
