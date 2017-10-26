@@ -130,7 +130,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         return;
     }
     
-    if (!rrect.corners_ok()) {
+    if (!rrect.corners_ok() || !rrect.valid) {
         logger.debug("discarding broken square (early)\n");
         return;
     }
@@ -140,12 +140,14 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         return;
     }
     
+    
     if (!ridges_only) {
         if (!homogenous(cent, label, rrect)) {
             logger.debug("discarding inhomogenous object\n");
             return;
         }
     }
+    
     
     
     for (size_t k=0; k < 4; k++) {
@@ -434,16 +436,15 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     pd.select_best_n(main_thetas, 4);
     sort(main_thetas.begin(), main_thetas.end());
     
-    Mrectangle rrect(main_thetas, thetas, points, g);
-    rect = rrect;
+    rect = Mrectangle(main_thetas, thetas, points, g);
     
-    return rrect.valid;
+    return rect.valid;
 }
 
 bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const {
     // check if this connected component has a proper interior hole
-    if (cl.largest_hole(label) > std::max(5.0, rrect.area/100)) {
-        logger.debug("failed largest hole test: hole size = %d, boundary/100 = %d\n", cl.largest_hole(label), rrect.area/100);
+    if (cl.largest_hole(label) > std::max(5.0, rrect.area/5.0)) {
+        logger.debug("failed largest hole test: hole size = %d, boundary/100 = %d\n", cl.largest_hole(label), rrect.area/5.0);
         return false;
     }
     // otherwise look for a concave region enclosed on three sides in the scan set
@@ -502,23 +503,8 @@ bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrec
         }
     }
     
-    
-    
     // pick the allowed hole fraction
-    double hole_fraction = 0.005;
-    const double lower_hole_fraction = 0.005;
-    const double upper_hole_fraction = 0.05;
-    const int lower_size = 2500; // a 50x50 block
-    const int upper_size = 200000;
-    if (cc_size < lower_size) {
-        hole_fraction = lower_hole_fraction;
-    } else {
-        if (cc_size > upper_size) {
-            hole_fraction = upper_hole_fraction;
-        } else {
-            hole_fraction = (upper_hole_fraction-lower_hole_fraction) * double(cc_size - lower_size) / (upper_size - lower_size) + lower_hole_fraction;
-        }
-    }
+    double hole_fraction = 0.2; // large enough to allow interior details of ISO 12233:2014 targets
     
     return cc_size > 0 && (holes <= 3 || double(holes)/cc_size < hole_fraction);
 }
