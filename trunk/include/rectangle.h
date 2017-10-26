@@ -63,7 +63,7 @@ class Mrectangle {
   public:
     Mrectangle(void) : thetas(4, .0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
-        normals(4, Point2d(0.0,0.0)) { 
+        normals(4, Point2d(0.0,0.0)), line_deviation(4, 0.0) { 
 
         for (int i=0; i < 4; i++) {
             for (int j=0; j < 3; j++) {
@@ -76,7 +76,7 @@ class Mrectangle {
     Mrectangle(const Mrectangle& b, size_t k, double width) 
       : thetas(4, .0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
-        normals(4, Point2d(0.0,0.0)), boundary_length(0) {
+        normals(4, Point2d(0.0,0.0)), boundary_length(0), line_deviation(4, 0.0) {
 
         for (int i=0; i < 4; i++) {
             for (int j=0; j < 3; j++) {
@@ -183,7 +183,7 @@ class Mrectangle {
     Mrectangle(const Mrectangle& b, const vector<Edge_record>& edge_records) 
       : thetas(4, 0.0), centroids(4, Point2d(0.0,0.0)), valid(true), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
-        normals(4, Point2d(0.0,0.0)), boundary_length(0) {
+        normals(4, Point2d(0.0,0.0)), boundary_length(0), line_deviation(4, 0.0) {
 
         for (int i=0; i < 4; i++) {
             for (int j=0; j < 3; j++) {
@@ -303,7 +303,7 @@ class Mrectangle {
         const vector<Point2d>& points, const Gradient& g, double thresh=5.0/180.0*M_PI) 
       : thetas(in_thetas), centroids(4, Point2d(0.0,0.0)), valid(false), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
-        normals(4, Point2d(0.0,0.0)), corner_map(4) {
+        normals(4, Point2d(0.0,0.0)), corner_map(4), line_deviation(4, 0.0) {
 
         for (int i=0; i < 4; i++) {
             for (int j=0; j < 3; j++) {
@@ -590,6 +590,7 @@ class Mrectangle {
                 for (size_t k=0; k < 4; k++) {
                     if (fabs(max_recon[k].x - min_recon[k].x) != 0) {
                         double slope = fabs(max_recon[k].y - min_recon[k].y) / fabs(max_recon[k].x - min_recon[k].x);
+                        line_deviation[k] = slope;
                         if (slope > quad_slope_thresh) { 
                             violation_count += slope > quad_severe_slope_thresh ? 2 : 1;
                         }
@@ -747,6 +748,7 @@ class Mrectangle {
     size_t         boundary_length;
     double length = 0; // measured along major axis
     double area = 0;
+    vector<double> line_deviation;
 };
 
 #endif

@@ -180,6 +180,29 @@ class Edge_model {
         return coeff;
     }
     
+    double line_deviation(void) {
+        quad_coeffs(); // force update, if necessary
+        
+        Point2d min_recon(0, 1e20);
+        Point2d max_recon(0, -1e20);
+        for (size_t i=0; i < ridge.size(); i++) {
+            Point2d delta = ridge[i] - centroid;
+            double par = delta.ddot(direction);
+            
+            double pred = coeff[0]*par*par + coeff[1]*par + coeff[2];
+            if (pred < min_recon.y) {
+                min_recon = Point2d(par, pred);
+            }
+            if (pred > max_recon.y) {
+                max_recon = Point2d(par, pred);
+            }
+        }
+        if (fabs(max_recon.x - min_recon.x) != 0) {
+            return fabs(max_recon.y - min_recon.y) / fabs(max_recon.x - min_recon.x);
+        }
+        return 0;
+    }
+    
     const Point2d& get_centroid(void) const {
         return centroid;
     }

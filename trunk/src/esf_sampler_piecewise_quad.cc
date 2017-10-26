@@ -125,6 +125,11 @@ vector<double> Esf_sampler_piecewise_quad::piecewise_quadfit(const vector<Point2
     }
     
     // null space method
+    // W. Gander et al., Scientific Computing - An Introduction using Maple and MATLAB,
+    // Texts in Computational Science and Engineering 11,
+    // DOI 10.1007/978-3-319-04325-8 6,
+    // Springer International Publishing Switzerland 2014
+    // algorithm 6.22, page 334
     int n = A.cols();
     int p = C.rows();
     auto qr1 = C.transpose().householderQr();

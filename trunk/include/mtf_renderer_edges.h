@@ -36,8 +36,9 @@ class Mtf_renderer_edges : public Mtf_renderer {
   public:
     Mtf_renderer_edges(const std::string& fname, 
       const std::string& sfrname,
+      const std::string& devname,
       bool lpmm_mode=false, double pixel_size=1.0) 
-      :  ofname(fname), sfrname(sfrname),
+      :  ofname(fname), sfrname(sfrname), devname(devname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
     }
@@ -53,6 +54,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     
         FILE* fout = fopen(ofname.c_str(), "wt");
         FILE* sfrout = fopen(sfrname.c_str(), "wt");
+        FILE* devout = fopen(devname.c_str(), "wt");
         vector<int> corder(4);
         vector<int> eorder(4);
         for (size_t i=0; i < blocks.size(); i++) {
@@ -148,9 +150,13 @@ class Mtf_renderer_edges : public Mtf_renderer {
                     fprintf(sfrout, "%lf ", sfr[j]);
                 }
                 fprintf(sfrout, "\n");
+                
+                fprintf(devout, "%d %lf %lf %.8lf\n", int(i), ec.x, ec.y, blocks[i].get_line_deviation(l));
             }
         }    
         fclose(fout);
+        fclose(sfrout);
+        fclose(devout);
     }
     
   private:
@@ -165,6 +171,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     
     string ofname;
     string sfrname;
+    string devname;
     bool filter;
     double angle;
     bool    lpmm_mode;

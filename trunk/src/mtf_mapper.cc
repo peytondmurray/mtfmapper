@@ -579,6 +579,7 @@ int main(int argc, char** argv) {
             Mtf_renderer_edges printer(
                 wdir + string("edge_mtf_values.txt"), 
                 wdir + string("edge_sfr_values.txt"),
+                wdir + string("edge_line_deviation.txt"),
                 lpmm_mode, pixel_size
             );
             printer.render(mtf_core.get_blocks());
