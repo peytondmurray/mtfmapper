@@ -423,7 +423,7 @@ class Mrectangle {
                     double l2 = pc / q;
                     
                     double l = std::max(l1,l2);
-                    long_side = l;
+                    long_side = std::max(long_side, l);
                     
                     Point2d ev;
                     if (fabs(covxy[k]) > 1e-10) { // only update the normal if we have x-y correlation
