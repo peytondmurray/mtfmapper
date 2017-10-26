@@ -1127,6 +1127,7 @@ void Mtf_core::process_image_as_roi(void) {
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
         block.set_ridge(0, em.ridge);
+        block.set_line_deviation(0, em.line_deviation());
         
         for (int k=1; k < 4; k++) {
             block.set_mtf50_value(k, 1.0, 0.0);
