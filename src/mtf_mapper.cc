@@ -128,6 +128,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_lp1("", "lp1", "Lens profile resolution 1 (lp/mm or c/p)", false, 10.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp2("", "lp2", "Lens profile resolution 2 (lp/mm or c/p)", false, 30.0, "lp/mm", cmd);
     TCLAP::ValueArg<double> tc_lp3("", "lp3", "Lens profile resolution 3 (lp/mm or c/p)", false, 50.0, "lp/mm", cmd);
+    TCLAP::ValueArg<string> tc_roi("", "roi", "ROI filename", false, "", "image", cmd);
+    TCLAP::ValueArg<double> tc_roi_width("", "roi-width", "Width (on each side of edge) of SE ROI", false, 28, "pixels", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -192,7 +194,7 @@ int main(int argc, char** argv) {
     } else {
         printf("16-bit input image, no upconversion required\n");
     }
-   
+    
     assert(cvimg.type() == CV_16UC1);
 
 
@@ -276,7 +278,7 @@ int main(int argc, char** argv) {
     
     
     printf("Computing gradients ...\n");
-    Gradient gradient(cvimg, false);
+    Gradient gradient(cvimg, true);
     
     printf("Thresholding image ...\n");
     int brad_S = 2*min(cvimg.cols, cvimg.rows)/3;
@@ -287,10 +289,12 @@ int main(int argc, char** argv) {
     Component_labeller::zap_borders(masked_img);    
     Component_labeller cl(masked_img, 60, false, 8000);
 
+    /*
     if (cl.get_boundaries().size() == 0) {
         printf("No black objects found. Try a lower threshold value with the -t option.\n");
         return 0;
     }
+    */
     
     // now we can destroy the thresholded image
     masked_img = cv::Mat(1,1, CV_8UC1);
@@ -298,6 +302,10 @@ int main(int argc, char** argv) {
     Mtf_core mtf_core(cl, gradient, cvimg, rawimg, tc_bayer.getValue());
     mtf_core.set_absolute_sfr(tc_absolute.getValue());
     mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
+    
+    if (tc_roi_width.isSet()) {
+        mtf_core.set_roi_width(tc_roi_width.getValue());
+    }
     
     if (tc_snap.isSet()) {
         mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
@@ -309,11 +317,17 @@ int main(int argc, char** argv) {
         }
     }
     
-    Mtf_core_tbb_adaptor ca(&mtf_core);
-    
+    if (tc_roi.isSet()) {
+        cv::Mat roi_img = cv::imread(tc_roi.getValue(), CV_LOAD_IMAGE_UNCHANGED);
+        printf("roi image dims: %d rows, %d cols\n", roi_img.rows, roi_img.cols);
+        mtf_core.process_roi_image(roi_img);
+    } else {
+        printf("Fatal error. This version of MTF Mapper only supports ROI mode\n");
+        return -1;
+    }
+    /*
     size_t nthreads = std::thread::hardware_concurrency();
     ThreadPool tp (nthreads);
-    
     #ifdef MDEBUG
     if (tc_single.getValue()) {
         ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
@@ -324,7 +338,7 @@ int main(int argc, char** argv) {
     #else
     Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
     #endif
-    
+    */
     
     Distance_scale distance_scale;
     if (tc_mf_profile.getValue() || tc_focus.getValue()) {

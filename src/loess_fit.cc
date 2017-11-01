@@ -111,7 +111,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     int rval = 0;
     
-    const double scale = 2 * 16.0 / 28.0; // maxdot relative to 16
+    const double scale = 2 * 16.0 / upper; // maxdot relative to 16
     double rightsum = 0;
     int rightcount = 0;
     double leftsum = 0;
@@ -161,16 +161,31 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    double rep_left = sampled[left_non_missing+5];
+    double rep_right = sampled[right_non_missing-5];
     
     // now just pad out the ends of the sequences with the last non-missing values
-    for (int idx=left_non_missing-1; idx >= 0; idx--) {
-        sampled[idx] = sampled[left_non_missing];
+    for (int idx=left_non_missing+6; idx >= 0; idx--) {
+        sampled[idx] = rep_left;
     }
-    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
-        sampled[idx] = sampled[right_non_missing];
+    for (int idx=right_non_missing-6; idx < fft_size; idx++) {
+        sampled[idx] = rep_right;
     }
     
+    // blend the transition at the missing edge
+    rep_left = sampled[max(0, left_non_missing-10)];
+    for (int idx=max(0, left_non_missing-10); idx < left_non_missing+15; idx++) {
+        rep_left = 0.8*rep_left + 0.2*sampled[idx];
+        sampled[idx] = rep_left;
+    }
     
+    rep_left = sampled[min(fft_size-1, right_non_missing+10)];
+    for (int idx=min(fft_size-1, right_non_missing+10); idx > right_non_missing-15; idx--) {
+        rep_right = 0.8*rep_right + 0.2*sampled[idx];
+        sampled[idx] = rep_right;
+    }
+    
+    FILE* sfile = fopen("raw_slopes.txt", "at");
     vector<double> slopes(fft_size, 0);
     int peak_slope_idx = 0;
     const int pw = 16;
@@ -186,11 +201,16 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             }
             a = sxy/(sx2);
             slopes[idx] = a;
+            if (clipped_count==0) {
+                fprintf(sfile, "%d %lf\n", idx, slopes[idx]);
+            }
             if (idx > fft_left+pw && idx < fft_right-pw-1 && fabs(a) > fabs(slopes[peak_slope_idx])) {
                 peak_slope_idx = idx;
             } 
         }
     }
+    if (clipped_count==0) fprintf(sfile, "\n\n");
+    fclose(sfile);
     
     if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
         abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
@@ -227,6 +247,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                 clipped = true;
                 break;
             } 
+        } else {
+            //printf("[%d] -> sign=%d, slope[%d]=%lg, peak=%lg\n", idx, slopes[idx]*central_peak < 0, idx, fabs(slopes[idx]), peak_threshold);
         }
     }
     for (int idx=fft_size/2+16; idx < fft_right-4; idx++) {
@@ -250,7 +272,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    
+    printf("clipped=%d, left=%d, right=%d\n", clipped, fft_left, fft_right);
     if (clipped) {
         if (fft_size/2 - fft_left < shift_tolerance*8 ||
             fft_right  - fft_size/2 < shift_tolerance*8) {
@@ -305,6 +327,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     p90idx -= 4 + 2*lrint(rise_dist);
     int midpoint = fft_size/2;
     int twidth = max(fabs(double(p10idx - fft_size/2)), fabs(double(p90idx - fft_size/2)));
+    
+    printf("rough interval: %d %d, twidth=%d\n", p10idx, p90idx, twidth);
     
     // now recompute ESF using box() for tails, and exp() for transition
     rightsum = 0;
@@ -369,12 +393,32 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    printf("fft_left=%d, fft_right=%d, left_non_missing=%d, right_non_missing=%d\n", 
+        fft_left, fft_right, left_non_missing, right_non_missing
+    );
+    
+    rep_left = sampled[left_non_missing+5];
+    rep_right = sampled[right_non_missing-5];
+    
     // now just pad out the ends of the sequences with the last non-missing values
-    for (int idx=left_non_missing-1; idx >= 0; idx--) {
-        sampled[idx] = sampled[left_non_missing];
+    for (int idx=left_non_missing+6; idx >= 0; idx--) {
+        sampled[idx] = rep_left;
     }
-    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
-        sampled[idx] = sampled[right_non_missing];
+    for (int idx=right_non_missing-6; idx < fft_size; idx++) {
+        sampled[idx] = rep_right;
+    }
+    
+    // blend the transition at the missing edge
+    rep_left = sampled[max(0, left_non_missing-10)];
+    for (int idx=max(0, left_non_missing-10); idx < left_non_missing+15; idx++) {
+        rep_left = 0.8*rep_left + 0.2*sampled[idx];
+        sampled[idx] = rep_left;
+    }
+    
+    rep_left = sampled[min(fft_size-1, right_non_missing+10)];
+    for (int idx=min(fft_size-1, right_non_missing+10); idx > right_non_missing-15; idx--) {
+        rep_right = 0.8*rep_right + 0.2*sampled[idx];
+        sampled[idx] = rep_right;
     }
     
     double lslope = (sampled[left_trans+2] - sampled[left_trans-3]) / (5.0);
@@ -391,6 +435,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
         esf[lidx++] = sampled[idx+3];
     }
+    
+    FILE* efile = fopen("raw_esf.txt", "at");
+    for (int idx=2; idx < fft_size; idx++) {
+        fprintf(efile, "%d %lf %lf\n", idx, sampled[idx], sampled[idx]-sampled[idx-2]);
+    }
+    fprintf(efile, "\n\n");
+    fclose(efile);
     
     
     double old = sampled[fft_left];
@@ -450,6 +501,70 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = 0.5*(smoothed[idx] + sampled[idx]);
     }
     
+    #if 0
+    // we might still have negative PSF values (or negative peaks)
+    for (int rep=0; rep < 10; rep++) {
+        for (int idx=3; idx < fft_size-3; idx++) {
+            if (sampled[idx]*central_peak < 0) {
+                smoothed[idx] = (sampled[idx-2] + sampled[idx-1] + sampled[idx+1] + sampled[idx+2])/4.0;
+            } else {
+                smoothed[idx] = sampled[idx];
+            }
+        }
+        for (int idx=3; idx < fft_size-3; idx++) {
+            sampled[idx] = smoothed[idx];
+        }
+    }
+    #endif
+    
+    for (int idx=fft_size/2; idx < fft_size-3; idx++) {
+        if (sampled[idx]*central_peak < 0) {
+            printf("first neg R at %d, using smoothed from here on out\n", idx);
+            // go back a bit, and start smoothing ....
+            for (int j=idx-4; j < fft_size-3; j++) {
+                sampled[j] = smoothed[j];
+            }
+            break;
+        }
+    }
+    
+    for (int idx=fft_size/2; idx > 3; idx--) {
+        if (sampled[idx]*central_peak < 0) {
+            printf("first neg L at %d, using smoothed from here on out\n", idx);
+            // go back a bit, and start smoothing ....
+            for (int j=0; j < idx+4; j++) {
+                sampled[j] = smoothed[j];
+            }
+            break;
+        }
+    }
+    
+    // we might still have negative PSF values (or negative peaks)
+    for (int rep=0; rep < 10; rep++) {
+        for (int idx=3; idx < fft_size-3; idx++) {
+            if (sampled[idx]*central_peak < 0) {
+                smoothed[idx] = (sampled[idx-2] + sampled[idx-1] + sampled[idx+1] + sampled[idx+2])/4.0;
+            } else {
+                smoothed[idx] = sampled[idx];
+            }
+        }
+        for (int idx=3; idx < fft_size-3; idx++) {
+            sampled[idx] = smoothed[idx];
+        }
+    }
+    for (int idx=3; idx < fft_size-3; idx++) {
+        if (sampled[idx]*central_peak < 0) {
+            sampled[idx] = 0;
+        } 
+    }
+    
+    
+    FILE* pfile = fopen("final_psf.txt", "at");
+    for (int idx=0; idx < fft_size; idx++) {
+        fprintf(pfile, "%d %lf\n", idx, sampled[idx]);
+    }
+    fprintf(pfile, "\n\n");
+    fclose(pfile);
     
     
     return rval;
