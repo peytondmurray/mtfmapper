@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_MFPROFILE_H
 #define MTF_RENDERER_MFPROFILE_H
 
-#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
@@ -61,7 +60,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     }
     
     void render(const vector<Block>&) {
-        logger.error("Fatal error. This function should not be used. Aborting\n");
+        printf("Fatal error. This function should not be used. Aborting\n");
         exit(1);
         return;
     }
@@ -74,7 +73,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         }
         
         if (!distance_scale.fiducials_found) {
-            logger.error("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
+            printf("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
             return;
         }
         

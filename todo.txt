@@ -10,63 +10,19 @@ correctly)
 overlap
 4. make profiles more robust, i.e., resolve reference block orientation
 issues (have not seen problems here in a while ...)
-5. Perspective chart can be optimized to keep blocks more aligned with the
+5. fix gui zooming-with-mousewheel
+6. Perspective chart can be optimized to keep blocks more aligned with the
 meridional direction (this should not really affect overall focus 
 position, though)
-6. can improve robustness to background objects by measuring the intensity
+7. can improve robustness to background objects by measuring the intensity
 variance within each block, e.g, comparing to half variance to bottom half
 variance and so on. this will weed out non-uniform blocks. (low priority,
 unless people really have a lot of background clutter)
-7. We can improve contamination detection by performing a distance transform
-on the connected component label image, i.e., each pixel in the gradient
-image is tagged with the label of its closest connected component. This will
-help a lot as a "first pass" filter to remove pixels (with non-zero
-gradient) that do not form part of the edge we are trying to analyze. This
-does not resolve problems with small specks that do not form their own
-connected components after thresholding.
-8. Edge orientation should be more closely related to orthogonal regression:
-the scale of x and y coordinates are the same. What happens if strong
-astigmatism is present (does this change the equal-scale assumption).
-Anyhow, if we assume the x and y coordinates in the ROI are error-free, then
-the only remaining error source is the weighting of each point (which is
-just the gradient magnitude). Plain OLS models the data as
-Y_i = B0 + B1*X_i + eps_i
-where eps_i ~ N(0, sigma)
-Orthogonal regression models the data as
-Y_i = eti_i + eps_i
-X_i = psi_i + delta_i
-where eps_i ~ N(0, sigma_e) and delta_i ~ N(0, sigma_d) if we assume the
-errors are uncorrelated (are they?)
-The Orthogonal regression then actually fits the model
-eta_i = B0 + B1*psi_i
-(the underlying true model)
-If we assume that sigma_e == sigma_d == 0, i.e., the Y_i and X_i are
-essentially error-free (because they really are just the centroid of the
-pixels in the ROI), then instead we could model the weights (image gradient
-magnitude) as the variable with the error. This makes sense, because sensor
-noise would manifest in this way (and strictly speaking, the sensor noise
-would lead to a larger uncertainty in image gradient magnitude in the bright
-part of the image, which we could model explicitly by using the intensity as
-part of the weight, or we could try to measure this directly).
-Currently, we implement weighted PCA to estimate the edge orientation. This
-boils down to computing the weighted covariance matrix:
-cov = sum { w*[x-mu_x y-mu_y]*[x-mu_x y-mu_y]' } over all pixels with
-non-zero weights w_i.
-If the uncertainty in the weight is modelled, then it becomes
-cov = sum { (W + phi)*[x-mu_x y-mu_y]*[x-mu_x y-mu_y]' }
-where W represents the true weight (true gradient intensity, in this case)
-and phi_i ~ N(0, sigma_p), where sigma_p is the intensity noise standard
-deviation.
-[ From Koren and Carmel, we see that PCA strives to maximize the sum of all
-squared distances. 
-  For a symmetric nxn matrix A, the eigenvectors u_i are the maximiser of
-  max_{v_1,...,v_n} sum_i (v_i)' * A * v_i
-  Since v_i are column vectors, the sum above is scalar.
-  I suppose in this case, A is the covariance matrix cov.
-]
-Focusing just on x (to simplify things), we have
-cov_xx = sum { (W+phi)*(x-mu_x)^2 }
-... to be continued
+8. Moving the install directory under Windows (after running GUI a first
+time) results in incorrect paths to the helper utilities. Maybe we can store
+an explicit flag for each helper -- if the user has specified a path, use
+that, otherwise assume the helpers are under the mtf mapper path?
+
 
 ==== Jack Hogan's wish list ====
 Sure, imo it would be better as a separate executable anyways. By 'resized'

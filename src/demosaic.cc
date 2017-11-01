@@ -26,27 +26,24 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
-#include "include/logger.h"
 #include "include/demosaic.h"
 #include <string>
 using std::string;
 #include <vector>
 using std::vector;
 
-#include <opencv2/highgui/highgui.hpp>
+void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg);
+void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
 
-void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scene, bool swap_diag=false);
-void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer, Bayer::cfa_pattern_t cfa_pattern);
-
-void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::cfa_pattern_t cfa_pattern, Bayer::bayer_t bayer, bool unbalanced_scene) {
+void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer) {
     // switch on Bayer subset
     if (bayer == Bayer::GREEN) {
-        simple_demosaic_green(cvimg, rawimg, unbalanced_scene, cfa_pattern == Bayer::GRBG || cfa_pattern == Bayer::GBRG);
+        simple_demosaic_green(cvimg, rawimg);
     } else {
         if (bayer == Bayer::RED || bayer == Bayer::BLUE) {
-            simple_demosaic_redblue(cvimg, rawimg, bayer, cfa_pattern);
+            simple_demosaic_redblue(cvimg, rawimg, bayer);
         } else {
-            logger.error("Fatal error: Unknown bayer subset requested. Aborting\n");
+            printf("Fata error: Unknown bayer subset requested. Aborting\n");
             exit(-1);
         }
     }
@@ -68,63 +65,98 @@ static void match(const vector<int>& source, const vector<int>& target, vector<i
     }
 }
 
-void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scene, bool swap_diag) {
-    rawimg = cvimg.clone();
+void green_leveling(cv::Mat& img, double thresh = 0.1) {
+    cv::Mat dest = img.clone();
+    // for now, always interpolate subset 2 ??
     
-    // target subsets
-    int tss1 = 0;
-    int tss2 = 3;
-    if (swap_diag) {
-        tss1 = 1;
-        tss2 = 2;
-    }
-    
-    if (!unbalanced_scene) {
-        logger.debug("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
-        vector < vector<int> > hist(4, vector<int>(65536, 0));
-        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-            for (int col=0; col < cvimg.cols; col++) {
-                int val = cvimg.at<uint16_t>(row, col);
-                int subset = ((row & 1) << 1) | (col & 1);
-                hist[subset][val]++;
-            }
-        }
-        // convert histograms to cumulative histograms
-        for (int subset=0; subset < 4; subset++) {
-            int acc = 0;
-            for (size_t i=0; i < hist[subset].size(); i++) {
-                acc += hist[subset][i];
-                hist[subset][i] = acc;
-            }
-        }
-        
-        int from_ss = 1;
-        int to_ss = 2;
-        if (swap_diag) {
-            from_ss = 0;
-            to_ss = 3;
-        }
-        vector<int> m(65536, 0);
-        match(hist[to_ss], hist[from_ss], m);
-        for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-            for (int col=0; col < cvimg.cols; col++) {
-                int subset = ((row & 1) << 1) | (col & 1);
-                if (subset == from_ss) { // TODO: optimize access pattern
-                    int val = cvimg.at<uint16_t>(row, col);
-                    cvimg.at<uint16_t>(row, col) = m[val];
+    for (int row=4; row < img.rows-4; row+=2) {
+        for (int col=5; col < img.cols; col+= 2) {
+            float d1_1 = img.at<uint16_t>(row-1, col-1);
+            float d1_2 = img.at<uint16_t>(row-1, col+1);
+            float d1_3 = img.at<uint16_t>(row+1, col-1);
+            float d1_4 = img.at<uint16_t>(row+1, col+1);
+            
+            float d2_1 = img.at<uint16_t>(row-2, col);
+            float d2_2 = img.at<uint16_t>(row+2, col);
+            float d2_3 = img.at<uint16_t>(row, col-2);
+            float d2_4 = img.at<uint16_t>(row, col+2);
+            
+            float d1 = (d1_1 + d1_2 + d1_3 + d1_4);
+            float d2 = (d2_1 + d2_2 + d2_3 + d2_4);
+            
+            float c1 = (fabs(d1_1 - d1_2) + fabs(d1_1 - d1_3) + fabs(d1_1 - d1_4) + fabs(d1_2 - d1_3) + fabs(d1_2 - d1_4) + fabs(d1_3 - d1_4))/6.0;
+            float c2 = (fabs(d2_1 - d2_2) + fabs(d2_1 - d2_3) + fabs(d2_1 - d2_4) + fabs(d2_2 - d2_3) + fabs(d2_2 - d2_4) + fabs(d2_3 - d2_4))/6.0;
+            
+            if ((c1 + c2) < thresh * fabs(d1 - d2)) { // gradients are small enough to allow interpolation
+                float vin = img.at<uint16_t>(row, col);
+                
+                float gse = img.at<uint16_t>(row+1, col+1) + 0.5 * (vin - img.at<uint16_t>(row+2, col+2));
+                float gnw = img.at<uint16_t>(row-1, col-1) + 0.5 * (vin - img.at<uint16_t>(row-2, col-2));
+                float gne = img.at<uint16_t>(row-1, col+1) + 0.5 * (vin - img.at<uint16_t>(row-2, col+2));
+                float gsw = img.at<uint16_t>(row+1, col-1) + 0.5 * (vin - img.at<uint16_t>(row+2, col-2));
+                
+                const float eps = 1e-5;
+                
+                float wtse = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col+2) - vin) + SQR(img.at<uint16_t>(row+3, col+3) - d1_4));
+                float wtnw = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col-2) - vin) + SQR(img.at<uint16_t>(row-3, col-3) - d1_1));
+                float wtne = 1.0 / (eps + SQR(img.at<uint16_t>(row-2, col+2) - vin) + SQR(img.at<uint16_t>(row-3, col+3) - d1_2));
+                float wtsw = 1.0 / (eps + SQR(img.at<uint16_t>(row+2, col-2) - vin) + SQR(img.at<uint16_t>(row+3, col-3) - d1_3));
+                
+                float iv = (gse*wtse + gnw*wtnw + gne*wtne + gsw*wtsw) / (wtse + wtnw + wtne + wtsw);
+                
+                if ( (iv - vin) < thresh*(iv + vin) ) {
+                    dest.at<uint16_t>(row, col) = lrint(0.5 * (vin + iv));
                 }
             }
         }
-    } else {
-        logger.debug("ROI mode, not performing G1/G2 Bayer subset matching\n");
     }
+    img = dest; // copy back the result
+}
+
+void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg) {
+    printf("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
+    rawimg = cvimg.clone();
+    
+    vector < vector<int> > hist(4, vector<int>(65536, 0));
+    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+        for (int col=0; col < cvimg.cols; col++) {
+            int val = cvimg.at<uint16_t>(row, col);
+            int subset = ((row & 1) << 1) | (col & 1);
+            hist[subset][val]++;
+        }
+    }
+    // convert histograms to cumulative histograms
+    for (int subset=0; subset < 4; subset++) {
+        int acc = 0;
+        for (size_t i=0; i < hist[subset].size(); i++) {
+            acc += hist[subset][i];
+            hist[subset][i] = acc;
+        }
+    }
+    
+    const int from_ss = 1;
+    const int to_ss = 2;
+    vector<int> m(65536, 0);
+    match(hist[from_ss], hist[to_ss], m);
+    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
+        for (int col=0; col < cvimg.cols; col++) {
+            int subset = ((row & 1) << 1) | (col & 1);
+            if (subset == from_ss) { // TODO: optimize access pattern
+                int val = cvimg.at<uint16_t>(row, col);
+                cvimg.at<uint16_t>(row, col) = m[val];
+            }
+        }
+    }
+    
+    // apply green channel equilibration
+    green_leveling(cvimg, 0.2);
     
     // bilnear interpolation to get rid op R and B channels?
     for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
         for (int col=4; col < cvimg.cols-4; col++) {
             int subset = ((row & 1) << 1) | (col & 1);
             
-            if (subset == tss1 || subset == tss2) {
+            if (subset == 0 || subset == 3) {
             
                 double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
                                     3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3)));
@@ -160,88 +192,13 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
             }
         }
     }
-    
-    // since the relative row/column offsets are hardcoded, just swap the subsets
-    if (swap_diag) {
-        std::swap(tss1, tss2);
-    }
-    
-    // pad out the border using three-sample averaging; this leaves 
-    // some zippering, but this should not matter too much downstream
-    for (size_t row=0; row < (size_t)cvimg.rows; row++) {
-        for (size_t col=0; col < 4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (row == 0 || row == (size_t)(cvimg.rows-1)) {
-                if (subset == tss1) { 
-                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col+1);
-                } else if (subset == tss2) {
-                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
-                }
-            } else {
-                if (subset == tss1 || subset == tss2) { 
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col) + cvimg.at<uint16_t>(row, col+1))/3;
-                }
-            }
-            
-        }
-        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (row == 0 || row == (size_t)(cvimg.rows-1)) {
-                if (subset == tss1) { 
-                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col < size_t(cvimg.cols-1) ? col+1 : col-1);
-                } else if (subset == tss2) {
-                    cvimg.at<uint16_t>(row, col) = cvimg.at<uint16_t>(row, col-1);
-                }
-            } else {
-                if (subset == tss1 || subset == tss2) { 
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col) + cvimg.at<uint16_t>(row, col-1))/3;
-                }
-            }
-        }
-    }
-    
-    for (size_t col=4; col < (size_t)(cvimg.cols-4); col++) {
-        for (size_t row=0; row < 4; row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == tss1 || subset == tss2) { 
-                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col+1) + cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row+1, col))/3;
-            }
-        }
-        for (size_t row=size_t(cvimg.rows-4); row < size_t(cvimg.rows); row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == tss1 || subset == tss2) { 
-                cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col+1) + cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row-1, col))/3;
-            }
-        }
-    }
 }
 
-void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer, Bayer::cfa_pattern_t cfa_pattern) {
+void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer) {
     // no need to white balance, only one channel?
     rawimg = cvimg.clone();
     
-    int h_ss = 0;
-    int v_ss = 3;
-    
-    // first subset is the complement, i.e., the one to replace
-    int first_subset = 3;
-    if (bayer == Bayer::RED) {
-        switch(cfa_pattern) {
-        case Bayer::RGGB: first_subset = 3; h_ss = 1; v_ss = 2; break;
-        case Bayer::BGGR: first_subset = 0; h_ss = 2; v_ss = 1; break;
-        case Bayer::GRBG: first_subset = 2; h_ss = 0; v_ss = 3; break;
-        case Bayer::GBRG: first_subset = 1; h_ss = 3; v_ss = 0; break;
-        }
-    } else { // blue, of course
-        switch(cfa_pattern) {
-        case Bayer::RGGB: first_subset = 0; h_ss = 2; v_ss = 1; break;
-        case Bayer::BGGR: first_subset = 3; h_ss = 1; v_ss = 2; break;
-        case Bayer::GRBG: first_subset = 1; h_ss = 3; v_ss = 0; break;
-        case Bayer::GBRG: first_subset = 2; h_ss = 0; v_ss = 3; break;
-        }
-    }
+    int first_subset = (bayer == Bayer::RED) ? 3 : 0;
     
     // interpolate the other channel (Red if we want blue, or Blue if we want red)
     for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
@@ -273,7 +230,7 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
         for (int col=4; col < cvimg.cols-4; col++) {
             int subset = ((row & 1) << 1) | (col & 1);
             
-            if (subset == h_ss || subset == v_ss) {
+            if (subset == 1 || subset == 2) {
             
                 double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1)));
                 double vgrad = fabs(double(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col)));
@@ -294,128 +251,6 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             }
         }
     }
-    
-    // on the first pass, interpolate the green channels
-    for (size_t row=1; row < (size_t)cvimg.rows-1; row++) {
-        for (size_t col=0; col < 4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == h_ss || subset == v_ss) {
-                if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col + (col > 0 ? -1 : 1) ) + 
-                        cvimg.at<uint16_t>(row, col+1) )/2;
-                } else {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
-                }
-            }
-        }
-        for (size_t col=size_t(cvimg.cols-5); col < size_t(cvimg.cols); col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == h_ss || subset == v_ss) {
-                if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col-1) + 
-                        cvimg.at<uint16_t>(row, col + (col < size_t(cvimg.cols - 1) ? 1 : -1)) )/2;
-                } else {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
-                }
-            }
-        }
-    }
-    
-    for (size_t col=1; col < size_t(cvimg.cols - 1); col++) {
-        for (size_t row=0; row <= 4; row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == h_ss || subset == v_ss) {
-                if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1))/2;
-                } else {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row + (row > 0 ? -1 : 1), col) + 
-                        cvimg.at<uint16_t>(row+1, col) )/2;
-                }
-            }
-        }
-        for (size_t row=size_t(cvimg.rows-5); row < size_t(cvimg.rows); row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == h_ss || subset == v_ss) {
-                if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col + 1))/2;
-                } else {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row + (row < size_t(cvimg.rows-1) ? 1 : -1), col) )/2;
-                }
-            }
-        }
-    }
-    
-    // second pass, interpolate the remaining red or blue channel
-    for (size_t row=1; row < (size_t)cvimg.rows-1; row++) {
-        for (size_t col=0; col < 4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == first_subset) {
-                cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col+1)) / 3;
-                
-            }
-        }
-        for (size_t col=size_t(cvimg.cols-4); col < size_t(cvimg.cols); col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == first_subset) {
-                cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
-                
-            }
-        }
-    }
-    for (size_t col=1; col < (size_t)cvimg.cols-1; col++) {
-        for (size_t row=0; row < 4; row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == first_subset) {
-                cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row, col+1) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
-                
-            }
-        }
-        
-        for (size_t row=size_t(cvimg.rows-5); row < size_t(cvimg.rows); row++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == first_subset) {
-                cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row, col+1) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
-                
-            }
-        }
-    }
-    
-    // nearest-neighbour interpolate the corners
-    int self = 3 - first_subset;
-    int corner[4][2] = { {0,0}, {cvimg.cols-2, 0}, {0, cvimg.rows-2}, {cvimg.cols-2, cvimg.rows-2}};
-    uint16_t self_v[4];
-    
-    for (int cnr=0; cnr < 4; cnr++) {
-        self_v[cnr] = cvimg.at<uint16_t>(
-            corner[cnr][1] + ((self >> 1) & 1), 
-            corner[cnr][0] + (self & 1)
-        );
-    }
-    
-    for (int dr=0; dr <= 1; dr++) {
-        for (int dc=0; dc <= 1; dc++) {
-            for (int cnr=0; cnr < 4; cnr++) {
-                cvimg.at<uint16_t>(corner[cnr][1] + dr, corner[cnr][0] + dc) = self_v[cnr];
-            }
-        }
-    }
 }
 
 inline void hv_cross(cv::Mat& cvimg, int row0, int col0, int centre_val, double& topsum, double& botsum) {
@@ -430,7 +265,7 @@ inline void hv_cross(cv::Mat& cvimg, int row0, int col0, int centre_val, double&
 }
 
 void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
-    logger.debug("Bayer subset specified, performing geometric demosaic\n");
+    printf("Bayer subset specified, performing geometric demosaic\n");
     rawimg = cvimg.clone();
     
     // TODO: WB does not seem to work very well on IQ180 images ...
@@ -441,10 +276,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
             int val = cvimg.at<uint16_t>(row, col);
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset > 3 || subset < 0) {
-                logger.debug("subset = %d\n", subset);
+                printf("subset = %d\n", subset);
             }
             if (val < 0 || val > 65535) {
-                logger.debug("val = %d\n", val);
+                printf("val = %d\n", val);
             }
             hist[subset][val]++;
         }
@@ -472,7 +307,7 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
         
         mean[subset] = upper - lower;
         
-        logger.debug("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
+        printf("subset %d: %d %d, mean=%lf\n", subset, lower, upper, mean[subset]);
     }
     const int targ = 1;
     for (int i=0; i < 4; i++) {
@@ -633,6 +468,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                     
                 interp = max(0.0, min(interp, 65535.0));
                 
+                
+                
+                //fprintf(stderr, "%lf %lf\n", sqrt(botsum/double(4*0.25 + 4 + 1)), ndiff);
+                
                 // difference between two interpolants should be small, or we fall back on the simpler gradient interpolant
                 if (fabs(interp - gi_estimate) > 2*ndiff) {
                     outlier_count++;
@@ -651,10 +490,10 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
         }
     }
     
-    logger.debug("MAD interpolation error: %lg\n", maderr/double(interp_count));
-    logger.debug("Fraction of outliers: %lf\n", outlier_count/double(interp_count));
+    printf("MAD interpolation error: %lg\n", maderr/double(interp_count));
+    printf("Fraction of outliers: %lf\n", outlier_count/double(interp_count));
     for (size_t i=0; i < ncount.size(); i++) {
-        logger.debug("%lu neighours = %lf\n", i, ncount[i]/double(interp_count));
+        printf("%lu neighours = %lf\n", i, ncount[i]/double(interp_count));
     }
     
     imwrite(string("prewhite.png"), rawimg);

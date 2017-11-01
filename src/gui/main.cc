@@ -26,31 +26,14 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include <QApplication>
-
-#include "include/logger.h"
-Logger logger;
-
-#include <QFileInfo>
-
+ 
 #include "mtfmapper_app.h"
  
-int main(int argc, char *argv[]) {
-
-    string logname = (QDir::tempPath() + QDir::separator()).toStdString() + "mtfmapperlog.txt";
-    logger.redirect(logname);
-    logger.enable_level(Logger::DEBUG);
-
+int main(int argc, char *argv[])
+{
     QApplication app(argc, argv);
     mtfmapper_app dialog;
-
-    app.setAttribute(Qt::AA_UseHighDpiPixmaps);
-
-    QIcon appIcon;
-    appIcon.addFile(":/Icons/AppIcon64");
-    appIcon.addFile(":/Icons/AppIcon128");
-    appIcon.addFile(":/Icons/AppIcon256");
-    app.setWindowIcon(appIcon);
-
+ 
     dialog.show();
     return app.exec();
 }

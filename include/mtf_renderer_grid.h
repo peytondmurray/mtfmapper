@@ -28,54 +28,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_GRID_H
 #define MTF_RENDERER_GRID_H
 
-#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "gaussfilter.h"
 #include <Eigen/Dense>
 #include "mtf50_edge_quality_rating.h"
 #include "mtf_profile_sample.h"
-
-// Moreland's diverging colour map:
-// Moreland, K., Diverging Color Maps for Scientific Visualization, In Proceedings of 
-// the 5th International Symposium on Visual Computing, December 2009.
-
-const std::string diverging_palette = 
-"set palette defined(\
-0       0.2314  0.2980  0.7529,\
-0.03125 0.2667  0.3529  0.8000,\
-0.0625  0.3020  0.4078  0.8431,\
-0.09375 0.3412  0.4588  0.8824,\
-0.125   0.3843  0.5098  0.9176,\
-0.15625 0.4235  0.5569  0.9451,\
-0.1875  0.4667  0.6039  0.9686,\
-0.21875 0.5098  0.6471  0.9843,\
-0.25    0.5529  0.6902  0.9961,\
-0.28125 0.5961  0.7255  1.0000,\
-0.3125  0.6392  0.7608  1.0000,\
-0.34375 0.6824  0.7882  0.9922,\
-0.375   0.7216  0.8157  0.9765,\
-0.40625 0.7608  0.8353  0.9569,\
-0.4375  0.8000  0.8510  0.9333,\
-0.46875 0.8353  0.8588  0.9020,\
-0.5     0.8667  0.8667  0.8667,\
-0.53125 0.8980  0.8471  0.8196,\
-0.5625  0.9255  0.8275  0.7725,\
-0.59375 0.9451  0.8000  0.7255,\
-0.625   0.9608  0.7686  0.6784,\
-0.65625 0.9686  0.7333  0.6275,\
-0.6875  0.9686  0.6941  0.5804,\
-0.71875 0.9686  0.6510  0.5294,\
-0.75    0.9569  0.6039  0.4824,\
-0.78125 0.9451  0.5529  0.4353,\
-0.8125  0.9255  0.4980  0.3882,\
-0.84375 0.8980  0.4392  0.3451,\
-0.875   0.8706  0.3765  0.3020,\
-0.90625 0.8353  0.3137  0.2588,\
-0.9375  0.7961  0.2431  0.2196,\
-0.96875 0.7529  0.1569  0.1843,\
-1       0.7059  0.0157  0.1490\
-)";
 
 #include <set>
 using std::set;
@@ -86,15 +44,13 @@ class Mtf_renderer_grid : public Mtf_renderer {
         const std::string& img_filename,
         const std::string& wdir, const std::string& fname, 
         const std::string& gnuplot_binary, 
-        const cv::Mat& img, int gnuplot_width,
-        bool lpmm_mode, double pixel_size,
-        double in_zscale)
+        const cv::Mat& img, bool lpmm_mode, double pixel_size)
       :  Mtf_renderer(img_filename),
          wdir(wdir), fname(fname), 
          gnuplot_binary(gnuplot_binary), img_y(img.rows), img_x(img.cols),
          img(img), lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
-         m_lower(0), m_upper(0), gnuplot_width(gnuplot_width) {
+         m_lower(0), m_upper(0) {
 
         const int coarse_grid_size = 40;
         const int fine_grid_size = 200;
@@ -109,8 +65,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
             grid_x_fine = fine_grid_size;
             grid_y_fine = fine_grid_size * img.rows / img.cols;
         }
-        
-        zscale = std::max(0.0, std::min(in_zscale, 1.0));
     }
     
     void set_gnuplot_warning(bool gnuplot) {
@@ -131,7 +85,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         }
 
         if (allvals.size() < 20) {
-            logger.error("Too few valid edges found. No surface can be generated\n");
+            printf("Too few valid edges found. No surface can be generated\n");
             return;
         }
 
@@ -147,7 +101,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
         extract_mtf_grid(SAGITTAL, grid_sag_coarse, grid_sag_fine, blocks, m_upper);
         
         double zmax = 0;
-        double zmin = 1e30;
         FILE* file = fopen((wdir+fname).c_str(), "wt");
         fprintf(file, "#coarse meridional grid\n");
         for (int y=0; y < grid_mer_coarse.rows; y++) {
@@ -157,6 +110,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_mer_coarse.rows/pixel_size, 
                     grid_mer_coarse.at<float>(y,x)*pixel_size
                 );
+                zmax = max(zmax, (double)grid_mer_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -169,6 +123,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_sag_coarse.rows/pixel_size, 
                     grid_sag_coarse.at<float>(y,x)*pixel_size
                 );
+                zmax = max(zmax, (double)grid_sag_coarse.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -182,8 +137,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_mer_fine.rows/pixel_size, 
                     grid_mer_fine.at<float>(y,x)*pixel_size
                 );
-                zmax = std::max(zmax, (double)grid_mer_fine.at<float>(y,x)*pixel_size);
-                zmin = std::min(zmin, (double)grid_mer_fine.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
@@ -197,15 +150,12 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     y*img.rows/grid_sag_fine.rows/pixel_size, 
                     grid_sag_fine.at<float>(y,x)*pixel_size
                 );
-                zmax = std::max(zmax, (double)grid_sag_fine.at<float>(y,x)*pixel_size);
-                zmin = std::min(zmin, (double)grid_sag_fine.at<float>(y,x)*pixel_size);
             }
             fprintf(file, "\n");
         }
         
         fclose(file);
         
-        // TODO: sort out the mess (basename, etc)
         string img_name_clean;
         for (size_t i=0; i < img_filename.length(); i++) {
             if (img_name_clean.length() > 0 && img_name_clean[img_name_clean.length()-1] == '\\' &&
@@ -216,97 +166,62 @@ class Mtf_renderer_grid : public Mtf_renderer {
             }
         }
         
-        double span = zmax - zmin;
-        zmax = zmax + 0.05*span;
-        zmin = zmin - 0.05*span;
-        zmin = std::max(zmin, 0.0);
-        
-        // adapt zmin according to zscale setting
-        // zscale = 0 -> use zmin=0
-        // zscale = 1 -> use measured zmin
-        zmin *= zscale;
+        zmax *= 1.1;
 
-        const int width_in_pixels = int(gnuplot_width*600.0/1024);
-        const int height_in_pixels_3d = int(gnuplot_width*1200.0/1024);
-        int fontsize = std::max(long(12), lrint(12.0*gnuplot_width/1024.0));
-        int title_fontsize = std::max(long(14), lrint(14.0*gnuplot_width/1024.0));
-        int fontsize3d = std::max(long(9), lrint(9.0*gnuplot_width/1024.0));
-        double linewidth = std::max(double(0.5), double(0.5)*gnuplot_width/1024.0);
-        
+        const int width_in_pixels = 600;
+        const int height_in_pixels_3d = 1200;
         FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
-        //if (img_filename.length() > 0) {
-        //    fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
-        //    fprintf(gpf, "set bmargin 5\n");
-        //}
-        
-        fprintf(gpf, "%s\n", diverging_palette.c_str());
-        fprintf(gpf, "set cbrange [%lf:%lf]\n", zmin, zmax);
+        if (img_filename.length() > 0) {
+            fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \",14\"\n", img_name_clean.c_str());
+            fprintf(gpf, "set bmargin 5\n");
+        }
+        fprintf(gpf, "set yrange [] reverse\n");
+        fprintf(gpf, "set palette define (0 0.230 0.299 0.754,  0.5 0.865 0.865 0.865,  1 0.706 0.016 0.150)\n");
+        fprintf(gpf, "set cbrange [%lf:%lf]\n", 0.0, zmax);
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
-        fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", 
-            width_in_pixels, 
-            (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
-            fontsize
-        );
+        fprintf(gpf, "set term png size %d, %d\n", width_in_pixels, (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)));
         fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
-        if (img_filename.length() > 0) {
-            fprintf(gpf, "set multiplot title \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
-            fprintf(gpf, "set tmargin 4\n");
-        } else {
-            fprintf(gpf, "set multiplot\n");
-        }
-        fprintf(gpf, "set size 1,0.5\n");
+        fprintf(gpf, "set multiplot\n");
+        fprintf(gpf, "set size 1,0.5\n");   
         fprintf(gpf, "set origin 0.0,0.5\n");
         fprintf(gpf, "set title \"Meridional\"\n");
-        fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-        fprintf(gpf, "plot [0:%lf] \"%s\" i 2 t \"MTF50 (%s)\" w image\n", 
-            (img.cols-1)/pixel_size,
+        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" i 2 t \"MTF50 (%s)\" w image\n", 
+            (img.cols-1)/pixel_size, (img.rows-1)/pixel_size,
             (wdir+fname).c_str(),
             lpmm_mode ? "lp/mm" : "c/p"
         );
         fprintf(gpf, "set origin 0.0,0.0\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
-        fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-        fprintf(gpf, "plot [0:%lf] \"%s\" i 3 t \"MTF50 (%s)\" w image\n", 
-            (img.cols-1)/pixel_size,
+        fprintf(gpf, "plot [0:%lf][0:%lf] \"%s\" i 3 t \"MTF50 (%s)\" w image\n", 
+            (img.cols-1)/pixel_size, (img.rows-1)/pixel_size,
             (wdir+fname).c_str(),
             lpmm_mode ? "lp/mm" : "c/p"
         );
         fprintf(gpf, "unset multiplot\n");
         fprintf(gpf, "unset label 11\n");
-        fprintf(gpf, "set pm3d hidden3d 1 corners2color median\n");
-        fprintf(gpf, "set style line 1 lc rgb \"black\" lw 0.75\n");
-        fprintf(gpf, "set term png size %d, %d font \"arial,%d\"\n", 
-            (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
-            height_in_pixels_3d,
-            fontsize3d
-        );
+        fprintf(gpf, "set pm3d hidden3d 100\n");
+        fprintf(gpf, "set style line 100 lt rgb \"black\" lw 0.5\n");
+        fprintf(gpf, "set term png size -1, %d font \"arial,9\"\n", height_in_pixels_3d);
         fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
         fprintf(gpf, "unset xlab\n");
         fprintf(gpf, "unset ylab\n");
-        if (img_filename.length() > 0) {
-            fprintf(gpf, "set multiplot title \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
-            fprintf(gpf, "set tmargin 5\n");
-        } else {
-            fprintf(gpf, "set multiplot\n");
-        }
-        fprintf(gpf, "set ticslevel %lf\n", 0.0);
+        fprintf(gpf, "set multiplot\n");
+        fprintf(gpf, "set ticslevel %lf\n", m_lower);
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Meridional\"\n");
         fprintf(gpf, "set size 1,0.5\n");   
         fprintf(gpf, "set origin 0.0,0.5\n");
-        fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 0 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-                zmin, zmax,
-                (wdir+fname).c_str(),
-                linewidth
+        fprintf(gpf, "splot [][][0:%lf] \"%s\" i 0 w pm3d notitle\n", 
+                zmax,
+                (wdir+fname).c_str()
         );
         fprintf(gpf, "set view 25, 350\n");
         fprintf(gpf, "set title \"Sagittal\"\n");
         fprintf(gpf, "set origin 0.0,0.0\n");
-        fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 1 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-                zmin, zmax,
-                (wdir+fname).c_str(),
-                linewidth
+        fprintf(gpf, "splot [][][0:%lf] \"%s\" i 1 w pm3d notitle\n", 
+                zmax,
+                (wdir+fname).c_str()
         );
         fprintf(gpf, "unset multiplot\n");
         
@@ -320,11 +235,11 @@ class Mtf_renderer_grid : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
-            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            logger.debug("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
+            printf("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
         }
         
         delete [] buffer;
@@ -349,7 +264,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
         for (size_t i=0; i < blocks.size(); i++) {
             for (size_t k=0; k < 4; k++) {
                 double val = blocks[i].get_mtf50_value(k);
-                if (val > 0 && val < 1.0) {
+                if (val > 0 /*&& blocks[i].get_quality(k) >= 0.2*/) {
                     Point2d cent = blocks[i].get_edge_centroid(k);
 
                     Point2d dir = cent - centr;
@@ -373,8 +288,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
                         }
                     }
                     
-                    int ly = lrint(cent.y*(grid_y_fine-1)/img.rows); 
-                    int lx = lrint(cent.x*(grid_x_fine-1)/img.cols);
+                    int ly = lrint(cent.y*grid_y_fine/img.rows); 
+                    int lx = lrint(cent.x*grid_x_fine/img.cols);
 
                     if (val > grid_fine.at<float>(ly,lx) && edge_type == target_edge_type) { // max composite
                         grid_fine.at<float>(ly,lx) = val;
@@ -414,7 +329,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
                     double dist_r = fabs(fine_col - samples[i].p.x)/cell_c;
                     double dist_c = fabs(fine_row - samples[i].p.y)/cell_r;
                     
-                    double scale = 11; 
+                    double scale = 10; 
                     
                     cover_sum += exp( -( (SQR(dist_r) + SQR(dist_c)) / scale) ) * ( (samples[i].mtf > 1e-6) ? 1 : 0 ) / (sqrt(2*scale*M_PI));
                     
@@ -536,9 +451,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
 
     double m_lower;
     double m_upper;
-    
-    int gnuplot_width;
-    double zscale = 0.0;
 };
 
 #endif

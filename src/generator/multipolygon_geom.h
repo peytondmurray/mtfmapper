@@ -28,6 +28,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MULTIPOLYGON_GEOM_H
 #define MULTIPOLYGON_GEOM_H
 
+
+#include <cv.h>
 using namespace cv;
 
 #include <vector>

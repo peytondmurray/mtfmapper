@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_FOCUS_H
 #define MTF_RENDERER_FOCUS_H
 
-#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
@@ -45,7 +44,6 @@ using std::make_pair;
 #include "mtf50_edge_quality_rating.h"
 #include "bayer.h"
 #include "ellipse.h"
-#include "camera_draw.h"
 
 class Mtf_renderer_focus : public Mtf_renderer {
   public:
@@ -59,14 +57,12 @@ class Mtf_renderer_focus : public Mtf_renderer {
          wdir(wdir), prname(prof_fname),
          img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         distance_scale(distance_scale),
-         psf(distance_scale.page_scale_factor),
-         draw(img, distance_scale, 1.0, 220) {
+         distance_scale(distance_scale) {
          
     }
     
     void render(const vector<Block>&) {
-        logger.error("Fatal error. This function should not be used. Aborting\n");
+        printf("Fatal error. This function should not be used. Aborting\n");
         exit(1);
         return;
     }
@@ -75,16 +71,16 @@ class Mtf_renderer_focus : public Mtf_renderer {
         vector<Ellipse_detector>* ellipses = NULL, cv::Rect* dimension_correction = NULL) {
         Point2d centroid(0,0);
         
-        cv::Mat merged = draw.rimg;
-        initial_rows = draw.initial_rows;
+        cv::Mat merged = gray_to_colour(img);
+        initial_rows = img.rows;
         
         if (samples.size() < 100) {
-            draw.fail_with_message(wdir + prname, string("Insufficient targets detected"));
+            fail_with_message(merged, string("Insufficient targets detected"));
             return;
         }
         
         if (!distance_scale.fiducials_found) {
-            draw.fail_with_message(wdir + prname, string("Fiducials not found, probably incorrect chart type."));
+            fail_with_message(merged, string("Fiducials not found, probably incorrect chart type."));
             return;
         }
         
@@ -104,7 +100,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 
                 Point2d wc = distance_scale.estimate_world_coords(samples[i].p.x, samples[i].p.y);
                 
-                if (fabs(wc.y) < 20*psf && fabs(wc.x) < 180*psf) { 
+                if (fabs(wc.y) < 20 && fabs(wc.x) < 180) { 
                 
                     mean_y += coord.y;
                     
@@ -141,7 +137,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
             
         }
-        logger.debug("dropped %lu samples, %lu remain\n", data.size() - ndata.size(), ndata.size());
+        printf("dropped %lu samples, %lu remain\n", data.size() - ndata.size(), ndata.size());
         data = ndata;
         
         Ratpoly_fit cf(data, 4, 2);
@@ -167,10 +163,10 @@ class Mtf_renderer_focus : public Mtf_renderer {
                 
             }
             errsum /= wsum;
-            logger.debug("iter %d err: %lg dc=%lg\n", iter, errsum, dccount / double(data.size()));
+            printf("iter %d err: %lg dc=%lg\n", iter, errsum, dccount/double(data.size()));
             sol = rpfit(cf);
             if (iter > 0 && (prev_err - errsum)/prev_err < 0.0001) {
-                logger.debug("bailing out at iter %d\n", iter);
+                printf("bailing out at iter %d\n", iter);
                 break;
             }
             prev_err = errsum;
@@ -184,7 +180,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             wsum += data[k].yweight;
         }
         errsum /= wsum;
-        logger.debug("final model fit error (weighted): %lg\n", errsum);
+        printf("final model fit error (weighted): %lg\n", errsum);
         
         // do a quick bootstrap to estimate some bounds on the focus peak
         vector<double> mc_peaks;
@@ -226,13 +222,77 @@ class Mtf_renderer_focus : public Mtf_renderer {
         fclose(fout);
         
         double focus_peak = cf.peak(sol); // works on pre-stretched depth
-        logger.debug("focus_plane %lg\n", focus_peak);
+        printf("focus_plane %lg\n", focus_peak);
         
-        draw.chart_centre_marker();
-        draw.camera_centre_marker(
-            dimension_correction->width/2 - dimension_correction->x, 
-            dimension_correction->height/2 - dimension_correction->y
-        );
+        // draw centre-of-chart marker
+        cv::Scalar mark_col(0, 127-20, 255-20);
+        Point2d czero = distance_scale.world_to_image(0, 0);
+        
+        for (int i=0; i < 4; i++) {
+            Point2d wp(10*cos(2.0*i*M_PI/4.0), 10*sin(2.0*i*M_PI/4.0));
+            Point2d pt = distance_scale.world_to_image(wp.x, wp.y);
+            cv::line(merged, czero, pt, mark_col, 2, CV_AA);
+        }
+        cv::circle(merged, czero, 10, mark_col, 2, CV_AA);
+        
+        int j=0;
+        for (double th=0; j < 4; th += 2*M_PI/4.0, j++) {
+            
+            const double dth = 10.0/180.0*M_PI;
+            double rad = 10;
+            const double aw=2.0;
+            
+            Point2d dpts[3] = {
+              { (rad+aw)*cos(th),     (rad+aw)*sin(th) },
+              { (rad-aw)*cos(th+dth), (rad-aw)*sin(th+dth) },
+              { (rad-aw)*cos(th-dth), (rad-aw)*sin(th-dth) }
+            };
+            
+            cv::Point pts[3];
+            for (int i=0; i < 3; i++) {
+                Point2d pt = distance_scale.world_to_image(dpts[i].x, dpts[i].y);
+                pts[i].x = lrint(pt.x);
+                pts[i].y = lrint(pt.y);
+            }
+            
+            cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, mark_col, CV_AA);
+        }
+        
+        // draw centre-of-camera marker
+        cv::Scalar reticle_col(0, 127-50, 255-50);
+        if (dimension_correction) {
+            cv::Point centre(
+                dimension_correction->width/2 - dimension_correction->x, 
+                dimension_correction->height/2 - dimension_correction->y
+            );
+            const double rad = 25;
+            cv::circle(merged, centre, rad, cv::Scalar(20,20,20), 4, CV_AA);
+            int i=0;
+            for (double th=M_PI/2; i < 4; th += 2*M_PI/4.0, i++) {
+                const double dth = 12.5/180.0*M_PI;
+                
+                cv::Point pts[3] = {
+                  { int((double)centre.x + (rad-9)*cos(th)),     int((double)centre.y + (rad-9)*sin(th)) },
+                  { int((double)centre.x + (rad+8)*cos(th+dth)), int((double)centre.y + (rad+8)*sin(th+dth)) },
+                  { int((double)centre.x + (rad+8)*cos(th-dth)), int((double)centre.y + (rad+8)*sin(th-dth)) }
+                };
+                
+                cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, cv::Scalar(20,20,20), CV_AA);
+            }
+            cv::circle(merged, centre, rad, reticle_col, 2, CV_AA);
+            i=0;
+            for (double th=M_PI/2; i < 4; th += 2*M_PI/4.0, i++) {
+                const double dth = 10.0/180.0*M_PI;
+                
+                cv::Point pts[3] = {
+                  { int((double)centre.x + (rad-7)*cos(th)),     int((double)centre.y + (rad-7)*sin(th)) },
+                  { int((double)centre.x + (rad+7)*cos(th+dth)), int((double)centre.y + (rad+7)*sin(th+dth)) },
+                  { int((double)centre.x + (rad+7)*cos(th-dth)), int((double)centre.y + (rad+7)*sin(th-dth)) }
+                };
+                
+                cv::fillConvexPoly(merged, (const cv::Point*)&pts, 3, reticle_col, CV_AA);
+            }
+        }
         
         if (ellipses) {
             cv::Scalar ellipse_col(200,200,0);
@@ -266,7 +326,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
         max_pix_long = merged.cols/2;
         double mtf_peak_value = 0;
         double peak_wx = 0;
-        // main MTF profile curve
         for (double x=min_pix_long; x < max_pix_long; x += 1) {
             double px = longitudinal.x * x  + longitudinal.y * mean_y + zero.x;
             double py = transverse.x * x + transverse.y *  mean_y + zero.y;
@@ -277,7 +336,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             if (depth > min_long && depth < max_long) {
                 double mtf = cf.rpeval(sol, depth*cf.xsf)/cf.ysf;
                 
-                double world_y = psf*((mtf / peak_y) * 130 - 130);
+                double world_y = (mtf / peak_y) * 130 - 130;
                     
                 Point2d wc = distance_scale.estimate_world_coords(px, py);
                 
@@ -291,58 +350,66 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
         }
         if (cf.has_poles(sol)) {
-            draw.fail_circle();
+            Point2d cent(merged.cols/2, merged.rows/2);
+            double rad = min(merged.rows, merged.cols)/2.0 - 20;
+            cv::Scalar red(30, 30, 255);
+            
+            cv::circle(merged, cent, rad, red, 10, CV_AA);
+            Point2d dir(rad*sqrt(0.5)-2, rad*sqrt(0.5)-2);
+            cv::line(merged, cent - dir, cent + dir, red, 10, CV_AA);
         } 
-        draw.curve(curve, cv::Scalar(128, 128, 128), 6);
-        draw.curve(curve, cv::Scalar(40, 90, 40), 3, cv::Scalar(40, 255, 40));
+        draw_curve(merged, curve, cv::Scalar(128, 128, 128), 6);
+        draw_curve(merged, curve, cv::Scalar(40, 90, 40), 3, cv::Scalar(40, 255, 40));
         
         curve.clear();
-        for (double wy=-130*psf; wy < 130*psf; wy += 1) {
+        for (double wy=-130; wy < 130; wy += 1) {
             Point2d proj_p = distance_scale.world_to_image(peak_wx, wy);
             curve.push_back(proj_p);
         }
-        draw.curve(curve, cv::Scalar(255, 30, 30), 3);
+        draw_curve(merged, curve, cv::Scalar(255, 30, 30), 3);
         
         
         cv::Scalar axisdark = cv::Scalar(30, 140, 190);
         cv::Scalar axislight = cv::Scalar(40, 187, 255);
         
         curve.clear();
-        for (double ystep=-135*psf; ystep <= 135*psf; ystep += 2) {
-            curve.push_back(distance_scale.world_to_image(-180*psf, ystep));
+        for (double ystep=-135; ystep <= 135; ystep += 2) {
+            curve.push_back(distance_scale.world_to_image(-180, ystep));
         }
-        draw.curve(curve, axisdark, 2, axisdark);
+        draw_curve(merged, curve, axisdark, 2, axisdark);
         curve.clear();
-        for (double xstep=-180*psf; xstep <= 180*psf; xstep += 2) {
-            curve.push_back(distance_scale.world_to_image(xstep, -135*psf));
+        for (double xstep=-180; xstep <= 180; xstep += 2) {
+            curve.push_back(distance_scale.world_to_image(xstep, -135));
         }
-        draw.curve(curve, axisdark, 2, axislight);
+        draw_curve(merged, curve, axisdark, 2, axislight);
         curve.clear();
-        curve.push_back(distance_scale.world_to_image(-180*psf, -135*psf));
-        
-        // find a reasonable value for zmax that remains inside the image
-        double zmax = 0;
-        const double border = 35;
-        for (; zmax > -200; zmax -= 2) {
-            Point2d p = distance_scale.world_to_image(-180*psf, -135*psf, zmax*psf);
-            if (p.x < border || p.y < border || p.x > img.cols - 1 - border || p.y > initial_rows - 1 - border) break;
-        }
-        
-        curve.push_back(distance_scale.world_to_image(-180*psf, -135*psf, zmax*psf));
-        draw.curve(curve, axisdark, 2, axisdark);
+        curve.push_back(distance_scale.world_to_image(-180, -135));
+        curve.push_back(distance_scale.world_to_image(-180, -135, -100));
+        draw_curve(merged, curve, axisdark, 2, axisdark);
         
         int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[1024];
         
-        draw.text(-178*psf,  135*psf, 0, axisdark, "Y");
-        draw.text( 180*psf, -133*psf, 0, axislight, "X");
-        draw.text(-180*psf, -132*psf, zmax*psf, axisdark, "Z");
+        sprintf(tbuffer, "Y");
+        Point2d textpos = distance_scale.world_to_image(-178, 135);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axisdark, 1, CV_AA);
+        
+        sprintf(tbuffer, "X");
+        textpos = distance_scale.world_to_image(180, -133);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axislight, 1, CV_AA);
+        
+        sprintf(tbuffer, "Z");
+        textpos = distance_scale.world_to_image(-180, -132, -100);
+        cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
+        cv::putText(merged, tbuffer, textpos, font, 1, axisdark, 1, CV_AA);
         
         cv::Scalar resultcolour(255, 255, 30);
         sprintf(tbuffer, "%.3lf (c/p)", mtf_peak_value);
         int tbaseline=0;
         cv::Size tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
-        Point2d textpos = distance_scale.world_to_image(peak_wx, -20*psf);
+        textpos = distance_scale.world_to_image(peak_wx, -20);
         textpos -= Point2d(tsize.width/2.0, 0);
         cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
         cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
@@ -350,7 +417,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         sprintf(tbuffer, "%.1lf mm", focus_peak);
         tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
-        textpos = distance_scale.world_to_image(peak_wx, -20*psf);
+        textpos = distance_scale.world_to_image(peak_wx, -20);
         textpos -= Point2d(tsize.width/2.0, -prev_line_height*1.5);
         cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
         cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
@@ -358,22 +425,21 @@ class Mtf_renderer_focus : public Mtf_renderer {
         // blank out the text region (again)
         rectangle(merged, Point2d(0, img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
         
+        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin.",focus_peak, mc_p5, mc_p95);
+        int baseline = 0;
+        cv::Size ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*1.75), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        sprintf(tbuffer, "Estimated chart distance=%.2lf mm.", distance_scale.centre_depth);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*2*1.75), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
         cv::Scalar red(30, 30, 200);
         cv::Scalar yellow(40, 187, 255);
         cv::Scalar black(0, 0, 0);
         cv::Scalar green(30, 200, 30);
         
-        sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin.",focus_peak, mc_p5, mc_p95);
-        int baseline = 0;
-        cv::Size ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
-        draw.text(Point2d(50, initial_rows + ts.height*1.75), black, "%s", tbuffer);
-        
-        draw.text(Point2d(50, initial_rows + ts.height*2*1.75), black, "Estimated chart distance=%.2lf mm.", distance_scale.centre_depth);
-        
-        
         sprintf(tbuffer, "Bundle adjustment RMSE=%.3lf pixels (ideal < 1)", distance_scale.bundle_rmse);
-        draw.text(Point2d(50, initial_rows + ts.height*3*1.75), black, "%s", tbuffer);
-        
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + ts.height*3*1.75), font, 1, black, 1, CV_AA);
         ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
         double col2 = ts.width + 150;
         cv::Scalar rmse_col = green;
@@ -381,43 +447,45 @@ class Mtf_renderer_focus : public Mtf_renderer {
             if (distance_scale.bundle_rmse > 0.7) {
                 rmse_col = yellow;
             }
-            draw.checkmark(Point2d(25, initial_rows + ts.height*3*1.75), rmse_col);
+            checkmark(merged, Point2d(25, initial_rows + ts.height*3*1.75), rmse_col);
         } else {
-            draw.crossmark(Point2d(35, initial_rows + ts.height*2.75*1.75), red);
+            crossmark(merged, Point2d(35, initial_rows + ts.height*2.75*1.75), red);
         }
         
         double rpy = initial_rows + ts.height*4*1.75;
         double rpx = 50;
-        draw.text(Point2d(rpx, rpy), black, "Chart z-angle=%.1lf degrees (ideal = 45)", distance_scale.get_normal_angle_z());
+        sprintf(tbuffer, "Chart z-angle=%.1lf degrees (ideal = 45)", distance_scale.get_normal_angle_z());
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar zang_col = green;
         if (fabs(distance_scale.get_normal_angle_z() - 45) < 10) {
             if (fabs(distance_scale.get_normal_angle_z() - 45) > 5) {
                 zang_col = yellow;
             }
-            draw.checkmark(Point2d(25, rpy), zang_col);
+            checkmark(merged, Point2d(25, rpy), zang_col);
         } else {
-            draw.crossmark(Point2d(35, rpy - 0.25*1.75*ts.height), red);
+            crossmark(merged, Point2d(35, rpy - 0.25*1.75*ts.height), red);
         }
         
         rpy = initial_rows + ts.height*5*1.75;
-        draw.text(Point2d(rpx, rpy), black, "Chart y-angle=%.1lf degrees (ideal = 0)", distance_scale.get_normal_angle_y());
+        sprintf(tbuffer, "Chart y-angle=%.1lf degrees (ideal = 0)", distance_scale.get_normal_angle_y());
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar yang_col = green;
         if (fabs(distance_scale.get_normal_angle_y()) < 2) {
             if (fabs(distance_scale.get_normal_angle_y()) > 1) {
                 yang_col = yellow;
             }
-            draw.checkmark(Point2d(25, rpy), yang_col);
+            checkmark(merged, Point2d(25, rpy), yang_col);
         } else {
-            draw.crossmark(Point2d(35, rpy - 0.25*1.75*ts.height), red);
+            crossmark(merged, Point2d(35, rpy - 0.25*1.75*ts.height), red);
         }
         
         
         double white_clip = 0;
         double black_clip = 0;
         double overexposure = 0;
-        exposure_checks(Point2d(180*psf, 135*psf), white_clip, black_clip, overexposure);
+        exposure_checks(Point2d(180, 135), white_clip, black_clip, overexposure);
         
         rpx = col2;
         rpy = initial_rows + ts.height*3*1.75;
@@ -426,13 +494,13 @@ class Mtf_renderer_focus : public Mtf_renderer {
         } else {
             sprintf(tbuffer, "No highlight clipping detected");
         }
-        draw.text(Point2d(rpx, rpy), black, "%s", tbuffer);
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar wc_col = green;
         if (white_clip < 10) {
-            draw.checkmark(Point2d(rpx-25, rpy), wc_col);
+            checkmark(merged, Point2d(rpx-25, rpy), wc_col);
         } else {
-            draw.crossmark(Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
         }
         
         rpy = initial_rows + ts.height*4*1.75;
@@ -441,20 +509,21 @@ class Mtf_renderer_focus : public Mtf_renderer {
         } else {
             sprintf(tbuffer, "No shadow clipping detected");
         }
-        draw.text(Point2d(rpx, rpy), black, "%s", tbuffer);
+        cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
         
         cv::Scalar bc_col = green;
         if (black_clip < 10) {
-            draw.checkmark(Point2d(rpx-25, rpy), bc_col);
+            checkmark(merged, Point2d(rpx-25, rpy), bc_col);
         } else {
-            draw.crossmark(Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
         }
         
         
         rpy = initial_rows + ts.height*5*1.75;
         if (overexposure > 0){
-            draw.text(Point2d(rpx, rpy), black, "Probable overexposure, severity=%.1lf%%", overexposure);
-            draw.crossmark(Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
+            sprintf(tbuffer, "Probable overexposure, severity=%.1lf%%", overexposure);
+            cv::putText(merged, tbuffer, Point2d(rpx, rpy), font, 1, black, 1, CV_AA);
+            crossmark(merged, Point2d(rpx-15, rpy - 0.25*1.75*ts.height), red);
         } 
         
         
@@ -463,6 +532,51 @@ class Mtf_renderer_focus : public Mtf_renderer {
     }
 
   private:
+  
+    void draw_curve(cv::Mat& image, const vector<Point2d>& data, cv::Scalar col, double width, cv::Scalar col2=cv::Scalar(0, 0, 0)) {
+        int prevx = 0;
+        int prevy = 0;
+        
+        double total_l = 0;
+        for (size_t i=1; i < data.size(); i++) {
+            double dx = data[i].x - data[i-1].x;
+            double dy = data[i].y - data[i-1].y;
+            total_l += sqrt(dx*dx + dy*dy);
+        }
+        
+        bool shade = col2[0] != 0 || col2[1] != 0 || col2[1] != 0;
+        cv::Scalar blended_col = col;
+        
+        cv::Rect bounds(0, 0, img.cols, img.rows+5);
+        
+        double running_l = 0;
+        for (size_t i=0; i < data.size(); i++) {
+            if (i > 1) {
+                double dx = data[i].x - data[i-1].x;
+                double dy = data[i].y - data[i-1].y;
+                running_l += sqrt(dx*dx + dy*dy);
+            }
+            
+            double progress = running_l / total_l;
+            
+            if (shade) {
+                for (int k=0; k < 3; k++) {
+                    blended_col[k] = col[k] + (col2[k] - col[k])*progress;
+                }
+            }
+            
+            cv::Point head(prevx, prevy);
+            cv::Point tail(lrint(data[i].x), lrint(data[i].y));
+            bool inside = cv::clipLine(bounds, head, tail);
+            
+            if (i > 0 && inside) {
+                cv::line(image, head, tail, blended_col, width, CV_AA);
+            }
+            
+            prevx = tail.x;
+            prevy = tail.y;
+        }
+    }
     
     VectorXd rpfit(Ratpoly_fit& cf, bool scale=true, bool refine=true) {
         const vector<Sample>& pts_row = cf.get_data();
@@ -527,6 +641,125 @@ class Mtf_renderer_focus : public Mtf_renderer {
         }
         
         return sol;
+    }
+    
+    
+    cv::Mat gray_to_colour(const cv::Mat& g_img) {
+        cv::Mat channel(g_img.rows, g_img.cols, CV_8UC1);
+        double imin;
+        double imax;
+        vector<uint64_t> histo(65537, 0);
+        uint16_t* dptr = (uint16_t*)g_img.data;
+        uint16_t* sentinel = dptr + g_img.rows*g_img.cols;
+        while (dptr < sentinel) {
+            histo[(*dptr)&0xffff]++;
+            dptr += 8; // only sample every 8th pixel to speed things up??
+        }
+        uint64_t sum = histo[0];
+        for (size_t i=1; i < histo.size(); i++) {
+            histo[i-1] = sum;
+            sum += histo[i];
+        }
+        histo.back() = sum;
+        // find 2% max brightness
+        uint64_t target = lrint(0.98*sum);
+        imax = histo.size() - 1;
+        while (imax > 0 && histo[imax] > target) imax--;
+        target = lrint(0.02*sum);
+        imin = 0;
+        while (imin < imax && histo[imin] < target) imin++;
+        double scale = 255.0/(imax - imin);
+        double offset = -imin*scale;
+        g_img.convertTo(channel, CV_8U, scale, offset);
+        
+        vector<cv::Mat> channels;
+        channels.push_back(channel);
+        channels.push_back(channel);
+        channels.push_back(channel);
+        cv::Mat merged;
+        merge(channels, merged);
+        merged.resize(merged.rows + 220);
+        
+        rectangle(merged, Point2d(0, g_img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+        
+        return merged;
+    }
+    
+    void fail_with_message(cv::Mat& merged, const string& s) {
+        Point2d cent(merged.cols/2, merged.rows/2);
+        double rad = min(merged.rows, merged.cols)/2.0 - 20;
+        cv::Scalar red(30, 30, 255);
+        
+        cv::circle(merged, cent, rad, red, 10, CV_AA);
+        Point2d dir(rad*sqrt(0.5)-2, rad*sqrt(0.5)-2);
+        cv::line(merged, cent - dir, cent + dir, red, 10, CV_AA);
+        
+        char tbuffer[1024];
+        int font = cv::FONT_HERSHEY_DUPLEX; 
+        sprintf(tbuffer, "%s", s.c_str());
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        
+        imwrite(wdir + prname, merged);
+    }
+    
+    void checkmark(cv::Mat& img, const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point start(pos.x, pos.y);
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(45.0/180.0*M_PI);
+        tri[2].x = tri[1].x + 20*cos(-45.0/180.0*M_PI);
+        tri[2].y = tri[1].y + 20*sin(-45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 1*cos((180+45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 1*sin((180+45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        
+        tri[0].x = start.x;
+        tri[0].y = start.y;
+        tri[1].x = tri[0].x + 5*cos(-45.0/180.0*M_PI);
+        tri[1].y = tri[0].y + 5*sin(-45.0/180.0*M_PI);
+        tri[2].x = tri[1].x - 5*cos(45.0/180.0*M_PI);
+        tri[2].y = tri[1].y - 5*sin(45.0/180.0*M_PI);
+        tri[3].x = tri[2].x + 5*cos((180-45.0)/180.0*M_PI);
+        tri[3].y = tri[2].y + 5*sin((180-45.0)/180.0*M_PI);
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+    }
+    
+    void crossmark(cv::Mat& img, const Point2d& pos, const cv::Scalar& colour) {
+        cv::Point tri[5];
+        
+        cv::Point cent(pos.x, pos.y);
+        
+        Point2d dir(cos(M_PI/4), sin(M_PI/4));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
+        
+        dir = Point2d(cos(M_PI/4+M_PI/2), sin(M_PI/4+M_PI/2));
+        tri[0].x = cent.x - 10*dir.x + 2.5*dir.y;
+        tri[0].y = cent.y - 10*dir.y - 2.5*dir.x;
+        tri[1].x = tri[0].x - 5*dir.y;
+        tri[1].y = tri[0].y + 5*dir.x;
+        tri[2].x = tri[1].x + 20*dir.x;
+        tri[2].y = tri[1].y + 20*dir.y;
+        tri[3].x = tri[2].x + 5*dir.y;
+        tri[3].y = tri[2].y - 5*dir.x;
+        
+        cv::fillConvexPoly(img, (const cv::Point*)&tri, 4, colour, CV_AA);
     }
     
     void exposure_checks(const Point2d& dims, double& white_clip, double& black_clip, double& overexposure) {
@@ -654,10 +887,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
     double  pixel_size;
     Distance_scale& distance_scale;
     int initial_rows;
-    
-    double psf;
-    
-    Camera_draw draw;
 };
 
 #endif

@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef FOCUS_SURFACE_H
 #define FOCUS_SURFACE_H
 
-#include "include/logger.h"
 #include "ratpoly_fit.h"
 #include "mtf_profile_sample.h"
 #include "distance_scale.h"
@@ -47,7 +46,7 @@ class Focus_surface  {
             miny = min(fabs(data[i].p.y), miny);
         }
         
-        logger.debug("chart extents: y:(%lf, %lf) mm, x:(%lf) mm\n", miny, maxy, maxx);
+        printf("chart extents: y:(%lf, %lf) mm, x:(%lf) mm\n", miny, maxy, maxx);
         
         // TODO: this loop is a great candidate for OpenMP, but some care must be taken
         // to protect the (few) shared structures (like "peaks")
@@ -124,7 +123,7 @@ class Focus_surface  {
                 }
                 if (cf.has_poles(sol)) { 
                     // no solution without poles, give up, skip this sample?
-                    logger.debug("Warning: no viable RP fit. Skipping curve centred at y=%lf\n", mean_x);
+                    printf("Warning: no viable RP fit. Skipping curve centred at y=%lf\n", mean_x);
                     continue;
                 }
                 
@@ -133,7 +132,7 @@ class Focus_surface  {
                 
                 double merr = err/double(pts_row.size());
                 if (merr < min_fit_err) {
-                    logger.debug("min fit err %lf at dist %lf\n", merr, midy);
+                    printf("min fit err %lf at dist %lf\n", merr, midy);
                     min_fit_err = merr;
                 }
                 if (fabs(midy) < 20 && fabs(merr - min_fit_err)/merr < 1) {
@@ -155,7 +154,7 @@ class Focus_surface  {
         fclose(ffout);
         
         if (peak_pts.size() < 10) {
-            logger.error("Not enough peak points to construct peak focus curve.\n");
+            printf("Not enough peak points to construct peak focus curve.\n");
             return;
         }
         
@@ -165,12 +164,12 @@ class Focus_surface  {
         VectorXd sol = rpfit(cf, true, true);
         while (cf.order_m > 0 && cf.has_poles(sol)) {
             cf.order_m--;
-            logger.debug("reducing order_m to %d\n", cf.order_m);
+            printf("reducing order_m to %d\n", cf.order_m);
             sol = rpfit(cf, true, true);
         }
         if (cf.has_poles(sol)) { 
             // no solution without poles, give up, skip this sample?
-            logger.debug("Warning: no viable RP fit to fpeaks data\n");
+            printf("Warning: no viable RP fit to fpeaks data\n");
         }
         
         #if 1
@@ -189,7 +188,7 @@ class Focus_surface  {
                 peak_pts[i].yweight = iweights[i] / max(0.0001, e);
                 
                 if (iter > 3 && e > 20) {
-                    logger.debug("outlier at %lf mm, suppressing\n", e);
+                    printf("outlier at %lf mm, suppressing\n", e);
                     peak_pts[i].yweight = 0;
                 }
                 
@@ -199,13 +198,13 @@ class Focus_surface  {
                 
             }
             errsum /= wsum;
-            logger.debug("iter %d err: %lf\n", iter, errsum);
+            printf("iter %d err: %lf\n", iter, errsum);
             VectorXd oldsol = sol;
             sol = rpfit(cf, true, true);
             if (iter > 10 && (prev_err - errsum)/prev_err < 0.0001) {
-                logger.debug("bailing out at iter %d\n", iter);
+                printf("bailing out at iter %d\n", iter);
                 if (errsum > prev_err) {
-                    logger.debug("reverting to older solution\n");
+                    printf("reverting to older solution\n");
                     sol = oldsol;
                 }
                 break;
@@ -250,17 +249,17 @@ class Focus_surface  {
         double x_inter = cf.rpeval(sol, 0)/cf.ysf;
         
         int x_inter_index = lower_bound(mc_pf.begin(), mc_pf.end(), x_inter) - mc_pf.begin();
-        logger.debug("x_inter percentile: %.3lf\n", x_inter_index * 100 / double(mc_pf.size()));
-        logger.debug("x_inter 95%% confidence interval: [%lf, %lf]\n", mc_pf[0.05*mc_pf.size()], mc_pf[0.95*mc_pf.size()]);
+        printf("x_inter percentile: %.3lf\n", x_inter_index*100 / double(mc_pf.size()));
+        printf("x_inter 95%% confidence interval: [%lf, %lf]\n", mc_pf[0.05*mc_pf.size()], mc_pf[0.95*mc_pf.size()]);
         
         distance_scale.estimate_depth_world_coords(x_inter, 0.0, focus_peak);
         distance_scale.estimate_depth_world_coords(mc_pf[0.05*mc_pf.size()], 0.0, focus_peak_p05);
         distance_scale.estimate_depth_world_coords(mc_pf[0.95*mc_pf.size()], 0.0, focus_peak_p95);
         
-        logger.debug("focus_mm (on chart x axis) %lg\n", x_inter);
+        printf("focus_mm (on chart x axis) %lg\n", x_inter);
         
-        logger.debug("focus_plane %lg\n", focus_peak);
-        logger.debug("fp_interval: [%lf, %lf]\n", focus_peak_p05, focus_peak_p95);
+        printf("focus_plane %lg\n", focus_peak);
+        printf("fp_interval: [%lf, %lf]\n", focus_peak_p05, focus_peak_p95);
         
         double curve_min = 1e50;
         double curve_max = -1e50;
@@ -271,7 +270,7 @@ class Focus_surface  {
         FILE* profile = fopen("nprofile.txt", "wt");
         double curve_peak = best_fit.peak(best_sol);
         double curve_offset = curve_peak - x_inter;
-        logger.debug("curve peak = %lf, x_inter = %lf\n", curve_peak, x_inter);
+        printf("curve peak = %lf, x_inter = %lf\n", curve_peak, x_inter);
         for (double cx=curve_min; cx <= curve_max; cx += 1) {
             double mtf = best_fit.rpeval(best_sol, cx*best_fit.xsf)/best_fit.ysf;
             double depth = 0;

@@ -27,11 +27,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "imgviewer.h"
 #include "mtfmapper_app.h"
-#include <cmath>
+
 
 Imgviewer::Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent)
- : QGraphicsView(scene, parent), scene(scene), zoom_parent(zoom_parent), clickable(false) {
- 
+ : QGraphicsView(scene, parent), zoom_parent(zoom_parent) {
+        
 }
     
 void Imgviewer::wheelEvent(QWheelEvent* event) {
@@ -43,36 +43,5 @@ void Imgviewer::wheelEvent(QWheelEvent* event) {
         }
     } else {
         QGraphicsView::wheelEvent(event);
-    }
-}
-
-void Imgviewer::enterEvent(QEvent* event) {
-    QGraphicsView::enterEvent(event);
-    if (clickable) {
-        viewport()->setCursor(Qt::ArrowCursor);
-    }
-}
-
-void Imgviewer::mousePressEvent(QMouseEvent* event) {
-    click_down_pos = event->pos();
-    QGraphicsView::mousePressEvent(event); // pass along the event in case someone else needs it
-    viewport()->setCursor(Qt::ClosedHandCursor);
-}
-
-static inline double sqr(double x) {
-    return x*x;
-}
-
-void Imgviewer::mouseReleaseEvent(QMouseEvent* event) {
-    double d = sqrt( sqr(event->pos().x() - click_down_pos.x()) + sqr(event->pos().y() - click_down_pos.y()) );
-    if (d < 10) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
-        QPointF mpos = mapToScene(event->pos().x(), event->pos().y());
-        zoom_parent->edge_selected(mpos.x(), mpos.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier));
-    }
-    QGraphicsView::mouseReleaseEvent(event); // pass along the event in case someone else needs it
-    if (clickable) {
-        viewport()->setCursor(Qt::ArrowCursor);
-    } else {
-        viewport()->setCursor(Qt::OpenHandCursor);
     }
 }

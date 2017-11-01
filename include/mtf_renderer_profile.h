@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_PROFILE_H
 #define MTF_RENDERER_PROFILE_H
 
-#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "loess_fit.h"
@@ -37,16 +36,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Mtf_renderer_profile : public Mtf_renderer {
   public:
-    Mtf_renderer_profile(
-        const std::string& img_filename,
-        const std::string& wdir, const std::string& prof_fname, 
+    Mtf_renderer_profile(const std::string& wdir, const std::string& prof_fname, 
         const std::string& peak_fname, const std::string& gnuplot_binary,
-        const cv::Mat& img, int gnuplot_width, bool lpmm_mode=false, double pixel_size=1.0) 
+        const cv::Mat& img, bool lpmm_mode=false, double pixel_size=1.0) 
       :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         gnuplot_failure(false), gnuplot_warning(true),
-         gnuplot_width(gnuplot_width), img_filename(img_filename) {
+         gnuplot_failure(false), gnuplot_warning(true) {
       
     }
     
@@ -66,7 +62,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // check distribution: a bimodal distribution probably means the image is rotated
         bool transpose = test_for_bimodal_distribution(row_max);
         if (transpose) {
-            logger.debug("bimodal distribution found, taking transpose\n");
+            printf("bimodal distribution found, taking transpose\n");
             extract_row_maxima(row_max, blocks, true);
         }
 
@@ -90,7 +86,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         }
         
         if (row_max.empty()) {
-            logger.debug("Warning: All mtf50 values are zero; cannot generate a profile.\n");
+            printf("Warning: All mtf50 values are zero; cannot generate a profile.\n");
             return;
         }
         
@@ -203,7 +199,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             }
         }
 
-        logger.debug("peak_shift = %lf mtf_at_peak = %lf %s\n",
+        printf("peak_shift = %lf mtf_at_peak = %lf %s\n", 
             peak_shift, mean_mtf50_at_ref_edge*pixel_size,
             lpmm_mode ? "lp/mm" : "c/p"
         );
@@ -228,23 +224,13 @@ class Mtf_renderer_profile : public Mtf_renderer {
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"MTF50 (%s)\"\n", lpmm_mode ? "line pairs per mm" : "cycles/pixel");
-        double ar = 768.0/1024.0;
-        int fontsize = lrint(12.0*gnuplot_width/1024.0);
-        int title_fontsize = lrint(14.0*gnuplot_width/1024.0);
-        int linewidth = lrint(3*gnuplot_width/1024.0);
-        double pointsize = 0.5*gnuplot_width/1024.0;
-        fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
-        if (img_filename.length() > 0) {
-            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
-        }
+        fprintf(gpf, "set term png size 1024, 768\n");
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (%s) raw\" w p ps %lf, \"%s\" u 1:3 t \"MTF50 (%s) smoothed\" w l lw %d, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw %d\n", 
+        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (%s) raw\" w p ps 0.25, \"%s\" u 1:3 t \"MTF50 (%s) smoothed\" w l lw 3, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw 3\n", 
             effective_max*pixel_size,
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p", pointsize,
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p", linewidth,
-            (wdir+pfname).c_str(), peak_quality_good ? 3 : 1, linewidth
-        );
-        
+            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
+            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p",
+            (wdir+pfname).c_str(), peak_quality_good ? 3 : 1);
         fclose(gpf);
         
         char* buffer = new char[1024];
@@ -255,11 +241,11 @@ class Mtf_renderer_profile : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
-            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            logger.debug("Gnuplot plot completed successfully. Look for profile_image.png\n");
+            printf("Gnuplot plot completed successfully. Look for profile_image.png\n");
         }
         
         delete [] buffer;
@@ -349,8 +335,6 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 double val = blocks[i].get_mtf50_value(k);
                 double angle = blocks[i].get_edge_angle(k);
                 double mindiff = 0;
-                
-                if (val == 1.0) continue; // skip N/A blocks
 
                 if (transpose) {
                     mindiff = min(angular_diff(angle, 0)/M_PI*180, angular_diff(angle, M_PI)/M_PI*180);
@@ -365,8 +349,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
 
                     if (transpose) {
                         y = lrint(cent.x);
+                        //fprintf(stderr, "%lf %lf %lf\n", cent.y, cent.x, val);
                     } else {
                         y = lrint(cent.y);
+                        //fprintf(stderr, "%lf %lf %lf\n", cent.x, cent.y, val);
                     }
                     
                     map<int, double>::iterator it = row_max.find(y);
@@ -392,8 +378,6 @@ class Mtf_renderer_profile : public Mtf_renderer {
     double  pixel_size;
     bool gnuplot_failure;
     bool gnuplot_warning;
-    int gnuplot_width;
-    string img_filename;
 };
 
 #endif

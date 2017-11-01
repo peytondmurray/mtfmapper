@@ -28,8 +28,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef EDGE_RECORD_H
 #define EDGE_RECORD_H
 
-#include "include/logger.h"
 #include "common_types.h"
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
 
 
 class Edge_record {
@@ -141,7 +144,7 @@ class Edge_record {
             ev[1] = covxy;
             slope = ev[0] / ev[1]; // TODO: check this?
         } else {
-            logger.info("Warning: edge is perfectly horizontal / vertical\n");
+            printf("Warning: edge is perfectly horizontal / vertical\n");
             ev[0] = 0;
             ev[1] = 1;
             slope = 0;

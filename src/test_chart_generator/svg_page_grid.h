@@ -60,15 +60,14 @@ class Svg_page_grid : public Svg_page {
     }
     
   protected:
-    
-    virtual iPoint project(double x, double y, bool) {
+    virtual iPoint project(double x, double y) {
         
         x = floor(x*width);
-        y = floor(y*height*sqrt(0.5));
+        y = floor(y*width);
         
         return iPoint(int(x), int(y));
     }
-    
+
     double quant_angle(double x) {
         double quad1 = fabs(fmod(x, M_PI/2.0));
         if (quad1 > M_PI/4.0) {

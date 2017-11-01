@@ -30,15 +30,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "mtf_renderer.h"
 #include "common_types.h"
-#include "include/ordered_point.h"
 
 class Mtf_renderer_edges : public Mtf_renderer {
   public:
     Mtf_renderer_edges(const std::string& fname, 
       const std::string& sfrname,
-      const std::string& devname,
       bool lpmm_mode=false, double pixel_size=1.0) 
-      :  ofname(fname), sfrname(sfrname), devname(devname),
+      :  ofname(fname), sfrname(sfrname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
     }
@@ -54,65 +52,40 @@ class Mtf_renderer_edges : public Mtf_renderer {
     
         FILE* fout = fopen(ofname.c_str(), "wt");
         FILE* sfrout = fopen(sfrname.c_str(), "wt");
-        FILE* devout = fopen(devname.c_str(), "wt");
         vector<int> corder(4);
         vector<int> eorder(4);
         for (size_t i=0; i < blocks.size(); i++) {
         
-            vector<Ordered_point> corners(4);
             // start with first corner that is left of 12:00
             for (size_t k=0; k < 4; k++) {
                 Point2d dir = blocks[i].get_corner(k) - blocks[i].get_centroid();
-                dir *= 1.0/norm(dir);
-                corners[k].second = k;
-                corners[k].first = fmod(atan2(dir.y, dir.x) + M_PI*0.5, 2.0*M_PI);
-                if (corners[k].first < 0) {
-                    corners[k].first += 2.0*M_PI;
+                if (dir.x <= 0 && dir.y <= 0) {
+                    corder[0] = k;
+                }
+                if (dir.x <= 0 && dir.y > 0) {
+                    corder[1] = k;
+                }
+                if (dir.x > 0 && dir.y > 0) {
+                    corder[2] = k;
+                }
+                if (dir.x > 0 && dir.y <= 0) {
+                    corder[3] = k;
                 }
             }
-            sort(corners.begin(), corners.end());
-            for (size_t k=0; k < 4; k++) {
-                corder[k] = int(corners[k].second);
-            }
             
-            // just a sanity check for debugging
-            bool all_found = true;
-            for (int k=0; k < 4; k++) {
-                bool found_k = false;
-                for (int j=0; j < 4; j++) {
-                    found_k |= corder[j] == k;
-                }
-                all_found &= found_k;
-            }
-            if (!all_found) {
-                logger.debug("Warning: not all corners are present in corder: [%d %d %d %d]\n", corder[0], corder[1], corder[2], corder[3]);
-            }
-            
+            // now find the first edge centroid going clockwise
             for (size_t k=0; k < 4; k++) {
                 Point2d cdir = blocks[i].get_corner(corder[k]) - blocks[i].get_centroid();
-                cdir *= 1.0/norm(cdir);
-                corners[k].second = k;
-                corners[k].first = fmod(atan2(cdir.y, cdir.x) + M_PI*0.5, 2.0*M_PI);
-                if (corners[k].first < 0) {
-                    corners[k].first += 2.0*M_PI;
+                double maxcross = -1;
+                for (size_t j=0; j < 4; j++) {
+                    Point2d edir = blocks[i].get_edge_centroid(j) - blocks[i].get_centroid();
+                    double n = cdir.x*edir.y - cdir.y*edir.x;
+                    double dot = cdir.x*edir.x + cdir.y*edir.y;
+                    if (n > maxcross && dot >= 0) {
+                        eorder[k] = j;
+                        maxcross = n;
+                    }
                 }
-            }
-            sort(corners.begin(), corners.end());
-            for (size_t k=0; k < 4; k++) {
-                eorder[k] = int(corners[k].second);
-            }
-            
-            // just a sanity check for debugging
-            all_found = true;
-            for (int k=0; k < 4; k++) {
-                bool found_k = false;
-                for (int j=0; j < 4; j++) {
-                    found_k |= eorder[j] == k;
-                }
-                all_found &= found_k;
-            }
-            if (!all_found) {
-                logger.debug("Warning: not all edges are present in eorder: [%d %d %d %d]\n", eorder[0], eorder[1], eorder[2], eorder[3]);
             }
             
             for (size_t k=0; k < 4; k++) {
@@ -136,13 +109,11 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 Point2d cent = blocks[i].get_edge_centroid(l);
 
                 Point2d dir = cent - centr;
-                if (fabs(norm(dir)) > 1e-12) {
-                    dir = dir * (1.0 / norm(dir));
-                }
-                
-                Point2d norm = blocks[i].get_normal(l);
+                dir = dir * (1.0/norm(dir));
 
+                Point2d norm = blocks[i].get_normal(l);
                 double delta = dir.x*norm.x + dir.y*norm.y;
+                
                 fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);
                 
                 const vector<double>& sfr = blocks[i].get_sfr(l);
@@ -150,13 +121,9 @@ class Mtf_renderer_edges : public Mtf_renderer {
                     fprintf(sfrout, "%lf ", sfr[j]);
                 }
                 fprintf(sfrout, "\n");
-                
-                fprintf(devout, "%d %lf %lf %.8lf\n", int(i), ec.x, ec.y, blocks[i].get_line_deviation(l));
             }
         }    
         fclose(fout);
-        fclose(sfrout);
-        fclose(devout);
     }
     
   private:
@@ -171,7 +138,6 @@ class Mtf_renderer_edges : public Mtf_renderer {
     
     string ofname;
     string sfrname;
-    string devname;
     bool filter;
     double angle;
     bool    lpmm_mode;

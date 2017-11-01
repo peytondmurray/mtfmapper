@@ -28,16 +28,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef SCANLINE_H
 #define SCANLINE_H
 
-#include <algorithm>
-
 class scanline {
 public:
     scanline(int in_start=0, int in_end=0) : start(in_start), end(in_end) {}
-    
-    inline void update(int x) {
-        start = std::min(start, x);
-        end = std::max(end, x);
-    }
     
     int start;
     int end;

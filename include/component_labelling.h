@@ -29,12 +29,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define COMPONENT_LABELLING_H
 
 #include "common_types.h"
-#include "include/logger.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdint.h>
-#include <map>
 
 // A class for extracting the boundaries of a binary image.
 //
@@ -48,19 +45,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Component_labeller {
 public:
     Component_labeller(void);
+    Component_labeller(const Component_labeller& b);
     Component_labeller(const cv::Mat& in_img,
         int min_boundary_length = 10, bool snapshot = false, 
         int max_boundary_length = 5000);
 
     ~Component_labeller(void);
-    
-    void release(void) {
-        _pix_data.clear();
-        _pix_data.shrink_to_fit();
-        _labels.clear();
-        _labels.shrink_to_fit();
-        configured = false;
-    }
+
+    Component_labeller& operator=(const Component_labeller& b);
 
     void configure(const cv::Mat& in_img,
         int min_boundary_length = 10, 
@@ -72,14 +64,6 @@ public:
         assert(configured);
         return _boundaries;
     }
-    
-    int largest_hole(int label) const {
-        auto it = _holes.find(label);
-        if (it != _holes.end()) {
-            return it->second;
-        }
-        return 0;
-    }
 
     inline int operator[](int index) const {
         return _labels[index];
@@ -87,7 +71,7 @@ public:
 
     inline int operator()(int x, int y) const {
         if (!(x >= 0 && x < _width && y >= 0 && y < _height)) {
-            logger.debug("trying to access %d, %d (size is %d,%d)\n", x, y, _width, _height);
+            printf("trying to access %d, %d (size is %d,%d)\n", x, y, _width, _height);
             return -1;
         }
         return _labels[y * _width + x];
@@ -138,11 +122,9 @@ private:
     int _width;
     int _height;
 
-    vector<uint8_t> _pix_data;
-    uint8_t* _pix;
-    vector<int32_t> _labels;
+    unsigned char* _pix;
+    int* _labels;
     Boundarylist _boundaries;
-    std::map<int, int> _holes;
 
     int _min_boundary_length;
     int _max_boundary_length;

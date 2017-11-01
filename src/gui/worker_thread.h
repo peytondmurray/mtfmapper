@@ -82,7 +82,6 @@ class Worker_thread : public QThread
     QString      gnuplot_binary;
     QString      exiv2_binary;
     QString      dcraw_binary;
-    int tempdir_number;
 
     bool abort;
 };

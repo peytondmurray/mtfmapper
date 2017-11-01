@@ -29,10 +29,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef DEMOSAIC_H
 #define DEMOSAIC_H
 
+#include "cv.h"
 #include "include/common_types.h"
 #include "include/bayer.h"
 
-void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::cfa_pattern_t cfa_pattern, Bayer::bayer_t bayer, bool unbalanced_scene);
+void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer);
 void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset=0);
 
 #endif

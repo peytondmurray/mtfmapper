@@ -40,38 +40,6 @@ class Bayer {
         BLUE
     } bayer_t;
     
-    // mask layout, in pixels:
-    // A | B
-    // C | D
-    // => A<<3 | B << 2 | C << 1 | D
-    typedef enum {
-      ALL = 0xf,
-      
-      RGGB_RED = 1 << 3,
-      RGGB_GREEN = (1 << 2) | (1 << 1),
-      RGGB_BLUE = 1,
-      
-      BGGR_RED = 1,
-      BGGR_GREEN = (1 << 2) | (1 << 1),
-      BGGR_BLUE = 1 << 3,
-      
-      GRBG_RED = 1 << 2,
-      GRBG_GREEN = (1 << 3) | 1,
-      GRBG_BLUE = 1 << 1,
-      
-      GBRG_RED = 1 << 1,
-      GBRG_GREEN = (1 << 3) | 1,
-      GBRG_BLUE = 1 << 2
-      
-    } cfa_mask_t;
-    
-    typedef enum {  // TODO: add some more cfa pattern types
-        RGGB,
-        BGGR,
-        GRBG,
-        GBRG
-    } cfa_pattern_t;
-    
     Bayer(void) {}
     
     static bayer_t from_string(const string& bayer_subset) {
@@ -88,60 +56,6 @@ class Bayer {
             return GREEN;
         }
         return NONE; // undefined strings too
-    }
-    
-    static cfa_pattern_t from_cfa_string(const string& cfa_pattern) {
-        if (cfa_pattern.compare("rggb") == 0) {
-            return cfa_pattern_t::RGGB;
-        }
-        if (cfa_pattern.compare("bggr") == 0) {
-            return cfa_pattern_t::BGGR;
-        }
-        if (cfa_pattern.compare("grbg") == 0) {
-            return cfa_pattern_t::GRBG;
-        }
-        if (cfa_pattern.compare("gbrg") == 0) {
-            return cfa_pattern_t::GBRG;
-        }
-        return cfa_pattern_t::RGGB; // undefined strings too
-    }
-    
-    static cfa_mask_t to_cfa_mask(bayer_t subset, cfa_pattern_t cfa_pattern = RGGB) {
-        switch(cfa_pattern) {
-        case RGGB:
-            switch (subset) {
-            case NONE:  return cfa_mask_t::ALL; break;
-            case RED:   return cfa_mask_t::RGGB_RED; break;
-            case GREEN: return cfa_mask_t::RGGB_GREEN; break;
-            case BLUE:  return cfa_mask_t::RGGB_BLUE; break;
-            }
-            break;
-        case BGGR:
-            switch (subset) {
-            case NONE:  return cfa_mask_t::ALL; break;
-            case RED:   return cfa_mask_t::BGGR_RED; break;
-            case GREEN: return cfa_mask_t::BGGR_GREEN; break;
-            case BLUE:  return cfa_mask_t::BGGR_BLUE; break;
-            }
-            break;
-        case GRBG:
-            switch (subset) {
-            case NONE:  return cfa_mask_t::ALL; break;
-            case RED:   return cfa_mask_t::GRBG_RED; break;
-            case GREEN: return cfa_mask_t::GRBG_GREEN; break;
-            case BLUE:  return cfa_mask_t::GRBG_BLUE; break;
-            }
-            break;
-        case GBRG:
-            switch (subset) {
-            case NONE:  return cfa_mask_t::ALL; break;
-            case RED:   return cfa_mask_t::GBRG_RED; break;
-            case GREEN: return cfa_mask_t::GBRG_GREEN; break;
-            case BLUE:  return cfa_mask_t::GBRG_BLUE; break;
-            }
-            break;
-        }
-        return cfa_mask_t::ALL;
     }
     
     static string to_string(bayer_t bayer) {

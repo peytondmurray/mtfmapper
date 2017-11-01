@@ -25,19 +25,16 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include "include/logger.h"
 #include "worker_thread.h"
 #include "worker_thread.moc"
 #include <string>
 #include <iostream>
-#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <QFileInfo>
 #include <QSharedPointer>
 #include <QCoreApplication>
-#include <QProcess>
 #include "mtfmapper_app.h"
 
 using std::cout;
@@ -45,7 +42,7 @@ using std::endl;
 using std::string;
 
 Worker_thread::Worker_thread(QWidget* parent) 
-: parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), abort(false) {
+: parent(dynamic_cast<mtfmapper_app*>(parent)), abort(false) {
 
 }
 
@@ -58,7 +55,7 @@ void Worker_thread::run(void) {
     output_files.clear();
     for (int i=0; i < input_files.size() && !abort; i++) {
         emit send_progress_indicator(i+1);
-        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
+        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(i);
         QDir().mkdir(tempdir);
         char* buffer = new char[4096];
 
@@ -70,68 +67,73 @@ void Worker_thread::run(void) {
              fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
              fi.suffix().compare(QString("IIQ"), Qt::CaseInsensitive) == 0 ||  // Phase One
              fi.suffix().compare(QString("MOS"), Qt::CaseInsensitive) == 0 ||  // Leaf
-             fi.suffix().compare(QString("ORF"), Qt::CaseInsensitive) == 0 ||  // Olympus
-             fi.suffix().compare(QString("RW2"), Qt::CaseInsensitive) == 0 ||  // Panasonic
-             fi.suffix().compare(QString("RAF"), Qt::CaseInsensitive) == 0 ||  // Fujifilm -> bayer mode will probably break horribly
-             fi.suffix().compare(QString("DNG"), Qt::CaseInsensitive) == 0 ||  // Pentax/Ricoh, maybe others
              fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
-            input_file = QString(tempdir + "/" + fi.baseName() + QString(".tiff"));
-            QProcess dcp(this);
-            dcp.setProgram(dcraw_binary);
-            dcp.setStandardOutputFile(input_file);
+            tempdir.toLocal8Bit().constData();
+            input_file = QString(tempdir + QString("/") + fi.baseName() + QString(".tiff"));
+            
             if (arguments.contains(QString("--bayer"))) {
-                dcp.setArguments(
-                    QStringList() << "-4" << "-T" << "-d" << "-c" << input_files.at(i)
+                #ifdef _WIN32
+                sprintf(buffer, "\"\"%s\" -4 -T -d -c \"%s\" > \"%s\"\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
                 );
+                #else
+                sprintf(buffer, "\"%s\"  -4 -T -d -c \"%s\" > \"%s\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #endif
             } else {
-                dcp.setArguments(
-                    QStringList() << "-w" <<  "-4" << "-T" << "-q" << "3" << "-c" << input_files.at(i)
+                #ifdef _WIN32
+                sprintf(buffer, "\"\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
                 );
+                #else
+                sprintf(buffer, "\"%s\" -w -4 -T -q 3 -c \"%s\" > \"%s\"", 
+                    dcraw_binary.toLocal8Bit().constData(),
+                    input_files.at(i).toLocal8Bit().constData(),
+                    input_file.toLocal8Bit().constData()
+                );
+                #endif
             }
 
-            logger.debug("arguments to dcraw [%s]:\n", dcraw_binary.toLocal8Bit().constData());
-            for (int kk = 0; kk < dcp.arguments().size(); kk++) {
-                logger.debug("[%d]=%s\n", kk, dcp.arguments().at(kk).toLocal8Bit().constData());
+            int dc_rval = system(buffer);
+            if (dc_rval < 0) {
+                printf("error. dcraw call failed\n");
             }
-            dcp.start();
-            dcp.waitForFinished(-1);
-            int dc_rval = dcp.exitStatus() == QProcess::NormalExit && dcp.exitCode() == 0;
-            if (!dc_rval) {
-                logger.error("Error. dcraw call failed on input image %s [exit status=%d, exitcode=%d]\n", input_files.at(i).toLocal8Bit().constData(), dcp.exitStatus(), dcp.exitCode());
-            }
+
             emit send_delete_item(input_file);
         }
-        
-        QStringList mma;
-        
-        // if a "--focal-ratio" setting is already present, then assume this
-        // was a user-provided override, otherwise try to calculate it from the EXIF data
-        if (!arguments.contains("--focal-ratio")) {
-            Exiv2_property props(exiv2_binary, input_files.at(i), tempdir + "/exifinfo.txt");
-            mma << "--focal-ratio" << props.get_focal_ratio();
-        }
 
-        QProcess mmp(this);
-        mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
-        mmp.setArguments(
-            mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
-                << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts)
+
+        #ifdef _WIN32
+        sprintf(buffer, "\"\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s\"", 
+            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
+            gnuplot_binary.toLocal8Bit().constData(),
+            input_file.toLocal8Bit().constData(),
+            tempdir.toLocal8Bit().constData(),
+            arguments.toLocal8Bit().constData()
         );
-        logger.debug("arguments to mtf mapper:\n");
-        for (int kk = 0; kk < mmp.arguments().size(); kk++) {
-            logger.debug("[%d]=%s\n", kk, mmp.arguments().at(kk).toLocal8Bit().constData());
-        }
-        mmp.start();
-        mmp.waitForFinished(-1);
-        int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
-        if (!rval) {
-            logger.error("Error. mtf mapper call failed\n");
-        } else {
-            emit send_delete_item(tempdir + "/log.txt");
-        }
-                
-        if (rval) {
+        #else
+        sprintf(buffer, "\"%s/mtf_mapper\" --gnuplot-executable \"%s\" \"%s\" \"%s\" %s", 
+            QCoreApplication::applicationDirPath().toLocal8Bit().constData(),
+            gnuplot_binary.toLocal8Bit().constData(),
+            input_file.toLocal8Bit().constData(),
+            tempdir.toLocal8Bit().constData(),
+            arguments.toLocal8Bit().constData()
+        );
+        #endif
+        cout << "Processing file " << input_file.toLocal8Bit().constData() << ":" 
+             << arguments.toLocal8Bit().constData() << endl;
+        printf("actual command = [%s]\n", buffer);
+        int rval = system(buffer);
+        
+        if (rval >= 0) {
 
             // this call must come from within the worker thread, since we
             // may have to perform a raw conversion in the worker thread
@@ -147,9 +149,6 @@ void Worker_thread::run(void) {
             if (QFile().exists(an_file)) {
                 emit send_child_item(QString("annotated"), an_file);
                 emit send_delete_item(an_file);
-                emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
             }
             QString pr_file = QString("%1/profile_image.png").arg(tempdir);
             if (QFile().exists(pr_file)) {
@@ -177,25 +176,12 @@ void Worker_thread::run(void) {
                 emit send_delete_item(fp_file);
                 emit send_delete_item(tempdir + QString("/profile_curve.txt"));
                 emit send_delete_item(tempdir + QString("/profile_points.txt"));
-                // we might as well try to delete all the bayer-channel specific outputs, whether they are generated, or not
-                emit send_delete_item(tempdir + QString("/green_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/green_profile_points.txt"));
-                emit send_delete_item(tempdir + QString("/blue_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/blue_profile_points.txt"));
-                emit send_delete_item(tempdir + QString("/red_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/red_profile_points.txt"));
             }
             QString lp_file = QString("%1/lensprofile.png").arg(tempdir);
             if (QFile().exists(lp_file)) {
                 emit send_child_item(QString("lensprofile"), lp_file);
                 emit send_delete_item(lp_file);
                 emit send_delete_item(tempdir + QString("/lensprofile.txt"));
-                emit send_delete_item(tempdir + QString("/lensprofile.gnuplot"));
-            }
-            QString co_file = QString("%1/chart_orientation.png").arg(tempdir);
-            if (QFile().exists(co_file)) {
-                emit send_child_item(QString("chart orientation"), co_file);
-                emit send_delete_item(co_file);
             }
             emit send_close_item();
         }

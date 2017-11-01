@@ -27,8 +27,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/component_labelling.h"
 
-#include <opencv2/highgui/highgui.hpp>
-
 //------------------------------------------------------------------------------
 Component_labeller::Component_labeller(void) 
 : _width(0), _height(0),
@@ -49,10 +47,36 @@ Component_labeller::Component_labeller(const cv::Mat& in_img,
 }
 
 //------------------------------------------------------------------------------
+Component_labeller::Component_labeller(const Component_labeller& b) {
+    _height = b._height;
+    _width  = b._width;
+    _min_boundary_length = b._min_boundary_length;
+    _max_boundary_length = b._max_boundary_length;
+    configured = b.configured;
+
+    if (configured) {
+        _labels = new int[_width*_height];
+        memcpy(_labels, b._labels, sizeof(int)*_width*_height);
+
+        _pix = new unsigned char[_width*(_height+1)];
+        memcpy(_pix, b._pix - _width, _width*(_height+1));
+        _pix += _width;
+    }
+
+    _boundaries = b._boundaries;
+
+    C = b.C;
+
+}
+
+//------------------------------------------------------------------------------
 void Component_labeller::configure(const cv::Mat& in_img,
         int min_boundary_length, int max_boundary_length, bool snapshot) {
     
     if (configured) {
+        _pix -= _width;
+        delete [] _pix;
+        delete [] _labels;
         _boundaries.clear();
     }
 
@@ -62,13 +86,14 @@ void Component_labeller::configure(const cv::Mat& in_img,
     _max_boundary_length = max_boundary_length;
     configured = true;
 
-    _labels.resize(in_img.rows*in_img.cols, 0);
+    _labels = new int[in_img.rows*in_img.cols];
+    memset(_labels, 0, sizeof(int)*in_img.rows*in_img.cols);
 
     // make a copy of the pixel data, but add an extra
     // white line to the top of the image
-    _pix_data.resize(in_img.rows*in_img.cols + _width);
-    memset(_pix_data.data(), 255, _width);
-    _pix = _pix_data.data() + _width;
+    _pix = new unsigned char[in_img.rows*in_img.cols + _width];
+    memset(_pix, 255, _width);
+    _pix += _width;
     memcpy(_pix, in_img.data, in_img.rows*in_img.cols);
     memset(_pix, 255, _width);
 
@@ -92,9 +117,45 @@ void Component_labeller::configure(const cv::Mat& in_img,
 //------------------------------------------------------------------------------
 Component_labeller::~Component_labeller(void) {
     if (configured) {
-        release();
+        _pix -= _width;
+        delete [] _pix;
+        delete [] _labels;
     }
     configured = false;
+}
+
+
+//------------------------------------------------------------------------------
+Component_labeller& Component_labeller::operator=(const Component_labeller& b) {
+
+    if (this == &b) {
+        return *this;
+    }
+
+    // perform destructor operations first
+    if (configured) {
+        _pix -= _width;
+        delete [] _pix;
+        delete [] _labels;
+    }
+    _boundaries.clear();
+
+    _height = b._height;
+    _width  = b._width;
+    _min_boundary_length = b._min_boundary_length;
+    _max_boundary_length = b._max_boundary_length;
+    configured = b.configured;
+
+    _labels = new int[_width*_height];
+    memcpy(_labels, b._labels, sizeof(int)*_width*_height);
+
+    _pix = new unsigned char[_width*(_height+1)];
+    memcpy(_pix, b._pix - _width, _width*(_height+1));
+    _pix += _width;
+
+    C = b.C;
+
+    return *this;
 }
 
 
@@ -210,16 +271,6 @@ void Component_labeller::_contour_tracing(int x, int y, int label, mode_type mod
         boundary.size() <= (size_t)_max_boundary_length) {
         _boundaries.insert(make_pair(label, boundary));
     }
-    
-    if (mode == INTERNAL && boundary.size() >= 2) {
-        auto it = _holes.find(label);
-        if (it != _holes.end()) {
-            _holes[label] = std::max(_holes[label], int(boundary.size()));
-        } else {
-            _holes.insert(make_pair(label, int(boundary.size())));
-        }
-    }
-    
 
 }
 

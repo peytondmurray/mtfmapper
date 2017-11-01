@@ -444,7 +444,7 @@ class JenkinsTraubSolver {
   bool attempted_quadratic_shift_;
 
   // Number of zero-shift iterations to perform.
-  static const int kNumZeroShiftIterations = 20;
+  static const int kNumZeroShiftIterations = 5;
 
   // The number of fixed shift iterations is computed as
   //   # roots found * this multiplier.
@@ -700,7 +700,7 @@ bool JenkinsTraubSolver::ApplyQuadraticShiftToKPolynomial(
     // If the iteration is stalling at a root pair then apply a few fixed shift
     // iterations to help convergence.
     poly_at_root =
-        std::abs(a_ - roots[0].real() * b_) + std::abs(roots[0].imag() * b_);
+        std::abs(a_ - roots[0].real() * b_) + std::abs(roots[i].imag() * b_);
     const double rel_step = std::abs((sigma_(2) - prev_v) / sigma_(2));
     if (!tried_fixed_shifts && rel_step < kTinyRelativeStep &&
         prev_poly_at_root > poly_at_root) {
@@ -752,12 +752,13 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
                       EvaluatePolynomial(k_polynomial_, root)).real();
 
   VectorXd deflated_polynomial, deflated_k_polynomial;
-  double polynomial_at_root(0), k_polynomial_at_root(0);
+  double polynomial_at_root = 0;
+  double k_polynomial_at_root = 0;
 
   // This container maintains a history of the predicted roots. The convergence
   // of the algorithm is determined by the convergence of the root value.
   std::vector<double> roots;
-  roots.push_back(real_root);
+  roots.push_back(real_root);;
   for (int i = 0; i < max_iterations; i++) {
     // Terminate if the root evaluation is within our tolerance. This will
     // return false if we do not have enough samples.

@@ -36,7 +36,6 @@ class QLineEdit;
 class QPushButton;
 class QCheckBox;
 class QRadioButton;
-class QSlider;
 
 class Settings_dialog : public QDialog 
 {
@@ -60,10 +59,6 @@ class Settings_dialog : public QDialog
     QLineEdit*  threshold_line;
     QLabel*     pixsize_label;
     QLineEdit*  pixsize_line;
-    QLabel*     ea_f_label;
-    QLineEdit*  ea_f_line;
-    QLabel*     sg_f_label;
-    QLineEdit*  sg_f_line;
     QPushButton* accept_button;
     QPushButton* cancel_button;
     
@@ -72,23 +67,14 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_profile;
     QCheckBox*  cb_grid;
     QCheckBox*  cb_focus;
-    QCheckBox*  cb_orientation;
     QCheckBox*  cb_lensprofile;
     QCheckBox*  cb_autocrop;
     QCheckBox*  cb_lpmm;
-    QCheckBox*  cb_gnuplot_scaled;
     
     QRadioButton* rb_colour_none;
     QRadioButton* rb_colour_red;
     QRadioButton* rb_colour_green;
     QRadioButton* rb_colour_blue;
-    
-    QRadioButton* rb_lens_pw_quad;
-    QRadioButton* rb_lens_quad;
-    QRadioButton* rb_lens_none;
-    QRadioButton* rb_lens_radial;
-    QRadioButton* rb_lens_equiangular;
-    QRadioButton* rb_lens_stereo;
 
     QLabel*     gnuplot_label;
     QLineEdit*  gnuplot_line;
@@ -102,11 +88,6 @@ class Settings_dialog : public QDialog
     QLineEdit*  dcraw_line;
     QPushButton* dcraw_button;
     
-    QLabel* zscale_label;
-    QSlider* zscale_slider;
-    
-    int gnuplot_img_width;
-    
   signals:
     void argument_string(QString s);  
     
@@ -116,9 +97,7 @@ class Settings_dialog : public QDialog
     void browse_for_gnuplot();
     void browse_for_exiv();
     void browse_for_dcraw();
-    void set_gnuplot_img_width(int w);
-    void equiangular_toggled();
-    void stereographic_toggled();
+    
 };
 
 #endif

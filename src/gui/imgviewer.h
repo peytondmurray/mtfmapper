@@ -36,19 +36,9 @@ class mtfmapper_app;
 class Imgviewer : public QGraphicsView {
   public:
     Imgviewer(QGraphicsScene* scene, mtfmapper_app* zoom_parent, QWidget* parent = 0);
-    void wheelEvent(QWheelEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void enterEvent(QEvent* event);
+    void wheelEvent (QWheelEvent* event);
     
-    void set_clickable(bool c) {
-        clickable = c;
-    }
-    
-    QGraphicsScene* scene;
     mtfmapper_app* zoom_parent;
-    QPoint click_down_pos;
-    bool clickable;
 };
 
 #endif

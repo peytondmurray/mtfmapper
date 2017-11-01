@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_RENDERER_LENSPROFILE_H
 #define MTF_RENDERER_LENSPROFILE_H
 
-#include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "include/loess_fit.h"
@@ -41,16 +40,15 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         const std::string& wdir, 
         const std::string& prof_fname, 
         const std::string& gnuplot_binary,
-        const cv::Mat& img,
+        const cv::Mat& img, 
         const vector<double>& in_resolution,
-        int gnuplot_width,
         bool lpmm_mode=false, double pixel_size=1.0) 
       :  Mtf_renderer(img_filename),
          wdir(wdir), prname(prof_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
-         in_resolution(in_resolution), gnuplot_width(gnuplot_width) {
+         in_resolution(in_resolution) {
     
       
     }
@@ -61,7 +59,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         vector<double> resolution;
         for (size_t i=0; i < min(size_t(3), in_resolution.size()); i++) {
             resolution.push_back(in_resolution[i] / pixel_size);
-            logger.debug("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
+            printf("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
         }
         
         vector< vector<Ordered_point> > sagittal(resolution.size());
@@ -103,11 +101,11 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         FILE* fout = fopen((wdir + prname).c_str(), "wt");
         
         if (sagittal[0].size() == 0 || meridional.size() == 0) {
-            logger.error("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
+            printf("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
             return;
         }
         
-        logger.debug("got %d sagittal / %d meridional samples\n", (int)sagittal[0].size(), (int)meridional[0].size());
+        printf("got %d sagittal / %d meridional samples\n", (int)sagittal[0].size(), (int)meridional[0].size());
         
         vector< vector<Ordered_point> > s_fitted(resolution.size());
         vector< vector<Ordered_point> > s_spread(resolution.size());
@@ -211,21 +209,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         fprintf(gpf, "set ytics 0.1\n");
         fprintf(gpf, "set style line 11 lc rgb \"#f0f0f0\" lt 1 lw 1\n");
         fprintf(gpf, "set grid xtics ytics ls 11\n");
-        double ar = 768.0/1024.0;
-        int fontsize = lrint(12.0*gnuplot_width/1024.0);
-        int title_fontsize = lrint(14.0*gnuplot_width/1024.0);
-        int linewidth = lrint(2*gnuplot_width/1024.0);
-        #ifdef _WIN32
-        fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font 'Verdana,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
-        #else
-        fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font 'Arial,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
-        #endif
-        
-        fprintf(gpf, "if (GPVAL_VERSION >= 5.0) set linetype 12 dashtype 2;\n"); // force dashed lines in meridional plot
+        fprintf(gpf, "set term pngcairo dashed transparent enhanced size 1024, 768\n");
         fprintf(gpf, "set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb \"white\" behind\n");
         fprintf(gpf, "set output \"%slensprofile.png\"\n", wdir.c_str());
+        //fprintf(gpf, "set linetype 5 dashtype 2 linewidth 2\n"); // Use this with gnuplot 5 onwards, later.
         if (img_filename.length() > 0) {
-            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
+            fprintf(gpf, "set title \"%s\" font \",14\"\n", img_filename.c_str());
         }
         
         lower_limit = min(-0.05, lower_limit);
@@ -237,12 +226,12 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
             fprintf(gpf,   
                 "\"%s\" index 2 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
                 "\"%s\" index 3 u 1:%d w filledcurve fs transparent solid 0.5 lc rgb \"%s\" lt 16 notitle,"
-                "\"%s\" index 0 u 1:%d w l lc rgb \"%s\" lw %d lt 16 t \"S %.2lf %s\","
-                "\"%s\" index 1 u 1:%d w l lc rgb \"%s\" lt 12 lw %d t \"M %.2lf %s\"",
+                "\"%s\" index 0 u 1:%d w l lc rgb \"%s\" lw 2 lt 16 t \"S %.2lf %s\","
+                "\"%s\" index 1 u 1:%d w l lc rgb \"%s\" lt 12 lw 2 t \"M %.2lf %s\"",
                 (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j].c_str(),
                 (wdir+prname).c_str(), int(2*j)+2, shadecolor[2*j+1].c_str(),
-                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), linewidth, res, resmode.c_str(),
-                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), linewidth, res, resmode.c_str()
+                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), res, resmode.c_str(),
+                (wdir+prname).c_str(), int(2*j)+2, linecolor[j].c_str(), res, resmode.c_str()
             );
             fprintf(gpf, "%c", (j < resolution.size() - 1) ? ',' : '\n');
         }    
@@ -256,18 +245,11 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         #endif
         int rval = system(buffer);
         if (rval != 0) {
-            logger.error("Failed to execute gnuplot (error code %d)\n", rval);
-            logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
+            printf("Failed to execute gnuplot (error code %d)\n", rval);
+            printf("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            logger.debug("Gnuplot plot completed successfully. Look for lensprofile.png\n");
-            // Hack: trim the png file to remove the black border that gnuplot 4.4 leaves
-            cv::Mat src_img;
-            src_img = cv::imread(wdir.c_str() + string("/lensprofile.png"));
-            if (src_img.data) {
-                src_img.adjustROI(-1, -1, -1, -1);
-                cv::imwrite(wdir.c_str() + string("/lensprofile.png"), src_img);
-            }
+            printf("Gnuplot plot completed successfully. Look for lensprofile.png\n");
         }
         
         delete [] buffer;
@@ -534,7 +516,6 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     bool gnuplot_warning;
     
     vector<double> in_resolution;
-    int gnuplot_width;
 };
 
 #endif

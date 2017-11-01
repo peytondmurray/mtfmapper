@@ -36,7 +36,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "../../include/stride_range.h"
 #include "../../include/threadpool.h"
 
-#include <opencv2/highgui/highgui.hpp>
+#include "cv.h"
+#include "highgui.h"
 
 #include "config.h"
 
@@ -70,7 +71,7 @@ inline unsigned char reverse_gamma(double x) {
     return lrint(255 * ((1 + SRGB_a) * pow(x, 1.0/2.4) - SRGB_a));
 }
 
-inline double fwd_gamma(double x) { // x in [0,1]
+inline double gamma(double x) { // x in [0,1]
     const double S_linear = 12.9232102;
     const double C_srgb = 0.04045;
     const double SRGB_a = 0.055;
@@ -244,7 +245,7 @@ int main(int argc, char** argv) {
     TCLAP::CmdLine cmd("Generate rectangles with known MTF50 values", ' ', ss.str());
     TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "filename", cmd);
     TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "angle (degrees)", cmd);
-    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, int(time((time_t*)nullptr)), "seed", cmd);
+    TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, int(time(time_t(0))), "seed", cmd);
     TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.374781, "std. dev", cmd);
     TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);

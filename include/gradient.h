@@ -33,7 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Gradient {
 public:
-    Gradient(const cv::Mat& in_img);
+    Gradient(const cv::Mat& in_img, bool snapshot = false);
     virtual ~Gradient(void);
 
     inline const cv::Mat& grad_x(void) const {
@@ -52,9 +52,12 @@ public:
         return _gradient_y.at<float>(y, x);
     }
 
+    inline const cv::Mat& grad_magnitude(void) const {
+        return _gradient_m;
+    }
+    
     inline float grad_magnitude(int x, int y) const {
-        size_t i = _gradient_x.cols * y + x;
-        return SQR(*((float*)_gradient_x.data + i)) + SQR(*((float*)_gradient_y.data + i));
+        return _gradient_m.at<float>(y, x);
     }
 
     inline int width(void) const {
@@ -64,12 +67,8 @@ public:
     inline int height(void) const {
         return _height;
     }
-    
-    void release(void) {
-        _gradient_x.release();
-        _gradient_y.release();
-    }
-    
+
+    static void _blur(const cv::Mat& image, float **smoothedim);
 private:
 
     void _compute_gradients(const cv::Mat& smoothed_im);
@@ -80,6 +79,7 @@ protected:
 
     cv::Mat     _gradient_x;
     cv::Mat     _gradient_y;
+    cv::Mat     _gradient_m;
 };
 
 #endif // GRADIENT_H

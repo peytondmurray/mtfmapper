@@ -30,7 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
  
 #include <QMainWindow> 
 #include <QModelIndex>
-#include <QFileDialog>
 #include <QStringList>
 #include <QList>
 #include "settings_dialog.h"
@@ -40,11 +39,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "about_dialog.h"
 #include "help_dialog.h"
 #include "imgviewer.h"
-#include "sfr_entry.h"
-#include "sfr_dialog.h"
-
-#include <vector>
-using std::vector;
 
 class QPushButton;
 class QLabel;
@@ -58,8 +52,7 @@ class QTreeView;
 class QThread;
 class QCheckBox;
 class QProgressBar;
-class QSplitter;
-
+   
 class mtfmapper_app : public QMainWindow
 {
   Q_OBJECT
@@ -67,17 +60,13 @@ class mtfmapper_app : public QMainWindow
   public:
     mtfmapper_app(QWidget *parent = 0);
     virtual ~mtfmapper_app(void);
-    
-  protected:
-    void closeEvent(QCloseEvent* event) override;
-  
+
   private:
     void create_actions(void);
     void view_image(const QString& fname);
     void display_exif_properties(int index);
     void clear_temp_files(void);
     void check_if_helpers_exist(void);
-    void save_action(bool subset = false);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
@@ -106,7 +95,7 @@ class mtfmapper_app : public QMainWindow
     
     QGroupBox*      horizgroup;
     
-    Imgviewer*           qgv;
+    QGraphicsView*       qgv;
     QGraphicsScene*      qgs;
     QGraphicsPixmapItem* qgpi;
     
@@ -129,26 +118,15 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_annotated;
     QCheckBox*      tb_img_profile;
     QCheckBox*      tb_img_gridimg;
+    QCheckBox*      tb_img_gridsurf;
     QCheckBox*      tb_img_focus;
     QCheckBox*      tb_img_lensprofile;
-    QCheckBox*      tb_img_orientation;
     
     QProgressBar*   progress;
     QPushButton*    abort_button;
-
-    QPushButton*    clear_button;
-    QPushButton*    save_button;
-    QPushButton*    save_subset_button;
     
     Img_frame*      img_frame;
-    
-    QSplitter*      splitter;
-
-    QIcon* mtfmapper_logo;
-    
-    Sfr_dialog*     sfr_dialog;
-    vector<Sfr_entry> sfr_list;
-
+              
   public slots:
     void open();
     void dataset_selected(const QModelIndex&);
@@ -159,22 +137,19 @@ class mtfmapper_app : public QMainWindow
     void item_for_deletion(QString s);
     void populate_exif_info_from_file(QString s, QString tempdir);
     void zoom_changed(int i);
+    
+    void img_annotated_toggled(void);
+    void img_profile_toggled(void);
+    void img_gridimg_toggled(void);
+    void img_gridsurf_toggled(void);
+    void img_focus_toggled(void);
+    void img_lensprofile_toggled(void);
   
     void zoom_in(void);
     void zoom_out(void);  
     void zoom_to_100(void);
-    void edge_selected(int px, int py, bool crtl_down, bool shift_down);
-    
 
     void hide_abort_button(void);
-    void enable_clear_button(void);
-    void clear_button_pressed(void);
-    void enable_save_button(void);
-    void disable_save_button(void);
-    void save_button_pressed(void);
-    void save_subset_button_pressed(void);
-
-    void enable_file_open(void);
 };
                                
                                 

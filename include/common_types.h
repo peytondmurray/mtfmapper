@@ -48,7 +48,8 @@ using std::cout;
 using std::endl;
 
 // OpenCV headers
-#include <opencv2/core/core.hpp>
+#include <cv.h>
+#include <highgui.h>
 
 using cv::Point2d;
 
@@ -118,10 +119,6 @@ using std::make_pair;
         #define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
     #endif
 #endif
-
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
 
 #endif //COMMON_TYPES_H
 

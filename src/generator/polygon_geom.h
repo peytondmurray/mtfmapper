@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
     #define M_PI 3.14159265358979
 #endif
 
+#include <cv.h>
 using namespace cv;
 
 #include <vector>

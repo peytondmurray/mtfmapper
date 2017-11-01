@@ -54,8 +54,8 @@ Help_dialog::Help_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     body->setMinimumHeight(600);
     body->setReadOnly(true);
 
-    QGroupBox* vGroupBox = new QGroupBox(tr("About"), this);
-    QGridLayout* vlayout = new QGridLayout(this);
+    QGroupBox* vGroupBox = new QGroupBox(tr("About"));
+    QGridLayout* vlayout = new QGridLayout;
 
     vlayout->addWidget(body, 0, 0, 1, 3);
     vlayout->addWidget(dismiss_button, 1, 1);
@@ -63,6 +63,7 @@ Help_dialog::Help_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     
     connect(dismiss_button, SIGNAL(clicked()), this, SLOT( close() ));
     
+    setLayout(vlayout);
     setCentralWidget(body);
 }
 

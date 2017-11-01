@@ -1,45 +1,4 @@
-MTF Mapper 0.5.7
-
-# build notes for Ubunutu. It worked on Lubuntu 16.04, and may work on other versions
-
-# install all the dependencies (note the new dependencies compared to
-# earlier MTF Mapper versions, and the use of qt5 i.s.o qt4)
-
-sudo apt-get install g++
-sudo apt-get install cmake
-sudo apt-get install libopencv-dev
-sudo apt-get install qtbase5-dev
-sudo apt-get install libtclap-dev
-sudo apt-get install libeigen3-dev
-sudo apt-get install subversion
-sudo apt-get install gnuplot
-sudo apt-get install exiv2
-sudo apt-get install dcraw 
-
-# check out the source code from the repository
-mkdir workspace
-cd workspace
-svn co svn://svn.code.sf.net/p/mtfmapper/code/trunk mtfmapper-code
-
-# make a build directory for cmake
-mkdir mtfmapper
-cd mtfmapper
-
-# configure with cmake
-cmake ../mtfmapper-code
-
-# the actual build
-make
-
-# and you are done!
-# executables can be found in workspace/mtfmapper/bin
-
-
-
-==================
-MTF Mapper 0.4.23 and earlier (probably)
-
-# build notes for Ubunutu. It worked on Ubuntu 12.10, and may work on other versions
+# build notes for Ubunutu. It worked on 12.10, and may work on other versions
 
 # install all the dependencies
 sudo apt-get install g++

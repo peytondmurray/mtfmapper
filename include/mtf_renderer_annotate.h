@@ -30,9 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "mtf_renderer.h"
 #include "common_types.h"
-#include "include/srgb_render.h"
-
-#include <opencv2/highgui/highgui.hpp>
 
 class Mtf_renderer_annotate : public Mtf_renderer {
   public:
@@ -40,7 +37,17 @@ class Mtf_renderer_annotate : public Mtf_renderer {
       bool lpmm_mode, double pixel_size) 
       : img(in_img), ofname(fname), lpmm_mode(lpmm_mode), pixel_size(pixel_size) {
       
-          out_img = Srgb_render::linear_to_sRGB(in_img);
+          unsigned int max_val = 0;
+          for (int r=0; r < img.rows; r++) {
+              for (int c=0; c < img.cols; c++) {
+                  if (img.at<uint16_t>(r,c) > max_val) {
+                      max_val = img.at<uint16_t>(r,c);
+                  }
+              }
+          }
+          cv::Mat temp_img;
+          img.convertTo(temp_img, CV_8UC3, 255.0/double(max_val));
+          cv::merge(vector<cv::Mat>(3, temp_img), out_img);
     }
     
     void render(const vector<Block>& blocks) {
@@ -49,9 +56,7 @@ class Mtf_renderer_annotate : public Mtf_renderer {
                 double val = blocks[i].get_mtf50_value(k);
                 if (val > 0) {
                     Point2d cent = blocks[i].get_edge_centroid(k);
-                    if (cent.x > 1 && cent.y > 1) {
-                        write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
-                    }
+                    write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
                 }
             }
         }    

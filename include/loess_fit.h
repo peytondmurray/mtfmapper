@@ -32,13 +32,23 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::vector;
 
 #include "include/common_types.h"
-#include "include/ordered_point.h"
+
+class Ordered_point {
+public:
+    Ordered_point(double in_first=0, double in_second=0) : first(in_first), second(in_second) {}
+    bool operator< (const Ordered_point& b) const {
+        return first < b.first;
+    }
+    
+    double first;
+    double second;
+};
 
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
     double mid,  Point2d& sol);
     
 int bin_fit(vector< Ordered_point  >& ordered, double* fft_in_buffer, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift=false);
+    const int fft_size, double lower, double upper, vector<double>& esf);
 
 #ifndef SQR
 #define SQR(x) ((x)*(x))

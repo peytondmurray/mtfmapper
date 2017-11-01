@@ -25,7 +25,6 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include "include/logger.h"
 #include "include/loess_fit.h"
 #include "include/gaussfilter.h"
 #include "include/mtf_tables.h"
@@ -101,7 +100,7 @@ inline double tri(double x) {
 }
 
 int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
+    const int fft_size, double lower, double upper, vector<double>& esf) {
 
     const double missing = -1e7;
     const double shift_tolerance = 4;
@@ -193,12 +192,10 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    if (!allow_peak_shift) {
-        if (abs(peak_slope_idx - fft_size / 2) > 2 * 8 &&    // peak is more than 2 pixels from centre
-            abs(peak_slope_idx - fft_size / 2) < 12 * 8) { // but not at the edge?
-            logger.debug("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size / 2) / 8.0);
-            return -1;
-        }
+    if (abs(peak_slope_idx - fft_size/2) > 2*8 &&    // peak is more than 2 pixels from centre
+        abs(peak_slope_idx - fft_size/2) < 12*8) { // but not at the edge?
+        printf("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size/2)/8.0);
+        return -1;
     }
     
     // compute central peak magnitude and sign
@@ -258,7 +255,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         if (fft_size/2 - fft_left < shift_tolerance*8 ||
             fft_right  - fft_size/2 < shift_tolerance*8) {
             
-            logger.debug("probably contamination. tagging edge as dodgy\n");
+            printf("probably contamination. tagging edge as dodgy\n");
             rval = 1;
         }
     }
@@ -328,7 +325,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         int left = max(fft_left, cbin-nbins);
         int right = min(fft_right-1, cbin+nbins);
         for (int b=left; b <= right; b++) {
-            double mid = b*scale*(upper-lower)/double(fft_size) + scale*lower;
+            double mid = b*scale*(upper-lower)/double(fft_size-1) + scale*lower;
             double w = 1; // in extreme tails, just plain box filter
             const double bwidth = 2;
             const double lwidth = 0.5;

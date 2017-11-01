@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0)
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
@@ -17,8 +17,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
-set(mtfmapper_VERSION_MINOR 6)
-set(mtfmapper_VERSION_SUB 11) #increment on release
+set(mtfmapper_VERSION_MINOR 5)
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -26,7 +25,7 @@ set(genrectangle_VERSION_MINOR 0)
 # Turn all compiler warnings on when building with GCC
 if(CMAKE_COMPILER_IS_GNUCXX)
   message(STATUS "Using a g++ compiler variant --- additional compiler warnings turned on")
-  add_definitions(-Wall -W -Wno-unused-local-typedefs -std=c++11)
+  add_definitions(-Wall -W -Wno-unused-local-typedefs)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 # Turn all compiler warnings on when building with the Intel compiler
@@ -38,6 +37,13 @@ if(CMAKE_CXX_COMPILER MATCHES "icpc")
   # to be spurious.
   add_definitions(-Wall -wd981 -wd810)
 endif(CMAKE_CXX_COMPILER MATCHES "icpc")
+
+# must check this on new MSVC
+# Add stdint.h if we are compiling on MSVC
+#if(CMAKE_GENERATOR MATCHES "Visual Studio")
+#  INCLUDE_DIRECTORIES(${scl_SOURCE_DIR}/include)
+#  add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+#endif(CMAKE_GENERATOR MATCHES "Visual Studio")
 
 if (MSVC)
     add_definitions(/arch:SSE2)
@@ -65,7 +71,6 @@ if (NOT OpenCV_VERSION)
 endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(Threads)
 
 include_directories("${OpenCV_INCLUDE_DIRS}")
 include_directories("${TCLAP_INCLUDE_DIR}")
@@ -88,7 +93,7 @@ endif (BUILD_DOC)
 # man pages for unix platforms
 if (UNIX)
   if(NOT MANDIR)
-      set(MANDIR "/usr/share/man/man1")
+      set(MANDIR "/usr/man")
   endif(NOT MANDIR)
   set(HTML_HELP_DIR ${DOCDIR})
   add_subdirectory(manpages)
@@ -127,30 +132,3 @@ set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD_REQUIRED ON)
 
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 11)
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD_REQUIRED ON)
-
-# custom install to make a whole windows installer, not necessary if building on Linux
-if(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base64/")
-    install(DIRECTORY "C:/workspace/mtfmapper_windows_base64/" DESTINATION bin)
-endif(IS_DIRECTORY "C:/workspace/mtfmapper_windows_base64/")
-
-include(InstallRequiredSystemLibraries)
-set(CPACK_PACKAGE_VENDOR "Frans van den Bergh")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/license.txt")
-set(CPACK_PACKAGE_VERSION_MAJOR ${mtfmapper_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${mtfmapper_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${mtfmapper_VERSION_SUB}) 
-set(CPACK_PACKAGE_EXECUTABLES "mtf_mapper_gui;MTF Mapper")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "MTF Mapper")
-set(CPACK_PACKAGE_DESCRIPTION "Measure slanted-edge SFR, lens testing, camera calibration")
-set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
-set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
-
-if (UNIX)
-    set(CPACK_GENERATOR "DEB")
-    set(CPACK_PACKAGE_CONTACT "fvdbergh@users.sourceforge.net")
-    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} "gnuplot,exiv2,dcraw")
-endif (UNIX)
-
-include(CPack)
-

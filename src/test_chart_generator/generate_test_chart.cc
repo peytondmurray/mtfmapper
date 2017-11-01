@@ -59,8 +59,6 @@ int main(int argc, char** argv) {
     allowed_sizes.push_back("A4");
     allowed_sizes.push_back("a3");
     allowed_sizes.push_back("A3");
-    allowed_sizes.push_back("a3s");
-    allowed_sizes.push_back("A3S");
     allowed_sizes.push_back("a2");
     allowed_sizes.push_back("A2");
     allowed_sizes.push_back("a1");
@@ -77,7 +75,6 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<std::string> tc_ofname("o", "output", "Output file name (default chart.svg)", false, "chart.svg", "filename" );
     cmd.add(tc_ofname);
     TCLAP::ValueArg<double> tc_distance("d", "distance", "Distance from test chart (mm)", false, 1500, "distance", cmd);
-    TCLAP::SwitchArg tc_alpa("","alpa-scale","Add Alpa-specific distance scale to focus chart type", cmd, false);
     
     cmd.parse(argc, argv);
     
@@ -121,7 +118,7 @@ int main(int argc, char** argv) {
                 }
             } else {
                 if (tc_type.getValue().compare("focus") == 0) {
-                    Svg_page_focus p(tc_size.getValue(), tc_ofname.getValue(), tc_alpa.getValue());
+                    Svg_page_focus p(tc_size.getValue(), tc_ofname.getValue());
                     p.set_viewing_parameters(tc_distance.getValue(), -45/180.0*M_PI);      
                     p.render(); 
                 } else {

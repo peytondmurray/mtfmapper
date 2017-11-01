@@ -25,30 +25,26 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include "include/logger.h"
-#include <QtWidgets>
+#include <QtWidgets> 
 #include "mtfmapper_app.h"
 #include "mtfmapper_app.moc"
 
 #include "worker_thread.h"
 #include "common.h"
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
 #include <string>
 #include <iostream>
-#include <fstream>
 
 using std::cout;
 using std::endl;
 using std::string; 
  
 mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
-  : processor(this), sfr_dialog(nullptr)
+  : processor(this)
 {
-
+    
+    
+    //QLabel* zoomLabel = new QLabel(tr("Enter a zoom value between %1 and %2:").arg(0).arg(1000));
     zoom_spinbox = new QSpinBox;
     zoom_spinbox->setRange(0, 1000);
     zoom_spinbox->setSingleStep(10);
@@ -87,18 +83,18 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     img_frame = new Img_frame(this);
     
-    tb_img_annotated = new QCheckBox("Annotated image");
+    tb_img_annotated = new QCheckBox("Annotated");
     tb_img_annotated->setChecked(true);
     tb_img_profile = new QCheckBox("Profile");
     tb_img_profile->setChecked(true);
-    tb_img_gridimg = new QCheckBox("Grid");
+    tb_img_gridimg = new QCheckBox("2D map");
     tb_img_gridimg->setChecked(true);
+    tb_img_gridsurf = new QCheckBox("3D map");
+    tb_img_gridsurf->setChecked(true);
     tb_img_focus = new QCheckBox("Focus position");
     tb_img_focus->setChecked(true);
     tb_img_lensprofile = new QCheckBox("Lens profile");
     tb_img_lensprofile->setChecked(true);
-    tb_img_orientation = new QCheckBox("Chart orientation");
-    tb_img_orientation->setChecked(true);
     
     qgs = new QGraphicsScene;
     qgs->setSceneRect(0,0,400,400);
@@ -121,26 +117,19 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     datasets->setRootIsDecorated(true);
     
     progress = new QProgressBar;
-
-    clear_button = new QPushButton("Clear results");
-    clear_button->setEnabled(false);
-
-    save_button = new QPushButton("Save all results");
-    save_button->setEnabled(false);
-
-    save_subset_button = new QPushButton("Save result subset");
-    save_subset_button->setEnabled(false);
-
+    
     
     QGridLayout* tb_layout = new QGridLayout;
-    tb_layout->addWidget(datasets, 0, 0);
-    tb_layout->addWidget(clear_button, 1, 0);
-    tb_layout->addWidget(save_button, 2, 0);
-    tb_layout->addWidget(save_subset_button, 3, 0);
-    QGroupBox* vbox2 = new QGroupBox(tr("Data set control"));
+    tb_layout->addWidget(tb_img_annotated, 1, 0);
+    tb_layout->addWidget(tb_img_profile, 1, 1);
+    tb_layout->addWidget(tb_img_gridimg, 2, 0);
+    tb_layout->addWidget(tb_img_gridsurf, 2, 1);
+    tb_layout->addWidget(tb_img_focus, 3, 0);
+    tb_layout->addWidget(tb_img_lensprofile, 3, 1);
+    tb_layout->addWidget(datasets, 4, 0, 1, 2);
+    QGroupBox* vbox2 = new QGroupBox(tr("selection"));
     vbox2->setLayout(tb_layout);
-    vbox2->setMinimumWidth(200);
-    
+
     QGroupBox* v3GroupBox = new QGroupBox(tr("Image properties"));
     QGridLayout* hlayout = new QGridLayout;
     hlayout->addWidget(img_comment_label, 0, 0);
@@ -154,27 +143,20 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     v3GroupBox->setLayout(hlayout);
 
     
-    QGroupBox* vGroupBox = new QGroupBox(tr("Current output"));
+    QGroupBox* vGroupBox = new QGroupBox(tr("output"));
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(qgv, 0, 0);
     vlayout->addWidget(zoom_spinbox, 1, 0);
     vlayout->addWidget(vbox2, 0, 1);
     vlayout->addWidget(v3GroupBox);
     vGroupBox->setLayout(vlayout);
-    
-    splitter = new QSplitter(Qt::Horizontal);
-    splitter->addWidget(vGroupBox);
-    splitter->addWidget(vbox2);
-    splitter->setStretchFactor(0, 1);
-    splitter->setCollapsible(0, false);
-    splitter->setCollapsible(1, false);
 
     
     abort_button = new QPushButton("Abort");
     abort_button->hide();
     
     QGridLayout *mainLayout = new QGridLayout;
-    mainLayout->addWidget(splitter, 0, 0, 1, 2);
+    mainLayout->addWidget(vGroupBox, 0, 0, 1, 2);
     mainLayout->addWidget(progress, 1, 0);
     mainLayout->addWidget(abort_button, 1, 1);
     img_frame->setLayout(mainLayout);
@@ -214,6 +196,13 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_delete_item(QString)), this, SLOT(item_for_deletion(QString)));
     connect(&processor, SIGNAL(send_exif_filename(QString, QString)), this, SLOT(populate_exif_info_from_file(QString, QString)));
     
+    connect(tb_img_annotated, SIGNAL(clicked()), this, SLOT(img_annotated_toggled()));
+    connect(tb_img_profile, SIGNAL(clicked()), this, SLOT(img_profile_toggled()));
+    connect(tb_img_gridimg, SIGNAL(clicked()), this, SLOT(img_gridimg_toggled()));
+    connect(tb_img_gridsurf, SIGNAL(clicked()), this, SLOT(img_gridsurf_toggled()));
+    connect(tb_img_focus, SIGNAL(clicked()), this, SLOT(img_focus_toggled()));
+    connect(tb_img_lensprofile, SIGNAL(clicked()), this, SLOT(img_lensprofile_toggled()));
+    
     connect(zoom_spinbox, SIGNAL(valueChanged(int)), this, SLOT(zoom_changed(int)));
     connect(img_frame, SIGNAL(zoom_in()), this, SLOT(zoom_in()));
     connect(img_frame, SIGNAL(zoom_out()), this, SLOT(zoom_out()));
@@ -225,24 +214,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
     connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
     
-    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_clear_button()));
-    connect(clear_button, SIGNAL(clicked()), this, SLOT(clear_button_pressed()));
-    connect(clear_button, SIGNAL(clicked()), this, SLOT(disable_save_button()));
-
-    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_save_button()));
-    connect(save_button, SIGNAL(clicked()), this, SLOT(save_button_pressed()));
-
-    connect(save_subset_button, SIGNAL(clicked()), this, SLOT(save_subset_button_pressed()));
-
-    connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
-
-    mtfmapper_logo = new QIcon;
-    mtfmapper_logo->addFile(":/Icons/AppIcon256");
-    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
-    qgs->setSceneRect(QRectF(0, 0, 255, 255));
-
-
-    setWindowTitle(tr("MTF Mapper"));
+    setWindowTitle(tr("Image Viewer"));
     resize(920,600);
     
     settings->send_argument_string();
@@ -260,11 +232,12 @@ void mtfmapper_app::clear_temp_files(void) {
         QString fn(tempfiles_to_delete.at(i));
         QString dn(QFileInfo(fn).absolutePath());
         
-        QFile().remove(fn);
-        QDir().rmdir(dn);
+        /*bool fr = */QFile().remove(fn);
+        /*bool dr = */QDir().rmdir(dn);
             
+        //cout << "f:" << fn.toAscii().constData() << ":" << fr << endl;
+        //cout << "d:" << dn.toAscii().constData() << ":" << dr << endl;
     }
-    clear_button->setEnabled(false);
 }
 
 void mtfmapper_app::create_actions(void) {
@@ -291,121 +264,44 @@ void mtfmapper_app::create_actions(void) {
 void mtfmapper_app::view_image(const QString& fname) {
     QImage image(fname);
     if (image.isNull()) {
-        // Qt could not load the file. This might be because it is a 16-bit TIFF file.
-        // Try loading it using opencv
-        cv::Mat cvimg;
-        bool opencv_succeeded = true;
-        try {
-            cvimg = cv::imread(fname.toStdString(), CV_LOAD_IMAGE_GRAYSCALE);
-            if (cvimg.data) {
-                // resize the image if it exceeds 10k pixels, since this seems to break QT 5.7 ?
-                if (cvimg.cols > 9999 || cvimg.rows > 9999) {
-                    cv::Mat smaller;
-                    double sf = 1;
-                    if (cvimg.cols >= cvimg.rows) {
-                        sf = 8000.0 / double(cvimg.cols);
-                    } else {
-                        sf = 80000.0 / double(cvimg.rows);
-                    }
-                    cv::resize(cvimg, smaller, cv::Size(0, 0), sf, sf);
-                    cvimg = smaller;
-                    logger.debug("Input image %s resized to %d x %d\n", fname.toLocal8Bit().constData(), cvimg.cols, cvimg.rows);
-                }
-                image = QImage(cvimg.cols, cvimg.rows, QImage::Format_Grayscale8);
-                memcpy(image.bits(), cvimg.data, cvimg.rows*cvimg.cols);
-                logger.debug("Input image %s loaded through OpenCV\n", fname.toLocal8Bit().constData());
-            } else {
-                // too bad, OpenCV cannot handle it either ...
-                opencv_succeeded = false;
-            }
-        }
-        catch (const cv::Exception&) {
-            // too bad, OpenCV cannot handle it either ...
-            opencv_succeeded = false;
-        }
-        if (!opencv_succeeded) {
-            QMessageBox::information(
-                this, tr("Image Viewer"),
-                tr("Cannot load %1.").arg(fname)
-            );
-            return;
-        }
-        
+        QMessageBox::information(
+            this, tr("Image Viewer"),
+            tr("Cannot load %1.").arg(fname)
+        );
+        return;
     }
-    int rwidth, rheight;
-    
-    if (zoom_spinbox->value() == 0) {
-        QSize vp_size = qgv->maximumViewportSize();
-        rwidth  = int(vp_size.rwidth());
-        rheight = int(vp_size.rwidth()*image.height()/image.width());
-    } else {
-        rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
-        rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
-    }
+    int rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
+    int rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
     qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
 } 
  
-void mtfmapper_app::open() {
-
-    QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString::null, QString::null);
-    open_dialog->setOption(QFileDialog::DontUseNativeDialog);
-
-    QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
-    QGridLayout* ft_gridbox = new QGridLayout();
-    if (ft_gridbox) {
-        ft_gridbox->addWidget(tb_img_annotated, 0, 0);
-        ft_gridbox->addWidget(tb_img_profile, 0, 1);
-        ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
-        ft_gridbox->addWidget(tb_img_focus, 1, 0);
-        ft_gridbox->addWidget(tb_img_lensprofile, 1, 1);
-        ft_gridbox->addWidget(tb_img_orientation, 1, 2);
-    }
-    v4GroupBox->setLayout(ft_gridbox);
-
-    QGridLayout* od_gridbox = qobject_cast<QGridLayout*>(open_dialog->layout());
-    od_gridbox->addWidget(v4GroupBox);
-    open_dialog->setFileMode(QFileDialog::FileMode::ExistingFiles);
+void mtfmapper_app::open()
+{
+    input_files = QFileDialog::getOpenFileNames(
+        this,
+        "Choose files to open",
+        QString::null,
+        QString::null);
+        
+    if (input_files.size() > 0) {
     
-    // use the state from the settings menu as a starting point
-    tb_img_annotated->setCheckState(settings->cb_annotation->checkState());
-    tb_img_profile->setCheckState(settings->cb_profile->checkState());
-    tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
-    tb_img_focus->setCheckState(settings->cb_focus->checkState());
-    tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
-    tb_img_orientation->setCheckState(settings->cb_orientation->checkState());
-
-    if (open_dialog->exec()) {
-        // write state back to settings menu
-        settings->cb_annotation->setCheckState(tb_img_annotated->checkState());
-        settings->cb_profile->setCheckState(tb_img_profile->checkState());
-        settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
-        settings->cb_focus->setCheckState(tb_img_focus->checkState());
-        settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
-        settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
-        settings->set_gnuplot_img_width(int(qgv->size().height()*1.3));
-        settings->send_argument_string();
-
-        input_files = open_dialog->selectedFiles();
-        if (input_files.size() > 0) {
-
-            open_act->setEnabled(false);
-            exit_act->setEnabled(false);
-
-            progress->setRange(0, input_files.size() + 1);
-
-            QStringList labels;
-            labels.push_back(QString("Data set"));
-            dataset_contents.setHorizontalHeaderLabels(labels);
-            abort_button->show();
-            processor.set_files(input_files);
-            processor.set_gnuplot_binary(settings->get_gnuplot_binary());
-            processor.set_dcraw_binary(settings->get_dcraw_binary());
-            processor.set_exiv2_binary(settings->get_exiv2_binary());
-            processor.start();
-        }
+        clear_temp_files();
+        dataset_contents.clear(); // this could be optional, but issues with overwriting the temp dirs may cause problems
+        dataset_files.clear();
+        exif_properties.clear();
+        
+        progress->setRange(0, input_files.size()+1);
+        
+        QStringList labels;
+        labels.push_back(QString("Data set"));
+        dataset_contents.setHorizontalHeaderLabels(labels);
+        abort_button->show();
+        processor.set_files(input_files);
+        processor.set_gnuplot_binary(settings->get_gnuplot_binary());
+        processor.set_dcraw_binary(settings->get_dcraw_binary());
+        processor.start();
     }
-    
 }
  
 void mtfmapper_app::dataset_selected(const QModelIndex& index) {
@@ -428,29 +324,6 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
     if (dataset_contents.itemFromIndex(index)->isEnabled()) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
-        if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
-            qgv->set_clickable(true);
-            sfr_list.clear();
-            
-            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
-            // go and fetch the corresponding "edge_sfr" entries
-            std::ifstream ifile(sfr_source.toLocal8Bit().data());
-            string line;
-            while (!ifile.fail()) {
-                std::getline(ifile, line);
-                std::istringstream is(line);
-                vector<double> values;
-                std::copy(std::istream_iterator<double>(is), std::istream_iterator<double>(), std::back_inserter(values));
-                if (values.size() > 6 && values[5] > 0.0) {
-                    vector<double> sfr;
-                    std::copy(values.begin() + 5, values.end(), std::back_inserter(sfr));
-                    sfr_list.push_back(Sfr_entry(values[1], values[2], sfr));
-                }
-            }
-        } else {
-            qgv->set_clickable(false);
-            sfr_list.clear();
-        }
     }
 }
 
@@ -480,11 +353,86 @@ void mtfmapper_app::item_for_deletion(QString s) {
     tempfiles_to_delete.push_back(s);
 }
 
+void mtfmapper_app::img_annotated_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("annotated") == 0) {
+                current_child->setEnabled(tb_img_annotated->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_profile_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("profile") == 0) {
+                current_child->setEnabled(tb_img_profile->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_gridimg_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("grid2d") == 0) {
+                current_child->setEnabled(tb_img_gridimg->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_gridsurf_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("grid3d") == 0) {
+                current_child->setEnabled(tb_img_gridsurf->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_focus_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("focus") == 0) {
+                current_child->setEnabled(tb_img_focus->isChecked());
+            }
+        }
+        
+    }
+}
+
+void mtfmapper_app::img_lensprofile_toggled(void) {
+    for (int i=0; i < dataset_contents.rowCount(); i++) {
+        QStandardItem* current_dataset_item = dataset_contents.item(i);
+        for (int j=0; j < current_dataset_item->rowCount(); j++) {
+            QStandardItem* current_child = current_dataset_item->child(j);
+            if (current_child->text().compare("lensprofile") == 0) {
+                current_child->setEnabled(tb_img_lensprofile->isChecked());
+            }
+        }
+        
+    }
+}
 
 void mtfmapper_app::zoom_changed(int i ATTRIBUTE_UNUSED) {
-    if (datasets->selectionModel()->currentIndex().isValid()) {
-        dataset_selected(datasets->selectionModel()->currentIndex());
-    }
+    dataset_selected(datasets->selectionModel()->currentIndex());
 }
 
 void mtfmapper_app::zoom_in(void) {
@@ -503,172 +451,12 @@ void mtfmapper_app::hide_abort_button(void) {
     abort_button->hide();
 }
 
-void mtfmapper_app::enable_clear_button(void) {
-    clear_button->setEnabled(true);
-}
-
-void mtfmapper_app::clear_button_pressed(void) {
-    clear_temp_files();
-    dataset_contents.clear(); 
-    dataset_files.clear();
-    exif_properties.clear();
-
-    img_comment_value->setText("N/A");
-    af_ft_value->setText("N/A");
-    focal_length_value->setText("N/A");
-    focus_distance_value->setText("N/A");
-
-    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
-    qgs->setSceneRect(QRectF(0, 0, 255, 255));
-
-    clear_button->setEnabled(false);
-}
-
-void mtfmapper_app::enable_save_button(void) {
-    save_button->setEnabled(true);
-    save_subset_button->setEnabled(true);
-}
-
-void mtfmapper_app::disable_save_button(void) {
-    save_button->setEnabled(false);
-    save_subset_button->setEnabled(false);
-}
-
-
-void mtfmapper_app::enable_file_open(void) {
-    open_act->setEnabled(true);
-    exit_act->setEnabled(true);
-}
-
-void mtfmapper_app::save_button_pressed(void) {
-    save_action(false);
-}
-
-void mtfmapper_app::save_subset_button_pressed(void) {
-    save_action(true);
-}
-
-void mtfmapper_app::save_action(bool subset) {
-    // lock file->open to prevent messing with the dataset list
-    bool open_was_enabled = open_act->isEnabled();
-    open_act->setEnabled(false);
-    exit_act->setEnabled(false);
-
-    std::map<std::string, int> keepers;
-    bool cancelled = false;
-    if (subset) {
-        QListWidget* subset_list = new QListWidget();
-        for (int i = 0; i < dataset_contents.rowCount(); i++) {
-            QStandardItem* current_dataset_item = dataset_contents.item(i);
-            subset_list->addItem(current_dataset_item->text());
-        }
-        QDialog* subset_mb = new QDialog(this);
-        subset_mb->setWindowTitle("Save result subset");
-        QGridLayout* od_gridbox = new QGridLayout();
-        od_gridbox->addWidget(new QLabel("Select result subsets to save:"), 0, 0);
-        QSize vp_size = qgv->maximumViewportSize();
-        int rowheight = subset_list->model()->rowCount() * subset_list->sizeHintForRow(0);
-        rowheight = std::min(rowheight, vp_size.rheight());
-        subset_list->setMaximumHeight(rowheight + subset_list->frameWidth()*2);
-        subset_list->setMinimumHeight(rowheight + subset_list->frameWidth()*2);
-        subset_list->setSelectionMode(QAbstractItemView::ExtendedSelection);
-        od_gridbox->addWidget(subset_list, 1, 0, 1, 2);
-        QPushButton* savebutton = new QPushButton("Save", subset_mb);
-        QPushButton* cancelbutton = new QPushButton("Cancel", subset_mb);
-        od_gridbox->addWidget(savebutton, 2, 0);
-        od_gridbox->addWidget(cancelbutton, 2, 1);
-        subset_mb->setLayout(od_gridbox);
-        subset_mb->setModal(true);
-        
-        connect(cancelbutton, &QPushButton::clicked, [&cancelled, &subset_mb](){ cancelled = true;  subset_mb->close(); });
-        connect(savebutton, &QPushButton::clicked, subset_mb, &QDialog::close);
-        subset_mb->exec();
-
-        if (!cancelled) {
-            QList<QListWidgetItem *> selection = subset_list->selectedItems();
-            for (int i = 0; i < selection.size(); i++) {
-                keepers[selection[i]->text().toStdString()] = 1;
-            }
-        }
-        delete subset_mb;
-    }
-    if (!cancelled) {
-        QString save_path = QFileDialog::getExistingDirectory(
-            this,
-            tr("Choose directory to save results in"),
-            QDir::homePath()
-        );
-        int overwrite_count = 0;
-        int idx = 0;
-        std::vector< std::pair<QString, QString> > copy_list;
-        for (int i = 0; i < dataset_contents.rowCount(); i++) {
-            QStandardItem* current_dataset_item = dataset_contents.item(i);
-            QString prefix = current_dataset_item->text();
-            idx++; // skip the actual image file
-            for (int j = 0; j < current_dataset_item->rowCount(); j++) {
-                QStandardItem* current_child = current_dataset_item->child(j);
-                QString dest_fname = save_path + "/" + prefix;
-                QString src_fname = dataset_files.at(idx++);
-                dest_fname += "_" + current_child->text() + ".png";
-                bool copy_allowed = false;
-                if (subset) {
-                    if (keepers.find(prefix.toStdString()) != keepers.end()) {
-                        copy_allowed = true;
-                    }
-                }
-                else {
-                    copy_allowed = true;
-                }
-                if (copy_allowed) {
-                    copy_list.push_back(std::make_pair(src_fname, dest_fname));
-                    logger.info("cp [%s] [%s]\n", src_fname.toLocal8Bit().constData(), dest_fname.toLocal8Bit().constData());
-                    if (QFile::exists(dest_fname)) {
-                        overwrite_count++;
-                    }
-                }
-            }
-        }
-
-
-        bool overwrite_ok = true;
-        if (overwrite_count > 0) {
-            QMessageBox::StandardButton response = QMessageBox::question(
-                this,
-                QString("Saving results"),
-                overwrite_count == 1 ?
-                tr("One of the output files already exists. Do you want to overwrite it?") :
-                tr("Some output files already appear to exist. Do you want to overwrite %1 files?").arg(overwrite_count),
-                QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::Yes
-                );
-            if (response == QMessageBox::No) {
-                overwrite_ok = false;
-            }
-        }
-        for (auto& cp : copy_list) {
-            if (QFile::exists(cp.second)) {
-                if (overwrite_ok) {
-                    QFile::remove(cp.second);
-                    QFile::copy(cp.first, cp.second);
-                }
-            }
-            else {
-                QFile::copy(cp.first, cp.second);
-            }
-        }
-    }
-
-    if (open_was_enabled) {
-        open_act->setEnabled(true);
-        exit_act->setEnabled(true);
-    } // otherwise the worker thread will have to re-enable the open action
-}
-
 void mtfmapper_app::display_exif_properties(int index) {
     Exiv2_property* props = exif_properties.at(index);
     img_comment_value->setText(props->get_comment());
     af_ft_value->setText(props->get_af_tune());
     focus_distance_value->setText(props->get_focus_distance());
+    //focal_length_value->setText(props->get_focal_length());
 
     focal_length_value->setText(props->get_focal_length() + " / " + props->get_aperture());
 }
@@ -710,54 +498,5 @@ void mtfmapper_app::check_if_helpers_exist(void) {
             QString("dcraw helper executable not found. Please configure this in the settings.")
         );
     }
-}
-
-void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
-    px /= zoom_spinbox->value()/100.0;
-    py /= zoom_spinbox->value()/100.0;
-    if (sfr_list.size() > 0) {
-        
-        size_t close_idx = 0;
-        double close_dist = 1e50;
-        for (size_t i=0; i < sfr_list.size(); i++) {
-            double d = sfr_list[i].distance(px, py);
-            if (d < close_dist) {
-                close_dist = d;
-                close_idx = i;
-            }
-        }
-        
-        if (close_dist < 50) {
-            // TODO: some form of visual confirmation of a click would be nice
-            // we can probably just draw on the qgraphicsview of imgviewer?
-    
-            if (!sfr_dialog) {
-                sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
-            } else {
-                if (shift_down) {
-                    sfr_dialog->add_entry(sfr_list[close_idx]);
-                } else {
-                    delete sfr_dialog;
-                    sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
-                    //sfr_dialog->clear();
-                    //sfr_dialog->replace_entry(sfr_list[close_idx]);
-                }
-            }
-            
-        }
-    }
-}
-
-void mtfmapper_app::closeEvent(QCloseEvent* event) {
-    if (sfr_dialog && sfr_dialog->isVisible()) {
-        sfr_dialog->close();
-    } 
-    if (about && about->isVisible()) {
-        about->close();
-    }
-    if (help && help->isVisible()) {
-        help->close();
-    }
-    QMainWindow::closeEvent(event);
 }
 

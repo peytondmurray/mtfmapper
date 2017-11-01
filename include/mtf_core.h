@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef MTF_CORE_H
 #define MTF_CORE_H
 
-#include "include/logger.h"
 #include "include/component_labelling.h"
 #include "include/gradient.h"
 #include "include/block.h"
@@ -39,21 +38,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/afft.h"
 #include "include/mtf_profile_sample.h"
 #include "include/bayer.h"
-#include "include/esf_sampler.h"
-
-
-#include "include/esf_sampler_line.h"
-#include "include/esf_sampler_deferred.h"
-#include "include/esf_sampler_quad.h"
-#include "include/esf_sampler_piecewise_quad.h"
-#include "include/undistort.h"
-
 
 #include <map>
 using std::map;
-
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 
 typedef vector<Block> block_vector;
 
@@ -63,43 +50,20 @@ const double max_dot = 28;
 const int SAMPLES_PER_PIXEL = 32;
 const size_t FFT_SIZE = int(16)*SAMPLES_PER_PIXEL;
 const int NYQUIST_FREQ = FFT_SIZE/16;
+const double max_edge_length = 200;
 
 class Mtf_core {
   public:
     
 
     Mtf_core(const Component_labeller& in_cl, const Gradient& in_g, 
-             const cv::Mat& in_img, const cv::Mat& in_bayer_img, 
-             std::string bayer_subset, std::string cfa_pattern_name,
-             std::string esf_sampler_name, Undistort* undistort=nullptr, int border_width=0)
-             
+             const cv::Mat& in_img, const cv::Mat& in_bayer_img, std::string bayer_subset)
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false), samples_per_edge(0), border_width(border_width), find_fiducials(false),
-        undistort(undistort), ridges_only(false) {
+        sliding(false), samples_per_edge(0) {
 
         bayer = Bayer::from_string(bayer_subset);
-        Bayer::cfa_pattern_t cfa_pattern = Bayer::from_cfa_string(cfa_pattern_name);
-        logger.debug("Bayer subset is %d, CFA pattern type is %d\n", bayer, cfa_pattern);
-        
-        switch (Esf_sampler::from_string(esf_sampler_name)) {
-        case Esf_sampler::LINE:
-            esf_sampler = new Esf_sampler_line(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
-            break;
-        case Esf_sampler::QUAD:
-            esf_sampler = new Esf_sampler_quad(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
-            break;
-        case Esf_sampler::PIECEWISE_QUAD:
-            esf_sampler = new Esf_sampler_piecewise_quad(max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
-            break;
-        case Esf_sampler::DEFERRED:
-            if (!undistort) { // hopefully we stop it before this point ...
-                logger.error("Fatal error: No undistortion model provided to Esf_sampler_deferred. Aborting\n");
-                exit(-1);
-            }
-            esf_sampler = new Esf_sampler_deferred(undistort, max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);
-            break;
-        };
+        printf("bayer subset is %d\n", bayer);
       
         for (Boundarylist::const_iterator it=cl.get_boundaries().begin(); it != cl.get_boundaries().end(); ++it) {
             valid_obj.push_back(it->first);
@@ -120,10 +84,10 @@ class Mtf_core {
     
     void search_borders(const Point2d& cent, int label);
     bool extract_rectangle(const Point2d& cent, int label, Mrectangle& rect);
-    double compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset, 
+    double compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset, 
+                       Edge_record& er,
                        double& poor, 
-                       vector<double>& sfr, vector<double>& esf, 
-                       bool allow_peak_shift = false);
+                       vector<double>& sfr, vector<double>& esf);
     
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
@@ -160,7 +124,6 @@ class Mtf_core {
     
     void set_sliding(bool val) {
         sliding = val;
-        find_fiducials = true;
     }
     
     void set_samples_per_edge(int s) {
@@ -171,20 +134,6 @@ class Mtf_core {
         snap_to = true;
         snap_to_angle = angle;
     }
-    
-    void set_find_fiducials(bool val) {
-        find_fiducials = val;
-    }
-    
-    void set_ridges_only(bool b) {
-        ridges_only = b;
-    }
-
-    void use_full_sfr(void) {
-        mtf_width = 4 * NYQUIST_FREQ;
-    }
-    
-    void process_image_as_roi(void);
     
     const Component_labeller& cl;
     const Gradient&           g;
@@ -203,7 +152,6 @@ class Mtf_core {
     vector<Mtf_profile_sample> samples;
     
     cv::Mat od_img;
-    
   private:
     bool absolute_sfr;
     bool snap_to;
@@ -211,15 +159,90 @@ class Mtf_core {
     bool sfr_smoothing;
     bool sliding;
     int samples_per_edge;
-    int border_width;
-    bool find_fiducials;
-    Undistort* undistort = nullptr;
-    bool ridges_only;
-    size_t mtf_width = 2 * NYQUIST_FREQ;
-    Esf_sampler* esf_sampler = nullptr;
     
     void process_with_sliding_window(Mrectangle& rrect);
-    bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
+  
+    void sample_at_angle(double ea, vector<Ordered_point>& local_ordered, 
+        const map<int, scanline>& scanset, const Point2d& cent,
+        double& edge_length) {
+
+        double max_along_edge = -1e50;
+        double min_along_edge = 1e50;
+        
+        if (snap_to) {
+            
+            double max_dot_angle = snap_to_angle;
+            double max_dot = 0;
+            
+            double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
+            
+            for (int k=0; k < 4; k++) {
+            
+                double sa = angles[k];
+                
+                double dot = cos(ea)*cos(sa) + sin(ea)*sin(sa);
+                if (dot > max_dot) {
+                    max_dot = dot;
+                    max_dot_angle = sa;
+                }
+            }
+            
+            ea = max_dot_angle;
+        }
+
+        Point2d mean_grad(cos(ea), sin(ea));
+        Point2d edge_direction(-sin(ea), cos(ea));
+
+        if (bayer == Bayer::NONE) {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                int y = it->first;
+                for (int x=it->second.start; x <= it->second.end; ++x) {
+
+                    Point2d d((x) - cent.x, (y) - cent.y);
+                    double dot = d.ddot(mean_grad); 
+                    double dist_along_edge = d.ddot(edge_direction);
+                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                        local_ordered.push_back(Ordered_point(dot, img.at<uint16_t>(y,x) ));
+                        max_along_edge = max(max_along_edge, dist_along_edge);
+                        min_along_edge = min(min_along_edge, dist_along_edge);
+                    }
+                }
+            }
+        } else {
+            for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                int y = it->first;
+                int rowcode = (y & 1) << 1;
+                for (int x=it->second.start; x <= it->second.end; ++x) {
+                    int code = rowcode | (x & 1);
+
+                    // skip the appropriate sites if we are operating only on a subset
+                    if (bayer == Bayer::RED && code != 0) {
+                        continue;
+                    } 
+                    if (bayer == Bayer::BLUE && code != 3) {
+                        continue;
+                    } 
+                    if (bayer == Bayer::GREEN && (code == 0 || code == 3)) {
+                        continue;
+                    }
+
+                    Point2d d((x) - cent.x, (y) - cent.y);
+                    double dot = d.ddot(mean_grad); 
+                    double dist_along_edge = d.ddot(edge_direction);
+                    if (fabs(dot) < max_dot && fabs(dist_along_edge) < max_edge_length) {
+                        local_ordered.push_back(Ordered_point(dot, bayer_img.at<uint16_t>(y,x) ));
+                        max_along_edge = max(max_along_edge, dist_along_edge);
+                        min_along_edge = min(min_along_edge, dist_along_edge);
+                    }
+                }
+            }
+        }
+    
+        
+        edge_length = max_along_edge - min_along_edge;
+        //printf("edge length = %lf\n", edge_length);
+    }
+
 };
 
 #endif

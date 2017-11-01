@@ -102,7 +102,7 @@ class Peak_detector {
         )
     }
       
-    void select_best_n(vector<double>& best, size_t in_n, double il_thresh=0.03) { // il_thresh is a fraction of "range"
+    void select_best_n(vector<double>& best, size_t in_n, double il_thresh=0.1) { // 1% of the range
       
         best.clear();
         for (size_t k=0; k < in_n && !pq.empty(); k++) {

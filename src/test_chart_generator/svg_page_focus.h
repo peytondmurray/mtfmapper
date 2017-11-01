@@ -33,17 +33,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string>
 
 #include "include/fiducial_positions.h"
-#include "alpa_correction.h"
 
 using std::string;
 using std::ostringstream;
 
 class Svg_page_focus : public Svg_page {
   public:
-    Svg_page_focus(const string& page_spec, const string& fname, bool alpa_scale=false) 
+    Svg_page_focus(const string& page_spec, const string& fname) 
       : Svg_page(page_spec, fname, 10000), cop(0,0,0), pl(0,0,2000), 
         normal(0, 1.0/sqrt(2.0), -1.0/sqrt(2.0)), fl(50), 
-        sensor(15.6, 23.6), width_scale(1), clipid(1), alpa_scale(alpa_scale) {
+        sensor(15.6, 23.6), width_scale(1), clipid(1) {
         
         // must call set_viewing_parameters before render
     }
@@ -54,14 +53,9 @@ class Svg_page_focus : public Svg_page {
         
         strip(-5*bsize, -0.8, 45*bsize, 5*bsize, 44, 1, -ang); // for perspective blocks
         
-        coded_sector_circles(10*fiducial_scale);
+        coded_sector_circles(10);
         
         chevrons();
-        
-        if (alpa_scale) {
-            alpa_corrections();
-        }
-        print_checks();
         
         // print out chart specification
         fprintf(fout, "\n");
@@ -113,7 +107,7 @@ class Svg_page_focus : public Svg_page {
         return p;
     }
   
-    virtual iPoint project(double x, double y, bool silent=false) {
+    virtual iPoint project(double x, double y) {
     
         dPoint p = project_core(x,y);
         
@@ -123,7 +117,7 @@ class Svg_page_focus : public Svg_page {
         if (p.x < 0 || p.x > width ||
             p.y < 0 || p.y > height) {
             
-            outside_limits = !silent;
+            outside_limits = true;
         }
         
         return iPoint(int(p.x), int(p.y));
@@ -172,11 +166,11 @@ class Svg_page_focus : public Svg_page {
     }
     
     void coded_sector_circles(double swidth) {
-        const double hshift = 20 * fiducial_scale;
+        const double hshift = 20;
         
         #if 0
         
-        const double cdist = 30 * fiducial_scale;
+        const double cdist = 30;
         sector_circle(cdist, 0, swidth/2.0, 0);
         fprintf(fout, "\n");
         printf("{0, 0, %lf, %lf, 0, 0},\n", cdist, 0.0);
@@ -231,39 +225,28 @@ class Svg_page_focus : public Svg_page {
         }
         
         #else 
+        // just use what we have in fiducials include ...
         for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
-            sector_circle(main_fiducials[i].rcoords.x*fiducial_scale, main_fiducials[i].rcoords.y*fiducial_scale, swidth*0.5, fiducial_code_mapping[fiducial_scale_index][i]);
-            printf("fiducial %d (%lf, %lf) assigned code %d\n", 
-                i, main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y,
-                fiducial_code_mapping[fiducial_scale_index][i]
-            );
+            sector_circle(main_fiducials[i].rcoords.x, main_fiducials[i].rcoords.y, swidth*0.5, main_fiducials[i].code);
             fprintf(fout, "\n");
         }
         #endif
         
-        iPoint vprobe = project(1.07,1, true);
-        const int fine_rows = floor(vprobe.x/sscale);
-        
-        
-        for (int y=-fine_rows/(4*fiducial_scale); y < fine_rows/(4*fiducial_scale); y++) {
-            iPoint c1 = scale(swidth-fiducial_scale + hshift/2, fiducial_scale*(2*y));
-            iPoint c2 = scale(swidth+fiducial_scale + hshift/2, fiducial_scale*(2*y+1));
+        for (int y=-80; y < 80; y++) {
+            iPoint c1 = scale(swidth-1 + hshift/2, 2*y);
+            iPoint c2 = scale(swidth+1 + hshift/2, 2*y+1);
             fprintf(fout, "\n");
             rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
         }
         
-        // these are probably the horizontal lines ....
-        iPoint hprobe = project(0,-1, true);
-        const double char_scale = floor(hprobe.x/sscale/sqrt(2.0));
-        printf("horizontal scale: %lf\n", char_scale);
         const double rwidth = 2;
-        for (int x=0; x < int(char_scale/4); x++) {
+        for (int x=0; x < 25; x++) {
             iPoint c1 = scale( (4*x-1)*rwidth*0.5 + 2*hshift, -0.25);
             iPoint c2 = scale( (4*x+1)*rwidth*0.5 + 2*hshift,  0.25);
             fprintf(fout, "\n");
             rect(c1.x, c1.y, c2.x - c1.x, c2.y - c1.y);
         }
-        for (int x=0; x < int(char_scale/4); x++) {
+        for (int x=0; x < 25; x++) {
             iPoint c1 = scale( (4*(-x)-1)*rwidth*0.5 - 2*hshift, -0.25);
             iPoint c2 = scale( (4*(-x)+1)*rwidth*0.5 - 2*hshift, 0.25);
             fprintf(fout, "\n");
@@ -287,79 +270,18 @@ class Svg_page_focus : public Svg_page {
     }
     
     void chevrons(void) {
-        iPoint proj = project(1.07,1, true);
-        const int fine_rows = floor(proj.x/sscale/fiducial_scale);
+        const int fine_rows = 320;
         const double hshift = 20;
         for (int row=0; row < fine_rows; row++) {
-            direct_rectangle((-7 + hshift)*fiducial_scale, (row*1 - fine_rows/2)*fiducial_scale, 3.5*fiducial_scale, 0.5*fiducial_scale, 45.0/180*M_PI);
+            direct_rectangle(-7 + hshift, row*1 - fine_rows/2, 3.5, 0.5, 45.0/180*M_PI);
             fprintf(fout, "\n");
         }
         for (int row=0; row < fine_rows/4; row++) {
             for (int col=0; col < 3; col ++) {
-                direct_rectangle((col - 7 + hshift)*fiducial_scale, (row*4 - fine_rows/2)*fiducial_scale, 3.5*fiducial_scale, 0.5*fiducial_scale, -45.0/180*M_PI);
+                direct_rectangle(col - 7 + hshift, row*4 - fine_rows/2, 3.5, 0.5, -45.0/180*M_PI);
                 fprintf(fout, "\n");
             }
         }
-    }
-    
-    void alpa_corrections(void) {
-        bool first = true;
-        for (size_t i=0; i < alpa_correction_table.size(); i++) {
-            
-            double pos  = alpa_correction_table[i].second * (first ? -1 : 1);
-            double shim = alpa_correction_table[i].first * (first ? 1 : -1);
-            
-            if (fabs(pos) < 1e-6) {
-                first = false;
-            } else {
-                direct_rectangle(-25, pos, 10, 0.25, 0);
-                iPoint p = scale(-28, pos + (!first ? -1 : 1.75)*1.5);
-                fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" > %c%d </text>\n",
-                    p.x, p.y, int(0.6*sscale), first ? '+' : ' ', int(shim)
-                );   
-            }
-        }
-    }
-    
-    void print_checks(void) {
-        // markers of known dimension to check printed scale
-        
-        vector<Point2d> corners = {
-            {floor(-120 * fiducial_scale), floor(-150 * fiducial_scale)},
-            {floor( 120 * fiducial_scale), floor( 150 * fiducial_scale)},
-            {floor(-120 * fiducial_scale), floor( 150 * fiducial_scale)},
-            {floor( 120 * fiducial_scale), floor(-150 * fiducial_scale)}
-            
-        };
-        
-        for (auto p: corners) {
-            direct_rectangle(p.x, p.y, 10, 0.25, 0);
-            direct_rectangle(p.x, p.y, 0.25, 10, 0);
-        }
-        
-        Point2d ip = corners[0];
-        
-        Point2d pleft(ip.x + (ip.x < 0 ? - 10 : 10), ip.y);
-        
-        direct_rectangle(pleft.x, pleft.y, 10, 0.25, 0);
-        direct_rectangle(pleft.x-3, pleft.y, 2, 0.25, M_PI/2);
-        direct_rectangle(pleft.x+3, pleft.y, 2, 0.25, M_PI/2);
-        iPoint p = scale(pleft.x - 2, pleft.y + 1.25);
-        fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" > %.0lf mm </text>\n",
-            p.x, p.y, int(0.25*sscale), 2*fabs(ip.x)
-        );
-        
-        Point2d ptop(ip.x, ip.y + (ip.y < 0 ? - 10 : 10));
-        direct_rectangle(ptop.x, ptop.y, 10, 0.25, M_PI/2);
-        direct_rectangle(ptop.x, ptop.y-3, 2, 0.25, 0);
-        direct_rectangle(ptop.x, ptop.y+3, 2, 0.25, 0);
-        p = scale(ptop.x + 0.5, ptop.y - 2);
-        fprintf(fout, "  <text x=\"%d\" y=\"%d\" font-family=\"Verdana\" font-size=\"%dmm\" fill=\"black\" transform=\"rotate(90 %d,%d)\"> %.0lf mm </text>\n",
-            p.x, p.y, int(0.25*sscale), 
-            p.x, p.y, 
-            2*fabs(ip.y)
-        );
-        
     }
     
     Vec3d cop;      // centre of projection
@@ -371,7 +293,6 @@ class Svg_page_focus : public Svg_page {
     double width_scale;
     std::string chart_description;
     int clipid;
-    bool alpa_scale;
 };
 
 #endif

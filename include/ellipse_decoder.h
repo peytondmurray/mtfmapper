@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef ELLIPSE_DECODER_H
 #define ELLIPSE_DECODER_H
 
-#include "include/logger.h"
 #include "include/common_types.h"
 #include "include/ellipse.h"
 #include "include/component_labelling.h"
@@ -137,11 +136,7 @@ class Ellipse_decoder {
             ones += bit;
         }
         
-        int ix = lrint(e.centroid_x);
-        int iy = lrint(e.centroid_y);
-        if (!ones && ix > 0 && iy > 0 && ix < img.cols - 1 && iy < img.rows - 1 &&
-            img.at<uint16_t>(iy, ix) < otsu) {
-            
+        if (!ones && img.at<uint16_t>(lrint(e.centroid_x), lrint(e.centroid_y)) < otsu) {
             code = -1;
             valid = false;
             return;
@@ -155,7 +150,7 @@ class Ellipse_decoder {
         
         
         if (e.fg_fraction > 0.9999) {
-            logger.debug("ellipse too solid, cannot be a valid code\n");
+            printf("ellipse too solid, cannot be a valid code\n");
             valid = false;
         }
     }

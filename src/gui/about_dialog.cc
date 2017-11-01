@@ -30,10 +30,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "about_dialog.moc"
 
 #include "common.h"
-#include "config.h"
-
-#define SFI(x) #x
-#define VER(x) SFI(x)
 
 About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
 
@@ -46,7 +42,6 @@ About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
         "<body bgcolor=\"#efefef\">"
         "<br><br>"
         "<center><big>MTF Mapper</big></center>"
-        "<center>version " VER(mtfmapper_VERSION_MAJOR) "." VER(mtfmapper_VERSION_MINOR) "." VER(mtfmapper_VERSION_SUB) "</center>"
         "<center><small>by</small></center>"
         "<center>Frans van den Bergh</center>"
         "<br><br>"
@@ -60,19 +55,16 @@ About_dialog::About_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     body->setFixedWidth(400);
     body->setReadOnly(true);
 
-    QGroupBox* vGroupBox = new QGroupBox(tr("About"), this);
-    QGridLayout* vlayout = new QGridLayout(this);
+    QGroupBox* vGroupBox = new QGroupBox(tr("About"));
+    QGridLayout* vlayout = new QGridLayout;
 
     vlayout->addWidget(body, 0, 0, 1, 3);
     vlayout->addWidget(dismiss_button, 1, 1);
     vGroupBox->setLayout(vlayout);
     
-    QGridLayout* main_layout = new QGridLayout(this);
-    main_layout->addWidget(vGroupBox, 0, 0);
-    
     connect(dismiss_button, SIGNAL(clicked()), this, SLOT( close() ));
     
-    setLayout(main_layout);
+    setLayout(vlayout);
 }
 
 
