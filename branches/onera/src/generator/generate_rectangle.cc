@@ -60,6 +60,8 @@ using std::endl;
 const int border = 30;
 int dummy_crc = 0;
 
+const double white_value = 2048;
+
 inline unsigned char reverse_gamma(double x) {
     const double C_linear = 0.0031308;
     const double S_linear = 12.9232102;
@@ -117,7 +119,7 @@ class Render_rows {
         }
 
         if (use_16bit) {
-            img.at<uint16_t>(row, col) = lrint(value*65535);
+            img.at<uint16_t>(row, col) = lrint(value*white_value);
         } else {
             if (gamma_correct) {
                 img.at<uchar>(row, col) = reverse_gamma(value);
@@ -470,6 +472,11 @@ int main(int argc, char** argv) {
        height = 40 + target_geom->bounds.max_y / tc_ascale.getValue();
        width += width % 8;
        height += height % 8;
+       
+       if (tc_dim.isSet()) {
+           height = width = tc_dim.getValue();
+       }
+       
        printf("setting image dimensions to: %d, %d\n", 
            static_cast<int>(lrint(width)), 
            static_cast<int>(lrint(height))

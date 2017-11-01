@@ -90,7 +90,7 @@ class Render_polygon_is : public Render_polygon {
         double erad = 1 + psf_ratio*rad/max_rad;
         
         // take initial batch of samples, checking for convergence along the way
-        for (size_t sidx=0; sidx < size_t(samples_threshold); sidx++) {
+        for (size_t sidx=0; sidx < nsamples; sidx++) {
         
             const double& weight = weights[sidx];
             
@@ -122,7 +122,7 @@ class Render_polygon_is : public Render_polygon {
                 prev_mk = mk;
             }
         } 
-        
+        /*
         const double thresh = SQR(0.5/(65536.0*65536.0));
         // if we have not converged yet, take the rest of the samples
         if (sk/wsum > thresh) {
@@ -148,6 +148,7 @@ class Render_polygon_is : public Render_polygon {
                 accumulator += sample*weight;
             } 
         }
+        */
          
         double value = accumulator / (wsum);
         return value;

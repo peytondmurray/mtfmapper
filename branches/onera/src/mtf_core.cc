@@ -351,18 +351,9 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     return rrect.valid;
 }
 
-static double angle_reduce(double x) {
-    double quad1 = fabs(fmod(x, M_PI/2.0));
-    if (quad1 > M_PI/4.0) {
-        quad1 = M_PI/2.0 - quad1;
-    }
-    quad1 = quad1 / M_PI * 180;
-    return quad1;
-}
-
 double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& scanset,
     Edge_record& er, double& quality,  
-    vector<double>& sfr, vector<double>& esf) {
+    vector<double>& sfr, vector<double>& esf, vector<int> skiplist) {
     
     quality = 1.0; // assume this is a good edge
     
@@ -375,12 +366,48 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     mean_grad.x = cos(angle);
     mean_grad.y = sin(angle);
 
+    printf("original angle estimate: %lf %lf\n", angle/M_PI*180, angle_reduce(angle));
+
     vector<Ordered_point> ordered;
     double edge_length = 0;
 
-    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
+    // force edge optimization
+    double best_angle = angle;
     
-    sample_at_angle(angle, ordered, scanset, cent, edge_length);
+    if (false) {
+        double min_sum = 1e50;
+
+        vector<double> sum_x(2*max_dot*4+1, 0);
+        vector<double> sum_xx(2*max_dot*4+1, 0);
+        vector<int>    count(2*max_dot*4+1, 0);
+
+        double span = 1.0/180.0*M_PI;
+        double step = 0.01/180.0*M_PI;
+        
+        /*
+        if (er.is_pooled()) {
+            span /= 3;
+            step /= 3;
+        }
+        */
+    
+        for (double ea=angle-span; ea < angle + span; ea += step) {
+            for (size_t k=0; k < sum_x.size(); k++) {
+                sum_x[k]  = 0;
+                sum_xx[k] = 0;
+                count[k]  = 0;
+            }
+            double varsum = bin_at_angle(ea, scanset, cent, sum_x, sum_xx, count, skiplist);
+            if (varsum < min_sum || (varsum == min_sum && fabs(ea-angle) < fabs(best_angle-angle)) ) {
+                min_sum = varsum;
+                best_angle = ea;
+            }
+        }
+    }
+    
+    printf("optimized angle estimate: %lf %lf\n", best_angle/M_PI*180, angle_reduce(best_angle));
+    sample_at_angle(best_angle, ordered, scanset, cent, edge_length, skiplist);
+    //sample_at_angle(angle, ordered, scanset, cent, edge_length);
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
@@ -388,7 +415,8 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         return 0;
     }
     
-    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
+    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
+    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -roi_width, roi_width, esf); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
         printf("failed edge\n");

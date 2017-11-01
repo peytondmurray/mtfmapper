@@ -246,6 +246,8 @@ class Edge_record {
         lower = max(double(rise_lower5p + lower5p)/16.0 - 16.0, lower);
         upper = min(double(rise_upper5p + upper5p)/16.0 - 16.0, upper);
         
+        printf("edge trimmed: %lf %lf\n", lower, upper);
+        
         // trim weights to 10%-90% region?
         for (size_t i=0; i < points.size(); i++) {
             double dx = points[i].first - centroid.x;
