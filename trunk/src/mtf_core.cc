@@ -557,15 +557,15 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     
     if (sfr_smoothing) {
         // apply narrow SG filter to lower frequencies
-        vector<double> slf(7, 0);
+        vector<double> smoothed(NYQUIST_FREQ*4, 0);
         const double lf_sgw[5] = {-0.086, 0.343, 0.486, 0.343, -0.086};
-        for (int idx=0; idx < 7; idx++) {
+        for (int idx=0; idx < NYQUIST_FREQ*4-3; idx++) {
             for (int x=-2; x <= 2; x++) {
-                slf[idx] += magnitude[abs(idx+x)] * lf_sgw[x+2];
+                smoothed[idx] += magnitude[abs(idx+x)] * lf_sgw[x+2];
             }
         }
-        for (int idx=0; idx < 7; idx++) {
-            magnitude[idx] = slf[idx];
+        for (int idx=0; idx < NYQUIST_FREQ*4-3; idx++) {
+            magnitude[idx] = smoothed[idx];
         }
         
         // perform Savitsky-Golay filtering of MTF curve
@@ -573,28 +573,32 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
         // narrow filters reduce bias in lower frequencies
         // wide filter perform the requisite strong filtering at high frequencies
         const int sgh = 7;
-        vector<double> smoothed(NYQUIST_FREQ*4, 0);
-        const double* sgw = 0;
-        for (int idx=0; idx < NYQUIST_FREQ*4 - sgh; idx++) {
-            if (idx < sgh) {
-                smoothed[idx] = magnitude[idx];
-            } else {
-                const int stride = 3;
-                int filter_order = min(5, (idx-5)/stride);
-                sgw = savitsky_golay[filter_order];
-                for (int x=-sgh; x <= sgh; x++) { 
-                    // since magnitude has extra samples at the end, we can safely go past the end
-                    smoothed[idx] += magnitude[idx+x] * sgw[x+sgh];
+        
+        for (int rep=0; rep < 3; rep++) {
+            const double* sgw = 0;
+            for (int idx=0; idx < NYQUIST_FREQ*4 - sgh; idx++) {
+                if (idx < sgh) {
+                    smoothed[idx] = magnitude[idx];
+                } else {
+                    smoothed[idx ] = 0;
+                    const int stride = 3;
+                    int filter_order = min(5, (idx-5)/stride);
+                    sgw = savitsky_golay[filter_order];
+                    for (int x=-sgh; x <= sgh; x++) { 
+                        // since magnitude has extra samples at the end, we can safely go past the end
+                        smoothed[idx] += magnitude[idx+x] * sgw[x+sgh];
+                    }
                 }
             }
-        }
-        for (int idx = NYQUIST_FREQ * 4 - sgh; idx < NYQUIST_FREQ * 4; idx++) {
-            smoothed[idx] = magnitude[idx];
-        }
-        assert(fabs(magnitude[0] - 1.0) < 1e-6);
-        assert(fabs(smoothed[0] - 1.0) < 1e-6);
-        for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
-            magnitude[idx] = smoothed[idx]/smoothed[0];
+            for (int idx = NYQUIST_FREQ * 4 - sgh; idx < NYQUIST_FREQ * 4; idx++) {
+                smoothed[idx] = magnitude[idx];
+            }
+            
+            assert(fabs(magnitude[0] - 1.0) < 1e-6);
+            assert(fabs(smoothed[0] - 1.0) < 1e-6);
+            for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
+                magnitude[idx] = smoothed[idx]/smoothed[0];
+            }
         }
     }
 
@@ -624,71 +628,37 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     
     if (sfr_smoothing) {
         // perform least-squares quadratic fit to compute MTF50
-        const int hs = 7;
-        const int npts = 2*hs + 1;
-        if (done && cross_idx >= hs && cross_idx < NYQUIST_FREQ*2-hs-1) {
-            const int tdim = 3;
+        if (done && cross_idx >= 5 && cross_idx < NYQUIST_FREQ*2-9-1) {
+        
+            int hs = std::min(std::max(2, cross_idx - 9), 9);
+            int npts = 2*hs + 1;
             
-            vector< vector<double> > cov(tdim, vector<double>(tdim, 0.0));
-            vector<double> b(tdim, 0.0);
+            Eigen::MatrixXd design(npts, 3);
+            Eigen::VectorXd b(npts);
             
-            vector<double> a(3);
             for (int r=0; r < npts; r++) {
-                double y = magnitude[cross_idx-hs+r]/base_mtf[cross_idx-hs+r];
-                a[0] = 1;
-                a[1] = y;
-                a[2] = y*y;
-                for (int col=0; col < tdim; col++) { // 0,1,2
-                    for (int icol=0; icol < tdim; icol++) { // build covariance of design matrix : A'*A
-                        cov[col][icol] += a[col]*a[icol];
-                    }
-                    b[col] += a[col]*(-hs + r); // build rhs of system : A'*b
-                }
-            }
-            
-            // hardcode cholesky decomposition
-            bool singular = false;
-            vector<double> ldiag(tdim, 0.0);
-            for (int i=0; i < tdim && !singular; i++) {
-                for (int j=i; j < tdim && !singular; j++) {
-                    double sum = cov[i][j];
-                    for (int k=i-1; k >= 0; k--) {
-                        sum -= cov[i][k]*cov[j][k];
-                    }
-                    if (i == j) {
-                        if (sum <= 0.0) {
-                            singular = true;
-                        } else {
-                            ldiag[i] = sqrt(sum);
-                        }
-                    } else {
-                        cov[j][i] = sum/ldiag[i];
-                    }
-                }
-            }
-            if (!singular) {
-                // hardcode backsubstitution
-                vector<double> x(tdim, 0.0);
-                for (int i=0; i < tdim; i++) {
-                    double sum = b[i];
-                    for (int k=i-1; k >= 0; k--) {
-                        sum -= cov[i][k]*x[k];
-                    }
-                    x[i] = sum/ldiag[i];
-                }
-                for (int i=tdim-1; i >= 0; i--) {
-                    double sum = x[i];
-                    for (int k=i+1; k < tdim; k++) {
-                        sum -= cov[k][i]*x[k];
-                    }
-                    x[i] = sum/ldiag[i];
-                }
-            
-                double mid = x[0] + 0.5*x[1] + 0.5*0.5*x[2];
+                double y = magnitude[abs(cross_idx-hs+r)]/base_mtf[abs(cross_idx-hs+r)];
+                double x = -hs + r;
                 
-                mtf50 = (mid + double(cross_idx))/double(FFT_SIZE);
+                design(r, 0) = 1;
+                design(r, 1) = y;
+                design(r, 2) = y*y;
+                b[r] = x;
             }
             
+            Eigen::VectorXd sol = design.colPivHouseholderQr().solve(b);
+            
+            double mid = sol[0] + 0.5*sol[1] + 0.5*0.5*sol[2];
+            mid = (mid + double(cross_idx))/double(FFT_SIZE);
+            
+            // at lower MTF50s, slowly blend in the smoothed value
+            if (cross_idx > 9) {
+                mtf50 = mid;
+            } else {
+                double d = (cross_idx - 5.0)/double(FFT_SIZE);
+                double w = d/8.0;
+                mtf50 = (1-w)*mtf50 + w*mid;
+            }
         }
     }
     
