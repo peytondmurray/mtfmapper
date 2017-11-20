@@ -180,7 +180,7 @@ class Edge_model {
         return coeff;
     }
     
-    double line_deviation(void) {
+    cv::Point3d line_deviation(void) {
         quad_coeffs(); // force update, if necessary
         
         Point2d min_recon(0, 1e20);
@@ -198,9 +198,11 @@ class Edge_model {
             }
         }
         if (fabs(max_recon.x - min_recon.x) != 0) {
-            return fabs(max_recon.y - min_recon.y) / fabs(max_recon.x - min_recon.x);
+            cv::Point3d deviation_rise_run(0, fabs(max_recon.y - min_recon.y), fabs(max_recon.x - min_recon.x));
+            deviation_rise_run.x =  deviation_rise_run.y / deviation_rise_run.z;
+            return deviation_rise_run;
         }
-        return 0;
+        return cv::Point3d(0, 0, 1);
     }
     
     const Point2d& get_centroid(void) const {

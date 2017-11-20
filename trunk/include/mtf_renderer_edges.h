@@ -151,7 +151,8 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 }
                 fprintf(sfrout, "\n");
                 
-                fprintf(devout, "%d %lf %lf %.8lf\n", int(i), ec.x, ec.y, blocks[i].get_line_deviation(l));
+                cv::Point3d deviation = blocks[i].get_line_deviation(l);
+                fprintf(devout, "%d %lf %lf %.8lf %lf %lf\n", int(i), ec.x, ec.y, deviation.x, deviation.y, deviation.z);
             }
         }    
         fclose(fout);
