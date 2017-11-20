@@ -40,7 +40,8 @@ class Block {
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
-        ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), line_deviation(4, 0.0) {
+        ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), 
+        line_deviation(4, cv::Point3d(0,0,1)) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
@@ -195,12 +196,12 @@ class Block {
         return it->second;
     }
     
-    double get_line_deviation(size_t edge_number) const {
+    cv::Point3d get_line_deviation(size_t edge_number) const {
         assert(edge_number < 4);
         return line_deviation[edge_number];
     }
     
-    void set_line_deviation(size_t edge_number, double deviation) {
+    void set_line_deviation(size_t edge_number, const cv::Point3d& deviation) {
         assert(edge_number < 4);
         line_deviation[edge_number] = deviation;
     }
@@ -215,7 +216,7 @@ class Block {
     Point2d centroid;
     double area;
     bool valid;
-    vector<double> line_deviation;
+    vector<cv::Point3d> line_deviation;
 };
 
 #endif
