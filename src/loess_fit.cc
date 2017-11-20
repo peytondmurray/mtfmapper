@@ -323,7 +323,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = floor(ordered[i].first*8 + fft_size/2);
         
-        int nbins = lrint(8 + 8.0*fabs(double(cbin - midpoint))/(fft_right-fft_size/2));
+        int nbins = lrint(16 + 32.0*fabs(double(cbin - midpoint))/(fft_right-fft_size/2));
         
         int left = max(fft_left, cbin-nbins);
         int right = min(fft_right-1, cbin+nbins);
