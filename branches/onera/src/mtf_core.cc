@@ -427,53 +427,56 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     double quad = angle_reduce(angle);
     
     double n0 = fabs(fft_out_buffer[0]);
-    vector<double> magnitude(NYQUIST_FREQ*2+9);
-    double sfr_area = 0;
-    double prev=0;
-    double alpha=0.25;
-    for (int i=0; i < NYQUIST_FREQ*2+9; i++) {
+    vector<double> magnitude(NYQUIST_FREQ*4);
+    for (int i=0; i < NYQUIST_FREQ*4; i++) {
         magnitude[i] = sqrt(SQR(fft_out_buffer[i]) + SQR(fft_out_buffer[FFT_SIZE - i])) / n0;
-        if (i <= NYQUIST_FREQ) {
-            sfr_area += magnitude[i];
-        }
-        if (i == NYQUIST_FREQ*2 - 2) {
-            prev = magnitude[i];
-        }
-        if (i >= NYQUIST_FREQ*2 - 1) {
-            magnitude[i] = prev*(1-alpha) + magnitude[i]*alpha;
-            prev = magnitude[i] * 0.5; // mix in some strong decay
-        }
     }
     
-    
     if (sfr_smoothing) {
+        // apply narrow SG filter to lower frequencies
+        vector<double> smoothed(NYQUIST_FREQ*4, 0);
+        const double lf_sgw[5] = {-0.086, 0.343, 0.486, 0.343, -0.086};
+        for (int idx=0; idx < NYQUIST_FREQ*4-3; idx++) {
+            for (int x=-2; x <= 2; x++) {
+                smoothed[idx] += magnitude[abs(idx+x)] * lf_sgw[x+2];
+            }
+        }
+        for (int idx=0; idx < NYQUIST_FREQ*4-3; idx++) {
+            magnitude[idx] = smoothed[idx];
+        }
         // perform Savitsky-Golay filtering of MTF curve
         // use filters of increasing width
         // narrow filters reduce bias in lower frequencies
         // wide filter perform the requisite strong filtering at high frequencies
         const int sgh = 7;
-        vector<double> smoothed(NYQUIST_FREQ*2, 0);
-        const double* sgw = 0;
-        for (int idx=0; idx < NYQUIST_FREQ*2; idx++) {
-            if (idx < sgh) {
-                smoothed[idx] = magnitude[idx];
-            } else {
-                const int stride = 3;
-                int filter_order = min(5, (idx-5)/stride);
-                sgw = savitsky_golay[filter_order];
-                for (int x=-sgh; x <= sgh; x++) { 
-                    // since magnitude has extra samples at the end, we can safely go past the end
-                    smoothed[idx] += magnitude[idx+x] * sgw[x+sgh];
+        for (int rep=0; rep < 2; rep++) {
+            const double* sgw = 0;
+            for (int idx=0; idx < NYQUIST_FREQ*4 - sgh; idx++) {
+                if (idx < sgh) {
+                    smoothed[idx] = magnitude[idx];
+                } else {
+                    smoothed[idx ] = 0;
+                    const int stride = 3;
+                    int filter_order = min(5, (idx-5)/stride);
+                    sgw = savitsky_golay[filter_order];
+                    for (int x=-sgh; x <= sgh; x++) { 
+                        // since magnitude has extra samples at the end, we can safely go past the end
+                        smoothed[idx] += magnitude[idx+x] * sgw[x+sgh];
+                    }
                 }
             }
-        }
-        assert(fabs(magnitude[0] - 1.0) < 1e-6);
-        assert(fabs(smoothed[0] - 1.0) < 1e-6);
-        for (int idx=0; idx < NYQUIST_FREQ*2; idx++) {
-            magnitude[idx] = smoothed[idx]/smoothed[0];
+            for (int idx = NYQUIST_FREQ * 4 - sgh; idx < NYQUIST_FREQ * 4; idx++) {
+                smoothed[idx] = magnitude[idx];
+            }
+            
+            assert(fabs(magnitude[0] - 1.0) < 1e-6);
+            assert(fabs(smoothed[0] - 1.0) < 1e-6);
+            for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
+                magnitude[idx] = smoothed[idx]/smoothed[0];
+            }
         }
     }
-
+    
     double* base_mtf = Mtf_correction::get_instance()->w.data();
 
     double prev_freq = 0;
@@ -502,7 +505,7 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
         // perform least-squares quadratic fit to compute MTF50
         const int hs = 7;
         const int npts = 2*hs + 1;
-        if (done && cross_idx >= hs && cross_idx < NYQUIST_FREQ*2-hs-1) {
+        if (done && cross_idx >= 9 && cross_idx < NYQUIST_FREQ*2-hs-1) {
             const int tdim = 3;
             
             vector< vector<double> > cov(tdim, vector<double>(tdim, 0.0));
