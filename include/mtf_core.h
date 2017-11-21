@@ -191,21 +191,44 @@ class Mtf_core {
                 Point2d mean_grad(cos(er.angle), sin(er.angle));
                 Point2d edge_direction(-sin(er.angle), cos(er.angle));
                 vector< vector<double> > binned_gradient(max_dot*4+1);
+                vector< vector<uint16_t> > binned_intensity(max_dot*4+1);
                 for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
                     int y = it->first;
                     for (int x=it->second.start; x <= it->second.end; ++x) {
                         Point2d d((x) - cent.x, (y) - cent.y);
                         double dot = d.ddot(mean_grad); 
                         
-                        int idot = lrint(dot*2) + max_dot;
+                        int idot = lrint(dot*4) + max_dot;
                         if (idot >= 0 && idot < (int)binned_gradient.size()) {
+                            // bin the values, but spread some of the weight
+                            // to adjacent bins too
+                        
                             binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            
+                            if (idot > 1) {
+                                binned_intensity[idot-1].push_back(img.at<uint16_t>(y, x));
+                                binned_gradient[idot-1].push_back(g.grad_magnitude(x, y));
+                            }
+                            if (idot < (int)binned_intensity.size()-1) {
+                                binned_intensity[idot+1].push_back(img.at<uint16_t>(y, x));
+                                binned_gradient[idot+1].push_back(g.grad_magnitude(x, y));
+                            }
+                            
                         }
                     }
                 }
-                for (size_t k=0; k < binned_gradient.size(); k++) {
-                    auto& b = binned_gradient[k];
-                    sort(b.begin(), b.end());
+                for (size_t k=0; k < binned_intensity.size(); k++) {
+                    sort(binned_gradient[k].begin(), binned_gradient[k].end());
+                    sort(binned_intensity[k].begin(), binned_intensity[k].end());
                 }
                 vector<int> skiplist;
                 for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
@@ -218,43 +241,37 @@ class Mtf_core {
                         if (fabs(dot) <= 2) {
                             // do nothing
                         } else {
-                            int idot = lrint(dot*2) + max_dot;
+                            int idot = lrint(dot*4) + max_dot;
                             if (idot >= 0 && idot < (int)binned_gradient.size() && binned_gradient[idot].size() > 3) {
                                 
+                                int binsize = binned_intensity[idot].size();
+                                uint16_t value = img.at<uint16_t>(y, x);
                                 
-                                double upper = binned_gradient[idot][(int)floor(binned_gradient[idot].size()*0.95)];
-                                if (binned_gradient[idot].back() - binned_gradient[idot][binned_gradient[idot].size()-2] < 0.001) {
-                                    continue;
-                                }
+                                auto& bin = binned_intensity[idot];
+                                double spread = bin[binsize*0.75] - bin[binsize*0.25];
                                 
-                                //printf("upper=%lf, grad=%lf, dot=%lf, idot=%d, #bins=%lu: ", upper, g.grad_magnitude(x, y), dot, idot, binned_gradient[idot].size());
+                                if (spread < 5) continue;
                                 
-                                if (g.grad_magnitude(x, y) >= upper) {
+                                double thresh_upper = bin[binsize*0.75] + 1*(bin[binsize*0.75] - bin[binsize*0.25]);
+                                double thresh_lower = bin[binsize*0.25] - 1*(bin[binsize*0.75] - bin[binsize*0.25]);
+                                
+                                bool intensity_skip = value <= thresh_lower || value >= thresh_upper;
+                                
+                                auto& gbin = binned_gradient[idot];
+                                double gvalue = g.grad_magnitude(x, y);
+                                bool gradient_skip = gvalue >= gbin[binsize*0.75] + 0.5*(gbin[binsize*0.75] - gbin[binsize*0.5]);
+                                
+                                
+                                if (intensity_skip || gradient_skip) {
                                     skiplist.push_back(y*img.cols + x);
-                                    // add 8-connected neighbours
-                                    // may be too much
-                                    /*
-                                    for (int dy=-1; dy <= 1; dy++) {
-                                        for (int dx=-1; dx <= 1; dx++) {
-                                            skiplist.push_back((y+dy)*img.cols + (x+dx));
-                                        }
-                                    }
-                                    */
                                     
                                     // add 4-connected neighbours
-                                    // somewhat better ?
-                                    /*
                                     skiplist.push_back((y+1)*img.cols + x);
                                     skiplist.push_back((y-1)*img.cols + x);
                                     skiplist.push_back(y*img.cols + x - 1);
                                     skiplist.push_back(y*img.cols + x + 1);
-                                    */
                                     
-                                    //printf("skip\n");
-                                } else {
-                                    //printf("keep\n");
-                                    
-                                }
+                                } 
                             } 
                         }
                     }
@@ -309,6 +326,114 @@ class Mtf_core {
                 printf("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
                     er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
                 );
+                
+                // now that we have re-estimated the edge orientation while taking the skiplist
+                // into account, we can go back and re-create the skiplist using the updated edge orientation
+                mean_grad = Point2d(cos(er.angle), sin(er.angle));
+                edge_direction = Point2d(-sin(er.angle), cos(er.angle));
+                binned_intensity = vector< vector<uint16_t> >(max_dot*4+1);
+                binned_gradient = vector< vector<double> >(max_dot*4+1);
+                for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                    int y = it->first;
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        Point2d d((x) - cent.x, (y) - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        
+                        int idx = y*img.cols + x;
+                        bool near_skip = binary_search(skiplist.begin(), skiplist.end(), idx);
+                        
+                        int idot = lrint(dot*4) + 2*max_dot;
+                        if (!near_skip && idot >= 0 && idot < (int)binned_intensity.size()) {
+                            // bin the values, but spread some of the weight
+                            // to adjacent bins too
+                          
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            binned_intensity[idot].push_back(img.at<uint16_t>(y, x));
+                            
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            binned_gradient[idot].push_back(g.grad_magnitude(x, y));
+                            
+                            if (idot > 1) {
+                                binned_intensity[idot-1].push_back(img.at<uint16_t>(y, x));
+                                binned_gradient[idot-1].push_back(g.grad_magnitude(x, y));
+                            }
+                            if (idot < (int)binned_intensity.size()-1) {
+                                binned_intensity[idot+1].push_back(img.at<uint16_t>(y, x));
+                                binned_gradient[idot+1].push_back(g.grad_magnitude(x, y));
+                            }
+                            
+                        }
+                    }
+                }
+                for (size_t k=0; k < binned_intensity.size(); k++) {
+                    sort(binned_gradient[k].begin(), binned_gradient[k].end());
+                    sort(binned_intensity[k].begin(), binned_intensity[k].end());
+                }
+                
+                skiplist.clear();
+                for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                    int y = it->first;
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                    
+                        Point2d d((x) - cent.x, (y) - cent.y);
+                        double dot = d.ddot(mean_grad); 
+                        
+                        if (fabs(dot) <= 2) {
+                            // do nothing
+                        } else {
+                            int idot = lrint(dot*4) + 2*max_dot;
+                            if (idot >= 0 && idot < (int)binned_intensity.size() && binned_intensity[idot].size() > 3) {
+                                
+                                int binsize = binned_intensity[idot].size();
+                                uint16_t value = img.at<uint16_t>(y, x);
+                                
+                                auto& bin = binned_intensity[idot];
+                                double spread = bin[binsize*0.75] - bin[binsize*0.25];
+                                
+                                if (spread < 5) continue;
+                                
+                                double thresh_upper = bin[binsize*0.75] + 2*(bin[binsize*0.75] - bin[binsize*0.25]);
+                                double thresh_lower = bin[binsize*0.25] - 2*(bin[binsize*0.75] - bin[binsize*0.25]);
+                                
+                                bool intensity_skip = value <= thresh_lower || value >= thresh_upper;
+                                
+                                auto& gbin = binned_gradient[idot];
+                                double gvalue = g.grad_magnitude(x, y);
+                                bool gradient_skip = 
+                                    gvalue >= gbin[binsize*0.75] + 2.5*(gbin[binsize*0.75] - gbin[binsize*0.5]);
+                                
+                                
+                                if (intensity_skip || gradient_skip) {
+                                    skiplist.push_back(y*img.cols + x);
+                                }
+                            } 
+                        }
+                    }
+                }
+                sort(skiplist.begin(), skiplist.end());
+                printf("final skiplist size: %ld\n", skiplist.size());
+                
+                
+                // draw the actual pixels used after second skiplist step
+                for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
+                    int y = it->first;
+                    for (int x=it->second.start; x <= it->second.end; ++x) {
+                        int idx = y*img.cols + x;
+                        
+                        if (!binary_search(skiplist.begin(), skiplist.end(), idx)) {
+                            cv::Vec3b& color = od_img.at<cv::Vec3b>(y, x);
+                            color[0] = 0;
+                            color[1] = 0;
+                            color[2] = 255;
+                        }
+                    }
+                }
+                
                 
                 double quality;
                 

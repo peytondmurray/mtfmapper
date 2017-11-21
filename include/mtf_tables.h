@@ -42,9 +42,9 @@ extern Mtf_correction* global_mtf_correction_instance;
 class Mtf_correction {
 
   public:
-    Mtf_correction(void) : w(NYQUIST_FREQ*2, 0.0) {
+    Mtf_correction(void) : w(NYQUIST_FREQ*4, 0.0) {
         w[0] = 1.0;
-        for (int i=1; i < NYQUIST_FREQ*2; i++) {
+        for (int i=1; i < NYQUIST_FREQ*4; i++) {
             double dc_x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
             double lp_x = M_PI*i/double(NYQUIST_FREQ*2);
             double expcor = (sdev*sdev)/(sdev*sdev + 4*lp_x*lp_x);
