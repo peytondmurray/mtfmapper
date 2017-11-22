@@ -577,11 +577,11 @@ double Mtf_core::compute_mtf(const Point2d& in_cent, const map<int, scanline>& s
     mtf50 *= 8;
 
     if (absolute_sfr) {
-        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+        for (size_t i=0; i < size_t(NYQUIST_FREQ*2 + 1);  i++) {
             sfr[i] = (n0*magnitude[i] / base_mtf[i])/(65536*2);
         }
     } else {
-        for (size_t i=0; i < size_t(NYQUIST_FREQ*2);  i++) {
+        for (size_t i=0; i < size_t(NYQUIST_FREQ*2 + 1);  i++) {
             sfr[i] = magnitude[i] / base_mtf[i];
         }
     }
@@ -874,4 +874,35 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
         std::lock_guard<std::mutex> lock(global_mutex);
         samples.insert(samples.end(), local_samples.begin(), local_samples.end());
     }
+}
+
+double sinc(double x) {
+    return (fabs(x) < 1e-6) ? 1.0 : sin(M_PI*x)/(M_PI*x);
+}
+
+double lanczos(double x, double a) {
+    if (x < -a || x > a) return 0;
+    return sinc(x) * sinc(x/a);
+}
+
+vector<double> Mtf_core::resample(const vector<double>& input, const int out_N) {
+    vector<double> resampled(out_N, 0);
+    
+    for (int t=0; t < (int)resampled.size(); t++) {
+        double wsum = 0;
+        
+        const int lanczos_a = 3;
+        for (int s=-lanczos_a; s < (int)input.size(); s++) {
+            double ix = t*input.size()/double(resampled.size()); // target location, expressed in input range
+            
+            double d = s - ix;
+            double w = lanczos(d, lanczos_a);
+            resampled[t] += input[abs(s)] * w;
+            wsum += w;
+        }
+        
+        resampled[t] /= wsum;
+    }
+    
+    return resampled;
 }

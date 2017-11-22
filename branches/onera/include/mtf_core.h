@@ -437,7 +437,7 @@ class Mtf_core {
                 
                 double quality;
                 
-                vector <double> sfr(NYQUIST_FREQ*2, 0);
+                vector <double> sfr(NYQUIST_FREQ*2 + 1, 0);
                 vector <double> esf(FFT_SIZE/2, 0);
                 
                 double mtf50 = compute_mtf(er.centroid, scanset, er, quality, sfr, esf, skiplist);
@@ -463,8 +463,13 @@ class Mtf_core {
             fprintf(f_sfr, ",%s%c", names[roi].c_str(), roi == (all_sfr.size()-1) ? '\n' : ',');
         }
         
+        const int target_N = 51;
+        for (size_t roi=0; roi < all_sfr.size(); roi++) {
+            all_sfr[roi] = resample(all_sfr[roi], target_N);
+        }
+        
         for (size_t row=0; row < all_sfr[0].size(); row++) {
-            double freq = double(row)/64.0;
+            double freq = double(row)/(all_sfr[0].size()-1);
             for (size_t roi=0; roi < all_sfr.size(); roi++) {
                 fprintf(f_sfr, "%lf,%lf%c", freq, all_sfr[roi][row], roi == (all_sfr.size()-1) ? '\n' : ',');
             }
@@ -586,6 +591,8 @@ class Mtf_core {
         varsum *= sum_a.size() / double(used);
         return varsum;
     }
+    
+    vector<double> resample(const vector<double>& input, const int out_N);
     
     double angle_reduce(double x) {
         double quad1 = fabs(fmod(x, M_PI/2.0));
