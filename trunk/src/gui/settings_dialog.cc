@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QtWidgets> 
 #include "settings_dialog.h"
 #include "settings_dialog.moc"
+#include "nonempty_validator.h"
 
 #include "common.h"
 
@@ -86,12 +87,12 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     arguments_label = new QLabel(tr("Arguments:"), this);
     arguments_line  = new QLineEdit(this);
     
-    QDoubleValidator* dv_thresh = new QDoubleValidator(0.0, 1.0, 3, this);
+    QDoubleValidator* dv_thresh = new Nonempty_DoubleValidator(0.001, 1.0, 3, 0.55, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
     threshold_line  = new QLineEdit(this);
     threshold_line->setValidator(dv_thresh);
     
-    QDoubleValidator* dv_pixsize = new QDoubleValidator(0.0, 999.0, 3, this);
+    QDoubleValidator* dv_pixsize = new Nonempty_DoubleValidator(0.001, 999.0, 3, 4.0, this);
     pixsize_label   = new QLabel(tr("Pixel size:"), this);
     pixsize_line    = new QLineEdit(this);
     pixsize_line->setValidator(dv_pixsize);
@@ -136,7 +137,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     rb_lens_equiangular = new QRadioButton("equiangular");
     rb_lens_stereo = new QRadioButton("stereographic");
     
-    QDoubleValidator* dv_f = new QDoubleValidator(0.0, 999.0, 2, this);
+    QDoubleValidator* dv_f = new Nonempty_DoubleValidator(0.01, 999.0, 2, 16.0, this);
     ea_f_label = new QLabel(tr("focal length"), this);
     ea_f_line = new QLineEdit(this);
     ea_f_line->setMaxLength(5);
