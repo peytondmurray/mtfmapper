@@ -1,26 +1,24 @@
-set(GROFF_COMPILE nroff)
-set(GROFF_ROOT ${PROJECT_SOURCE_DIR}/manpages)
-ADD_CUSTOM_TARGET (groffdocs ALL)
+set(A2X_ROOT ${PROJECT_SOURCE_DIR}/manpages)
 
-file(GLOB groffsource ${GROFF_ROOT}/*.nroff)
+find_program(A2X_EXECUTABLE NAMES a2x a2x.py)
+set(A2X_OPTS
+  -D ${PROJECT_BINARY_DIR}/manpages
+  -d manpage
+  -f manpage
+)
 
-foreach (gs ${groffsource})
+file(GLOB a2xsource ${A2X_ROOT}/*.1.txt)
+
+foreach (gs ${a2xsource})
     get_filename_component(mpname ${gs} NAME_WE)
     ADD_CUSTOM_COMMAND(
-        #SOURCE    ${gs}  # cmake complains about this now?
-        COMMAND   ${GROFF_COMPILE}
-        ARGS      ${gs} -c -C -mandoc > ${mpname}.1
-        TARGET    groffdocs
-        OUTPUTS   ${PROJECT_BINARY_DIR}/manpages/${mpname}.1
+        COMMAND  ${A2X_EXECUTABLE} ${A2X_OPTS} ${gs}
+        OUTPUT   ${PROJECT_BINARY_DIR}/manpages/${mpname}.1
+        DEPENDS  ${gs}
     )
-    ADD_CUSTOM_COMMAND(
-        #SOURCE    groffdocs # cmake complains about this now?
-        TARGET    groffdocs
-        DEPENDS   ${PROJECT_BINARY_DIR}/manpages/${mpname}.1
-    )
+    list(APPEND MAN_FILES ${PROJECT_BINARY_DIR}/manpages/${mpname}.1)
 endforeach(gs)
 
-string(REPLACE "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}" gs1 "${groffsource}")
-string(REPLACE ".nroff" ".1" gsb "${gs1}")
+add_custom_target(groffdocs ALL DEPENDS ${MAN_FILES})
 
-install(FILES ${gsb} DESTINATION ${MANDIR})
+install(FILES ${MAN_FILES} DESTINATION ${MANDIR})

@@ -1,0 +1,53 @@
+MTF_GENERATE_TEST_CHART(1)
+==========================
+:doctype: manpage
+:Author: Frans van den Bergh
+:Email: fvdbergh@gmail.com
+
+
+NAME
+----
+mtf_generate_test_chart - generate test charts for evaluating lens sharpness
+
+SYNOPSIS
+--------
+*mtf_generate_test_chart* ['OPTIONS']
+
+DESCRIPTION
+-----------
+*mtf_generate_test_chart* generates scalable vector graphics (SVG) files containing test charts for 
+evaluating digital camera lens performance (sharpness) as well as autofocus accuracy / fine-tuning.
+*mtf_generate_test_chart*  should be used to generate suitable test charts
+for use with the *mtf_mapper* tool.
+
+OPTIONS
+-------
+*-o* 'filename'::
+Specify output file name
+
+*-s* 'a4|A4|a3|A3|a2|A2|a1|A1|a0|A0'::
+Specify page size of the chart
+
+*-c* 'perspective|grid'::
+Specify chart type. The *perspective* chart is for evaluating autofocus
+behaviour, and is intended to be photographed at an angle, typically 45
+degrees. The "grid" chart is intended to evaluate lens sharpness across the
+focal plane, and should be photographed perpendiculary.
+
+*-d* 'distance'::
+Specify the desired viewing distance from the chart for perspective mode.
+Distance is in mm, measured from the reference edge on the chart, to the
+camera focal plane.
+
+*-h*::
+Displays usage information
+
+BUGS
+----
+In theory, the perspective chart can be corrected so that the perspective
+distortion is cancelled perfectly when the chart is photographed from the
+correct distance. This ensures that all the rectangles appear as squares in
+the photograph; however, this is not required for *mtf_mapper*
+to work correctly. Currently, the perspective distortion and optimal
+distance is fixed in the source code.
+

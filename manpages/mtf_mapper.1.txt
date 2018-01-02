@@ -1,57 +1,50 @@
-.\" Process this file with
-.\" groff -man -Tascii foo.1
-.\"
-.TH MTF_mapper 1 "SEPT 2011" Linux "User Manuals"
-.SH NAME
-mtf_mapper \- compute MTF50 edge sharpness measure in images
-.SH SYNOPSIS
-.B mtf_mapper 
-.I <image> <output_dir>
-.B [--gnuplot-executable 
-.I <filepath>
-.B ] [-t 
-.I <threshold>
-.B ] [-g
-.I <angle>
-.B ] [--snap-angle
-.I <angle>
-.B ] [--absolute-sfr] [--bayer
-.I <red|green|blue|none>
-.B ] [--pixelsize
-.I <size>
-.B ] [-b] [-r] [-l] [-s] [-a] [-f] [-e] [-p]
-.SH DESCRIPTION
-.B mtf_mapper
-computes the edge acuity (sharpness) of slanted edges in images. 
+MTF_MAPPER(1)
+=============
+:doctype: manpage
+:Author: Frans van den Bergh
+:Email: fvdbergh@gmail.com
+
+
+NAME
+----
+mtf_mapper - compute MTF50 edge sharpness measure in images
+
+SYNOPSIS
+--------
+*mtf_mapper* ['OPTIONS'] 'INPUT_IMAGE' 'OUTPUT_DIR'
+
+DESCRIPTION
+-----------
+*mtf_mapper* computes the edge acuity (sharpness) of slanted edges in images. 
 It automatically detects dark rectangular objects on light backgrounds, 
 and computes the MTF50 values across each of the edges. Output takes several
-forms (see -p, -s, -a and -r output options). To test
-.B mtf_mapper,
+forms (see *-p*, *-s*, *-a* and *-q* output options). To test *mtf_mapper*,
 images with rectangles containing known MTF50 values can be generated with 
-.BR mtf_generate_rectangle (1).
+*mtf_generate_rectangle*.
 
-.SH OPTIONS
-.IP "--gnuplot-executable <filepath>"
+OPTIONS
+-------
+*--gnuplot-executable* 'filepath'::
 Specify the full path to the gnuplot executable. Defaults to 
-.I /usr/bin/gnuplot, 
-which is usually correct on most Linux distributions
-.IP "-t <threshold>"
-Specify the dark object threshold, with a default of 0.75. 
+_/usr/bin/gnuplot_, which is usually correct on most Linux distributions
+
+*-t* 'threshold'::
+Specify the dark object threshold, with a default of 0.55. 
 Lower values are required if your dark objects are light relative to the 
 background, e.g., gray rectangles rather than black rectangles.
-.IP "-g <angle>"
+
+*-g* 'angle'::
 Only report MTF50 values on edges with an orientation of <angle> degrees in
 raw output mode (-r)
-.IP "--snap-angle <angle>
-Snap all edge angles to
-.I angle.
-Angles are snapped to the closest value modulo 90 degrees, i.e., specifying an
+
+*--snap-angle* 'angle'::
+Snap all edge angles to _angle_. Angles are snapped to the closest value modulo 90 degrees, i.e., specifying an
 angle of 4 degrees will force edge orientations to one of the following: 
 4, -4, 86, or 94 degrees. This option should be used with care, and is only appropriate
 if you are using synthetic images with a known edge orientation.
-.IP "--bayer <red|green|blue|none>"
-Process only the specified Bayer sites. Currently, an RGGB Bayer pattern is assumed.
-This option can be used to bypass the effects of Bayer demosaicing interpolation when
+
+*--bayer* 'red|green|blue|none'::
+Process only the specified Bayer sites. This option can be used to bypass the effects of Bayer demosaicing interpolation when
 suitable raw images are used. Specifying this option when a demosaiced image is provided will
 not produce the expected result, i.e., you must provide a raw image for this option to
 work correctly. Keep in mind that Bayer red and blue each cover only 25% of the sensor, so
@@ -59,63 +52,58 @@ your edges will have to be 4 times longer to maintain the same signal-to-noise r
 recommended edge lengths are thus 35 pixels for gray or interpolated images, 70 pixels for green
 Bayer sites, and 140 pixels for red and blue Bayer sites. Aim for edges of at least 200 pixels for
 best results on red and blue sites.
-.IP "-r"
-Dump MTF50 values to a file called
-.I raw_mtf_values.txt
-.IP -l
+
+*-r*::
+Dump MTF50 values to a file called _raw_mtf_values.txt_
+
+*-l*::
 Linear input mode; assumes that an 8-bit input image has a linear intensity
 scale. The default is to assume that 8-bit input images have an sRGB gamma
 intensity profile (approximately gamma 2.2)
-.IP -s
+
+*-s*::
 Turn on Surface mode. Surface mode (enabled by default) generates two output plots: an
 color-graded 2D view of the MTF50 values across the image, and a 3D surface
 plot of the same data.
-.IP -a
+
+*-a*::
 Turn on Annotate mode. If Annotate mode is enabled (as by default),
-.B mtf_mapper
-produces an output file called
-.I annotated.png
-wherein each edge is annotated with its MTF50 value.
-.IP -p
-Turn on Profile mode. If Profile mode is enables, 
-.B mtf_mapper
-produces a plot (
-.I profile_image.png
-) showing a side-view of the MTF50 values. This mode is used to determine
+*mtf_mapper* produces an output file called _annotated.png_
+wherein each edge is annotated with its MTF50 value. Good quality edges are
+annotated in Cyan, with Yellow and Red annotation indicating progressively
+poorer edge quality (usually related to edge orientation and length).
+
+*-p*::
+Turn on Profile mode. If Profile mode is enabled, *mtf_mapper* produces a plot
+(_profile_image.png_) showing a side-view of the MTF50 values. This mode is used to determine
 whether a camera is front- or back-focusing. A special test chart must be
-generated with
-.BR mtf_generate_test_chart
-for this mode to work correctly.
-.IP -e
+generated with *mtf_generate_test_chart* for this mode to work correctly.
+
+*-e*::
 Produce edge spread function (ESF) outputs. Each edge will correspond to one row in an
-output file called
-.I raw_esf_values.txt.
+output file called _raw_esf_values.txt_.
 Each row will contain 256 samples, corresponding to a window of 32 pixels centered on the edge,
 oversampled by a factor of 8, i.e., consecutive samples are 1/8 pixel apart.
 There is currently no simple way to identify which edge in the input image ends up in
 a particular row. If your input image contains a single square, then you can pick any row.
-.IP -f
+
+*-f*::
 Produce spatial frequency response (SFR) curve outputs. Each edge will correspond to one row
-in an output file called
-.I raw_sfr_values.txt.
+in an output file called _raw_sfr_values.txt_.
 Each row starts with the edge orientation (in degrees), followed by 64 values corresponding to
 the contrast measured at a frequency resolution of 1/64 cycles per pixel. In other words, the 64 values
-span the frequency range 0-1 cycles per pixel. See
-.B -e
-for advice on matching rows to edges.
-.br
+span the frequency range [0,1) cycles per pixel. See *-e* for advice on matching rows to edges.
++
 By default, this is an SFR curve, i.e., the DC component is always normalized to 1.0. See 
-.B --absolute-sfr
-switch for producing true MTF curves.
--IP --absolute-sfr
+*--absolute-sfr* switch for producing true MTF curves.
+
+*--absolute-sfr*::
 Do not normalize SFR curve, i.e., DC component is not normalized to 1.0. This is useful when evaluating
 the MTF response of algorithms that may reduce overall edge contrast.
-.IP -h
+
+*-h*::
 Displays usage information
-.SH BUGS
-In hiding, I am sure.
-.SH AUTHOR
-Frans van den Bergh <fvdbergh at gmail dot com>
-.SH "SEE ALSO"
-.BR mtf_generate_rectangle (1),
-.BR mtf_generate_test_chart (1),
+
+SEE ALSO
+--------
+mtf_generate_rectangle, mtf_generate_test_chart, mtf_mapper_gui.
