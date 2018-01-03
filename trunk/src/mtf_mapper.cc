@@ -378,6 +378,11 @@ int main(int argc, char** argv) {
         }
     }
     
+    if (tc_focus.isSet() || tc_mf_profile.getValue()) {
+        esf_sampler_name = "line";
+        logger.info("Note: because --focus output option was selected, the --esf_sampler option has been changed to \"line\".\n");
+    }
+    
     bool finished;
     bool distortion_applied = false;
     do {
