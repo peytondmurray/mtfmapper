@@ -16,23 +16,75 @@ SYNOPSIS
 DESCRIPTION
 -----------
 *mtf_generate_rectangle* renders an image (default rect.png) containing a rectangle rotated through 
-the specified angle. The image is generated with a specified type of point spread 
+the specified angle; other polygonal objects can also be rendered. 
+The image is generated with a specified type of point spread 
 function (PSF), which can either be a simple Gaussian, or a diffraction pattern
 with an optional optical low-pass filter. Various parameters can be adjusted to
 produce the desired size / shape of the PSF. Sensor noise is simulated using either
 a simple additive Gaussian model, or a more sophisticated sensor noise model.
 The program reports the analytical MTF50 value of the rendered edges. 
 *mtf_generate_rectangle* can be used to evaluate the accuracy of the 
-*mtf_mapper* tool.
+*mtf_mapper* tool, since the accuracy of the images generated with
+*mtf_generate_rectangle* have been validated by third parties.
 
 OPTIONS
 -------
 *--b16*::
-Render output image as a 16-bit grayscale image (default is 8 bits gamma
+Render output image as a linear intensity 16-bit grayscale image (default is 8 bits gamma
 corrected)
 
 *-l*::
 Render output image as a linear grayscale image (default is sRGB gamma)
+
+*-d* 'pixels'::
+Dimension of the long edge of the rectangle, in pixels. Please note that MTF Mapper
+may produce inaccurate results if this parameter is below 35 pixels.
+
+*-x* 'pixels'::
+Sub-pixel offset applied to rendered rectangle, x-axis direction.
+
+*-y* 'pixels'::
+Sub-pixel offset applied to rendered rectangle, y-axis direction.
+
+*-b* 'std. dev'::
+Specify the standard deviation of the Gaussian point spread function (PSF)
+with which the edges are sampled. This parameter effectively controls the
+resulting MTF50 value of the edges. Mutually exclusive with *-m*.
+
+*-m* 'mtf50'::
+Directly specify the desired MTF50 value. This indirectly controls the
+Gaussian PSF standard deviation. Mutually exclusive with *-b*.
+
+*-a* 'angle'::
+Specify the angle (in degrees) at which the rectangle is generated. Useful for
+characterising MTF measurement accuracy as a function of edge orientation
+
+*-r* 'ratio'::
+Specify the aspect ratio of the rectangle in the range [0,1]. Ratios above 1.0 are clipped.
+The aspect ratio is adjusted so that the rectange is at least one pixel wide. Very thin 
+rectangles (< 25 pixels wide) are not ideal for use with MTF Mapper.
+
+*--esf-only*::
+Render only a cross-section across the edge of the rectangle at a 1/32th pixel spacing. This is
+mainly useful for performing synthetic image accuracy measurements, but can be used to generate
+Point Spread Functions (PSFs) for the 'box' and '4dot-olpf' Airy pattern variants (these PSFs are
+hard to compute analytically). Default output filename is _profile.txt_, but can be specified with
+*-o*.
+
+*-o* 'filename'::
+Specify the name of the output file
+
+*-h*::
+Displays usage information
+
+NOISE OPTIONS
+-------------
+*-n* 'std. dev'::
+Specify the noise standard deviation [0-1) of the Gaussian noise that is
+added to the image. This invokes the simplified noise model (which is also
+the default), which produces noise that is independent of signal level. 
+A more accurate sensor noise model can be obtained with the full 
+sensor noise model (*--read-noise*, etc.); See examples below.
 
 *--adc-depth* 'bits'::
 Number of bits used in full noise model ADC. This parameter effectively
@@ -50,55 +102,16 @@ Recommended value is 0.0085.
 Standard deviation of read noise component of full noise model, in electrons.
 Recommended value is 3.7.
 
-*-d* 'pixels'::
-Dimension of the long edge of the rectangle, in pixels. Please note that MTF Mapper
-may produce inaccurate results if this parameter is below 35 pixels.
-
-*-x* 'pixels'::
-Sub-pixel offset applied to rendered rectangle, x-axis direction.
-
-*-y* 'pixels'::
-Sub-pixel offset applied to rendered rectangle, y-axis direction.
-
 *-c* 'factor'::
-Reduce edge contrast by <factor>, i.e., if <factor> is 0.3, then the edge
+Reduce edge contrast by 'factor', i.e., if 'factor' is 0.3, then the edge
 contrast is 1 - 0.3 = 0.7.
-
-*-b* 'std. dev'::
-Specify the standard deviation of the Gaussian point spread function (PSF)
-with which the edges are sampled. This parameter effectively controls the
-resulting MTF50 value of the edges. Mutually exclusive with *-m*.
-
-*-m* 'mtf50'::
-Directly specify the desired MTF50 value. This indirectly controls the
-Gaussian PSF standard deviation. Mutually exclusive with *-b*.
-
-*-n* 'std. dev'::
-Specify the noise standard deviation [0-1) of the Gaussian noise that is
-added to the image. This invokes the simplified noise model, which produces
-noise that is independent of signal level. A more accurate sensor noise model
-can be obtained with the full sensor noise model. See examples below.
 
 *-s* 'seed'::
 Specify the random seed for the RNG used to generate the additive Gaussian
 noise.
 
-*-a* 'angle'::
-Specify the angle (in degrees) at which the rectangle is generated. Useful for
-characterising MTF measurement accuracy as a function of edge orientation
-
-*-r* 'ratio'::
-Specify the aspect ratio of the rectangle in the range [0,1]. Ratios above 1.0 are clipped.
-The aspect ratio is adjusted so that the rectange is at least one pixel wide. Very thin 
-rectangles (< 25 pixels wide) are not ideal for use with MTF Mapper.
-
-*--esf-only*::
-Render only a cross-section across the edge of the rectangle at a 1/32th pixel spacing. This is
-mainly useful for performing synthetic image accuracy measurements, but can be used to generate
-Point Spread Functions (PSFs) for the 'box' and '4dot-olpf' Airy pattern variants (these PSFs are
-hard to compute analytically). Default output filename is profile.txt, but can be specified with
-*-o*.
-
+PSF/RENDERING OPTIONS
+---------------------
 *-p* 'gaussian|gaussian-sampled|airy|airy-box|airy-4dot-olpf'::
 Specify the desired PSF type. PSF types 'gaussian' and 'gaussian-sampled' accept the
 *-m* and *-b* arguments to control PSF shape, and produce, unsurprisingly, Gaussian-shaped PSFs. Note that
@@ -114,6 +127,13 @@ the 'airy-4dot-olpf' PSF simulates a lens + OLPF + sensor combination, assuming 
 is a 4-way beam splitter (e.g., Lithium Niobate birefringent designs) with a displacement of 0.35 
 pixels, which appears to match current Nikon DSLR sensor designs.
 
+*--airy-samples* 'n'::
+Number of half-samples (n) per axis per pixel for Airy PSFs (actual number
+of samples is (2n+1)^2).
+
+*--olpf-offset* 'pixels'::
+4-dot OLPF beam splitter offset, default value is 0.35.
+
 *--lambda* 'micron'::
 Specify the wavelength of the light to simulate when rendering diffraction PSFs, in micron.
 
@@ -124,11 +144,40 @@ into a pixel-scale value.
 *--aperture* 'f-number'::
 Specify the relative numeric aperture of the lens used to render a diffraction PSF.
 
-*-o* 'filename'::
-Specify the name of the output file
+*--target-poly* 'filename'::
+Target polygon data file. This option overrides the default target (a
+rectangle) with the geometry of the polygons specified in `filename`. The
+format of this file is just
++
+  _number_of_vertices_
+  _x1_ _y1_
+  _x2_ _y2_
+  ...
++
+which can be repeated for additional polygons. The polygons should be
+simple, but may be concave, and should have fewer than 400 vertices. The
+default ROI will range from (0,0) up to the extent of the vertices; see the
+*--roi-* options to override this behaviour.
 
-*-h*::
-Displays usage information
+*--photosite-geom* 'square|circle|rounded-square'::
+Photosite aperture geometry, default is 'square'. The 'circle' and
+'rounded-square' are 64-sided polygonal aproximations. If you require a more
+general aperture geometry, use the *--photosite-poly* option.
+
+*--photosite-poly* 'filename'::
+Photosite aperture polygon file name. The origin is (0,0), with a 100% fill-factor
+square pixel defined as the region (-0.5, -0.5) to (0.5, 0.5). The format of
+'filename' is the same as that of *--target-poly*.
+
+*--roi-height* 'pixels', *--roi-width* 'pixels', *--roi-col* 'pixels', *--roi-row* 'pixels'::
+Specify the Region Of Interest (ROI) that should be rendered, the region
+(row, col) to (row + height, col + width). This is useful
+for generating a fixed-size output image, or just rendering a subset of a
+larger geometry (see *--target-poly*).
+
+*--fill-factor* 'factor'::
+Fill-factor of photosite [0.01,1], default is 1.0.
+
 
 EXAMPLES AND NOTES
 ------------------
