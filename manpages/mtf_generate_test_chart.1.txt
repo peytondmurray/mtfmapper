@@ -23,16 +23,38 @@ for use with the *mtf_mapper* tool.
 OPTIONS
 -------
 *-o* 'filename'::
-Specify output file name
+Specify output file name (default is _chart.svg_).
 
 *-s* 'a4|A4|a3|A3|a2|A2|a1|A1|a0|A0'::
-Specify page size of the chart
+Specify page size of the chart.
 
-*-c* 'perspective|grid'::
-Specify chart type. The *perspective* chart is for evaluating autofocus
+*-t* 'perspective|grid|halfgrid|thirdgrid|lensgrid|mfperspective|focus'::
+Specify chart type. The _perspective_ chart is for evaluating autofocus
 behaviour, and is intended to be photographed at an angle, typically 45
-degrees. The "grid" chart is intended to evaluate lens sharpness across the
-focal plane, and should be photographed perpendiculary.
+degrees. 
++
+The _lensgrid_ chart is intended to evaluate lens sharpness across the
+focal plane, and should be photographed perpendiculary. This chart type is
+suitable for many *mtf_mapper* output options, including *-a*, *-s*, *-q*,
+and *--lensprofile*. The circular fiducial markers also allow this chart type
+to be used for iteratively adjusting the chart orientation (to position it
+perpendicular to the camera's optical axis) using *mtf_mapper*'s
+*--chart-orientation* output mode.
++
+The _grid_ chart is similar to the _lensgrid_ chart, but it is an older
+design, and it is strongly recommended that you use the _lensgrid_ chart
+instead. Similar grid-style charts, but with fewer target rectangles, can be
+generated using the _halfgrid_ and _thirdgrid_ types.
++
+The _focus_ chart is a single-purpose chart type designed to measure the
+position (distance) of peak focus. This chart must be photographed at an
+angle (45 degrees recommended), and requires manual focusing. The *--focus*
+output option of *mtf_mapper* is specifically intended for this chart type.
++
+The _mfperspective_ chart is another special chart type designed to
+visualize the intersection of the "'plane of best focus'" and the test
+chart, which should be tilted at around 45 degrees. The *--mfprofile* output
+option of *mtf_mapper* is specifically intended for this chart type.
 
 *-d* 'distance'::
 Specify the desired viewing distance from the chart for perspective mode.
@@ -40,14 +62,6 @@ Distance is in mm, measured from the reference edge on the chart, to the
 camera focal plane.
 
 *-h*::
-Displays usage information
+Displays usage information.
 
-BUGS
-----
-In theory, the perspective chart can be corrected so that the perspective
-distortion is cancelled perfectly when the chart is photographed from the
-correct distance. This ensures that all the rectangles appear as squares in
-the photograph; however, this is not required for *mtf_mapper*
-to work correctly. Currently, the perspective distortion and optimal
-distance is fixed in the source code.
 
