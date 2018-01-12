@@ -96,6 +96,13 @@ if you are using synthetic images with a known edge orientation.
 Only report MTF50 values on edges with an orientation of 'angle' degrees in
 raw output mode (-r)
 
+*--autocrop*::
+Automatically crop the input image to the chart area. The chart is assumed to be
+brighter than the background; the automatic cropping will try to remove the
+darker background. This option is mostly intended to speed up processing,
+and really should only be used if the background area is large in comparison
+to the test chart area.
+
 *--gnuplot-executable* 'filepath'::
 Specify the full path to the gnuplot executable. Defaults to 
 _/usr/bin/gnuplot_, which is usually correct on most Linux distributions
@@ -156,6 +163,13 @@ measurement.
 *--absolute-sfr*::
 Do not normalize SFR curve, i.e., DC component is not normalized to 1.0. This is useful when evaluating
 the MTF response of algorithms that may reduce overall edge contrast.
+
+*--nosmoothing*::
+Disable SFR curve (MTF) smoothing. By default, MTF Mapper will apply
+Savitzky-Golay filters to the SFR curve to improve its appearance. The only
+known disadvantage of this smoothing is that the sharp valley surrounding
+the first zero of the SFR (if present) can be over-smoothed, in which case
+the *--nosmoothing* option is recommended.
 
 *-q*, *--edges*::
 A better choice than either *-r* or *-f*. This option produces two output
