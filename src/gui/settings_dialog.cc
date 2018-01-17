@@ -291,7 +291,6 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     advanced->setLayout(adv_layout);
 
     
-    QGroupBox* vGroupBox = new QGroupBox(tr("Settings"), this);
     QGridLayout* vlayout = new QGridLayout(this);
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
@@ -301,7 +300,6 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vlayout->addWidget(advanced, 2, 3, 1, 2);
     vlayout->addWidget(accept_button, 3, 0);
     vlayout->addWidget(cancel_button, 3, 1);
-    vGroupBox->setLayout(vlayout);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
@@ -312,6 +310,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     connect(rb_lens_stereo, SIGNAL(clicked()), this, SLOT( stereographic_toggled() ));
     
     setLayout(vlayout);
+    setWindowTitle("Preferences");
 }
 
 void Settings_dialog::open() {
