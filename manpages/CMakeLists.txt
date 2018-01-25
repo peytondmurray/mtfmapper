@@ -17,8 +17,15 @@ foreach (gs ${a2xsource})
         DEPENDS  ${gs}
     )
     list(APPEND MAN_FILES ${PROJECT_BINARY_DIR}/manpages/${mpname}.1)
+    ADD_CUSTOM_COMMAND(
+        COMMAND  ${A2X_EXECUTABLE} -d manpage -f pdf -D ${PROJECT_BINARY_DIR}/manpages ${gs}
+        OUTPUT   ${PROJECT_BINARY_DIR}/manpages/${mpname}.pdf
+        DEPENDS  ${gs}
+    )
+    list(APPEND PDF_FILES ${PROJECT_BINARY_DIR}/manpages/${mpname}.pdf)
 endforeach(gs)
 
 add_custom_target(groffdocs ALL DEPENDS ${MAN_FILES})
+add_custom_target(pdfdocs ALL DEPENDS ${PDF_FILES})
 
 install(FILES ${MAN_FILES} DESTINATION ${MANDIR})

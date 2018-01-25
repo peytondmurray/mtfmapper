@@ -176,7 +176,7 @@ A better choice than either *-r* or *-f*. This option produces two output
 files called _edge_mtf_values.txt_ and _edge_sfr_values.txt_, both of which
 combine edge location with the MTF measurement.
 +
-Each row of the _edge_mtf_values.txt_ file contains five space-separated columns: _block_id_
+Each row of the _edge_mtf_values.txt_ file contains six space-separated columns: _block_id_
 _edge_x_ _edge_y_ _mtf50_ _corner_x_ _corner_y_. The _block_id_ can safely
 be ignored (it depends on the order in which target squares were processed).
 The pair (_edge_x_, _edge_y_) denote the pixel coordinates of the centroid
