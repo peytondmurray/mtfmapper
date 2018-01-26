@@ -30,12 +30,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <QDialog>
 #include <QMainWindow>
-
+#include <QtWebKit/QtWebKit>
+#include <QtWebKitWidgets/QWebView>
 
 class QPushButton;
 class QTextEdit;
-class QTextBrowser;
-
+class QWebView;
 
 class Help_dialog : public QMainWindow 
 {
@@ -45,9 +45,11 @@ class Help_dialog : public QMainWindow
     Help_dialog(QWidget *parent);
 
   private:
-    QTextBrowser*  body;
+    QWebView *body;
     QPushButton* dismiss_button;
     QString      body_text;
+    
+    
 
   public slots:
     void open();
