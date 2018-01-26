@@ -9,6 +9,6 @@
 #define genrectangle_VERSION_MINOR @genrectangle_VERSION_MINOR@
 
 #include <string>
-const std::string mtfmapper_HTML_HELP_DIR = "@HTML_HELP_DIR@/html/mtf_mapper.html";
+const std::string mtfmapper_HTML_HELP_DIR = "@HTML_HELP_DIR@/html/mtf_mapper_user_guide.html";
 
 #endif

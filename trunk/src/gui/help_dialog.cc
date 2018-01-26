@@ -39,20 +39,19 @@ Help_dialog::Help_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
     dismiss_button = new QPushButton("Dismiss");
     dismiss_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 
-    body = new QTextBrowser(parent);
+    body = new QWebView(parent);
     #if _WIN32
-    if (mtfmapper_HTML_HELP_DIR.compare(".//html/mtf_mapper.html") == 0) {
-        body_text = QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + QString("/doc/html/mtf_mapper.html"));
+    if (mtfmapper_HTML_HELP_DIR.compare(".//html/mtf_mapper_user_guide.html") == 0) {
+        body_text = QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + QString("/doc/html/mtf_mapper_user_guide.html"));
     } else {
         body_text = QString(mtfmapper_HTML_HELP_DIR.c_str());
     }
     #else
     body_text = QString(mtfmapper_HTML_HELP_DIR.c_str());
     #endif
-    body->setSource(QUrl::fromLocalFile(body_text));
-    body->setMinimumWidth(800);
+    body->load(QUrl::fromLocalFile(body_text));
+    body->setMinimumWidth(1024);
     body->setMinimumHeight(600);
-    body->setReadOnly(true);
 
     QGroupBox* vGroupBox = new QGroupBox(tr("About"), this);
     QGridLayout* vlayout = new QGridLayout(this);
@@ -69,7 +68,7 @@ Help_dialog::Help_dialog(QWidget* parent ATTRIBUTE_UNUSED) {
 
 
 void Help_dialog::open(void) {
-    body->setSource(QUrl::fromLocalFile(body_text));
+    body->load(QUrl::fromLocalFile(body_text));
     body->show();
     show();
 }
