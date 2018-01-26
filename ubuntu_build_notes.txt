@@ -1,3 +1,90 @@
+
+MTF Mapper 0.6.14
+
+# build notes for Ubunutu. It worked on Lubuntu 17.10, and may work on other versions
+
+# install all the dependencies (note the new dependencies compared to
+# earlier MTF Mapper versions, which now requires qt5charts and qt5webview)
+
+sudo apt-get install g++
+sudo apt-get install cmake
+
+# unfortunately this pulls in the whole of LaTeX
+sudo apt-get install asciidoc
+
+sudo apt-get install libopencv-dev
+sudo apt-get install qtbase5-dev
+sudo apt-get install libqt5charts5-dev
+sudo apt-get install libqt5webview5-dev
+sudo apt-get install libqt5webkit5-dev
+sudo apt-get install libtclap-dev
+sudo apt-get install libeigen3-dev
+sudo apt-get install subversion
+
+# check out the source code from the repository
+mkdir workspace
+cd workspace
+svn co svn://svn.code.sf.net/p/mtfmapper/code/trunk mtfmapper-code
+
+# make a build directory for cmake
+mkdir mtfmapper
+cd mtfmapper
+
+# configure with cmake
+cmake ../mtfmapper-code
+
+# the actual build
+make
+
+# and you are done!
+# executables can be found in workspace/mtfmapper/bin
+
+You will also need some of the runtime dependencies, 
+sudo apt-get install dcraw gnuplot exiv2
+
+
+
+==============================
+MTF Mapper 0.6.8
+
+# build notes for Ubunutu. It worked on Lubuntu 17.10, and may work on other versions
+
+# install all the dependencies (note the new dependencies compared to
+# earlier MTF Mapper versions, which now requires qt5charts)
+
+sudo apt-get install g++
+sudo apt-get install cmake
+sudo apt-get install libopencv-dev
+sudo apt-get install qtbase5-dev
+sudo apt-get install libqt5charts5-dev
+sudo apt-get install libtclap-dev
+sudo apt-get install libeigen3-dev
+sudo apt-get install subversion
+
+# check out the source code from the repository
+mkdir workspace
+cd workspace
+svn co svn://svn.code.sf.net/p/mtfmapper/code/trunk mtfmapper-code
+
+# make a build directory for cmake
+mkdir mtfmapper
+cd mtfmapper
+
+# configure with cmake
+cmake ../mtfmapper-code
+
+# the actual build
+make
+
+# and you are done!
+# executables can be found in workspace/mtfmapper/bin
+
+You will also need some of the runtime dependencies, 
+sudo apt-get install dcraw gnuplot exiv2
+
+
+
+==============================
 MTF Mapper 0.5.7
 
 # build notes for Ubunutu. It worked on Lubuntu 16.04, and may work on other versions
@@ -12,9 +99,6 @@ sudo apt-get install qtbase5-dev
 sudo apt-get install libtclap-dev
 sudo apt-get install libeigen3-dev
 sudo apt-get install subversion
-sudo apt-get install gnuplot
-sudo apt-get install exiv2
-sudo apt-get install dcraw 
 
 # check out the source code from the repository
 mkdir workspace
