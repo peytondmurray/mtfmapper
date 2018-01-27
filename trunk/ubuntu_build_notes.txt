@@ -4,7 +4,7 @@ MTF Mapper 0.6.14
 # build notes for Ubunutu. It worked on Lubuntu 17.10, and may work on other versions
 
 # install all the dependencies (note the new dependencies compared to
-# earlier MTF Mapper versions, which now requires qt5charts and qt5webview)
+# earlier MTF Mapper versions, which now requires qt5charts and asciidoc)
 
 sudo apt-get install g++
 sudo apt-get install cmake
@@ -15,8 +15,6 @@ sudo apt-get install asciidoc
 sudo apt-get install libopencv-dev
 sudo apt-get install qtbase5-dev
 sudo apt-get install libqt5charts5-dev
-sudo apt-get install libqt5webview5-dev
-sudo apt-get install libqt5webkit5-dev
 sudo apt-get install libtclap-dev
 sudo apt-get install libeigen3-dev
 sudo apt-get install subversion
