@@ -29,7 +29,7 @@ target_link_libraries(generate_test_chart ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INI
 # Qt5 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-find_package(Qt5 5.6 REQUIRED Widgets Charts)
+find_package(Qt5Widgets)
 
 get_target_property(q5name Qt5::Widgets LOCATION)
 
@@ -45,7 +45,7 @@ IF (EXISTS ${q5name})
   if (MSVC)
     set_target_properties(mtf_mapper_gui PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR})
   endif (MSVC)
-  qt5_use_modules(mtf_mapper_gui Widgets Charts WebKit WebKitWidgets)
+  qt5_use_modules(mtf_mapper_gui Widgets Charts)
   target_link_libraries(mtf_mapper_gui ${QT_LIBRARIES} ${OpenCV_LIBS})
   install(TARGETS mtf_mapper_gui RUNTIME DESTINATION bin)
 ELSE (EXISTS ${q5name})
