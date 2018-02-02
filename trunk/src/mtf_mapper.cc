@@ -41,7 +41,6 @@ Logger logger;
 
 #include "include/common_types.h"
 #include "include/thresholding.h"
-#include "include/gamma_lut.h"
 #include "include/mtf_core.h"
 #include "include/mtf_core_tbb_adaptor.h"
 #include "include/mtf_renderer_annotate.h"
@@ -68,33 +67,9 @@ Logger logger;
 #include "include/undistort_equiangular.h"
 #include "include/undistort_stereographic.h"
 #include "include/esf_sampler.h"
+#include "include/tiffsniff.h"
+#include "include/display_profile.h"
 #include "config.h"
-
-void convert_8bit_input(cv::Mat& cvimg, bool gamma_correct=true) {
-
-    cv::Mat newmat = cv::Mat(cvimg.rows, cvimg.cols, CV_16UC1);
-    cv::MatIterator_<uint16_t> it16 = newmat.begin<uint16_t>();
-    cv::MatConstIterator_<uchar> it = cvimg.begin<uchar>();
-    cv::MatConstIterator_<uchar> it_end = cvimg.end<uchar>();
-    
-    // can we determine what the current gamma is ?
-    if (gamma_correct) {
-        Gamma gamma;
-        for(; it != it_end; ) {
-            *it16 = gamma.linearize_gamma(*it);
-            it++;
-            it16++;
-        }
-    } else {
-        for(; it != it_end; ) {
-            *it16 = ((uint16_t)(*it)) << 8;
-            it++;
-            it16++;
-        }
-    }
-    
-    cvimg = newmat;
-}
 
 //-----------------------------------------------------------------------------
 void print_version_info(void) {
@@ -230,22 +205,31 @@ int main(int argc, char** argv) {
 	        return -3;
 	    }
 	}
+	
+	Tiffsniff tiff(tc_in_name.getValue());
+	Display_profile display_profile;
+	if (tiff.profile_found()) {
+	    display_profile = tiff.profile();
+	} else {
+	    if (cvimg.elemSize1() == 1 && !tc_linear.getValue()) {
+	        display_profile.force_sRGB();
+	    }
+	}
     
-    if (cvimg.type() == CV_8UC3 || cvimg.type() == CV_16UC3) {
-        logger.info("colour input image detected; converting to grayscale using 0.299R + 0.587G + 0.114B\n");
-        cv::Mat dest;
-        cv::cvtColor(cvimg, dest, CV_RGB2GRAY);  // force to grayscale
-        cvimg.release();
-        cvimg = dest;
+    if (tc_linear.getValue()) {
+        display_profile.force_linear();
     }
     
-    if (cvimg.type() == CV_8UC1) {
-        logger.info("8-bit input image, upconverting %s\n", tc_linear.getValue() ? "with linear scaling" : "with sRGB gamma correction");
-        convert_8bit_input(cvimg, !tc_linear.getValue());        
-    } else {
-        logger.info("16-bit input image, no upconversion required\n");
+    if (cvimg.channels() == 4) {
+        logger.info("Input image had 4 channels. Only the first 3 will be used.\n");
+        cv::Mat reduced(cvimg.rows, cvimg.cols, (cvimg.elemSize1() == 1) ? CV_8UC3 : CV_16UC3);
+        int from_to[] = {0,0, 1,1, 2,2};
+        cv::mixChannels(&cvimg, 1, &reduced, 1, from_to, 3);
+        cvimg = reduced;
     }
-   
+    
+    cvimg = display_profile.to_luminance(cvimg);
+    
     assert(cvimg.type() == CV_16UC1);
 
     const int border_width = 100;
