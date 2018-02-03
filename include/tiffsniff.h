@@ -88,23 +88,37 @@ typedef struct {
     uint32_t data_offset;
     uint32_t element_size;
     
+	// we have to explicitly perform all the reads (fgets) first, or the optimizer may
+	// re-arrange the arguments to the binary operators, thus performing the reads in
+	// the wrong order
     static double read_fixed8_8(FILE* fin) {
-        return double(fgetc(fin)) + double(fgetc(fin))/256.0;
+		unsigned char b0 = fgetc(fin) & 0xff;
+		unsigned char b1 = fgetc(fin) & 0xff;
+        return double(b0) + double(b1)/256.0;
     }
     
     static uint16_t read_uint16(FILE* fin) {
-        return uint16_t(fgetc(fin) << 8) | uint16_t(fgetc(fin));
+		unsigned char b0 = fgetc(fin) & 0xff;
+		unsigned char b1 = fgetc(fin) & 0xff;
+        return (uint16_t(b0) << 8) | uint16_t(b1);
     }
     
     static double read_fixed15_16(FILE* fin) {
-        char sbyte = fgetc(fin) & 0xff;
-        return double((int16_t(sbyte) << 8) | (fgetc(fin) & 0xff)) + 
-            double(((uint16_t(fgetc(fin)) & 0xff) << 8) | (fgetc(fin) & 0xff))/65536.0;
+        char sb0 = fgetc(fin) & 0xff;
+		unsigned char b1 = fgetc(fin) & 0xff;
+		unsigned char b2 = fgetc(fin) & 0xff;
+		unsigned char b3 = fgetc(fin) & 0xff;
+        return double((int16_t(sb0) << 8) | b1) + 
+            double(((uint16_t(b2) << 8) | b3))/65536.0;
     }
     
     static uint32_t read_uint32(FILE* fin) {
-        return (uint32_t(fgetc(fin)) << 24) | (uint32_t(fgetc(fin)) << 16) |
-            (uint32_t(fgetc(fin)) << 8) | uint32_t(fgetc(fin));
+		unsigned char b0 = fgetc(fin) & 0xff;
+		unsigned char b1 = fgetc(fin) & 0xff;
+		unsigned char b2 = fgetc(fin) & 0xff;
+		unsigned char b3 = fgetc(fin) & 0xff;
+        return (uint32_t(b0) << 24) | (uint32_t(b1) << 16) |
+            (uint32_t(b2) << 8) | uint32_t(b3);
     }
     
 } icc_tag;
