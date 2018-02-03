@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/tiffsniff.h"
 #include "include/logger.h"
+#include "include/common_types.h"
 #include <string.h>
 
 Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 0.0) {
@@ -111,19 +112,28 @@ Tiffsniff::~Tiffsniff(void) {
     }
 }
 
+// we have to explicitly perform all the reads (fgets) first, or the optimizer may
+// re-arrange the arguments to the binary operators, thus performing the reads in
+// the wrong order
 uint32_t Tiffsniff::read_uint32(void) {
     if (big_endian) {
         return icc_tag::read_uint32(fin);
     } 
-    return uint32_t(fgetc(fin)) | (uint32_t(fgetc(fin)) << 8) |
-        (uint32_t(fgetc(fin)) << 16) | (uint32_t(fgetc(fin)) << 24);
+	unsigned char b0 = fgetc(fin) & 0xff;
+	unsigned char b1 = fgetc(fin) & 0xff;
+	unsigned char b2 = fgetc(fin) & 0xff;
+	unsigned char b3 = fgetc(fin) & 0xff;
+    return uint32_t(b0) | (uint32_t(b1) << 8) |
+        (uint32_t(b2) << 16) | (uint32_t(b3) << 24);
 }
 
 uint16_t Tiffsniff::read_uint16(void) {
     if (big_endian) {
         return icc_tag::read_uint16(fin);
     } 
-    return uint32_t(fgetc(fin)) | (uint32_t(fgetc(fin)) << 8);
+	unsigned char b0 = fgetc(fin) & 0xff;
+	unsigned char b1 = fgetc(fin) & 0xff;
+    return uint32_t(b0) | (uint32_t(b1) << 8);
 }
 
 Display_profile Tiffsniff::profile(void) {

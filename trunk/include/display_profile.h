@@ -36,6 +36,8 @@ using std::string;
 using std::vector;
 using std::pair;
 
+#include <array>
+
 #include <opencv2/core/core.hpp>
 
 class Display_profile {
