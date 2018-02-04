@@ -41,55 +41,64 @@ Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 
     luminance_weights[2] = 0.0722;
 
     fin = fopen(fname.c_str(), "rb");
-    
     if (fin) {
-        unsigned char magic[4];
-        size_t nread = fread(magic, 1, 4, fin);
-    
-        if ((magic[0] == 0x4d && magic[1] == 0x4d) ||
-            (magic[0] == 0x49 && magic[1] == 0x49)) { // possible TIFF file
-            
-            parse_tiff(0);
+        if (fseek(fin, 0, SEEK_END) == 0) {
+            file_size = ftell(fin);
         }
+        rewind(fin);
         
-        if (magic[0] == 0xff && magic[1] == 0xd8) { // possible JPEG file
-            fseek(fin, -2, SEEK_END);
-            if (fgetc(fin) == 0xff && fgetc(fin) == 0xd9) {
-                logger.debug("Valid JPEG file detected.\n");
-                has_profile = true;
-                // now build a list of APP blocks
-                auto blocks = scan_jpeg_app_blocks();
+        try {
+        
+            unsigned char magic[4];
+            size_t nread = fread(magic, 1, 4, fin);
+        
+            if ((magic[0] == 0x4d && magic[1] == 0x4d) ||
+                (magic[0] == 0x49 && magic[1] == 0x49)) { // possible TIFF file
                 
-                if (blocks.size() == 0) {
-                    // this is a raw JPEG file
-                    assumed_sRGB = true;
-                } else {
-                    bool icc_found = false;
-                    // if we have an ICC block, use that
-                    for (size_t i=0; i < blocks.size() && !icc_found; i++) {
-                        if (blocks[i].first == jpeg_app_t::ICC) {
-                            icc_found = true;
-                            read_icc_profile(blocks[i].second + 128);
-                        }
-                    }
+                parse_tiff(0);
+            }
+            
+            if (magic[0] == 0xff && magic[1] == 0xd8) { // possible JPEG file
+                fseek(fin, -2, SEEK_END);
+                if (fgetc(fin) == 0xff && fgetc(fin) == 0xd9) {
+                    logger.debug("Valid JPEG file detected.\n");
+                    has_profile = true;
+                    // now build a list of APP blocks
+                    auto blocks = scan_jpeg_app_blocks();
                     
-                    bool exif_found = false;
-                    if (!icc_found) { // no ICC block, settle for EXIF
-                        for (size_t i=0; i < blocks.size() && !exif_found; i++) {
-                            if (blocks[i].first == jpeg_app_t::EXIF) {
-                                exif_found = true;
-                                parse_tiff(blocks[i].second);
-                                
-                                if (confirmed_sRGB) {
-                                    logger.debug("sRGB colour space confirmed by EXIF data\n");
-                                } 
+                    if (blocks.size() == 0) {
+                        // this is a raw JPEG file
+                        assumed_sRGB = true;
+                    } else {
+                        bool icc_found = false;
+                        // if we have an ICC block, use that
+                        for (size_t i=0; i < blocks.size() && !icc_found; i++) {
+                            if (blocks[i].first == jpeg_app_t::ICC) {
+                                icc_found = true;
+                                read_icc_profile(blocks[i].second);
                             }
                         }
+                        
+                        bool exif_found = false;
+                        if (!icc_found) { // no ICC block, settle for EXIF
+                            for (size_t i=0; i < blocks.size() && !exif_found; i++) {
+                                if (blocks[i].first == jpeg_app_t::EXIF) {
+                                    exif_found = true;
+                                    parse_tiff(blocks[i].second);
+                                    
+                                    if (confirmed_sRGB) {
+                                        logger.debug("sRGB colour space confirmed by EXIF data\n");
+                                    } 
+                                }
+                            }
+                        }
+                        
+                        assumed_sRGB = true;
                     }
-                    
-                    assumed_sRGB = true;
                 }
             }
+        } catch (int) {
+            logger.error("Error while parsing input image, unable to extract colourspace information.\n");
         }
     }
     
@@ -143,7 +152,7 @@ Display_profile Tiffsniff::profile(void) {
     return Display_profile(gtable, luminance_weights);
 }
 
-void Tiffsniff::parse_tiff(off_t offset) {
+void Tiffsniff::parse_tiff(off_t offset) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         const char be_id[4] = {0x4D, 0x4D, 0x00, 0x2A};
@@ -177,15 +186,22 @@ void Tiffsniff::parse_tiff(off_t offset) {
                 uint32_t ifd_offset = read_uint32();
                 read_ifd(ifd_offset + offset, offset);
                 has_profile = true;
-            }
+            } 
         }
+    } else {
+        throw -1;
     }
 }
 
-void Tiffsniff::read_ifd(off_t offset, off_t base_offset) {
+void Tiffsniff::read_ifd(off_t offset, off_t base_offset) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         uint16_t cur_ifd_entries = read_uint16();
+        
+        // check for weird values; realistic tiff files will not have thousands of entries
+        if (cur_ifd_entries == 0 || cur_ifd_entries > 32765 || feof(fin)) {
+            throw -1;
+        }
         
         tiff_field field;
         for (uint16_t i=0; i < cur_ifd_entries; i++) {
@@ -194,9 +210,13 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset) {
             field.data_count = read_uint32();
             field.data_offset = read_uint32();;
             
+            if (i < (cur_ifd_entries-1) && feof(fin)) {
+                throw -1;
+            }
+            
             if (field.tag_id == 0x8773) { // ICC profile 
                 long fpos = ftell(fin);
-                read_icc_profile(field.data_offset + 128);
+                read_icc_profile(field.data_offset);
                 fseek(fin, fpos, SEEK_SET);
             }
             
@@ -206,7 +226,7 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset) {
                 fseek(fin, fpos, SEEK_SET);
             }
             
-            if (field.tag_id == 0xa001) {
+            if (field.tag_id == 0xa001) { // EXIF colourspace tag
                 confirmed_sRGB = (field.data_offset / 65536) == 1;
             }
         }
@@ -214,21 +234,31 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset) {
         // read next IDF offset
         uint32_t next_offset = read_uint32();
         if (next_offset) {
+            if (next_offset > file_size || feof(fin)) {
+                throw -1;
+            }
             read_ifd(base_offset + next_offset, base_offset);
         }
+    } else {
+        throw -1;
     }
 }
 
-void Tiffsniff::read_icc_profile(off_t offset) {
+void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
     char icc_header[128];
-    int seekerr = fseek(fin, offset - 128, SEEK_SET);
+    int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
-        int nread = fread(icc_header, 1, 128, fin);
+        if (fread(icc_header, 1, 128, fin) != 128) {
+            throw -1;
+        }
         logger.debug("Device: %c%c%c%c\n", icc_header[12], icc_header[13], icc_header[14], icc_header[15]);
         logger.debug("Colour space: %c%c%c%c\n", icc_header[16], icc_header[17], icc_header[18], icc_header[19]);
         
         // looks like ICC profiles are stored in big endian format
         uint32_t icc_entries = icc_tag::read_uint32(fin);
+        if (icc_entries == 0 || icc_entries > 32765 || feof(fin)) {
+            throw -1;
+        }
         
         bool found_trc = false;
         
@@ -238,7 +268,11 @@ void Tiffsniff::read_icc_profile(off_t offset) {
             tag.data_offset = icc_tag::read_uint32(fin);
             tag.element_size = icc_tag::read_uint32(fin);
             
-            const off_t icc_tag_offset = offset + tag.data_offset - 128;
+            const off_t icc_tag_offset = offset + tag.data_offset;
+            if (icc_tag_offset > file_size || feof(fin)) {
+                throw -1;
+            }
+            
             long fpos = ftell(fin); // before we jump to an individual entry
             
             // Just grab the first TRC get find, since they are probably all the same anyway
@@ -263,15 +297,23 @@ void Tiffsniff::read_icc_profile(off_t offset) {
                 luminance_weights[2] = col[1];
             }
             
+            if (tag.tag_signature == 0x77747074) {
+                read_xyztype_entry(icc_tag_offset, tag.element_size);
+            }
+            
+            
+            
             fseek(fin, fpos, SEEK_SET); // return to ICC IFD
         }
         if (!found_trc) {
             logger.error("Warning: image contains ICC profile, but no TRC curve was found.\n");
         }
+    } else {
+        throw -1;
     }
 }
 
-void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) {
+void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         char trc_type[4];
@@ -280,14 +322,16 @@ void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) {
         if (strncmp(trc_type, "curv", 4) == 0) {
             read_curv_trc(offset);
         } else {
-          if (strncmp(trc_type, "para", 4) == 0) {
-              read_para_trc(offset);
-          }
+            if (strncmp(trc_type, "para", 4) == 0) {
+                read_para_trc(offset);
+            }
         }
+    } else {
+        throw -1;
     }
 }
 
-void Tiffsniff::read_curv_trc(off_t offset) {
+void Tiffsniff::read_curv_trc(off_t offset) throw(int) {
     int seekerr = fseek(fin, offset + 8, SEEK_SET);
     if (!seekerr) {
         uint32_t ecount = icc_tag::read_uint32(fin);
@@ -307,10 +351,12 @@ void Tiffsniff::read_curv_trc(off_t offset) {
             logger.debug("ICC 'curv' gamma table with %ld entries\n", gtable.size());
             break;
         }
+    } else {
+        throw -1;
     }
 }
 
-void Tiffsniff::read_para_trc(off_t offset) {
+void Tiffsniff::read_para_trc(off_t offset) throw(int) {
     int seekerr = fseek(fin, offset + 8, SEEK_SET);
     if (!seekerr) {
         uint16_t ftype = icc_tag::read_uint16(fin);
@@ -357,10 +403,12 @@ void Tiffsniff::read_para_trc(off_t offset) {
             logger.debug("unknown ICC parametricCurveType %d\n", ftype);
             break;
         }
+    } else {
+        throw -1;
     }
 }
 
-vector<double> Tiffsniff::read_matrix_column_entry(off_t offset, uint32_t size) {
+vector<double> Tiffsniff::read_matrix_column_entry(off_t offset, uint32_t size) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         uint32_t sig = icc_tag::read_uint32(fin);
@@ -371,11 +419,34 @@ vector<double> Tiffsniff::read_matrix_column_entry(off_t offset, uint32_t size) 
         double z = icc_tag::read_fixed15_16(fin);
         
         return vector<double>{x,y,z};
+    } else {
+        throw -1;
     }
     return vector<double>{0,0,0};
 }
 
-vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) {
+vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t size) throw(int) {
+    int seekerr = fseek(fin, offset, SEEK_SET);
+    if (!seekerr) {
+        uint32_t sig = icc_tag::read_uint32(fin);
+        icc_tag::read_uint32(fin); // drop reserved field
+        
+        int n = (size - 8)/12;
+        
+        double x = icc_tag::read_fixed15_16(fin);
+        double y = icc_tag::read_fixed15_16(fin);
+        double z = icc_tag::read_fixed15_16(fin);
+        
+        logger.debug("mediaWhitepoint : x=%lf, y=%lf, z=%lf\n", x, y, z);
+        
+        return vector<double>{x,y,z};
+    } else {
+        throw -1;
+    }
+    return vector<double>{0,0,0};
+}
+
+vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(int) {
     vector< pair<jpeg_app_t, off_t> > blocks;
     fseek(fin, 2, SEEK_SET);
     bool done = false;
@@ -383,6 +454,10 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) {
     while (!feof(fin) && !done) {
         uint16_t app_id = icc_tag::read_uint16(fin);
         uint16_t bsize  = icc_tag::read_uint16(fin); // this size excludes the size bytes
+        
+        if ((app_id & 0xff00) != 0xff00) {
+            throw -1;
+        }
         
         done = (app_id & 0xffe0) != 0xffe0;
         if (!done) {
@@ -402,7 +477,9 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) {
                 blocks.push_back(make_pair(jpeg_app_t::EXIF, ftell(fin) - 1));
             }
             
-            fseek(fin, fpos + bsize - 2, SEEK_SET);
+            if (fseek(fin, fpos + bsize - 2, SEEK_SET) != 0) {
+                throw -1;
+            }
         }
     }
     return blocks;
