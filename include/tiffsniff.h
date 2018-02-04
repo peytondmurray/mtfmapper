@@ -53,14 +53,15 @@ class Tiffsniff {
     Display_profile profile(void);
     
   private:
-    void parse_tiff(off_t offset);
-    void read_ifd(off_t offset, off_t base_offset = 0);
-    void read_icc_profile(off_t offset);
-    void read_trc_entry(off_t offset, uint32_t size);
-    vector<double> read_matrix_column_entry(off_t offset, uint32_t size);
-    void read_curv_trc(off_t offset);
-    void read_para_trc(off_t offset);
-    vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void);
+    void parse_tiff(off_t offset) throw(int);
+    void read_ifd(off_t offset, off_t base_offset = 0) throw(int);
+    void read_icc_profile(off_t offset) throw(int);
+    void read_trc_entry(off_t offset, uint32_t size) throw(int);
+    vector<double> read_matrix_column_entry(off_t offset, uint32_t size) throw(int);
+    void read_curv_trc(off_t offset) throw(int);
+    void read_para_trc(off_t offset) throw(int);
+    vector<double> read_xyztype_entry(off_t offset, uint32_t size) throw(int);
+    vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void) throw(int);
     
     uint32_t read_uint32(void);
     uint16_t read_uint16(void);
@@ -70,6 +71,7 @@ class Tiffsniff {
     bool big_endian = false;
     bool confirmed_sRGB = false;
     bool assumed_sRGB = false;
+    off_t file_size;
     
     vector<double> gparm; // should also have the option of a vector<> ?
     vector< pair<uint16_t, uint16_t> > gtable;
