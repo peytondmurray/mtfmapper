@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 6)
-set(mtfmapper_VERSION_SUB 14) #increment on release
+set(mtfmapper_VERSION_SUB 16) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -91,7 +91,13 @@ if (UNIX)
       set(MANDIR "/usr/share/man/man1")
   endif(NOT MANDIR)
   set(HTML_HELP_DIR ${DOCDIR})
-  add_subdirectory(manpages)
+  # because we use asciidoc, we now have a dependency on LaTeX for building the manpages
+  # this is not ideal, but it should allow a normal build (no manpages) if LaTeX is missing
+  find_package(LATEX)
+  # documenation in LaTeX
+  if (LATEX_COMPILER)
+    add_subdirectory(manpages)
+  endif (LATEX_COMPILER)
 endif(UNIX)
 
 if (MSVC)
