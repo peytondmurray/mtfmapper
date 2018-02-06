@@ -45,32 +45,52 @@ typedef enum {
     NONE=15
 } jpeg_app_t;
 
+
 class Tiffsniff {
   public:
-    Tiffsniff(const string& fname);
+    Tiffsniff(const string& fname, bool is_8bit = false);
     ~Tiffsniff(void);
     bool profile_found(void) const { return has_profile; }
     Display_profile profile(void);
     
   private:
+    typedef enum {
+        sRGB,
+        adobeRGB,
+        UNKNOWN,
+        CUSTOM
+    } profile_t;
+    
+    typedef enum {
+        ICC,
+        TIFF,
+        EXIF,
+        EXIF_INTEROP
+    } ifd_t;
+   
     void parse_tiff(off_t offset) throw(int);
-    void read_ifd(off_t offset, off_t base_offset = 0) throw(int);
+    void read_ifd(off_t offset, off_t base_offset = 0, ifd_t ifd_type = ifd_t::TIFF) throw(int);
     void read_icc_profile(off_t offset) throw(int);
     void read_trc_entry(off_t offset, uint32_t size) throw(int);
-    vector<double> read_matrix_column_entry(off_t offset, uint32_t size) throw(int);
-    void read_curv_trc(off_t offset) throw(int);
-    void read_para_trc(off_t offset) throw(int);
     vector<double> read_xyztype_entry(off_t offset, uint32_t size) throw(int);
+    void read_curv_trc(off_t offset, uint32_t size) throw(int);
+    void read_para_trc(off_t offset) throw(int);
     vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void) throw(int);
+    double read_exif_gamma(off_t offset) throw(int);
     
     uint32_t read_uint32(void);
     uint16_t read_uint16(void);
     
     FILE* fin;
-    bool has_profile = false;
     bool big_endian = false;
-    bool confirmed_sRGB = false;
+    bool has_profile = false;
     bool assumed_sRGB = false;
+    
+    int exif_cs = -1;
+    bool exif_gamma_found = false;
+    bool exif_interop_r03 = false;
+    
+    profile_t inferred_profile = profile_t::UNKNOWN;
     off_t file_size;
     
     vector<double> gparm; // should also have the option of a vector<> ?
