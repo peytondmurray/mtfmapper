@@ -30,15 +30,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/common_types.h"
 #include <string.h>
+#include <iostream>
 
-Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 0.0) {
+Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) : gparm(7, 0.0), luminance_weights(3, 0.0) {
     // linear gamma, by default
     gparm[0] = 1.0;
     gparm[1] = 1.0;
-    // use sRGB weights, by default
-    luminance_weights[0] = 0.2126;
-    luminance_weights[1] = 0.7152;
-    luminance_weights[2] = 0.0722;
+    // use sRGB weights adapted to D50
+    luminance_weights[0] = 0.2225045;
+    luminance_weights[1] = 0.7168786;
+    luminance_weights[2] = 0.0606169;
 
     fin = fopen(fname.c_str(), "rb");
     if (fin) {
@@ -51,6 +52,10 @@ Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 
         
             unsigned char magic[4];
             size_t nread = fread(magic, 1, 4, fin);
+            
+            if (nread != 4) {
+                throw -1;
+            }
         
             if ((magic[0] == 0x4d && magic[1] == 0x4d) ||
                 (magic[0] == 0x49 && magic[1] == 0x49)) { // possible TIFF file
@@ -59,41 +64,30 @@ Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 
             }
             
             if (magic[0] == 0xff && magic[1] == 0xd8) { // possible JPEG file
-                fseek(fin, -2, SEEK_END);
-                if (fgetc(fin) == 0xff && fgetc(fin) == 0xd9) {
-                    logger.debug("Valid JPEG file detected.\n");
-                    has_profile = true;
-                    // now build a list of APP blocks
-                    auto blocks = scan_jpeg_app_blocks();
+                // we could check the end of the file for 0xff 0xf9, but Sony padds the back
+                // of the file with zeros, so we'll just wing it
+                has_profile = true;
+                // now build a list of APP blocks
+                auto blocks = scan_jpeg_app_blocks();
+                
+                if (blocks.size() > 0) {
+                    bool icc_found = false;
+                    // if we have an ICC block, use that
+                    for (size_t i=0; i < blocks.size() && !icc_found; i++) {
+                        if (blocks[i].first == jpeg_app_t::ICC) {
+                            icc_found = true;
+                            read_icc_profile(blocks[i].second);
+                        }
+                    }
                     
-                    if (blocks.size() == 0) {
-                        // this is a raw JPEG file
-                        assumed_sRGB = true;
-                    } else {
-                        bool icc_found = false;
-                        // if we have an ICC block, use that
-                        for (size_t i=0; i < blocks.size() && !icc_found; i++) {
-                            if (blocks[i].first == jpeg_app_t::ICC) {
-                                icc_found = true;
-                                read_icc_profile(blocks[i].second);
+                    bool exif_found = false;
+                    if (!icc_found) { // no ICC block, settle for EXIF
+                        for (size_t i=0; i < blocks.size() && !exif_found; i++) {
+                            if (blocks[i].first == jpeg_app_t::EXIF) {
+                                exif_found = true;
+                                parse_tiff(blocks[i].second);
                             }
                         }
-                        
-                        bool exif_found = false;
-                        if (!icc_found) { // no ICC block, settle for EXIF
-                            for (size_t i=0; i < blocks.size() && !exif_found; i++) {
-                                if (blocks[i].first == jpeg_app_t::EXIF) {
-                                    exif_found = true;
-                                    parse_tiff(blocks[i].second);
-                                    
-                                    if (confirmed_sRGB) {
-                                        logger.debug("sRGB colour space confirmed by EXIF data\n");
-                                    } 
-                                }
-                            }
-                        }
-                        
-                        assumed_sRGB = true;
                     }
                 }
             }
@@ -102,16 +96,41 @@ Tiffsniff::Tiffsniff(const string& fname) : gparm(7, 0.0), luminance_weights(3, 
         }
     }
     
-    if (confirmed_sRGB || assumed_sRGB) {
+    if (inferred_profile == profile_t::UNKNOWN) {
+        logger.debug("No ICC profile found, attempting to infer profile from Exif information, Exif CS: %d\n", exif_cs);
+        if (exif_cs < 0) {
+            // for 16-bit images, force linear colour space if no Exif Colour Space tag was found
+            // for 8-bit images, assume sRGB
+            inferred_profile = is_8bit ? profile_t::sRGB : profile_t::CUSTOM; 
+        } else {
+            if (exif_cs == 1) {
+                // sRGB confirmed
+                inferred_profile = profile_t::sRGB;
+            } else {
+                // otherwise assume this means aRGB
+                inferred_profile = profile_t::adobeRGB;
+                if (!exif_gamma_found) {
+                    gparm[0] = 563/256.0;
+                }
+            }
+        }
+    }
+    
+    if (inferred_profile == profile_t::sRGB) {
         gparm[0] = 2.4;
         gparm[1] = 1.0/1.055;
         gparm[2] = 0.055/1.055;
         gparm[3] = 1.0/12.92;
         gparm[4] = 0.04045;
         
-        luminance_weights[0] = 0.2126;
-        luminance_weights[1] = 0.7152;
-        luminance_weights[2] = 0.0722;
+        luminance_weights[0] = 0.2225045;
+        luminance_weights[1] = 0.7168786;
+        luminance_weights[2] = 0.0606169;
+    }
+    if (inferred_profile == profile_t::adobeRGB) {
+        luminance_weights[0] = 0.3111242;
+        luminance_weights[1] = 0.6256560;
+        luminance_weights[2] = 0.0632197;
     }
 }
 
@@ -159,9 +178,8 @@ void Tiffsniff::parse_tiff(off_t offset) throw(int) {
         const char le_id[4] = {0x49, 0x49, 0x2A, 0x00};
         
         unsigned char magic[4];
-        size_t nread = fread(magic, 1, 4, fin);
         
-        if (nread == 4) {
+        if (fread(magic, 1, 4, fin) == 4) {
             // TIFF
             bool is_valid_tiff = false;
             if (memcmp(le_id, magic, 4) == 0) {
@@ -184,16 +202,18 @@ void Tiffsniff::parse_tiff(off_t offset) throw(int) {
             
             if (is_valid_tiff) {
                 uint32_t ifd_offset = read_uint32();
-                read_ifd(ifd_offset + offset, offset);
+                read_ifd(ifd_offset + offset, offset, ifd_t::TIFF);
                 has_profile = true;
             } 
+        } else {
+            throw -1;
         }
     } else {
         throw -1;
     }
 }
 
-void Tiffsniff::read_ifd(off_t offset, off_t base_offset) throw(int) {
+void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         uint16_t cur_ifd_entries = read_uint16();
@@ -214,21 +234,41 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset) throw(int) {
                 throw -1;
             }
             
-            if (field.tag_id == 0x8773) { // ICC profile 
-                long fpos = ftell(fin);
+            
+            long fpos = ftell(fin);
+            
+            if (ifd_type == ifd_t::TIFF && field.tag_id == 0x8773) { // ICC profile 
                 read_icc_profile(field.data_offset);
-                fseek(fin, fpos, SEEK_SET);
             }
             
-            if (field.tag_id == 0x8769) { // EXIF field
-                long fpos = ftell(fin);
-                read_ifd(base_offset + field.data_offset, base_offset);
-                fseek(fin, fpos, SEEK_SET);
+            if (ifd_type == ifd_t::TIFF && field.tag_id == 0x8769) { // EXIF field
+                read_ifd(base_offset + field.data_offset, base_offset, ifd_t::EXIF);
             }
             
-            if (field.tag_id == 0xa001) { // EXIF colourspace tag
-                confirmed_sRGB = (field.data_offset / 65536) == 1;
+            if (ifd_type == ifd_t::EXIF && field.tag_id == 0xa001) { // EXIF colourspace tag
+                if (fseek(fin, -4, SEEK_CUR) == 0) {
+                    exif_cs = read_uint16();
+                }
             }
+            
+            if (ifd_type == ifd_t::EXIF && field.tag_id == 0xa500) { // EXIF gamma tag
+                double gamma = read_exif_gamma(base_offset + field.data_offset);
+                gparm[0] = gamma;
+                exif_gamma_found = true;
+            }
+            
+            if (ifd_type == ifd_t::EXIF && field.tag_id == 0xa005) { // EXIF interoperability IFD pointer
+                read_ifd(base_offset + field.data_offset, base_offset, ifd_t::EXIF_INTEROP);
+            }
+            
+            if (ifd_type == ifd_t::EXIF_INTEROP && field.tag_id == 0x0001) { // EXIF interoperability tag
+                char ids[4];
+                if (fseek(fin, -4, SEEK_CUR) == 0 && fread(ids, 1, 4, fin) == 4) {
+                    exif_interop_r03 = strncmp(ids, "R03", 3) == 0;
+                }
+            }
+            
+            fseek(fin, fpos, SEEK_SET);
         }
         
         // read next IDF offset
@@ -237,7 +277,7 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset) throw(int) {
             if (next_offset > file_size || feof(fin)) {
                 throw -1;
             }
-            read_ifd(base_offset + next_offset, base_offset);
+            read_ifd(base_offset + next_offset, base_offset, ifd_t::TIFF);
         }
     } else {
         throw -1;
@@ -282,31 +322,35 @@ void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
                 found_trc = true;
             }
             
-            if (tag.tag_signature == 0x7258595A) {
-                vector<double> col = read_matrix_column_entry(icc_tag_offset, tag.element_size);
+            if (tag.tag_signature == 0x7258595A) { // red matrix column
+                vector<double> col = read_xyztype_entry(icc_tag_offset, tag.element_size);
                 luminance_weights[0] = col[1];
             }
             
-            if (tag.tag_signature == 0x6758595a) {
-                vector<double> col = read_matrix_column_entry(icc_tag_offset, tag.element_size);
+            if (tag.tag_signature == 0x6758595a) { // green matrix column
+                vector<double> col = read_xyztype_entry(icc_tag_offset, tag.element_size);
                 luminance_weights[1] = col[1];
             }
             
-            if (tag.tag_signature == 0x6258595A) {
-                vector<double> col = read_matrix_column_entry(icc_tag_offset, tag.element_size);
+            if (tag.tag_signature == 0x6258595A) { // blue matrix column
+                vector<double> col = read_xyztype_entry(icc_tag_offset, tag.element_size);
                 luminance_weights[2] = col[1];
             }
             
-            if (tag.tag_signature == 0x77747074) {
-                read_xyztype_entry(icc_tag_offset, tag.element_size);
+            if (tag.tag_signature == 0x77747074) { // media white point
+                vector<double> wp = read_xyztype_entry(icc_tag_offset, tag.element_size);
+                if (fabs(wp[1] - 1.0) < 1e-6) { // only if it looks like a valid illuminant
+                    logger.debug("white point is %lg, %lg, %lg\n", wp[0], wp[1], wp[2]);
+                }
             }
-            
-            
             
             fseek(fin, fpos, SEEK_SET); // return to ICC IFD
         }
         if (!found_trc) {
             logger.error("Warning: image contains ICC profile, but no TRC curve was found.\n");
+            inferred_profile = profile_t::sRGB;
+        } else {
+            inferred_profile = profile_t::CUSTOM;
         }
     } else {
         throw -1;
@@ -317,24 +361,31 @@ void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         char trc_type[4];
-        int nread = fread(&trc_type, 1, 4, fin);
-        
-        if (strncmp(trc_type, "curv", 4) == 0) {
-            read_curv_trc(offset);
-        } else {
-            if (strncmp(trc_type, "para", 4) == 0) {
-                read_para_trc(offset);
+        if (fread(&trc_type, 1, 4, fin) == 4) {
+            if (strncmp(trc_type, "curv", 4) == 0) {
+                read_curv_trc(offset, size);
+            } else {
+                if (strncmp(trc_type, "para", 4) == 0) {
+                    read_para_trc(offset);
+                }
             }
+        } else {
+            throw -1;
         }
     } else {
         throw -1;
     }
 }
 
-void Tiffsniff::read_curv_trc(off_t offset) throw(int) {
+void Tiffsniff::read_curv_trc(off_t offset, uint32_t size) throw(int) {
     int seekerr = fseek(fin, offset + 8, SEEK_SET);
     if (!seekerr) {
         uint32_t ecount = icc_tag::read_uint32(fin);
+        
+        if ((ecount*2+12) > size || feof(fin)) {
+            throw -1;
+        }
+        
         switch(ecount) {
         case 0: // nothing to do here
             break;
@@ -344,7 +395,7 @@ void Tiffsniff::read_curv_trc(off_t offset) throw(int) {
             break;
         default: // with two or more entries, use the table
             gtable = vector< pair<uint16_t, uint16_t> >(ecount);
-            for (int i=0; i < ecount; i++) {
+            for (uint64_t i=0; i < ecount; i++) {
                 gtable[i].first = i*65535/(ecount-1);
                 gtable[i].second = icc_tag::read_uint16(fin);
             }
@@ -401,6 +452,7 @@ void Tiffsniff::read_para_trc(off_t offset) throw(int) {
             break;
         default: // treat this as linear
             logger.debug("unknown ICC parametricCurveType %d\n", ftype);
+            throw -1;
             break;
         }
     } else {
@@ -408,11 +460,21 @@ void Tiffsniff::read_para_trc(off_t offset) throw(int) {
     }
 }
 
-vector<double> Tiffsniff::read_matrix_column_entry(off_t offset, uint32_t size) throw(int) {
+vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
         uint32_t sig = icc_tag::read_uint32(fin);
+        
+        if (sig != 0x58595A20) {
+            logger.debug("Expected XYZ signature, found %x instead.\n", sig);
+            throw -1;
+        }
+        
         icc_tag::read_uint32(fin); // drop reserved field
+        
+        if (feof(fin)) {
+            throw -1;
+        }
         
         double x = icc_tag::read_fixed15_16(fin);
         double y = icc_tag::read_fixed15_16(fin);
@@ -425,25 +487,16 @@ vector<double> Tiffsniff::read_matrix_column_entry(off_t offset, uint32_t size) 
     return vector<double>{0,0,0};
 }
 
-vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t size) throw(int) {
+double Tiffsniff::read_exif_gamma(off_t offset) throw(int) {
     int seekerr = fseek(fin, offset, SEEK_SET);
     if (!seekerr) {
-        uint32_t sig = icc_tag::read_uint32(fin);
-        icc_tag::read_uint32(fin); // drop reserved field
+        uint32_t top = icc_tag::read_uint32(fin);
+        uint32_t bot = icc_tag::read_uint32(fin);
         
-        int n = (size - 8)/12;
-        
-        double x = icc_tag::read_fixed15_16(fin);
-        double y = icc_tag::read_fixed15_16(fin);
-        double z = icc_tag::read_fixed15_16(fin);
-        
-        logger.debug("mediaWhitepoint : x=%lf, y=%lf, z=%lf\n", x, y, z);
-        
-        return vector<double>{x,y,z};
+        return double(top)/double(bot);
     } else {
         throw -1;
     }
-    return vector<double>{0,0,0};
 }
 
 vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(int) {
@@ -461,7 +514,6 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(in
         
         done = (app_id & 0xffe0) != 0xffe0;
         if (!done) {
-            int app_n = (app_id & 0xff) - 0xe0;
             off_t fpos = ftell(fin);
             
             unsigned char sig[128];

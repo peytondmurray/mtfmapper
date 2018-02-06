@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
 	    }
 	}
 	
-	Tiffsniff tiff(tc_in_name.getValue());
+	Tiffsniff tiff(tc_in_name.getValue(), cvimg.elemSize1() == 1);
 	Display_profile display_profile;
 	if (tiff.profile_found()) {
 	    display_profile = tiff.profile();
