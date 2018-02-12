@@ -48,7 +48,7 @@ typedef enum {
 
 class Tiffsniff {
   public:
-    Tiffsniff(const string& fname, bool is_8bit = false);
+    Tiffsniff(const string& fname, bool is_8bit = false, string tmp_path="");
     ~Tiffsniff(void);
     bool profile_found(void) const { return has_profile; }
     Display_profile profile(void);
@@ -77,6 +77,7 @@ class Tiffsniff {
     void read_para_trc(off_t offset) throw(int);
     vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void) throw(int);
     double read_exif_gamma(off_t offset) throw(int);
+    void parse_png(off_t offset, const string& tmp_path);
     
     uint32_t read_uint32(void);
     uint16_t read_uint16(void);

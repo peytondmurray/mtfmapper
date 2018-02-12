@@ -66,6 +66,15 @@ endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Threads)
+find_package(ZLIB QUIET)
+
+# we only use zlib to decompress ICC profiles embedded in PNG files
+# so we just quietly drop support if zlib was not configured
+if (ZLIB_FOUND)
+    set(mtfmapper_ZLIB_FOUND 1)
+else (ZLIB_FOUND)
+    set(mtfmapper_ZLIB_FOUND 0)
+endif (ZLIB_FOUND)
 
 include_directories("${OpenCV_INCLUDE_DIRS}")
 include_directories("${TCLAP_INCLUDE_DIR}")
@@ -77,7 +86,7 @@ message(STATUS "Eigen path is" ${EIGEN3_INCLUDE_DIR})
 
 #optional
 if (BUILD_DOC)
-  find_package(LATEX)
+  find_package(LATEX QUIET)
   # documenation in LaTeX
   if (LATEX_COMPILER)
     include(cmake_helpers/UseLATEX.cmake)
@@ -93,11 +102,13 @@ if (UNIX)
   set(HTML_HELP_DIR ${DOCDIR})
   # because we use asciidoc, we now have a dependency on LaTeX for building the manpages
   # this is not ideal, but it should allow a normal build (no manpages) if LaTeX is missing
-  find_package(LATEX)
-  # documenation in LaTeX
-  if (LATEX_COMPILER)
+  find_package(Asciidoc QUIET)
+  if (ASCIIDOC_FOUND)
+    message(STATUS "found asciidoc, going to build man pages")
     add_subdirectory(manpages)
-  endif (LATEX_COMPILER)
+  else (ASCIIDOC_FOUND)
+    message(STATUS "not building man pages, asciidocs missing")
+  endif (ASCIIDOC_FOUND)
 endif(UNIX)
 
 if (MSVC)

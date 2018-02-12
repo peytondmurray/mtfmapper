@@ -6,7 +6,7 @@ set_target_properties(mtfmapper_bin PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_
 if (MSVC)
   set_target_properties(mtfmapper_bin PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR})
 endif (MSVC)
-target_link_libraries(mtfmapper_bin ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(mtfmapper_bin ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${ZLIB_LIBRARIES})
 
 file(GLOB gen_sources ../src/generator/*${cpp_ext})
 add_executable(generate_rectangle ${gen_sources})

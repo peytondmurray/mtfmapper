@@ -32,7 +32,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string.h>
 #include <iostream>
 
-Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) : gparm(7, 0.0), luminance_weights(3, 0.0) {
+#include "config.h"
+#if mtfmapper_ZLIB_FOUND == 1
+    #include "zlib.h"
+    #include <unistd.h>
+#endif
+
+Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path) 
+: gparm(7, 0.0), luminance_weights(3, 0.0) {
     // linear gamma, by default
     gparm[0] = 1.0;
     gparm[1] = 1.0;
@@ -91,6 +98,11 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) : gparm(7, 0.0), luminan
                     }
                 }
             }
+            
+            if (memcmp(magic, "\x89\x50\x4e\x47", 4) == 0) {
+                parse_png(ftell(fin), tmp_path);
+            }
+            
         } catch (int) {
             logger.error("Error while parsing input image, unable to extract colourspace information.\n");
         }
@@ -537,3 +549,106 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(in
     return blocks;
 }
 
+void Tiffsniff::parse_png(off_t offset, const string& tmp_path) {
+    int seekerr = fseek(fin, offset, SEEK_SET);
+    if (!seekerr) {
+        unsigned char magic[4];
+        
+        fseek(fin, 4, SEEK_CUR); // skip over rest of PNG signature
+        uint32_t chunk_size = icc_tag::read_uint32(fin);
+        if (fread(magic, 1, 4, fin) != 4) throw -1;
+        fseek(fin, chunk_size + 4, SEEK_CUR);
+        bool has_icc_profile = false;
+        do {
+            uint32_t chunk_size = icc_tag::read_uint32(fin);
+            if (feof(fin) || fread(magic, 1, 4, fin) != 4) {
+                // not necessarily an error, maybe we already grabbed the profile ...
+                return;
+            }
+            if (memcmp(magic,"gAMA", 4) == 0 && !has_icc_profile) {
+                gparm[0] = 100000.0 / double(icc_tag::read_uint32(fin));
+                inferred_profile = profile_t::CUSTOM;
+                has_profile = true;
+            }
+            if (memcmp(magic,"sRGB", 4) == 0 && !has_icc_profile) { // not tested yet
+                int psrgb = fgetc(fin);
+                if (psrgb >= 0 && psrgb <= 3) {
+                    inferred_profile = profile_t::sRGB;
+                    has_profile = true;
+                }
+            }
+            #if mtfmapper_ZLIB_FOUND == 1
+            if (memcmp(magic,"iCCP", 4) == 0) {
+                unsigned char pfname[81];
+                int name_len = 0;
+                bool done = false;
+                while (name_len < 80 && !done) {
+                    pfname[name_len] = fgetc(fin);
+                    done = pfname[name_len] == 0;
+                    name_len++;
+                }
+                if (fgetc(fin) != 0) throw -1; // PNG comp method not deflate!
+                
+                size_t c_size = chunk_size - (name_len + 1);
+                
+                vector<unsigned char> c_chunk(chunk_size, 0);
+                vector<unsigned char> u_chunk(chunk_size*10, 0);
+                if (fread(c_chunk.data(), 1, c_size, fin) != c_size) throw -1;
+                
+                z_stream strm;
+                strm.zalloc = Z_NULL;
+                strm.zfree = Z_NULL;
+                strm.opaque = Z_NULL;
+                strm.avail_in = 0;
+                strm.next_in = Z_NULL;
+                int ret = inflateInit(&strm);
+                if (ret != Z_OK) {
+                    logger.error("PNG/ICC profile error: zlib init failed\n");
+                    throw -1;
+                }
+                
+                strm.avail_in = c_size;
+                strm.next_in = c_chunk.data();
+                strm.avail_out = u_chunk.size();
+                strm.next_out = u_chunk.data();
+                ret = inflate(&strm, Z_NO_FLUSH);
+                assert(ret != Z_STREAM_ERROR); 
+                switch (ret) {
+                case Z_NEED_DICT:
+                    ret = Z_DATA_ERROR;    
+                case Z_DATA_ERROR:
+                case Z_MEM_ERROR:
+                    (void)inflateEnd(&strm);
+                    logger.error("PNG/ICC profile error: zlib inflate error\n");
+                    throw -1;
+                }
+                int u_size = u_chunk.size() - strm.avail_out;
+                // dump the uncompressed profile to a temporary file so that we can
+                // re-use the existing TIFF parsing code
+                // not very elegant, but it works
+                string icc_fname = tmp_path + string("/dump.icc");
+                FILE* fout = fopen(icc_fname.c_str(), "wb");
+                if (fout) {
+                    fwrite(u_chunk.data(), 1, u_size, fout);
+                    fclose(fout);
+                    
+                    FILE* img_file = fin;
+                    fin = fopen(icc_fname.c_str(), "rb");
+                    if (fin) {
+                        read_icc_profile(0);
+                        fclose(fin);
+                        unlink(icc_fname.c_str());
+                        has_icc_profile = has_profile = true;
+                    }
+                    fin = img_file;
+                }
+            }
+            #else
+            logger.debug("No PNG/ICC support because zlib not found\n");
+            #endif
+            fseek(fin, chunk_size + 4, SEEK_CUR);
+        } while (!feof(fin) && memcmp(magic, "IDAT", 4) == 0);
+    } else {
+        throw -1;
+    }
+}
