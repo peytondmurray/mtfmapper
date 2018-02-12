@@ -33,8 +33,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "noise_source.h"
 #include "multipolygon_geom.h" // temporary?
 #include "quadtree.h"
+#include "png_icc_headers.h"
 #include "../../include/stride_range.h"
 #include "../../include/threadpool.h"
+#include <string.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -85,7 +87,82 @@ inline double fwd_gamma(double x) { // x in [0,1]
     return  pow( (x + SRGB_a)/(1+SRGB_a), 2.4 );
 }
 
+uint32_t read_uint32(FILE* fin) {
+    unsigned char b0 = fgetc(fin) & 0xff;
+    unsigned char b1 = fgetc(fin) & 0xff;
+    unsigned char b2 = fgetc(fin) & 0xff;
+    unsigned char b3 = fgetc(fin) & 0xff;
+    return (uint32_t(b0) << 24) | (uint32_t(b1) << 16) |
+        (uint32_t(b2) << 8) | uint32_t(b3);
+}
 
+void inject_png_icc_profile(string fname, bool linear) {
+    int icc_chunk_size = png_gray_gamma_icc_size;
+    unsigned char* icc_chunk = png_gray_gamma_icc_chunk;
+    if (linear) {
+        icc_chunk_size = png_gray_linear_icc_size;
+        icc_chunk = png_gray_linear_icc_chunk;
+    } 
+
+    FILE* fin = fopen(fname.c_str(), "r+");
+    
+    unsigned char magic[4];
+    if (fin && fread(magic, 1, 4, fin) == 4 && memcmp(magic, "\x89\x50\x4e\x47", 4) == 0) {
+        fseek(fin, 4, SEEK_CUR); // skip over rest of PNG signature
+        uint32_t chunk_size = read_uint32(fin);
+        if (fread(magic, 1, 4, fin) != 4 || memcmp(magic, "IHDR", 4) != 0) return; 
+        
+        printf("Output file is PNG, injecting ICC profile\n");
+        
+        fseek(fin, chunk_size + 4, SEEK_CUR);
+        size_t write_pos = ftell(fin);
+        
+        const size_t bsize = 64*1024;
+        vector<unsigned char> buffer(bsize, 0xaa);
+        fseek(fin, 0, SEEK_END);
+        size_t move_read = 0; 
+        size_t read_size = bsize;
+        
+        if (int64_t(ftell(fin)) - int64_t(bsize) < int64_t(write_pos)) {
+            read_size = int64_t(ftell(fin)) - int64_t(write_pos);
+            move_read = write_pos;
+        } else {
+            read_size = bsize;
+            move_read = int64_t(ftell(fin)) - int64_t(bsize);
+        }
+        
+        bool done = false;
+        while (!done) {
+            // now move everything up
+            fseek(fin, move_read, SEEK_SET);
+            
+            size_t nread = fread(buffer.data(), 1, read_size, fin);
+            fseek(fin, move_read + icc_chunk_size, SEEK_SET);
+            
+            size_t nwritten = fwrite(buffer.data(), 1, nread, fin);
+            done = move_read <= write_pos;
+            
+            if (nwritten != nread) {
+                fprintf(stderr, "Error: write failed during ICC injection. Did you run out of disk space?\n");
+                fclose(fin);
+                return;
+            }
+            
+            if (int64_t(move_read) - int64_t(bsize) < int64_t(write_pos)) {
+                read_size = int64_t(move_read) - int64_t(write_pos);
+                move_read = write_pos;
+            } else {
+                read_size = bsize;
+                move_read = int64_t(move_read) - int64_t(bsize);
+            }
+        }
+        
+        fseek(fin, write_pos, SEEK_SET);
+        fwrite(icc_chunk, 1, icc_chunk_size, fin);
+        
+        fclose(fin);
+    }    
+}
 
 // functor for Stride_range
 class Render_rows {
@@ -700,6 +777,7 @@ int main(int argc, char** argv) {
         Stride_range::parallel_for(rr, tp, height);
         printf("\n");
         imwrite(tc_out_name.getValue(), img);
+        inject_png_icc_profile(tc_out_name.getValue(), tc_16.getValue() || tc_linear.getValue());
     } else {
         string profile_fname("profile.txt");
         if (tc_out_name.isSet()) {
