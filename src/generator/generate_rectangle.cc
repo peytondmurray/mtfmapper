@@ -104,7 +104,7 @@ void inject_png_icc_profile(string fname, bool linear) {
         icc_chunk = png_gray_linear_icc_chunk;
     } 
 
-    FILE* fin = fopen(fname.c_str(), "r+");
+    FILE* fin = fopen(fname.c_str(), "rb+");
     
     unsigned char magic[4];
     if (fin && fread(magic, 1, 4, fin) == 4 && memcmp(magic, "\x89\x50\x4e\x47", 4) == 0) {

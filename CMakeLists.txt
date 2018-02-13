@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 6)
-set(mtfmapper_VERSION_SUB 16) #increment on release
+set(mtfmapper_VERSION_SUB 17) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -65,13 +65,14 @@ if (NOT OpenCV_VERSION)
 endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(Threads)
+find_package(Threads QUIET)
 find_package(ZLIB QUIET)
 
 # we only use zlib to decompress ICC profiles embedded in PNG files
 # so we just quietly drop support if zlib was not configured
 if (ZLIB_FOUND)
     set(mtfmapper_ZLIB_FOUND 1)
+	include_directories("${ZLIB_INCLUDE_DIR}")
 else (ZLIB_FOUND)
     set(mtfmapper_ZLIB_FOUND 0)
 endif (ZLIB_FOUND)
