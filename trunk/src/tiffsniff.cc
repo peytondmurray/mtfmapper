@@ -34,8 +34,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "config.h"
 #if mtfmapper_ZLIB_FOUND == 1
-    #include "zlib.h"
-    #include <unistd.h>
+    #ifdef _WIN32
+        #define unlink _unlink
+        #define ZLIB_WINAPI
+    #else
+        #include <unistd.h>
+    #endif
+    #include <zlib.h>
 #endif
 
 Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path) 
