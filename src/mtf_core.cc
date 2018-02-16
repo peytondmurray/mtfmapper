@@ -602,7 +602,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
         }
     }
 
-    double* base_mtf = Mtf_correction::get_instance()->w.data();
+    double* base_mtf = Mtf_correction::get_instance().w.data();
 
     double prev_freq = 0;
     double prev_val  = n0;

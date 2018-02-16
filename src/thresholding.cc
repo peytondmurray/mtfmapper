@@ -105,7 +105,8 @@ void bradley_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
 
 // Efficient Implementation of Local Adaptive Thresholding Techniques Using Integral Images,
 // F. Shafait, D. Keysers, T.M. Breuel, ...
-void sauvola_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double threshold, int S, ThreadPool& tp) {
+void sauvola_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double threshold, int S) {
+    ThreadPool& tp = ThreadPool::instance();
 
     out = cv::Mat(cvimg.rows, cvimg.cols, CV_8UC1);
 

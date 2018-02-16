@@ -34,11 +34,6 @@ using std::vector;
 
 #include "mtf_core.h"
 
-class Mtf_correction;
-
-extern Mtf_correction* global_mtf_correction_instance;
-
-
 class Mtf_correction {
 
   public:
@@ -52,13 +47,14 @@ class Mtf_correction {
         }
     }
     
-    static Mtf_correction* get_instance(void) {
-        return global_mtf_correction_instance;
+    static Mtf_correction& get_instance(void) {
+        static Mtf_correction instance;
+        return instance;
     }
     
     vector<double> w;
     
-    static const double sdev;
+    static constexpr double sdev = 13;
 private:
 
     
