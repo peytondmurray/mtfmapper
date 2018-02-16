@@ -32,6 +32,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string>
 using std::string;
 
+#include <memory>
+using std::shared_ptr;
+using std::make_shared;
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include <vector>
 using std::vector;
 using std::pair;
@@ -39,50 +46,49 @@ using std::make_pair;
 
 #include "include/display_profile.h"
 
-typedef enum {
+enum class jpeg_app_t {
     EXIF=1,
     ICC=2,
     NONE=15
-} jpeg_app_t;
-
+};
 
 class Tiffsniff {
   public:
-    Tiffsniff(const string& fname, bool is_8bit = false, string tmp_path="");
-    ~Tiffsniff(void);
+    Tiffsniff(const string& fname, bool is_8bit = false);
     bool profile_found(void) const { return has_profile; }
     Display_profile profile(void);
     
   private:
-    typedef enum {
+    enum class profile_t {
         sRGB,
         adobeRGB,
         UNKNOWN,
         CUSTOM
-    } profile_t;
+    };
     
-    typedef enum {
+    enum class ifd_t {
         ICC,
         TIFF,
         EXIF,
         EXIF_INTEROP
-    } ifd_t;
+    };
    
-    void parse_tiff(off_t offset) throw(int);
-    void read_ifd(off_t offset, off_t base_offset = 0, ifd_t ifd_type = ifd_t::TIFF) throw(int);
-    void read_icc_profile(off_t offset) throw(int);
-    void read_trc_entry(off_t offset, uint32_t size) throw(int);
-    vector<double> read_xyztype_entry(off_t offset, uint32_t size) throw(int);
-    void read_curv_trc(off_t offset, uint32_t size) throw(int);
-    void read_para_trc(off_t offset) throw(int);
-    vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void) throw(int);
-    double read_exif_gamma(off_t offset) throw(int);
-    void parse_png(off_t offset, const string& tmp_path);
+    void parse_tiff(off_t offset);
+    void read_ifd(off_t offset, off_t base_offset = 0, ifd_t ifd_type = ifd_t::TIFF);
+    void read_icc_profile(off_t offset);
+    void read_trc_entry(off_t offset, uint32_t size);
+    vector<double> read_xyztype_entry(off_t offset, uint32_t size);
+    void read_curv_trc(off_t offset, uint32_t size);
+    void read_para_trc(off_t offset);
+    vector< pair<jpeg_app_t, off_t> > scan_jpeg_app_blocks(void);
+    double read_exif_gamma(off_t offset);
+    void parse_png(off_t offset);
     
     uint32_t read_uint32(void);
     uint16_t read_uint16(void);
     
-    FILE* fin;
+    shared_ptr< std::iostream > fin;
+    
     bool big_endian = false;
     bool has_profile = false;
     bool assumed_sRGB = false;
@@ -94,9 +100,9 @@ class Tiffsniff {
     profile_t inferred_profile = profile_t::UNKNOWN;
     off_t file_size;
     
-    vector<double> gparm; // should also have the option of a vector<> ?
+    vector<double> gparm {1, 1, 0, 0, 0, 0, 0}; // linear gamma as default
     vector< pair<uint16_t, uint16_t> > gtable;
-    vector<double> luminance_weights;
+    vector<double> luminance_weights {0.2225045, 0.7168786, 0.0606169}; // sRGB RGB->Y adapted to D50 by default
 };
 
 typedef struct {
@@ -111,37 +117,31 @@ typedef struct {
     uint32_t data_offset;
     uint32_t element_size;
     
-	// we have to explicitly perform all the reads (fgets) first, or the optimizer may
-	// re-arrange the arguments to the binary operators, thus performing the reads in
-	// the wrong order
-    static double read_fixed8_8(FILE* fin) {
-		unsigned char b0 = fgetc(fin) & 0xff;
-		unsigned char b1 = fgetc(fin) & 0xff;
-        return double(b0) + double(b1)/256.0;
+    static double read_fixed8_8(shared_ptr< std::iostream > fin) {
+        unsigned char b[2];
+        fin->read((char*)b, 2);
+        return double(b[0]) + double(b[1])/256.0;
     }
     
-    static uint16_t read_uint16(FILE* fin) {
-		unsigned char b0 = fgetc(fin) & 0xff;
-		unsigned char b1 = fgetc(fin) & 0xff;
-        return (uint16_t(b0) << 8) | uint16_t(b1);
+    static uint16_t read_uint16(shared_ptr< std::iostream > fin) {
+        unsigned char b[2];
+        fin->read((char*)b, 2);
+        return (uint16_t(b[0]) << 8) | uint16_t(b[1]);
     }
     
-    static double read_fixed15_16(FILE* fin) {
-        char sb0 = fgetc(fin) & 0xff;
-		unsigned char b1 = fgetc(fin) & 0xff;
-		unsigned char b2 = fgetc(fin) & 0xff;
-		unsigned char b3 = fgetc(fin) & 0xff;
-        return double((int16_t(sb0) << 8) | b1) + 
-            double(((uint16_t(b2) << 8) | b3))/65536.0;
+    static double read_fixed15_16(shared_ptr< std::iostream > fin) {
+        unsigned char b[4];
+        fin->read((char*)b, 4);
+        char sb0 = static_cast<char>(b[0]);
+        return double((int16_t(sb0) << 8) | b[1]) + 
+            double(((uint16_t(b[2]) << 8) | b[3]))/65536.0;
     }
     
-    static uint32_t read_uint32(FILE* fin) {
-		unsigned char b0 = fgetc(fin) & 0xff;
-		unsigned char b1 = fgetc(fin) & 0xff;
-		unsigned char b2 = fgetc(fin) & 0xff;
-		unsigned char b3 = fgetc(fin) & 0xff;
-        return (uint32_t(b0) << 24) | (uint32_t(b1) << 16) |
-            (uint32_t(b2) << 8) | uint32_t(b3);
+    static uint32_t read_uint32(shared_ptr< std::iostream > fin) {
+        unsigned char b[4];
+        fin->read((char*)b, 4);
+        return (uint32_t(b[0]) << 24) | (uint32_t(b[1]) << 16) |
+            (uint32_t(b[2]) << 8) | uint32_t(b[3]);
     }
     
 } icc_tag;

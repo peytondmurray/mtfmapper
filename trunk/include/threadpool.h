@@ -45,6 +45,12 @@ public:
         -> std::future<typename std::result_of<F(Args...)>::type>;
     ~ThreadPool();
     size_t size(void) const { return workers.size(); }
+    
+    static ThreadPool& instance(void) {
+        static ThreadPool singleton(std::thread::hardware_concurrency());
+        return singleton;
+    }
+    
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;

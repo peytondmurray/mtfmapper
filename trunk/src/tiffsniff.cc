@@ -30,42 +30,30 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/common_types.h"
 #include <string.h>
-#include <iostream>
 
 #include "config.h"
 #if mtfmapper_ZLIB_FOUND == 1
     #ifdef _WIN32
-        #define unlink _unlink
         #define ZLIB_WINAPI
-    #else
-        #include <unistd.h>
     #endif
     #include <zlib.h>
 #endif
 
-Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path) 
-: gparm(7, 0.0), luminance_weights(3, 0.0) {
-    // linear gamma, by default
-    gparm[0] = 1.0;
-    gparm[1] = 1.0;
-    // use sRGB weights adapted to D50
-    luminance_weights[0] = 0.2225045;
-    luminance_weights[1] = 0.7168786;
-    luminance_weights[2] = 0.0606169;
+Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) {
 
-    fin = fopen(fname.c_str(), "rb");
-    if (fin) {
-        if (fseek(fin, 0, SEEK_END) == 0) {
-            file_size = ftell(fin);
+    fin = shared_ptr<std::iostream>(new std::fstream(fname, std::ios_base::binary | std::ios_base::in));
+    if (fin->good()) {
+        if (fin->seekg(0, fin->end).good()) {
+            file_size = off_t{fin->tellg()};
         }
-        rewind(fin);
+        fin->seekg(0);
         
         try {
         
             unsigned char magic[4];
-            size_t nread = fread(magic, 1, 4, fin);
+            fin->read((char*)magic, 4);
             
-            if (nread != 4) {
+            if (!fin->good()) {
                 throw -1;
             }
         
@@ -76,7 +64,7 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path)
             }
             
             if (magic[0] == 0xff && magic[1] == 0xd8) { // possible JPEG file
-                // we could check the end of the file for 0xff 0xf9, but Sony padds the back
+                // we could check the end of the file for 0xff 0xf9, but Sony pads the back
                 // of the file with zeros, so we'll just wing it
                 has_profile = true;
                 // now build a list of APP blocks
@@ -105,7 +93,7 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path)
             }
             
             if (memcmp(magic, "\x89\x50\x4e\x47", 4) == 0) {
-                parse_png(ftell(fin), tmp_path);
+                parse_png(0);
             }
             
         } catch (int) {
@@ -151,34 +139,23 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit, string tmp_path)
     }
 }
 
-Tiffsniff::~Tiffsniff(void) {
-    if (fin) {
-        fclose(fin);
-    }
-}
-
-// we have to explicitly perform all the reads (fgets) first, or the optimizer may
-// re-arrange the arguments to the binary operators, thus performing the reads in
-// the wrong order
 uint32_t Tiffsniff::read_uint32(void) {
     if (big_endian) {
         return icc_tag::read_uint32(fin);
     } 
-	unsigned char b0 = fgetc(fin) & 0xff;
-	unsigned char b1 = fgetc(fin) & 0xff;
-	unsigned char b2 = fgetc(fin) & 0xff;
-	unsigned char b3 = fgetc(fin) & 0xff;
-    return uint32_t(b0) | (uint32_t(b1) << 8) |
-        (uint32_t(b2) << 16) | (uint32_t(b3) << 24);
+    unsigned char b[4];
+    fin->read((char*)b, 4);
+    return uint32_t(b[0]) | (uint32_t(b[1]) << 8) |
+        (uint32_t(b[2]) << 16) | (uint32_t(b[3]) << 24);
 }
 
 uint16_t Tiffsniff::read_uint16(void) {
     if (big_endian) {
         return icc_tag::read_uint16(fin);
     } 
-	unsigned char b0 = fgetc(fin) & 0xff;
-	unsigned char b1 = fgetc(fin) & 0xff;
-    return uint32_t(b0) | (uint32_t(b1) << 8);
+    unsigned char b[2];
+    fin->read((char*)b, 2);
+    return uint32_t(b[0]) | (uint32_t(b[1]) << 8);
 }
 
 Display_profile Tiffsniff::profile(void) {
@@ -188,15 +165,14 @@ Display_profile Tiffsniff::profile(void) {
     return Display_profile(gtable, luminance_weights);
 }
 
-void Tiffsniff::parse_tiff(off_t offset) throw(int) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::parse_tiff(off_t offset) {
+    if (fin->seekg(offset).good()) {
         const char be_id[4] = {0x4D, 0x4D, 0x00, 0x2A};
         const char le_id[4] = {0x49, 0x49, 0x2A, 0x00};
         
         unsigned char magic[4];
         
-        if (fread(magic, 1, 4, fin) == 4) {
+        if (fin->read((char*)magic, 4).good()) {
             // TIFF
             bool is_valid_tiff = false;
             if (memcmp(le_id, magic, 4) == 0) {
@@ -230,13 +206,12 @@ void Tiffsniff::parse_tiff(off_t offset) throw(int) {
     }
 }
 
-void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(int) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) {
+    if (fin->seekg(offset).good()) {
         uint16_t cur_ifd_entries = read_uint16();
         
         // check for weird values; realistic tiff files will not have thousands of entries
-        if (cur_ifd_entries == 0 || cur_ifd_entries > 32765 || feof(fin)) {
+        if (cur_ifd_entries == 0 || cur_ifd_entries > 32765 || !fin->good()) {
             throw -1;
         }
         
@@ -247,12 +222,12 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(
             field.data_count = read_uint32();
             field.data_offset = read_uint32();;
             
-            if (i < (cur_ifd_entries-1) && feof(fin)) {
+            if (i < (cur_ifd_entries-1) && !fin->good()) {
                 throw -1;
             }
             
             
-            long fpos = ftell(fin);
+            auto fpos = fin->tellg();
             
             if (ifd_type == ifd_t::TIFF && field.tag_id == 0x8773) { // ICC profile 
                 read_icc_profile(field.data_offset);
@@ -263,7 +238,7 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(
             }
             
             if (ifd_type == ifd_t::EXIF && field.tag_id == 0xa001) { // EXIF colourspace tag
-                if (fseek(fin, -4, SEEK_CUR) == 0) {
+                if (fin->seekg(-4, fin->cur).good()) {
                     exif_cs = read_uint16();
                 }
             }
@@ -280,18 +255,18 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(
             
             if (ifd_type == ifd_t::EXIF_INTEROP && field.tag_id == 0x0001) { // EXIF interoperability tag
                 char ids[4];
-                if (fseek(fin, -4, SEEK_CUR) == 0 && fread(ids, 1, 4, fin) == 4) {
+                if (fin->seekg(-4, fin->cur).good() && fin->read((char*)ids, 4).good()) {
                     exif_interop_r03 = strncmp(ids, "R03", 3) == 0;
                 }
             }
             
-            fseek(fin, fpos, SEEK_SET);
+            fin->seekg(fpos);
         }
         
         // read next IDF offset
         uint32_t next_offset = read_uint32();
         if (next_offset) {
-            if (next_offset > file_size || feof(fin)) {
+            if (next_offset > file_size || !fin->good()) {
                 throw -1;
             }
             read_ifd(base_offset + next_offset, base_offset, ifd_t::TIFF);
@@ -301,11 +276,10 @@ void Tiffsniff::read_ifd(off_t offset, off_t base_offset, ifd_t ifd_type) throw(
     }
 }
 
-void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
+void Tiffsniff::read_icc_profile(off_t offset) {
     char icc_header[128];
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
-        if (fread(icc_header, 1, 128, fin) != 128) {
+    if (fin->seekg(offset).good()) {
+        if (!fin->read((char*)icc_header, 128).good()) {
             throw -1;
         }
         logger.debug("Device: %c%c%c%c\n", icc_header[12], icc_header[13], icc_header[14], icc_header[15]);
@@ -313,7 +287,7 @@ void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
         
         // looks like ICC profiles are stored in big endian format
         uint32_t icc_entries = icc_tag::read_uint32(fin);
-        if (icc_entries == 0 || icc_entries > 32765 || feof(fin)) {
+        if (icc_entries == 0 || icc_entries > 32765 || !fin->good()) {
             throw -1;
         }
         
@@ -326,11 +300,11 @@ void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
             tag.element_size = icc_tag::read_uint32(fin);
             
             const off_t icc_tag_offset = offset + tag.data_offset;
-            if (icc_tag_offset > file_size || feof(fin)) {
+            if (icc_tag_offset > file_size || !fin->good()) {
                 throw -1;
             }
             
-            long fpos = ftell(fin); // before we jump to an individual entry
+            auto fpos = fin->tellg(); // before we jump to an individual entry
             
             // Just grab the first TRC get find, since they are probably all the same anyway
             if (!found_trc && (tag.tag_signature == 0x67545243 || tag.tag_signature == 0x6B545243 ||
@@ -361,7 +335,7 @@ void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
                 }
             }
             
-            fseek(fin, fpos, SEEK_SET); // return to ICC IFD
+            fin->seekg(fpos); // return to ICC IFD
         }
         if (!found_trc) {
             logger.error("Warning: image contains ICC profile, but no TRC curve was found.\n");
@@ -374,11 +348,10 @@ void Tiffsniff::read_icc_profile(off_t offset) throw(int) {
     }
 }
 
-void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) throw(int) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) {
+    if (fin->seekg(offset).good()) {
         char trc_type[4];
-        if (fread(&trc_type, 1, 4, fin) == 4) {
+        if (fin->read((char*)trc_type, 4).good()) {
             if (strncmp(trc_type, "curv", 4) == 0) {
                 read_curv_trc(offset, size);
             } else {
@@ -394,12 +367,11 @@ void Tiffsniff::read_trc_entry(off_t offset, uint32_t size) throw(int) {
     }
 }
 
-void Tiffsniff::read_curv_trc(off_t offset, uint32_t size) throw(int) {
-    int seekerr = fseek(fin, offset + 8, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::read_curv_trc(off_t offset, uint32_t size) {
+    if (fin->seekg(offset + 8).good()) {
         uint32_t ecount = icc_tag::read_uint32(fin);
         
-        if ((ecount*2+12) > size || feof(fin)) {
+        if ((ecount*2+12) > size || !fin->good()) {
             throw -1;
         }
         
@@ -424,9 +396,8 @@ void Tiffsniff::read_curv_trc(off_t offset, uint32_t size) throw(int) {
     }
 }
 
-void Tiffsniff::read_para_trc(off_t offset) throw(int) {
-    int seekerr = fseek(fin, offset + 8, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::read_para_trc(off_t offset) {
+    if (fin->seekg(offset + 8).good()) {
         uint16_t ftype = icc_tag::read_uint16(fin);
         icc_tag::read_uint16(fin); // dump the reserved bytes
         
@@ -477,9 +448,8 @@ void Tiffsniff::read_para_trc(off_t offset) throw(int) {
     }
 }
 
-vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t) throw(int) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t) {
+    if (fin->seekg(offset).good()) {
         uint32_t sig = icc_tag::read_uint32(fin);
         
         if (sig != 0x58595A20) {
@@ -489,7 +459,7 @@ vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t) throw(int) 
         
         icc_tag::read_uint32(fin); // drop reserved field
         
-        if (feof(fin)) {
+        if (!fin->good()) {
             throw -1;
         }
         
@@ -504,9 +474,8 @@ vector<double> Tiffsniff::read_xyztype_entry(off_t offset, uint32_t) throw(int) 
     return vector<double>{0,0,0};
 }
 
-double Tiffsniff::read_exif_gamma(off_t offset) throw(int) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+double Tiffsniff::read_exif_gamma(off_t offset) {
+    if (fin->seekg(offset).good()) {
         uint32_t top = icc_tag::read_uint32(fin);
         uint32_t bot = icc_tag::read_uint32(fin);
         
@@ -516,14 +485,14 @@ double Tiffsniff::read_exif_gamma(off_t offset) throw(int) {
     }
 }
 
-vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(int) {
+vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) {
     vector< pair<jpeg_app_t, off_t> > blocks;
-    fseek(fin, 2, SEEK_SET);
+    fin->seekg(2);
     bool done = false;
     
-    while (!feof(fin) && !done) {
+    while (fin->good() && !done) {
         uint16_t app_id = icc_tag::read_uint16(fin);
-        uint16_t bsize  = icc_tag::read_uint16(fin); // this size excludes the size bytes
+        uint16_t bsize  = icc_tag::read_uint16(fin); // this size excludes the size bytes themselves
         
         if ((app_id & 0xff00) != 0xff00) {
             throw -1;
@@ -531,22 +500,22 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(in
         
         done = (app_id & 0xffe0) != 0xffe0;
         if (!done) {
-            off_t fpos = ftell(fin);
+            auto fpos = fin->tellg();
             
             unsigned char sig[128];
             int sn = 0;
-            while (sn < 127 && (sig[sn] = fgetc(fin)) != 0) sn++;
+            while (sn < 127 && (sig[sn] = fin->get()) != 0) sn++;
             
             if (strncasecmp((char*)sig, "ICC_PROFILE", 11) == 0) {
-                blocks.push_back(make_pair(jpeg_app_t::ICC, ftell(fin) + 2)); // skip over chunk numbers
+                blocks.push_back(make_pair(jpeg_app_t::ICC, off_t{fin->tellg()} + 2)); // skip over chunk numbers
             }
             if (strncasecmp((char*)sig, "EXIF", 4) == 0) {
                 int i;
-                for (i=0; i < 4 && fgetc(fin) == 0; i++);
-                blocks.push_back(make_pair(jpeg_app_t::EXIF, ftell(fin) - 1));
+                for (i=0; i < 4 && fin->get() == 0; i++);
+                blocks.push_back(make_pair(jpeg_app_t::EXIF, off_t{fin->tellg()} - 1));
             }
             
-            if (fseek(fin, fpos + bsize - 2, SEEK_SET) != 0) {
+            if (!fin->seekg(fpos + off_t(bsize - 2)).good()) {
                 throw -1;
             }
         }
@@ -554,19 +523,18 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) throw(in
     return blocks;
 }
 
-void Tiffsniff::parse_png(off_t offset, const string& tmp_path) {
-    int seekerr = fseek(fin, offset, SEEK_SET);
-    if (!seekerr) {
+void Tiffsniff::parse_png(off_t offset) {
+    if (fin->seekg(offset).good()) {
         unsigned char magic[4];
         
-        fseek(fin, 4, SEEK_CUR); // skip over rest of PNG signature
+        fin->seekg(8); // skip over rest of PNG signature
         uint32_t chunk_size = icc_tag::read_uint32(fin);
-        if (fread(magic, 1, 4, fin) != 4) throw -1;
-        fseek(fin, chunk_size + 4, SEEK_CUR);
+        if (!fin->read((char*)magic, 4).good()) throw -1;
+        fin->seekg(chunk_size + 4, fin->cur);
         bool has_icc_profile = false;
         do {
             uint32_t chunk_size = icc_tag::read_uint32(fin);
-            if (feof(fin) || fread(magic, 1, 4, fin) != 4) {
+            if (!fin->good() || !fin->read((char*)magic, 4).good()) {
                 // not necessarily an error, maybe we already grabbed the profile ...
                 return;
             }
@@ -576,7 +544,7 @@ void Tiffsniff::parse_png(off_t offset, const string& tmp_path) {
                 has_profile = true;
             }
             if (memcmp(magic,"sRGB", 4) == 0 && !has_icc_profile) { // not tested yet
-                int psrgb = fgetc(fin);
+                int psrgb = fin->get();
                 if (psrgb >= 0 && psrgb <= 3) {
                     inferred_profile = profile_t::sRGB;
                     has_profile = true;
@@ -588,17 +556,17 @@ void Tiffsniff::parse_png(off_t offset, const string& tmp_path) {
                 int name_len = 0;
                 bool done = false;
                 while (name_len < 80 && !done) {
-                    pfname[name_len] = fgetc(fin);
+                    pfname[name_len] = fin->get();
                     done = pfname[name_len] == 0;
                     name_len++;
                 }
-                if (fgetc(fin) != 0) throw -1; // PNG comp method not deflate!
+                if (fin->get() != 0) throw -1; // PNG compression method not deflate!
                 
                 size_t c_size = chunk_size - (name_len + 1);
                 
                 vector<unsigned char> c_chunk(chunk_size, 0);
                 vector<unsigned char> u_chunk(chunk_size*10, 0);
-                if (fread(c_chunk.data(), 1, c_size, fin) != c_size) throw -1;
+                if (!fin->read((char*)c_chunk.data(), c_size).good()) throw -1;
                 
                 z_stream strm;
                 strm.zalloc = Z_NULL;
@@ -628,31 +596,22 @@ void Tiffsniff::parse_png(off_t offset, const string& tmp_path) {
                     throw -1;
                 }
                 int u_size = u_chunk.size() - strm.avail_out;
-                // dump the uncompressed profile to a temporary file so that we can
-                // re-use the existing TIFF parsing code
-                // not very elegant, but it works
-                string icc_fname = tmp_path + string("/dump.icc");
-                FILE* fout = fopen(icc_fname.c_str(), "wb");
-                if (fout) {
-                    fwrite(u_chunk.data(), 1, u_size, fout);
-                    fclose(fout);
+                shared_ptr<std::iostream> fout(new std::stringstream());
+                if (fout->good()) {
+                    fout->write((char*)u_chunk.data(), u_size);
                     
-                    FILE* img_file = fin;
-                    fin = fopen(icc_fname.c_str(), "rb");
-                    if (fin) {
-                        read_icc_profile(0);
-                        fclose(fin);
-                        unlink(icc_fname.c_str());
-                        has_icc_profile = has_profile = true;
-                    }
+                    shared_ptr<std::iostream> img_file = fin;
+                    fin = fout;
+                    read_icc_profile(0);
+                    has_icc_profile = has_profile = true;
                     fin = img_file;
                 }
             }
             #else
             logger.debug("No PNG/ICC support because zlib not found\n");
             #endif
-            fseek(fin, chunk_size + 4, SEEK_CUR);
-        } while (!feof(fin) && memcmp(magic, "IDAT", 4) == 0);
+            fin->seekg(chunk_size + 4, fin->cur);
+        } while (fin->good() && memcmp(magic, "IDAT", 4) == 0);
     } else {
         throw -1;
     }

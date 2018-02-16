@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
 	    }
 	}
 	
-	Tiffsniff tiff(tc_in_name.getValue(), cvimg.elemSize1() == 1, tc_wdir.getValue());
+	Tiffsniff tiff(tc_in_name.getValue(), cvimg.elemSize1() == 1);
 	Display_profile display_profile;
 	if (tiff.profile_found()) {
 	    display_profile = tiff.profile();
@@ -308,12 +308,6 @@ int main(int argc, char** argv) {
         img_filename.push_back(c);
     }
 	
-	// initialize the global mtf correction instance
-	global_mtf_correction_instance = new Mtf_correction();
-	
-	size_t nthreads = std::thread::hardware_concurrency();
-    ThreadPool tp (nthreads);
-
     cv::Mat masked_img;
     
     cv::Rect img_dimension_correction(0,0, cvimg.cols, cvimg.rows);
@@ -384,10 +378,10 @@ int main(int argc, char** argv) {
                 printf("using Bradley thresholding\n");
                 bradley_adaptive_threshold(cvimg, masked_img, brad_threshold, brad_S);
             } else {
-                sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp);
+                sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S);
             }
         #else
-            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S, tp); // fudge the threshold to maintain backwards compatibility
+            sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S); // fudge the threshold to maintain backwards compatibility
         #endif
         
         logger.info("Computing gradients ...\n");
@@ -448,10 +442,10 @@ int main(int argc, char** argv) {
                 ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
             } else {
                 logger.debug("Parallel MTF50 calculation\n");
-                Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+                Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
             }
             #else
-            Stride_range::parallel_for(ca, tp, mtf_core.num_objects());
+            Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
             #endif
         }
         
