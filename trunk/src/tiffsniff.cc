@@ -44,7 +44,7 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) {
     fin = shared_ptr<std::iostream>(new std::fstream(fname, std::ios_base::binary | std::ios_base::in));
     if (fin->good()) {
         if (fin->seekg(0, fin->end).good()) {
-            file_size = off_t{fin->tellg()};
+            file_size = off_t(fin->tellg());
         }
         fin->seekg(0);
         
@@ -500,19 +500,19 @@ vector< pair<jpeg_app_t, off_t> > Tiffsniff::scan_jpeg_app_blocks(void) {
         
         done = (app_id & 0xffe0) != 0xffe0;
         if (!done) {
-            auto fpos = fin->tellg();
+            std::streamoff fpos = fin->tellg();
             
             unsigned char sig[128];
             int sn = 0;
             while (sn < 127 && (sig[sn] = fin->get()) != 0) sn++;
             
             if (strncasecmp((char*)sig, "ICC_PROFILE", 11) == 0) {
-                blocks.push_back(make_pair(jpeg_app_t::ICC, off_t{fin->tellg()} + 2)); // skip over chunk numbers
+                blocks.push_back(make_pair(jpeg_app_t::ICC, off_t(fin->tellg()) + 2)); // skip over chunk numbers
             }
             if (strncasecmp((char*)sig, "EXIF", 4) == 0) {
                 int i;
                 for (i=0; i < 4 && fin->get() == 0; i++);
-                blocks.push_back(make_pair(jpeg_app_t::EXIF, off_t{fin->tellg()} - 1));
+                blocks.push_back(make_pair(jpeg_app_t::EXIF, off_t(fin->tellg()) - 1));
             }
             
             if (!fin->seekg(fpos + off_t(bsize - 2)).good()) {
