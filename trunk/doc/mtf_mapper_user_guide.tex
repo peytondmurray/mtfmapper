@@ -635,10 +635,12 @@ sessions.
 
 \end{description}
 
+\newpage
+
 \section{Supported file types}
 MTF Mapper is able to process a wide variety of image formats. The command
 line utility can process at least \texttt{.tif}, \texttt{.png}, \texttt{.jpg},
-\texttt{.ppm} and \texttt{.pgm} files, and probably a few more formats
+\texttt{.ppm}, \texttt{.bmp} and \texttt{.pgm} files, and probably a few more formats
 supported by OpenCV.
 
 In addition to these, the MTF Mapper GUI adds support for automatic conversion of raw image
@@ -653,20 +655,22 @@ As of version 0.6.15, MTF Mapper understands both ICC colour profiles, as
 well as the two colour spaces supported by JPEG files via Exif tags (sRGB
 and Adobe RGB). The slanted-edge method that MTF Mapper relies on only
 works on `linear light' images, meaning that MTF Mapper will undo any
-non-linear mapping (sometimes referred to as \emph{gamma}) associated with
+non-linear mapping (sometimes referred to as \emph{gamma correction}) associated with
 the file format / colour space combination for \texttt{.tif} (TIFF) and
-\texttt{.jpg} (JPEG) files. The following list summarizes how MTF Mapper
-deals with non-linear images:
+\texttt{.jpg} (JPEG) and \texttt{.png} (PNG) files. 
+The following list summarizes how MTF Mapper deals with non-linear images:
 \begin{enumerate}
 \item
 If you open a raw camera file with the GUI, then MTF Mapper will use
 \texttt{dcraw} to produce a linear 16-bit RGB image. This is the most
-accurate method.
+accurate method. (Note: the command-line \texttt{mtf\_mapper} tool does not
+automatically render raw camera files --- you have to use \texttt{dcraw} or
+some other converter)
 \item
-If you open a TIFF file or a JPEG file with an embedded ICC profile, 
-then MTF Mapper will convert the image to a linear representation using 
-the profile's Tone Reproduction Curve. This applies to both 8-bit and 
-16-bit TIFF files.
+If you open a TIFF file, a PNG file, or a JPEG file  (GUI or command-line)
+with an embedded ICC profile, then MTF Mapper will convert the image to a
+linear representation using the profile's Tone Reproduction Curve.  This
+applies to both 8-bit and 16-bit TIFF and PNG files.
 \item
 If you open a JPEG file with some embedded Exif metadata, then MTF Mapper
 will determine (well, guess) whether the JPEG file is in the sRGB or Adobe
@@ -676,13 +680,13 @@ the image.
 If your JPEG file has no Exif tags, or does not contain the Colour Space
 tag, then MTF Mapper will assume the file is encoded in the sRGB colour space.
 \item
-If your image is in any other format (e.g., PNG or PNM), then MTF Mapper will 
+If your image is in any other format (e.g., BMP or PNM), then MTF Mapper will 
 assume that 8-bit images are encoded in the sRGB colour space (but you can
 override this with the \texttt{-l} option), and that
 16-bit images are linear.
 \end{enumerate}
 
-If you want to play safe, use a TIFF file with an embedded ICC profile.
+If you want to play safe, use a TIFF/PNG/JPEG file with an embedded ICC profile.
 That takes care of linearizing the data. What about colour? Well, the
 slanted-edge algorithm only operates on grayscale images, or one colour
 channel at a time. MTF Mapper will transform an RGB image (after linearizing
