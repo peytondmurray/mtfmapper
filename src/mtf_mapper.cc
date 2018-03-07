@@ -84,10 +84,10 @@ int main(int argc, char** argv) {
     
     TCLAP::CmdLine cmd("Measure MTF50 values across edges of rectangular targets", ' ', ss.str());
     TCLAP::UnlabeledValueArg<std::string>  tc_in_name("<input_filename>", 
-        "Input image file name (many extensions supported)", true, "input.png", "string", cmd
+        "Input image file name (many extensions supported)", true, "input.png", "image_filename", cmd
     );
     TCLAP::UnlabeledValueArg<std::string>  tc_wdir("<working_directory>", 
-        "Working directory (for output files); \".\" is fine", true, ".", "string", cmd
+        "Working directory (for output files); \".\" is fine", true, ".", "directory", cmd
     );
     TCLAP::SwitchArg tc_profile("p","profile","Generate MTF50 profile", cmd, false);
     TCLAP::SwitchArg tc_mf_profile("","mf-profile","Generate MTF50 profile (Manual focus chart)", cmd, false);
@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_equiangular("", "equiangular", "Treat input image as equi-angular mapping (fisheye) with the specified focal length", false, 16.0, "focal length(mm)", cmd);
     TCLAP::ValueArg<double> tc_stereographic("", "stereographic", "Treat input image as stereographic mapping (fisheye) with the specified focal length", false, 8.0, "focal length(mm)", cmd);
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
+    TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -215,7 +216,7 @@ int main(int argc, char** argv) {
 	        display_profile.force_sRGB();
 	    }
 	}
-    
+	
     if (tc_linear.getValue()) {
         display_profile.force_linear();
     }
@@ -371,7 +372,9 @@ int main(int argc, char** argv) {
         }
         
         logger.info("Thresholding image ...\n");
-        int brad_S = tc_border.getValue() ? max(cvimg.cols, cvimg.rows) : max(500, min(cvimg.cols, cvimg.rows)/3);
+        int brad_S = tc_border.getValue() ? 
+            max(cvimg.cols, cvimg.rows) : 
+            max(tc_thresh_win.isSet() ? 20 : 500, int(min(cvimg.cols, cvimg.rows)*tc_thresh_win.getValue()));
         double brad_threshold = tc_thresh.getValue();
         #ifdef MDEBUG
             if (tc_bradley.getValue()) {

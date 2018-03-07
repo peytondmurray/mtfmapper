@@ -31,6 +31,15 @@ background, e.g., gray rectangles rather than black rectangles. You can try
 lower values, e.g., 0.3 or even 0.2 if MTF Mapper does not appear to detect
 any dark objects.
 
+*--threshold-window* 'fraction'::
+Specify the fraction of the smaller image dimension (height or width) that
+will be used as a window size during automatic thresholding to detect dark
+objects (see *-t*). The default of 0.3333 works well when the test chart has
+a white background. If your dark targets tend to have some other chart
+feature surrounding them (think QA-62 Scanner targets) then you can try to
+reduce this fraction; choosing the fraction to be roughly equal to the size
+of the dark target (as a fraction of image height) should work.
+
 *-l*, *--linear*::
 Linear input mode; assumes that an 8-bit input image has a linear intensity
 scale. The default is to assume that 8-bit input images have an sRGB gamma
