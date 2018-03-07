@@ -402,6 +402,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
             shared_blocks_map[label].set_ridge(k, edge_model[k].ridge);
+            shared_blocks_map[label].rect.centroids[k] = edge_record[k].centroid;
         }
     }
     if (allzero) {
@@ -442,71 +443,23 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
 }
 
 bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const {
-    // check if this connected component has a proper interior hole
-    if (cl.largest_hole(label) > std::max(5.0, rrect.area/5.0)) {
-        logger.debug("failed largest hole test: hole size = %d, boundary/100 = %d\n", cl.largest_hole(label), rrect.area/5.0);
-        return false;
-    }
-    // otherwise look for a concave region enclosed on three sides in the scan set
-
-    // first build a scanset for this contour
-    map<int, scanline> scanset;
-    for (int y=rrect.tl.y; y < rrect.br.y; y++) {
-        for (int x=rrect.tl.x; x < rrect.br.x; x++) {
+    bool fail = false;
+    for (size_t k=0; k < 4 && !fail; k++) {
+        const Point2d& ec = rrect.centroids[k];
+        const Point2d& en = rrect.normals[k];
+        
+        int lcount = 0;
+        for (double d=1; d <= 20; d += 1.0) {
+            Point2d pos = ec - d*en;
+            int x = lrint(pos.x);
+            int y = lrint(pos.y);
             if (cl(x, y) == label) {
-                map<int, scanline>::iterator it = scanset.find(y);
-                if (it == scanset.end()) {
-                    scanline sl(x, x);
-                    scanset.insert(make_pair(y, sl));
-                }
-                if (x < scanset[y].start) {
-                    scanset[y].start = x;
-                }
-                if (x > scanset[y].end) {
-                    scanset[y].end = x;
-                }
+                lcount++;
             }
         }
+        fail = lcount < 15;
     }
-    if (scanset.size() < 8) return false; // minimum object height is 8 pixels
-    
-    // we can skip some of the first and last rows, especially on larger objects
-    int skiprows = scanset.size() > 80 ? 7 : (scanset.size() > 40 ? 5 : 2);
-    
-    int y_start = scanset.begin()->first + skiprows;
-    int y_end = scanset.rbegin()->first - skiprows;
-    
-    int holes = 0;
-    int cc_size = 0;
-    
-    for (int y=y_start; y <= y_end; y++) {
-        int x_start = scanset[y].start + 1;
-        int x_end = scanset[y].end - 1;
-        
-        scanline top = scanset[y-1];
-        scanline bot = scanset[y+1];
-        
-        if (x_start+1 < x_end) { // make sure we have some pixels to process
-            for (int x=x_start; x <= x_end; x++) {
-                // we know that we have filled pixels to our left and right
-                // so if the current column is in the span of either the previous or
-                // the next row, and it is not filled, then it is a hole
-                if (cl(x, y) != label) {
-                    if ( (x >= top.start && x <= top.end) ||
-                         (x >= bot.start && x <= bot.end) ) {
-                        holes++;
-                    }
-                } else {
-                    cc_size++;
-                }
-            }
-        }
-    }
-    
-    // pick the allowed hole fraction
-    double hole_fraction = 0.2; // large enough to allow interior details of ISO 12233:2014 targets
-    
-    return cc_size > 0 && (holes <= 3 || double(holes)/cc_size < hole_fraction);
+    return !fail;
 }
 
 static double angle_reduce(double x) {
