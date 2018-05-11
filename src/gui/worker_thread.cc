@@ -238,7 +238,6 @@ QString Worker_thread::update_arguments(QString& s) {
         arguments.replace("-p ", " ");
         arguments.replace("--profile ", " ");
         arguments.replace("--focus ", " ");
-        arguments.replace("--mf-focus ", " ");
         arguments.replace("--chart-orientation ", " ");
     }
     

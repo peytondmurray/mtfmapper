@@ -350,7 +350,14 @@ files) by choosing \textsf{File/Open} from the menu bar. That gives you the
 dialog depicted in Figure~\ref{fig:file_dialog}. Input files can be in a variety 
 of image formats, including \texttt{.tif, .png, .jpg, .pgm}, 
 or any raw format supported by \verb+dcraw+, including 
-\texttt{.nef, .cr2, .pef, .arw}, and many more.
+\texttt{.nef, .cr2, .pef, .arw, .orf, .rw2, .dng, .iiq, .mos}, and maybe more.
+
+You may notice that there are two additional \textsf{Open} options, namely
+\textsf{Open single edge image(s)}, and \textsf{Open Focus Position
+image(s)}. These two entries are used to open very specific type of images,
+which are discussed in Section~\ref{sec:single_roi_mode} and Section~\ref{sec:focus_distance_details}
+respectively. Unless you are dealing with these specific image types, use
+the plain \textsf{File/Open} option.
 
 \newpage
 
@@ -806,7 +813,9 @@ with this chart.
 \vspace{1ex}
 
 This chart type is intended to be used with the MTF Mapper \textsf{Focus
-position} output type. Trying to produce other MTF Mapper output types using
+position} output type, which can only be selected by choosing 
+\textsf{File Focus Position image(s)} from the \textsf{File} menu in the GUI.
+Trying to produce other MTF Mapper output types using
 this test chart is not recommended.
 
 \subsubsection{mfperspective}
@@ -1071,7 +1080,10 @@ should reveal the truth.
 \label{sec:focus_distance_details}
 A brief description of the \textsf{Focus position} output type can be found in
 Section~\ref{sec:focus_distance}; this section covers some important
-details. 
+details. Note that since MTF Mapper 0.6.20 this output type can only 
+be produced by opening the files using \textsf{File/Open Focus Position
+image(s)}, but in older versions a regular checkbox existed to select this 
+output type.
 
 \begin{figure}[ht!]
 \centering
@@ -1455,8 +1467,8 @@ images.
 
 Figure~\ref{fig:single_roi_mode} shows one example of such a cropped image
 of a slanted edge. To use such an image with MTF Mapper, just pass the
-\texttt{--single-roi} option to the command-line tool, or add it to the
-`Arguments' field in the \textsf{Preferences} dialog. Of course, the only
+\texttt{--single-roi} option to the command-line tool, or open your files
+using the \textsf{File/Open single edge images(s)} GUI option. Of course, the only
 sensible visual output for such an input image would be the \textsf{Annotated
 image} option; from there you can view the SFR curve in the gui. (Or see the
 \texttt{-q} output option for the command-line tool).
