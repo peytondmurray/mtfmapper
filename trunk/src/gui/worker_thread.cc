@@ -221,7 +221,6 @@ QString Worker_thread::update_arguments(QString& s) {
     QString arguments(s);
     
     if (force_roi_mode) {
-        printf("arguments before=[%s]\n", arguments.toLocal8Bit().constData());
         if (!arguments.contains("--annotate") && !arguments.contains("-a ")) {
             arguments = arguments + QString(" -a");
         }
@@ -241,11 +240,9 @@ QString Worker_thread::update_arguments(QString& s) {
         arguments.replace("--focus ", " ");
         arguments.replace("--mf-focus ", " ");
         arguments.replace("--chart-orientation ", " ");
-        printf("arguments after=[%s]\n", arguments.toLocal8Bit().constData());
     }
     
     if (force_focus_mode) {
-        printf("arguments before=[%s]\n", arguments.toLocal8Bit().constData());
         if (!arguments.contains("--focus")) {
             arguments = arguments + QString(" --focus");
         }
@@ -259,7 +256,6 @@ QString Worker_thread::update_arguments(QString& s) {
         arguments.replace("--surface ", " ");
         arguments.replace("-p ", " ");
         arguments.replace("--profile ", " ");
-        printf("arguments after=[%s]\n", arguments.toLocal8Bit().constData());
     }
     
     return arguments;
