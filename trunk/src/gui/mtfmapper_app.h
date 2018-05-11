@@ -78,11 +78,14 @@ class mtfmapper_app : public QMainWindow
     void clear_temp_files(void);
     void check_if_helpers_exist(void);
     void save_action(bool subset = false);
+    void open_action(bool roi = false, bool focus = false);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
     QMenu*          help_menu;
     QAction*        open_act;
+    QAction*        open_roi_act;
+    QAction*        open_focus_act;
     QAction*        exit_act;
     QAction*        prefs_act;
     QAction*        about_act;
@@ -129,7 +132,6 @@ class mtfmapper_app : public QMainWindow
     QCheckBox*      tb_img_annotated;
     QCheckBox*      tb_img_profile;
     QCheckBox*      tb_img_gridimg;
-    QCheckBox*      tb_img_focus;
     QCheckBox*      tb_img_lensprofile;
     QCheckBox*      tb_img_orientation;
     
@@ -150,7 +152,9 @@ class mtfmapper_app : public QMainWindow
     vector<Sfr_entry> sfr_list;
 
   public slots:
-    void open();
+    void open_auto();
+    void open_roi();
+    void open_focus();
     void dataset_selected(const QModelIndex&);
     void dataset_selected_changed(const QModelIndex&, const QModelIndex&);
     void parent_item(QString s, QString f);

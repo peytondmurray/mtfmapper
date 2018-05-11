@@ -71,7 +71,6 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_annotation;
     QCheckBox*  cb_profile;
     QCheckBox*  cb_grid;
-    QCheckBox*  cb_focus;
     QCheckBox*  cb_orientation;
     QCheckBox*  cb_lensprofile;
     QCheckBox*  cb_autocrop;

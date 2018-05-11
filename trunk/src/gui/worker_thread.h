@@ -60,6 +60,16 @@ class Worker_thread : public QThread
         dcraw_binary = s;
     }
     
+    void set_single_roi_mode(bool v) {
+        force_roi_mode = v;
+    }
+    
+    void set_focus_mode(bool v) {
+        force_focus_mode = v;
+    }
+    
+    QString update_arguments(QString& s);
+    
   signals:
     void send_parent_item(QString s, QString f);
     void send_child_item(QString s, QString f);
@@ -78,10 +88,13 @@ class Worker_thread : public QThread
     mtfmapper_app* parent;
     QStringList input_files;
     QStandardItemModel output_files;
-    QString      arguments;
+    QString      settings_arguments;
     QString      gnuplot_binary;
     QString      exiv2_binary;
     QString      dcraw_binary;
+    bool force_roi_mode = false;
+    bool force_focus_mode = false;
+    
     int tempdir_number;
 
     bool abort;

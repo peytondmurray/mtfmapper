@@ -93,8 +93,6 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_profile->setChecked(true);
     tb_img_gridimg = new QCheckBox("Grid");
     tb_img_gridimg->setChecked(true);
-    tb_img_focus = new QCheckBox("Focus position");
-    tb_img_focus->setChecked(true);
     tb_img_lensprofile = new QCheckBox("Lens profile");
     tb_img_lensprofile->setChecked(true);
     tb_img_orientation = new QCheckBox("Chart orientation");
@@ -191,6 +189,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     file_menu = new QMenu(tr("&File"), this);
     file_menu->addAction(open_act);
+    file_menu->addAction(open_roi_act);
+    file_menu->addAction(open_focus_act);
     file_menu->addSeparator();
     file_menu->addAction(exit_act);
     
@@ -270,7 +270,15 @@ void mtfmapper_app::clear_temp_files(void) {
 void mtfmapper_app::create_actions(void) {
     open_act = new QAction(tr("&Open..."), this);
     open_act->setShortcut(tr("Ctrl+O"));
-    connect(open_act, SIGNAL(triggered()), this, SLOT(open()));
+    connect(open_act, SIGNAL(triggered()), this, SLOT(open_auto()));
+    
+    open_roi_act = new QAction(tr("&Open single edge image(s)..."), this);
+    open_roi_act->setShortcut(tr("Ctrl+R"));
+    connect(open_roi_act, SIGNAL(triggered()), this, SLOT(open_roi()));
+    
+    open_focus_act = new QAction(tr("&Open Focus Position image(s)..."), this);
+    open_focus_act->setShortcut(tr("Ctrl+F"));
+    connect(open_focus_act, SIGNAL(triggered()), this, SLOT(open_focus()));
     
     exit_act = new QAction(tr("E&xit"), this);
     exit_act->setShortcut(tr("Ctrl+Q"));
@@ -345,33 +353,46 @@ void mtfmapper_app::view_image(const QString& fname) {
     qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
 } 
+
+void mtfmapper_app::open_auto() {
+    open_action(false);
+}
+
+void mtfmapper_app::open_roi() {
+    open_action(true, false);
+}
+
+void mtfmapper_app::open_focus() {
+    open_action(false, true);
+}
  
-void mtfmapper_app::open() {
+void mtfmapper_app::open_action(bool roi, bool focus) {
 
     QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString::null, QString::null);
     open_dialog->setOption(QFileDialog::DontUseNativeDialog);
+    
+    if (!(roi || focus)) {
+        QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
+        QGridLayout* ft_gridbox = new QGridLayout();
+        if (ft_gridbox) {
+            ft_gridbox->addWidget(tb_img_annotated, 0, 0);
+            ft_gridbox->addWidget(tb_img_profile, 0, 1);
+            ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
+            ft_gridbox->addWidget(tb_img_lensprofile, 1, 0);
+            ft_gridbox->addWidget(tb_img_orientation, 1, 1);
+        }
+        v4GroupBox->setLayout(ft_gridbox);
 
-    QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
-    QGridLayout* ft_gridbox = new QGridLayout();
-    if (ft_gridbox) {
-        ft_gridbox->addWidget(tb_img_annotated, 0, 0);
-        ft_gridbox->addWidget(tb_img_profile, 0, 1);
-        ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
-        ft_gridbox->addWidget(tb_img_focus, 1, 0);
-        ft_gridbox->addWidget(tb_img_lensprofile, 1, 1);
-        ft_gridbox->addWidget(tb_img_orientation, 1, 2);
+        QGridLayout* od_gridbox = qobject_cast<QGridLayout*>(open_dialog->layout());
+        od_gridbox->addWidget(v4GroupBox);
     }
-    v4GroupBox->setLayout(ft_gridbox);
-
-    QGridLayout* od_gridbox = qobject_cast<QGridLayout*>(open_dialog->layout());
-    od_gridbox->addWidget(v4GroupBox);
+    
     open_dialog->setFileMode(QFileDialog::FileMode::ExistingFiles);
     
     // use the state from the settings menu as a starting point
     tb_img_annotated->setCheckState(settings->cb_annotation->checkState());
     tb_img_profile->setCheckState(settings->cb_profile->checkState());
     tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
-    tb_img_focus->setCheckState(settings->cb_focus->checkState());
     tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
     tb_img_orientation->setCheckState(settings->cb_orientation->checkState());
 
@@ -380,7 +401,6 @@ void mtfmapper_app::open() {
         settings->cb_annotation->setCheckState(tb_img_annotated->checkState());
         settings->cb_profile->setCheckState(tb_img_profile->checkState());
         settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
-        settings->cb_focus->setCheckState(tb_img_focus->checkState());
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
         settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
         settings->set_gnuplot_img_width(int(qgv->size().height()*1.3));
@@ -398,6 +418,8 @@ void mtfmapper_app::open() {
             labels.push_back(QString("Data set"));
             dataset_contents.setHorizontalHeaderLabels(labels);
             abort_button->show();
+            processor.set_single_roi_mode(roi);
+            processor.set_focus_mode(focus);
             processor.set_files(input_files);
             processor.set_gnuplot_binary(settings->get_gnuplot_binary());
             processor.set_dcraw_binary(settings->get_dcraw_binary());
