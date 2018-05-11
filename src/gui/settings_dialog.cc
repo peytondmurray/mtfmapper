@@ -49,8 +49,6 @@ const QString setting_profile = "setting_profile";
 const Qt::CheckState setting_profile_default = Qt::Checked;
 const QString setting_grid = "setting_grid";
 const Qt::CheckState setting_grid_default = Qt::Checked;
-const QString setting_focus = "setting_focus";
-const Qt::CheckState setting_focus_default = Qt::Unchecked;
 const QString setting_lensprofile = "setting_lensprofile";
 const Qt::CheckState setting_lensprofile_default = Qt::Unchecked;
 const QString setting_orientation = "setting_orientation";
@@ -118,7 +116,6 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_annotation   = new QCheckBox("Annotation", this);
     cb_profile      = new QCheckBox("Profile", this);
     cb_grid         = new QCheckBox("Grid", this);
-    cb_focus        = new QCheckBox("Focus position", this);
     cb_lensprofile  = new QCheckBox("Lens profile", this);
     cb_orientation  = new QCheckBox("Chart orientation", this);
     cb_autocrop     = new QCheckBox("Autocrop", this);
@@ -162,9 +159,6 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
     cb_grid->setCheckState(
         (Qt::CheckState)settings.value(setting_grid, setting_grid_default).toInt()
-    );
-    cb_focus->setCheckState(
-        (Qt::CheckState)settings.value(setting_focus, setting_focus_default).toInt()
     );
     cb_lensprofile->setCheckState(
         (Qt::CheckState)settings.value(setting_lensprofile, setting_lensprofile_default).toInt()
@@ -230,7 +224,6 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vo_layout->addWidget(cb_annotation);
     vo_layout->addWidget(cb_profile);
     vo_layout->addWidget(cb_grid);
-    vo_layout->addWidget(cb_focus);
     vo_layout->addWidget(cb_lensprofile);
     vo_layout->addWidget(cb_orientation);
     voGroupBox->setLayout(vo_layout);
@@ -337,10 +330,6 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" -s");
     }
     
-    if (cb_focus->checkState()) {
-        args = args + QString(" --focus");
-    }
-    
     if (cb_lensprofile->checkState()) {
         args = args + QString(" --lensprofile");
     }
@@ -407,7 +396,6 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_profile, cb_profile->checkState());
     settings.setValue(setting_lpmm, cb_lpmm->checkState());
     settings.setValue(setting_grid, cb_grid->checkState());
-    settings.setValue(setting_focus, cb_focus->checkState());
     settings.setValue(setting_lensprofile, cb_lensprofile->checkState());
     settings.setValue(setting_orientation, cb_orientation->checkState());
     settings.setValue(setting_autocrop, cb_autocrop->checkState());

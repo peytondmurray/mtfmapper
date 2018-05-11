@@ -56,6 +56,7 @@ void Worker_thread::set_files(const QStringList& files) {
 void Worker_thread::run(void) {
     abort = false;
     output_files.clear();
+    QString arguments = update_arguments(settings_arguments);
     for (int i=0; i < input_files.size() && !abort; i++) {
         emit send_progress_indicator(i+1);
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
@@ -201,14 +202,65 @@ void Worker_thread::run(void) {
         }
         delete [] buffer;
     }
+    // turn off the transient modifiers
+    set_single_roi_mode(false); 
+    set_focus_mode(false);
     emit send_progress_indicator(input_files.size()+1);
     emit send_all_done();
 }
 
 void Worker_thread::receive_arg_string(QString s) {
-    arguments = s;
+    settings_arguments = s;
 }
 
 void Worker_thread::receive_abort() {
     abort = true;
+}
+
+QString Worker_thread::update_arguments(QString& s) {
+    QString arguments(s);
+    
+    if (force_roi_mode) {
+        printf("arguments before=[%s]\n", arguments.toLocal8Bit().constData());
+        if (!arguments.contains("--annotate") && !arguments.contains("-a ")) {
+            arguments = arguments + QString(" -a");
+        }
+        if (!arguments.contains("--edges") && !arguments.contains("-q ")) {
+            arguments = arguments + QString(" -q");
+        }
+        if (!arguments.contains("--single-roi")) {
+            arguments = arguments + QString(" --single-roi");
+        }
+        
+        // disable all the other mutually exclusive outputs
+        arguments.replace("--lensprofile ", " ");
+        arguments.replace("-s ", " ");
+        arguments.replace("--surface ", " ");
+        arguments.replace("-p ", " ");
+        arguments.replace("--profile ", " ");
+        arguments.replace("--focus ", " ");
+        arguments.replace("--mf-focus ", " ");
+        arguments.replace("--chart-orientation ", " ");
+        printf("arguments after=[%s]\n", arguments.toLocal8Bit().constData());
+    }
+    
+    if (force_focus_mode) {
+        printf("arguments before=[%s]\n", arguments.toLocal8Bit().constData());
+        if (!arguments.contains("--focus")) {
+            arguments = arguments + QString(" --focus");
+        }
+        // disable all the other mutually exclusive outputs
+        arguments.replace("--lensprofile ", " ");
+        arguments.replace("-q ", " ");
+        arguments.replace("--edges ", " ");
+        arguments.replace("-a ", " ");
+        arguments.replace("--annotate ", " ");
+        arguments.replace("-s ", " ");
+        arguments.replace("--surface ", " ");
+        arguments.replace("-p ", " ");
+        arguments.replace("--profile ", " ");
+        printf("arguments after=[%s]\n", arguments.toLocal8Bit().constData());
+    }
+    
+    return arguments;
 }
