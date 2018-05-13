@@ -272,11 +272,11 @@ void mtfmapper_app::create_actions(void) {
     open_act->setShortcut(tr("Ctrl+O"));
     connect(open_act, SIGNAL(triggered()), this, SLOT(open_auto()));
     
-    open_roi_act = new QAction(tr("&Open single edge image(s)..."), this);
-    open_roi_act->setShortcut(tr("Ctrl+R"));
+    open_roi_act = new QAction(tr("Op&en single edge image(s)..."), this);
+    open_roi_act->setShortcut(tr("Ctrl+E"));
     connect(open_roi_act, SIGNAL(triggered()), this, SLOT(open_roi()));
     
-    open_focus_act = new QAction(tr("&Open Focus Position image(s)..."), this);
+    open_focus_act = new QAction(tr("Open &Focus Position image(s)..."), this);
     open_focus_act->setShortcut(tr("Ctrl+F"));
     connect(open_focus_act, SIGNAL(triggered()), this, SLOT(open_focus()));
     
