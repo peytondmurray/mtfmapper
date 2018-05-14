@@ -58,7 +58,8 @@ Logger logger;
 #include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
-#include "include/autocrop.h"
+#include "include/auto_crop.h"
+#include "include/imatest_crop.h"
 #include "include/bayer.h"
 #include "include/demosaic.h"
 #include "include/stride_range.h"
@@ -112,6 +113,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_rectilinear("", "rectilinear-equivalent", "Measure MTF in rectilinear equivalent projection", cmd, false);
     TCLAP::SwitchArg tc_distort_crop("", "no-undistort-crop", "Do not crop undistorted image (equiangular, stereographic)", cmd, false);
     TCLAP::SwitchArg tc_full_sfr("", "full-sfr", "Output the full SFR/MTF curve (up to 4 c/p) when combined with -q or -f", cmd, false);
+    TCLAP::SwitchArg tc_ima_mode("", "imatest-chart", "Treat the input image as an Imatest chart (crop black bars out)", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -314,8 +316,12 @@ int main(int argc, char** argv) {
     cv::Rect img_dimension_correction(0,0, cvimg.cols, cvimg.rows);
     
     if (tc_autocrop.getValue()) {
-        Autocropper ac(cvimg);
+        Auto_cropper ac(cvimg);
         cvimg = ac.subset(cvimg, &img_dimension_correction);
+    }
+    if (tc_ima_mode.getValue()) {
+        Imatest_cropper ic(cvimg);
+        ic.fill_bars(cvimg);
     }
     
     cv::Mat rawimg = cvimg;
