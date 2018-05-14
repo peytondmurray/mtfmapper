@@ -78,7 +78,7 @@ class mtfmapper_app : public QMainWindow
     void clear_temp_files(void);
     void check_if_helpers_exist(void);
     void save_action(bool subset = false);
-    void open_action(bool roi = false, bool focus = false);
+    void open_action(bool roi = false, bool focus = false, bool imatest = false);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
@@ -86,6 +86,7 @@ class mtfmapper_app : public QMainWindow
     QAction*        open_act;
     QAction*        open_roi_act;
     QAction*        open_focus_act;
+    QAction*        open_imatest_act;
     QAction*        exit_act;
     QAction*        prefs_act;
     QAction*        about_act;
@@ -155,6 +156,7 @@ class mtfmapper_app : public QMainWindow
     void open_auto();
     void open_roi();
     void open_focus();
+    void open_imatest_chart();
     void dataset_selected(const QModelIndex&);
     void dataset_selected_changed(const QModelIndex&, const QModelIndex&);
     void parent_item(QString s, QString f);

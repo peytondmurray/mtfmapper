@@ -191,6 +191,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     file_menu->addAction(open_act);
     file_menu->addAction(open_roi_act);
     file_menu->addAction(open_focus_act);
+    file_menu->addAction(open_imatest_act);
     file_menu->addSeparator();
     file_menu->addAction(exit_act);
     
@@ -280,6 +281,10 @@ void mtfmapper_app::create_actions(void) {
     open_focus_act->setShortcut(tr("Ctrl+F"));
     connect(open_focus_act, SIGNAL(triggered()), this, SLOT(open_focus()));
     
+    open_imatest_act = new QAction(tr("Open Focus &Imatest image(s)..."), this);
+    open_imatest_act->setShortcut(tr("Ctrl+I"));
+    connect(open_imatest_act, SIGNAL(triggered()), this, SLOT(open_imatest_chart()));
+    
     exit_act = new QAction(tr("E&xit"), this);
     exit_act->setShortcut(tr("Ctrl+Q"));
     connect(exit_act, SIGNAL(triggered()), this, SLOT(close()));
@@ -365,8 +370,12 @@ void mtfmapper_app::open_roi() {
 void mtfmapper_app::open_focus() {
     open_action(false, true);
 }
+
+void mtfmapper_app::open_imatest_chart() {
+    open_action(false, false, true);
+}
  
-void mtfmapper_app::open_action(bool roi, bool focus) {
+void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
 
     QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString::null, QString::null);
     open_dialog->setOption(QFileDialog::DontUseNativeDialog);
@@ -420,6 +429,7 @@ void mtfmapper_app::open_action(bool roi, bool focus) {
             abort_button->show();
             processor.set_single_roi_mode(roi);
             processor.set_focus_mode(focus);
+            processor.set_imatest_mode(imatest);
             processor.set_files(input_files);
             processor.set_gnuplot_binary(settings->get_gnuplot_binary());
             processor.set_dcraw_binary(settings->get_dcraw_binary());

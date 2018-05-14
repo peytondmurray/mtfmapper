@@ -68,6 +68,10 @@ class Worker_thread : public QThread
         force_focus_mode = v;
     }
     
+    void set_imatest_mode(bool v) {
+        force_imatest_mode = v;
+    }
+    
     QString update_arguments(QString& s);
     
   signals:
@@ -94,6 +98,7 @@ class Worker_thread : public QThread
     QString      dcraw_binary;
     bool force_roi_mode = false;
     bool force_focus_mode = false;
+    bool force_imatest_mode = false;
     
     int tempdir_number;
 

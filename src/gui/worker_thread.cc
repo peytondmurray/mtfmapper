@@ -205,6 +205,7 @@ void Worker_thread::run(void) {
     // turn off the transient modifiers
     set_single_roi_mode(false); 
     set_focus_mode(false);
+    set_imatest_mode(false);
     emit send_progress_indicator(input_files.size()+1);
     emit send_all_done();
 }
@@ -257,5 +258,11 @@ QString Worker_thread::update_arguments(QString& s) {
         arguments.replace("--profile ", " ");
     }
     
+    
+    if (force_imatest_mode) {
+        if (!arguments.contains("--imatest-chart")) {
+            arguments = arguments + QString(" --imatest-chart");
+        }
+    }
     return arguments;
 }
