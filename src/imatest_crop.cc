@@ -27,6 +27,10 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
 #include "include/imatest_crop.h"
+#include <map>
+using std::multimap;
+using std::pair;
+using std::make_pair;
 
 Imatest_cropper::Imatest_cropper(cv::Mat& in_img) : Cropper(in_img) {
     double maxval = -1e20;
@@ -48,68 +52,99 @@ Imatest_cropper::Imatest_cropper(cv::Mat& in_img) : Cropper(in_img) {
     width  = in_img.cols;
     max_brightness = lrint(2*maxval/in_img.cols*65535);
 }
+
+static cv::Point2d ransac_line(const vector<double>& data, double il_thresh) {
+
+    double best_score = -1e20;
+    cv::Point2d best_sol;
+    cv::Point2d sol;
+    
+    const double s = 1.0/data.size();
+    
+    multimap<double, cv::Point2d> sols;
+    for (size_t i=0; i < data.size()-1; i++) {
+        for (size_t j=i+1; j < data.size(); j++) {
+        
+            sol.x = data.size() * (data[j] - data[i])/(j - i);
+            sol.y = data[i];
+            
+            double sum_x = 0;
+            double sum_y = 0;
+            double sum_xx = 0;
+            double sum_xy = 0;
+            double n = 0;
+            
+            for (size_t k=0; k < data.size(); k++) {
+                double pred = k*s*sol.x + sol.y;
+                double e = fabs(pred - data[k]);
+                if (e < il_thresh) {
+                    n++;
+                    sum_x += k*s;
+                    sum_y += data[k];
+                    sum_xy += k*s*data[k];
+                    sum_xx += k*s*k*s;
+                }
+            }
+            if (n > 1) {
+                double b = (n*sum_xy - sum_x*sum_y)/(n*sum_xx - sum_x*sum_x);
+                double a = (sum_y - b*sum_x)/n;
+                
+                n = 0;
+                double rmse = 0;
+                for (size_t k=0; k < data.size(); k++) {
+                    double pred = k*s*b + a;
+                    double e = fabs(pred - data[k]);
+                    if (e < il_thresh) {
+                        n++;
+                        rmse += e*e;
+                    }
+                }
+                rmse = sqrt(rmse/n);
+                
+                double score = (data.size() - n) + rmse;
+                
+                if (score > best_score) {
+                    best_score = score;
+                    best_sol = cv::Point2d(b, a);
+                }
+                
+                sols.insert(make_pair(score, cv::Point2d(b, a)));
+                
+            } 
+        }
+    }
+    
+    return sols.begin()->second;
+}
     
 static cv::Point_<size_t> region_grow(const vector<double>& data) {
-    class Running {
-      public:
-        Running(double mean, double min_sdev) : mean(mean), prev_mean(mean), min_sdev(min_sdev) {}
-        
-        void add(double x) {
-            n++;
-            mean = prev_mean + (x - prev_mean)/n;
-            var = prev_var + (x - prev_mean)*(x - mean);
-            
-            prev_mean = mean;
-            prev_var = var;
-        }
-        
-        double get_mean(void) const { return mean; };
-        
-        double get_sdev(void) const { 
-            return std::max(sqrt(var/(n-1)), min_sdev); 
-        };
-        
-        double mean;
-        double prev_mean;
-        
-        size_t n = 1;
-        double prev_var = 0;
-        double var = 0;
-        double min_sdev;
-    };
     
-    vector<double> lscopy(data);
-    sort(lscopy.begin(), lscopy.end());
-    double median = lscopy[lscopy.size()/2];
+    const double il_thresh = 0.005;
+    cv::Point2d sol = ransac_line(data, il_thresh);
     
-    size_t med_idx = 0;
+    size_t left_idx = 0;
+    size_t right_idx = 0;
+    int cstart = -1;
+    int cend = -1;
     for (size_t k=0; k < data.size(); k++) {
-        if (data[k] == median) {
-            med_idx = k;
-        }
-    }
-    
-    Running m(median, 1.0/600.0);
-    
-    for (size_t k=lscopy.size()/2-2; k <= lscopy.size()/2 + 2; k++) {
-        m.add(lscopy[k]);
-    }
-    
-    size_t left_idx = med_idx;
-    size_t right_idx = med_idx;
-    
-    bool done = false;
-    while (!done) {
-        done = true;
-        if (left_idx > 0 && fabs(data[left_idx - 1] - m.get_mean()) < 3*m.get_sdev()) {
-            left_idx--;
-            m.add(data[left_idx]);
-            done = false;
-        }
-        if (right_idx < data.size()-1 && fabs(data[right_idx + 1] - m.get_mean()) < 3*m.get_sdev()) {
-            right_idx++;
-            m.add(data[right_idx]);
-            done = false;
+        double x = k/double(data.size());
+        if (fabs(data[k] - (x*sol.x + sol.y)) < 2*il_thresh) {
+            if (cstart < 0) {
+                cstart = k;
+            }
+            cend = k;
+        } else {
+            
+            int rlen = cend - cstart;
+            if (rlen > int(right_idx - left_idx)) {
+                left_idx = cstart;
+                right_idx = cend;
+                if (rlen > 0.1*data.size()) {
+                    break;
+                }
+            }
+            cstart = -1;
+            cend = -1;
         }
     }
     
@@ -126,31 +161,57 @@ cv::Point_<int> Imatest_cropper::black_bar_bounds(const vector<double>& in_data)
     for (auto& d : data) {
         d /= maxv;
     }
-
-    double otsu = otsu_threshold(data);
+    
+    // try using the mean i.s.o Otsu
+    double mean = 0;
+    for (auto d : data) {
+        mean += d;
+    }
+    double threshold = mean / data.size();
+    
+    // check the number of transitions
+    size_t transitions = 0;
+    for (size_t k=0; k < data.size() - 1; k++) {
+        if ( (data[k] > threshold && data[k+1] < threshold) ||
+             (data[k] < threshold && data[k+1] > threshold) ) {
+             
+             transitions++;
+        }
+    }
+    
+    if (transitions < 5) {
+        logger.debug("Imatest_crop: mean thresholding failed. Now trying Otsu\n");
+        threshold = otsu_threshold(data);
+    }
     
     vector<double> lsegment;
     size_t idx = 0;
-    while (idx < data.size() && data[idx] > otsu) idx++;
+    while (idx < data.size() && data[idx] > threshold) idx++;
     size_t lseg_start = idx;
-    while (idx < data.size() && data[idx] < otsu) {
+    while (idx < data.size() && data[idx] < threshold) {
         lsegment.push_back(data[idx]);
         idx += 2;
     }
     size_t lseg_end = idx;
     
+    if (lsegment.size() < 2) return cv::Point_<int>(0, in_data.size());
+    
     cv::Point_<size_t> lseg = region_grow(lsegment);
+    logger.debug("Imatest_crop: top segment: [%ld, %ld]\n", lseg_start + 2*lseg.x, lseg_start + 2*lseg.y);
     
     vector<double> rsegment;
     idx = data.size()-1;
-    while (idx > lseg_end && data[idx] > otsu) idx--;
+    while (idx > lseg_end && data[idx] > threshold) idx--;
     size_t rseg_start = idx;
-    while (idx > lseg_end && data[idx] < otsu) {
+    while (idx > lseg_end && data[idx] < threshold) {
         rsegment.push_back(data[idx]);
         idx -= 2;
     }
     
+    if (rsegment.size() < 2) return cv::Point_<int>(0, in_data.size());
+    
     cv::Point_<size_t> rseg = region_grow(rsegment);
+    logger.debug("Imatest_crop: bottom segment: [%ld, %ld]\n", rseg_start - 2*rseg.y, rseg_start - 2*rseg.x);
     
     int even_start = lseg_start + 2*lseg.x;
     even_start += even_start % 2;
