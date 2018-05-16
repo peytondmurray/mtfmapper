@@ -281,7 +281,7 @@ void mtfmapper_app::create_actions(void) {
     open_focus_act->setShortcut(tr("Ctrl+F"));
     connect(open_focus_act, SIGNAL(triggered()), this, SLOT(open_focus()));
     
-    open_imatest_act = new QAction(tr("Open Focus &Imatest image(s)..."), this);
+    open_imatest_act = new QAction(tr("Open &Imatest image(s)..."), this);
     open_imatest_act->setShortcut(tr("Ctrl+I"));
     connect(open_imatest_act, SIGNAL(triggered()), this, SLOT(open_imatest_chart()));
     
