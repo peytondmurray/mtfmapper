@@ -207,7 +207,7 @@ Imatest_cropper::Imatest_cropper(cv::Mat& in_img) : Cropper(in_img) {
     
     double csum = total;
     int bidx = histo.size() - 1;
-    while (bidx > 0 && csum > 0.98*total) {
+    while (bidx > 0 && csum > 0.75*total) {
         csum -= histo[bidx--];
     }
     
