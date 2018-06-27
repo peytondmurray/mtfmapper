@@ -27,12 +27,18 @@ class GL_image_viewer : public QAbstractScrollArea {
     void set_clickable(bool b);
     
   private:
+    void zoom_action(double direction, int zx, int zy);
+    
     mtfmapper_app* parent_app;
     GL_image_panel* widget;
     
     bool panning = false;
     QPoint pan;
     QPoint click;
+    
+    bool zooming = false;
+    QPoint zoom_pos;
+    QPoint zoom_pos_temp;
     
     bool must_update_bars = true;
     bool is_clickable = false;
