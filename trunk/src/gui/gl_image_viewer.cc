@@ -58,21 +58,7 @@ void GL_image_viewer::wheelEvent(QWheelEvent* e) {
     switch (e->modifiers()) {
     case Qt::ControlModifier:
       // directly ask viewport to zoom ...
-      {
-          QPoint np = widget->zoom(e->angleDelta().y(), e->x(), e->y());
-          
-          // update scroll bars with new scale factor
-          QSize areaSize = viewport()->size();
-          QSize widgetSize(
-              widget->zoom_scale()*widget->img_size().width(), 
-              widget->zoom_scale()*widget->img_size().height()
-          );
-          verticalScrollBar()->setRange(-0.5*(widgetSize.height()), 0.5*(widgetSize.height()) - areaSize.height());
-          horizontalScrollBar()->setRange(-0.5*(widgetSize.width()), 0.5*(widgetSize.width()) - areaSize.width());
-          
-          horizontalScrollBar()->setValue(np.x());
-          verticalScrollBar()->setValue(np.y());
-      }
+      zoom_action(e->angleDelta().y(), e->x(), e->y());
       break;  
     case Qt::ShiftModifier:
       //scroll x
@@ -108,6 +94,14 @@ void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
+    if (event->button() == Qt::MiddleButton) {
+        zooming = true;
+        zoom_pos = event->pos();
+        zoom_pos_temp = zoom_pos;
+        setCursor(Qt::SizeVerCursor);
+        event->accept();
+        return;
+    }
     event->ignore();
 }
 
@@ -118,6 +112,12 @@ static double sqr(double x) {
 void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::RightButton) {
         panning = false;
+        setCursor(Qt::ArrowCursor);
+        event->accept();
+        return;
+    }
+    if (event->button() == Qt::MiddleButton) {
+        zooming = false;
         setCursor(Qt::ArrowCursor);
         event->accept();
         return;
@@ -150,7 +150,31 @@ void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
+    if (zooming) {
+        double dist = zoom_pos_temp.y() - event->y();
+        
+        if (fabs(dist) > 20) {
+            zoom_pos_temp = event->pos();
+            zoom_action(dist, zoom_pos.x(), zoom_pos.y());
+        }
+    }
     event->ignore();
+}
+
+void GL_image_viewer::zoom_action(double direction, int zx, int zy) {
+    QPoint np = widget->zoom(direction, zx, zy);
+      
+    // update scroll bars with new scale factor
+    QSize areaSize = viewport()->size();
+    QSize widgetSize(
+        widget->zoom_scale()*widget->img_size().width(), 
+        widget->zoom_scale()*widget->img_size().height()
+    );
+    verticalScrollBar()->setRange(-0.5*(widgetSize.height()), 0.5*(widgetSize.height()) - areaSize.height());
+    horizontalScrollBar()->setRange(-0.5*(widgetSize.width()), 0.5*(widgetSize.width()) - areaSize.width());
+      
+    horizontalScrollBar()->setValue(np.x());
+    verticalScrollBar()->setValue(np.y());
 }
 
 void GL_image_viewer::load_image(const QString& fname) {
