@@ -35,13 +35,15 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QList>
 #include "settings_dialog.h"
 #include "worker_thread.h"
-#include "img_frame.h"
+#include "gl_image_viewer.h"
 #include "exiv2_property.h"
 #include "about_dialog.h"
 #include "help_dialog.h"
-#include "imgviewer.h"
+
 #include "sfr_entry.h"
 #include "sfr_dialog.h"
+
+#include <opencv2/opencv.hpp>
 
 #include <vector>
 using std::vector;
@@ -94,8 +96,6 @@ class mtfmapper_app : public QMainWindow
     
     QTreeView*      datasets;
     
-    QSpinBox*       zoom_spinbox;
-
     QLabel*         img_comment_label;
     QLabel*         img_comment_value;
 
@@ -109,10 +109,6 @@ class mtfmapper_app : public QMainWindow
     QLabel*         focus_distance_value;
     
     QGroupBox*      horizgroup;
-    
-    Imgviewer*           qgv;
-    QGraphicsScene*      qgs;
-    QGraphicsPixmapItem* qgpi;
     
     Settings_dialog*    settings;
     About_dialog*       about;
@@ -143,11 +139,14 @@ class mtfmapper_app : public QMainWindow
     QPushButton*    save_button;
     QPushButton*    save_subset_button;
     
-    Img_frame*      img_frame;
+    QFrame*           img_frame;
+    GL_image_viewer*  img_viewer;
+    GL_image_panel*   img_panel;
     
     QSplitter*      splitter;
 
     QIcon* mtfmapper_logo;
+    QImage* icon_image;
     
     Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;
@@ -164,12 +163,8 @@ class mtfmapper_app : public QMainWindow
     void close_item(void);
     void item_for_deletion(QString s);
     void populate_exif_info_from_file(QString s, QString tempdir);
-    void zoom_changed(int i);
   
-    void zoom_in(void);
-    void zoom_out(void);  
-    void zoom_to_100(void);
-    void edge_selected(int px, int py, bool crtl_down, bool shift_down);
+    bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     
 
     void hide_abort_button(void);

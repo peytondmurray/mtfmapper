@@ -33,10 +33,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "worker_thread.h"
 #include "common.h"
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -48,14 +44,6 @@ using std::string;
 mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
   : processor(this), sfr_dialog(nullptr)
 {
-
-    zoom_spinbox = new QSpinBox;
-    zoom_spinbox->setRange(0, 1000);
-    zoom_spinbox->setSingleStep(10);
-    zoom_spinbox->setSuffix("%");
-    zoom_spinbox->setSpecialValueText(tr("Automatic"));
-    zoom_spinbox->setValue(100);
-    zoom_spinbox->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 
     img_comment_label = new QLabel("Comment: ");
     img_comment_label->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
@@ -85,7 +73,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     focus_distance_value->setStyleSheet("QLabel { color : SteelBlue; }");
 
     
-    img_frame = new Img_frame(this);
+    //img_frame = new Img_frame(this);
+    img_frame = new QFrame(this);
     
     tb_img_annotated = new QCheckBox("Annotated image");
     tb_img_annotated->setChecked(true);
@@ -98,15 +87,11 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_orientation = new QCheckBox("Chart orientation");
     tb_img_orientation->setChecked(true);
     
-    qgs = new QGraphicsScene;
-    qgs->setSceneRect(0,0,400,400);
-    qgv = new Imgviewer(qgs, this);
-    qgv->setDragMode(QGraphicsView::ScrollHandDrag);
-    qgv->setRenderHints(QPainter::SmoothPixmapTransform);
-    qgpi = new QGraphicsPixmapItem;
-    qgpi->setTransformationMode(Qt::SmoothTransformation);
-    qgs->addItem(qgpi);
-    qgv->resize(600,300);
+    img_viewer = new GL_image_viewer(this);
+    img_panel = new GL_image_panel(img_viewer);
+    img_viewer->setViewport(img_panel);   // TODO: could combine these
+    img_viewer->set_GL_widget(img_panel);
+    
     
     QStringList labels;
     labels.push_back(QString("Data set"));
@@ -154,8 +139,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     QGroupBox* vGroupBox = new QGroupBox(tr("Current output"));
     QGridLayout* vlayout = new QGridLayout;
-    vlayout->addWidget(qgv, 0, 0);
-    vlayout->addWidget(zoom_spinbox, 1, 0);
+    vlayout->addWidget(img_viewer, 0, 0);
     vlayout->addWidget(vbox2, 0, 1);
     vlayout->addWidget(v3GroupBox);
     vGroupBox->setLayout(vlayout);
@@ -206,7 +190,6 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     menuBar()->addMenu(settings_menu);
     menuBar()->addMenu(help_menu);
     
-    connect(datasets, SIGNAL(clicked(const QModelIndex&)), this, SLOT(dataset_selected(const QModelIndex&)));
     connect(datasets->selectionModel(), SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)), this, SLOT(dataset_selected_changed(const QModelIndex&, const QModelIndex&)));
     
     connect(&processor, SIGNAL(send_parent_item(QString, QString)), this, SLOT(parent_item(QString, QString)));
@@ -214,11 +197,6 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_close_item()), this, SLOT(close_item()));
     connect(&processor, SIGNAL(send_delete_item(QString)), this, SLOT(item_for_deletion(QString)));
     connect(&processor, SIGNAL(send_exif_filename(QString, QString)), this, SLOT(populate_exif_info_from_file(QString, QString)));
-    
-    connect(zoom_spinbox, SIGNAL(valueChanged(int)), this, SLOT(zoom_changed(int)));
-    connect(img_frame, SIGNAL(zoom_in()), this, SLOT(zoom_in()));
-    connect(img_frame, SIGNAL(zoom_out()), this, SLOT(zoom_out()));
-    connect(img_frame, SIGNAL(zoom_to_100()), this, SLOT(zoom_to_100()));
     
     connect(&processor, SIGNAL(send_progress_indicator(int)), progress, SLOT(setValue(int)));
     connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
@@ -237,12 +215,22 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
 
+    // rather a lot of code, but extract the icon and store it in a QImage
     mtfmapper_logo = new QIcon;
     mtfmapper_logo->addFile(":/Icons/AppIcon256");
-    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
-    qgs->setSceneRect(QRectF(0, 0, 255, 255));
-
-
+    
+    QGraphicsScene qgs;
+    QGraphicsPixmapItem qgpi;
+    qgpi.setTransformationMode(Qt::SmoothTransformation);
+    qgs.addItem(&qgpi);
+    qgpi.setPixmap(mtfmapper_logo->pixmap(256));
+    qgs.setSceneRect(QRectF(0, 0, 255, 255));
+    icon_image = new QImage(QSize(256, 256), QImage::Format_RGB888);
+    icon_image->fill(Qt::white);
+    QPainter painter(icon_image);
+    qgs.render(&painter);
+    img_panel->set_default_image(icon_image);
+    
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
     
@@ -302,61 +290,21 @@ void mtfmapper_app::create_actions(void) {
 }
 
 void mtfmapper_app::view_image(const QString& fname) {
-    QImage image(fname);
-    if (image.isNull()) {
-        // Qt could not load the file. This might be because it is a 16-bit TIFF file.
-        // Try loading it using opencv
-        cv::Mat cvimg;
-        bool opencv_succeeded = true;
-        try {
-            cvimg = cv::imread(fname.toStdString(), CV_LOAD_IMAGE_GRAYSCALE);
-            if (cvimg.data) {
-                // resize the image if it exceeds 10k pixels, since this seems to break QT 5.7 ?
-                if (cvimg.cols > 9999 || cvimg.rows > 9999) {
-                    cv::Mat smaller;
-                    double sf = 1;
-                    if (cvimg.cols >= cvimg.rows) {
-                        sf = 8000.0 / double(cvimg.cols);
-                    } else {
-                        sf = 80000.0 / double(cvimg.rows);
-                    }
-                    cv::resize(cvimg, smaller, cv::Size(0, 0), sf, sf);
-                    cvimg = smaller;
-                    logger.debug("Input image %s resized to %d x %d\n", fname.toLocal8Bit().constData(), cvimg.cols, cvimg.rows);
-                }
-                image = QImage(cvimg.cols, cvimg.rows, QImage::Format_Grayscale8);
-                memcpy(image.bits(), cvimg.data, cvimg.rows*cvimg.cols);
-                logger.debug("Input image %s loaded through OpenCV\n", fname.toLocal8Bit().constData());
-            } else {
-                // too bad, OpenCV cannot handle it either ...
-                opencv_succeeded = false;
-            }
-        }
-        catch (const cv::Exception&) {
-            // too bad, OpenCV cannot handle it either ...
-            opencv_succeeded = false;
-        }
-        if (!opencv_succeeded) {
-            QMessageBox::information(
-                this, tr("Image Viewer"),
-                tr("Cannot load %1.").arg(fname)
-            );
-            return;
-        }
-        
+    bool opencv_succeeded = true;
+    try {
+        img_viewer->load_image(fname);
     }
-    int rwidth, rheight;
-    
-    if (zoom_spinbox->value() == 0) {
-        QSize vp_size = qgv->maximumViewportSize();
-        rwidth  = int(vp_size.rwidth());
-        rheight = int(vp_size.rwidth()*image.height()/image.width());
-    } else {
-        rwidth  = int(image.width() * (zoom_spinbox->value() / 100.0));
-        rheight = int(image.height() * (zoom_spinbox->value() / 100.0));
+    catch (const cv::Exception&) {
+        // too bad, OpenCV cannot handle it either ...
+        opencv_succeeded = false;
     }
-    qgpi->setPixmap(QPixmap::fromImage(image).scaled(QSize(rwidth,rheight), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    qgs->setSceneRect(QRectF(0,0,rwidth, rheight));
+    if (!opencv_succeeded) {
+        QMessageBox::information(
+            this, tr("Image Viewer"),
+            tr("Cannot load %1.").arg(fname)
+        );
+        return;
+    }
 } 
 
 void mtfmapper_app::open_auto() {
@@ -412,7 +360,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
         settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
         settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
-        settings->set_gnuplot_img_width(int(qgv->size().height()*1.3));
+        settings->set_gnuplot_img_width(int(img_viewer->size().height()*1.3));
         settings->send_argument_string();
 
         input_files = open_dialog->selectedFiles();
@@ -461,7 +409,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
         if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
-            qgv->set_clickable(true);
+            img_viewer->set_clickable(true);
             sfr_list.clear();
             
             QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
@@ -480,7 +428,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                 }
             }
         } else {
-            qgv->set_clickable(false);
+            img_viewer->set_clickable(false);
             sfr_list.clear();
         }
     }
@@ -513,24 +461,6 @@ void mtfmapper_app::item_for_deletion(QString s) {
 }
 
 
-void mtfmapper_app::zoom_changed(int i ATTRIBUTE_UNUSED) {
-    if (datasets->selectionModel()->currentIndex().isValid()) {
-        dataset_selected(datasets->selectionModel()->currentIndex());
-    }
-}
-
-void mtfmapper_app::zoom_in(void) {
-    zoom_spinbox->setValue(zoom_spinbox->value() + 10);
-}
-
-void mtfmapper_app::zoom_out(void) {
-    zoom_spinbox->setValue(zoom_spinbox->value() - 10);
-}
-
-void mtfmapper_app::zoom_to_100(void) {
-    zoom_spinbox->setValue(100);
-}
-
 void mtfmapper_app::hide_abort_button(void) {
     abort_button->hide();
 }
@@ -550,8 +480,7 @@ void mtfmapper_app::clear_button_pressed(void) {
     focal_length_value->setText("N/A");
     focus_distance_value->setText("N/A");
 
-    qgpi->setPixmap(mtfmapper_logo->pixmap(256));
-    qgs->setSceneRect(QRectF(0, 0, 255, 255));
+    img_viewer->load_image(icon_image);
 
     clear_button->setEnabled(false);
 }
@@ -598,7 +527,7 @@ void mtfmapper_app::save_action(bool subset) {
         subset_mb->setWindowTitle("Save result subset");
         QGridLayout* od_gridbox = new QGridLayout();
         od_gridbox->addWidget(new QLabel("Select result subsets to save:"), 0, 0);
-        QSize vp_size = qgv->maximumViewportSize();
+        QSize vp_size = img_viewer->maximumViewportSize();
         int rowheight = subset_list->model()->rowCount() * subset_list->sizeHintForRow(0);
         rowheight = std::min(rowheight, vp_size.rheight());
         subset_list->setMaximumHeight(rowheight + subset_list->frameWidth()*2);
@@ -744,9 +673,8 @@ void mtfmapper_app::check_if_helpers_exist(void) {
     }
 }
 
-void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
-    px /= zoom_spinbox->value()/100.0;
-    py /= zoom_spinbox->value()/100.0;
+bool mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
+    bool found = false;
     if (sfr_list.size() > 0) {
         
         size_t close_idx = 0;
@@ -760,24 +688,23 @@ void mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_dow
         }
         
         if (close_dist < 50) {
-            // TODO: some form of visual confirmation of a click would be nice
-            // we can probably just draw on the qgraphicsview of imgviewer?
-    
+            found = true;
             if (!sfr_dialog) {
                 sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
+                connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_dots()));
             } else {
                 if (shift_down) {
                     sfr_dialog->add_entry(sfr_list[close_idx]);
                 } else {
                     delete sfr_dialog;
                     sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
-                    //sfr_dialog->clear();
-                    //sfr_dialog->replace_entry(sfr_list[close_idx]);
+                    connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_dots()));
                 }
             }
             
         }
     }
+    return found;
 }
 
 void mtfmapper_app::closeEvent(QCloseEvent* event) {

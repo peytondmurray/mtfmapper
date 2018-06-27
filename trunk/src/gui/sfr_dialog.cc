@@ -198,6 +198,7 @@ void Sfr_dialog::clear(void) {
 
 void Sfr_dialog::reject(void) {
     clear();
+    emit sfr_dialog_closed();
     QDialog::reject();
 }
 
@@ -331,7 +332,7 @@ void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
         for (int si = int(i) - 1, ri = 0; si <= int(i) + 2; si++, ri++) {
             int ei = si < 0 ? 0 : si;
             double eiv = 0;
-            if (ei > entry.sfr.size() - 1) {
+            if (ei > (int)entry.sfr.size() - 1) {
                 eiv = (entry.sfr[entry.sfr.size() - 1] - entry.sfr[entry.sfr.size() - 2]) * (ei - (entry.sfr.size() - 1)) + entry.sfr[entry.sfr.size() - 1]; // extend last point linearly
             } else {
                 eiv = entry.sfr[ei];
@@ -419,11 +420,11 @@ void Sfr_dialog::save_data(void) {
             fprintf(fout, "contrast_%d\n", j);
             
             for (size_t i=0; i < max_size; i++) {
-                fprintf(fout, "%.4lf,", i*20 < series[0]->count() ? series[0]->at(i*20).x() : 0.0);
+                fprintf(fout, "%.4lf,", (int)i*20 < series[0]->count() ? series[0]->at(i*20).x() : 0.0);
                 for (j=0; j < (int)series.size() - 1; j++) {
-                    fprintf(fout, "%.8lf,", i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
+                    fprintf(fout, "%.8lf,", (int)i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
                 }
-                fprintf(fout, "%.8lf\n", i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
+                fprintf(fout, "%.8lf\n", (int)i*20 < series[j]->count() ? series[j]->at(i*20).y() : 0.0);
             }
         }
         fclose(fout);
