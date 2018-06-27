@@ -47,6 +47,9 @@ class Sfr_dialog : public QDialog {
     void add_entry(const Sfr_entry& entry);
     void notify_mouse_position(double value);
     void clear(void);
+    
+  signals:
+    void sfr_dialog_closed();
   
   protected:
     void paintEvent(QPaintEvent* event);
