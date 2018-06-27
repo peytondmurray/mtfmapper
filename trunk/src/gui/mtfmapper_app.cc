@@ -367,6 +367,9 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
         if (input_files.size() > 0) {
 
             open_act->setEnabled(false);
+            open_roi_act->setEnabled(false);
+            open_focus_act->setEnabled(false);
+            open_imatest_act->setEnabled(false);
             exit_act->setEnabled(false);
 
             progress->setRange(0, input_files.size() + 1);
@@ -498,6 +501,9 @@ void mtfmapper_app::disable_save_button(void) {
 
 void mtfmapper_app::enable_file_open(void) {
     open_act->setEnabled(true);
+    open_roi_act->setEnabled(true);
+    open_focus_act->setEnabled(true);
+    open_imatest_act->setEnabled(true);
     exit_act->setEnabled(true);
 }
 
@@ -513,6 +519,9 @@ void mtfmapper_app::save_action(bool subset) {
     // lock file->open to prevent messing with the dataset list
     bool open_was_enabled = open_act->isEnabled();
     open_act->setEnabled(false);
+    open_roi_act->setEnabled(false);
+    open_focus_act->setEnabled(false);
+    open_imatest_act->setEnabled(false);
     exit_act->setEnabled(false);
 
     std::map<std::string, int> keepers;
@@ -621,6 +630,9 @@ void mtfmapper_app::save_action(bool subset) {
 
     if (open_was_enabled) {
         open_act->setEnabled(true);
+        open_roi_act->setEnabled(true);
+        open_focus_act->setEnabled(true);
+        open_imatest_act->setEnabled(true);
         exit_act->setEnabled(true);
     } // otherwise the worker thread will have to re-enable the open action
 }
