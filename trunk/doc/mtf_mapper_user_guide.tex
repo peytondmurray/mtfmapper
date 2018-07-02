@@ -223,9 +223,8 @@ across different aperture settings of the lens.
 \begin{figure}[!hb]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/sfr_example}
-\caption{Two edges have been selected. One is out of focus, the other much
-sharper, like the edges visible in the ``Current output'' panel in the
-background. The pop-up window displays the SFR curves for both of these
+\caption{Two edges have been selected. One is slightly out of focus, the other sharper,
+The pop-up window displays the SFR curves for both of these
 edges by plotting contrast vs frequency.}
 \label{fig:sfr_example}
 \end{figure}
@@ -421,11 +420,19 @@ called \texttt{annotated} (highligthed by the red box).
 \label{fig:open_example2}
 \end{figure}
 
-You can see the top-left part of the \textsf{Annotated} image output being shown in
-the \textsf{Current output} panel. You can drag the image in the output window to pan, 
-or you may choose to use the scroll bars (if present). 
-The \verb-+-, \verb+-+, and \verb+=+ keys may be used to zoom in, zoom out,
-or zoom to 100\%, but you may have to click on the image first to set window focus.
+You can see the \textsf{Annotated} image output being shown in
+the \textsf{Current output} panel; if the image dimensions exceed the window
+size, then the initial display scale of the image
+will be chosen so that one of the image dimensions fills the window
+either horizontally or vertically.
+You can drag the image in the output window to pan, or you may choose to use the scroll bars.
+You may also use the mouse wheel to pan vertically, or hold down the shift
+key while scrolling the mouse wheel to pan horizontally. You can zoom
+in and out by holding down the control key while scrolling the mouse wheel,
+but note that the maximum magnification factor is $2\times$. If the image is
+smaller than the window size, zooming is disabled. Lastly, you can also zoom by
+holding down the mouse middle button while moving the mouse up/down.
+
 
 At the bottom of the \textsf{Data set control} panel you will see three
 buttons that can be used to either clear or save all the results currently
@@ -983,6 +990,17 @@ where MTF Mapper \emph{assumes} you have placed the autofocus sensor when you
 framed the shot.
 
 \subsection{Plots of SFR curves (or MTF curves)}
+\begin{figure}[!hb]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/sfr_example}
+\caption{Two edges have been selected. One is slightly out of focus, the other 
+sharper. The pop-up window displays the SFR curves for both of these
+edges by plotting contrast vs frequency. The two coloured dots drawn over
+the selected edges in the annotated image correspond to the colours used 
+to plot the SFR curves.}
+\label{fig:sfr_example_repeat}
+\end{figure}
+
 A brief description of this output type is given in
 Section~\ref{sec:sfr_curve}. The following points should be noted regarding
 this output type:
@@ -1007,9 +1025,8 @@ using this technique.
 If the window already contains three curves, shift-clicking will overwrite the
 last curve added to the SFR curve window;
 \item
-Currently MTF Mapper does not draw markers on the \textsf{Annotated image}
-output to indicate which edges are being plotted in the SFR curve window.
-This will be addressed at some time in the future;
+MTF Mapper draws coloured dots on the \textsf{Annotated image}
+output to indicate which edges are being plotted in the SFR curve window;
 \item
 The SFR curve window supports the display of the full SFR curve, i.e., by
 adding the \texttt{--full-sfr} option to the `Arguments' field of the
