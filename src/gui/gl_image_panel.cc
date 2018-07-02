@@ -75,6 +75,7 @@ void GL_image_panel::initializeGL() {
     // shader program for main texture image
     QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
     const char *vsrc =
+        "#version 130\n"
         "attribute highp vec4 vertex;\n"
         "attribute mediump vec4 texCoord;\n"
         "varying mediump vec4 texc;\n"
@@ -89,6 +90,7 @@ void GL_image_panel::initializeGL() {
 
     QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
     const char *fsrc =
+        "#version 130\n"
         "uniform sampler2D texture;\n"
         "varying mediump vec4 texc;\n"
         "void main(void)\n"
@@ -110,6 +112,7 @@ void GL_image_panel::initializeGL() {
     // shader program for click-dots
     QOpenGLShader *dots_vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
     const char *dots_vsrc =
+        "#version 130\n"
         "attribute highp vec4 vertex;\n"
         "attribute mediump vec4 texCoord;\n"
         "varying mediump vec4 texc;\n"
@@ -125,6 +128,7 @@ void GL_image_panel::initializeGL() {
     
     QOpenGLShader *dots_fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
     const char *dots_fsrc =
+        "#version 130\n"
         "uniform vec4 dcolour;\n"
         "uniform sampler2D texture;\n"
         "varying mediump vec4 texc;\n"
