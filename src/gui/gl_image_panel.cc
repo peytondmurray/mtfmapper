@@ -31,7 +31,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QMouseEvent>
 
 #include <cmath>
-#include "include/logger.h"
 
 GL_image_panel::GL_image_panel(QWidget *parent)
     : QOpenGLWidget(parent),
@@ -221,12 +220,6 @@ void GL_image_panel::paintGL() {
                 draw_dot(s.p.x(), s.p.y(), colours[j][0], colours[j][1], colours[j][2]);    
             }
         }
-    }
-    
-    // maybe just while debugging ?
-    GLenum err;
-    while((err = glGetError()) != GL_NO_ERROR) {
-        logger.error("OpenGL error %d\n", err);
     }
 }
 
