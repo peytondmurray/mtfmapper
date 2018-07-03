@@ -296,7 +296,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     adv_layout->addWidget(new QLabel("", this), 0, 2);
     adv_layout->addWidget(pixsize_label, 1, 0);
     adv_layout->addWidget(pixsize_line, 1, 1);
-    adv_layout->addWidget(new QLabel("\u00B5m", this), 1, 2);
+    adv_layout->addWidget(new QLabel("\xc2\xb5m", this), 1, 2);
     adv_layout->addWidget(zscale_label, 2, 0, 1, 3);
     adv_layout->addWidget(zscale_slider, 3, 0, 1, 3);
     adv_layout->addWidget(cache_label, 4, 0);
