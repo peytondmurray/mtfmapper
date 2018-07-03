@@ -425,13 +425,16 @@ the \textsf{Current output} panel; if the image dimensions exceed the window
 size, then the initial display scale of the image
 will be chosen so that one of the image dimensions fills the window
 either horizontally or vertically.
-You can drag the image in the output window to pan, or you may choose to use the scroll bars.
+You can drag the image in the output window to pan (while holding down the
+left mouse button), or you may choose to use the scroll bars.
 You may also use the mouse wheel to pan vertically, or hold down the shift
 key while scrolling the mouse wheel to pan horizontally. You can zoom
 in and out by holding down the control key while scrolling the mouse wheel,
 but note that the maximum magnification factor is $2\times$. If the image is
 smaller than the window size, zooming is disabled. Lastly, you can also zoom by
-holding down the mouse middle button while moving the mouse up/down.
+holding down the right mouse button while moving the mouse up/down, or by
+clicking with any mouse button on the image to set the point around which
+you want to zoom, followed by pressing the ``+'' or ``-'' keys on the keyboard.
 
 
 At the bottom of the \textsf{Data set control} panel you will see three
@@ -627,6 +630,13 @@ slider all the way to the right gives you version 0.4.x behaviour, like so:
 \centering
 \includegraphics[width=\textwidth]{figures/z_axis_scale}
 }
+
+\item[Cache size:]
+MTF Mapper will keep recently viewed images (including any output listed in
+the \textsf{Data set} panel) in memory to avoid the delay in re-reading and
+decoding the images when you rapidly switch between them. This parameter
+controls how much memory (RAM) may be used for storing images; setting this
+value to 1 MB (the minimum) effectively disables the cache. Adjust to taste.
 
 \item[Arguments:]
 This field gives you the opportunity to pass additional options to the MTF
