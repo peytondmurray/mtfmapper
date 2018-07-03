@@ -47,6 +47,7 @@ class GL_image_viewer : public QAbstractScrollArea {
     void mouseMoveEvent(QMouseEvent* event);
     void mousePressEvent(QMouseEvent* event);
     void mouseReleaseEvent(QMouseEvent* event);
+    void keyPressEvent(QKeyEvent* event);
     
     void set_GL_widget(GL_image_panel* w);
     void load_image(const QString& fname);
@@ -66,6 +67,8 @@ class GL_image_viewer : public QAbstractScrollArea {
     bool zooming = false;
     QPoint zoom_pos;
     QPoint zoom_pos_temp;
+    
+    QPoint last_mouse_pos;
     
     bool must_update_bars = true;
     bool is_clickable = false;

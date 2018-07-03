@@ -105,14 +105,23 @@ void GL_image_viewer::set_GL_widget(GL_image_panel* w) {
     widget = w;
 }
 
-void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
-    if (event->button() == Qt::RightButton) {
-        panning = true;
-        pan = event->pos();
-        setCursor(Qt::ClosedHandCursor);
-        event->accept();
-        return;
+void GL_image_viewer::keyPressEvent(QKeyEvent* event) {
+    
+    if (last_mouse_pos == QPoint(0, 0)) { // just in case this is possible
+        last_mouse_pos = QPoint(width()/2, height()/2);
     }
+    
+    if (event->key() == Qt::Key_Plus) {
+        zoom_action(1.0, last_mouse_pos.x(), last_mouse_pos.y());
+    }
+    if (event->key() == Qt::Key_Minus) {
+        zoom_action(-1.0, last_mouse_pos.x(), last_mouse_pos.y());
+    }
+    
+}
+
+void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
+    last_mouse_pos = event->pos();
     if (event->button() == Qt::LeftButton) {
         panning = true;
         pan = event->pos();
@@ -121,7 +130,7 @@ void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    if (event->button() == Qt::MiddleButton) {
+    if (event->button() == Qt::RightButton) {
         zooming = true;
         zoom_pos = event->pos();
         zoom_pos_temp = zoom_pos;
@@ -138,12 +147,6 @@ static double sqr(double x) {
 
 void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::RightButton) {
-        panning = false;
-        setCursor(Qt::ArrowCursor);
-        event->accept();
-        return;
-    }
-    if (event->button() == Qt::MiddleButton) {
         zooming = false;
         setCursor(Qt::ArrowCursor);
         event->accept();
