@@ -69,6 +69,8 @@ const QString setting_gnuplot = "setting_gnuplot";
 const QString setting_exiv = "setting_exiv";
 const QString setting_dcraw = "setting_dcraw";
 const QString setting_lens = "setting_lens_correction_type";
+const QString setting_cache = "image_cache_size";
+const double setting_cache_default = 1024;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -85,15 +87,27 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     arguments_label = new QLabel(tr("Arguments:"), this);
     arguments_line  = new QLineEdit(this);
     
+    QFontMetrics fm(QApplication::font());
+    int reasonable_width = fm.width("1048576000");
+    
     QDoubleValidator* dv_thresh = new Nonempty_DoubleValidator(0.001, 1.0, 3, 0.55, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
     threshold_line  = new QLineEdit(this);
     threshold_line->setValidator(dv_thresh);
+    threshold_line->setMaximumWidth(reasonable_width);
     
     QDoubleValidator* dv_pixsize = new Nonempty_DoubleValidator(0.001, 999.0, 3, 4.0, this);
     pixsize_label   = new QLabel(tr("Pixel size:"), this);
     pixsize_line    = new QLineEdit(this);
     pixsize_line->setValidator(dv_pixsize);
+    pixsize_line->setMaximumWidth(reasonable_width);
+    
+    QDoubleValidator* dv_cachesize = new Nonempty_DoubleValidator(1, 1024*1024, 1, 1024, this);
+    cache_label   = new QLabel(tr("Cache size:"), this);
+    cache_line    = new QLineEdit(this);
+    cache_line->setValidator(dv_cachesize);
+    cache_line->setMaximumWidth(reasonable_width);
+    
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"), this);
     gnuplot_line   = new QLineEdit(this);
@@ -140,14 +154,17 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     ea_f_line->setMaxLength(5);
     ea_f_line->setText(settings.value(setting_ea_f, setting_ea_f_default).toString());
     ea_f_line->setValidator(dv_f);
+    ea_f_line->setMaximumWidth(reasonable_width);
     sg_f_label = new QLabel(tr("focal length"), this);
     sg_f_line = new QLineEdit(this);
     sg_f_line->setMaxLength(5);
     sg_f_line->setText(settings.value(setting_sg_f, setting_sg_f_default).toString());
     sg_f_line->setValidator(dv_f);
+    sg_f_line->setMaximumWidth(reasonable_width);
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
+    cache_line->setText(settings.value(setting_cache, setting_cache_default).toString());
     cb_linear_gamma->setCheckState(
         (Qt::CheckState)settings.value(setting_linear_gamma, setting_linear_gamma_default).toInt()
     );
@@ -273,14 +290,20 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
     QGridLayout* adv_layout = new QGridLayout(this);
+    adv_layout->setColumnStretch(2, 10);
     adv_layout->addWidget(threshold_label, 0, 0);
     adv_layout->addWidget(threshold_line, 0, 1);
+    adv_layout->addWidget(new QLabel("", this), 0, 2);
     adv_layout->addWidget(pixsize_label, 1, 0);
     adv_layout->addWidget(pixsize_line, 1, 1);
-    adv_layout->addWidget(zscale_label, 2, 0, 1, 2);
-    adv_layout->addWidget(zscale_slider, 3, 0, 1, 2);
-    adv_layout->addWidget(arguments_label, 4, 0);
-    adv_layout->addWidget(arguments_line, 4, 1);
+    adv_layout->addWidget(new QLabel("\u00B5m", this), 1, 2);
+    adv_layout->addWidget(zscale_label, 2, 0, 1, 3);
+    adv_layout->addWidget(zscale_slider, 3, 0, 1, 3);
+    adv_layout->addWidget(cache_label, 4, 0);
+    adv_layout->addWidget(cache_line, 4, 1);
+    adv_layout->addWidget(new QLabel("MB", this), 4, 2);
+    adv_layout->addWidget(arguments_label, 5, 0);
+    adv_layout->addWidget(arguments_line, 5, 1, 1, 2);
     advanced->setLayout(adv_layout);
 
     
@@ -404,6 +427,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());
     settings.setValue(setting_zscale, zscale_slider->value());
+    settings.setValue(setting_cache, cache_line->text());
     
     if (rb_colour_none->isChecked()) {
         settings.setValue(setting_bayer, 0);
@@ -442,6 +466,7 @@ void Settings_dialog::save_and_close() {
     }
     
     send_argument_string();
+    set_cache_size(settings.value(setting_cache, setting_cache_default).toInt());
     
     close();
 }

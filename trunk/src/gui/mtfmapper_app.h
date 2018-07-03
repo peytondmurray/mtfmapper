@@ -176,6 +176,8 @@ class mtfmapper_app : public QMainWindow
     void save_subset_button_pressed(void);
 
     void enable_file_open(void);
+    
+    void set_cache_size(int);
 };
                                
                                 

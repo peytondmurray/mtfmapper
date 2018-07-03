@@ -72,7 +72,7 @@ public:
     void click_marker(QPoint pos, bool add=false);
     void load_image(const QString& fname);
     void load_image(QImage& qimg);
-    void set_cache_size(uint64_t size) { max_image_cache_size = size; }
+    void set_cache_size(uint64_t size);
     void clear_dots(void) { dot_list.clear(); }
     void set_default_image(QImage* qimg) { default_image = qimg; }
 
@@ -86,6 +86,7 @@ private:
     void draw_dot(double x, double y, double r, double g, double b);
     void load_image(cv::Mat cvimg);
     void reset_bias(void);
+    void trim_cache(void);
 
     QColor clearColor;
     QPoint lastPos;
