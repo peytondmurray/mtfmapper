@@ -64,6 +64,8 @@ class Settings_dialog : public QDialog
     QLineEdit*  ea_f_line;
     QLabel*     sg_f_label;
     QLineEdit*  sg_f_line;
+    QLabel*     cache_label;
+    QLineEdit*  cache_line;
     QPushButton* accept_button;
     QPushButton* cancel_button;
     
@@ -108,6 +110,7 @@ class Settings_dialog : public QDialog
     
   signals:
     void argument_string(QString s);  
+    void set_cache_size(int);
     
   public slots:
     void open();

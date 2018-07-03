@@ -139,14 +139,14 @@ void GL_image_panel::initializeGL() {
         "    float t = smoothstep(0.3, 0.5, dist);\n"
         "    gl_FragColor = vec4(dcolour.xyz, 1 - t);\n"
         "}\n";
-    bool res = dots_fshader->compileSourceCode(dots_fsrc);
+    dots_fshader->compileSourceCode(dots_fsrc);
     
     dots_program = new QOpenGLShaderProgram;
     dots_program->addShader(dots_vshader);
     dots_program->addShader(dots_fshader);
     dots_program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
     dots_program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
-    res = dots_program->link();
+    dots_program->link();
 
     dots_program->bind();
     dots_program->setUniformValue("texture", 0);
@@ -261,7 +261,7 @@ void GL_image_panel::draw_dot(double x, double y, double r, double g, double b) 
 }
 
 
-void GL_image_panel::resizeGL(int width, int height) {
+void GL_image_panel::resizeGL(int /*width*/, int /*height*/) {
     
     double w = size().width();
     double h = size().height();
@@ -304,24 +304,7 @@ void GL_image_panel::load_image(const QString& fname) {
         image_cache[fname.toStdString()] = Cache_entry(cvimg);
         image_cache_size += image_cache[fname.toStdString()].size();
         
-        if (image_cache_size > max_image_cache_size) {
-            // evict entries if necessary (we cannot evict pre-emptively because 
-            // image dimensions are unknown until after imread())
-            vector< pair<uint32_t, string> > cache_age;
-            for (const auto& e: image_cache) {
-                cache_age.push_back(make_pair(e.second.seq(), e.first));
-            }
-            sort(cache_age.begin(), cache_age.end());
-            
-            
-            size_t ci = 0;
-            while (image_cache_size > max_image_cache_size && ci < cache_age.size()) {
-                auto cit = image_cache.find(cache_age[ci].second);
-                image_cache_size -= cit->second.size();
-                image_cache.erase(cit);
-                ci++;
-            }
-        }
+        trim_cache();
     }
     
     current_fname = fname.toStdString();
@@ -572,3 +555,30 @@ void GL_image_panel::reset_bias(void) {
         scale_factor = 1.0;
     }
 }
+
+void GL_image_panel::set_cache_size(uint64_t size) { 
+    max_image_cache_size = size;
+    trim_cache();
+}
+
+void GL_image_panel::trim_cache(void) {
+    if (image_cache_size > max_image_cache_size) {
+        // evict entries if necessary (we cannot evict pre-emptively because 
+        // image dimensions are unknown until after imread())
+        vector< pair<uint32_t, string> > cache_age;
+        for (const auto& e: image_cache) {
+            cache_age.push_back(make_pair(e.second.seq(), e.first));
+        }
+        sort(cache_age.begin(), cache_age.end());
+        
+        
+        size_t ci = 0;
+        while (image_cache_size > max_image_cache_size && ci < cache_age.size()) {
+            auto cit = image_cache.find(cache_age[ci].second);
+            image_cache_size -= cit->second.size();
+            image_cache.erase(cit);
+            ci++;
+        }
+    }
+}
+
