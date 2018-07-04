@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     
     QSurfaceFormat fmt;
-    fmt.setProfile(QSurfaceFormat::CoreProfile);
+    fmt.setProfile(QSurfaceFormat::CompatibilityProfile);
     fmt.setMajorVersion(2);
     fmt.setMinorVersion(1);
     fmt.setSamples(1);
