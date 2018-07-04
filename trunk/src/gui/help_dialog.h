@@ -36,7 +36,7 @@ class QPushButton;
 class QTextEdit;
 class QTextBrowser;
 
-class Help_dialog : public QMainWindow 
+class Help_dialog : public QDialog 
 {
   Q_OBJECT
   
