@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 Logger logger;
 
 #include <QFileInfo>
+#include <QSurfaceFormat>
 
 #include "mtfmapper_app.h"
  
@@ -41,6 +42,14 @@ int main(int argc, char *argv[]) {
     logger.enable_level(Logger::DEBUG);
 
     QApplication app(argc, argv);
+    
+    QSurfaceFormat fmt;
+    fmt.setProfile(QSurfaceFormat::CoreProfile);
+    fmt.setMajorVersion(2);
+    fmt.setMinorVersion(1);
+    fmt.setSamples(1);
+    QSurfaceFormat::setDefaultFormat(fmt);
+    
     mtfmapper_app dialog;
 
     app.setAttribute(Qt::AA_UseHighDpiPixmaps);

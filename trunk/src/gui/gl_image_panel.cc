@@ -25,6 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include "gl_image_panel.h"
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
@@ -37,6 +38,7 @@ GL_image_panel::GL_image_panel(QWidget *parent)
       program(0),
       tlx(0), tly(0) {
       
+    logger.debug("GL_image_panel ctor: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
 }
 
 GL_image_panel::~GL_image_panel() {
@@ -60,6 +62,7 @@ QSize GL_image_panel::sizeHint() const {
 void GL_image_panel::initializeGL() {
 
     initializeOpenGLFunctions();
+    logger.debug("initializeGL: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
     
     load_image(*default_image);
     make_dots();
@@ -154,7 +157,6 @@ void GL_image_panel::initializeGL() {
 
 void GL_image_panel::paintGL() {
     
-
     double iw = imgsize.width();
     double ih = imgsize.height();
     int w = size().width();
