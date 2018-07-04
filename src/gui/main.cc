@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     
     QSurfaceFormat fmt;
+    fmt.setRenderableType(QSurfaceFormat::OpenGL);
     fmt.setProfile(QSurfaceFormat::CompatibilityProfile);
     fmt.setMajorVersion(2);
     fmt.setMinorVersion(1);
