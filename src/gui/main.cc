@@ -34,12 +34,34 @@ Logger logger;
 #include <QSurfaceFormat>
 
 #include "mtfmapper_app.h"
+
+void message_output(QtMsgType type, const QMessageLogContext& /*context*/, const QString &msg) {
+    QByteArray localMsg = msg.toLocal8Bit();
+    switch (type) {
+    case QtDebugMsg:
+        logger.debug("Debug: %s\n", localMsg.constData());
+        break;
+    case QtInfoMsg:
+        logger.debug("Info: %s\n", localMsg.constData());
+        break;
+    case QtWarningMsg:
+        logger.debug("Warning: %s\n", localMsg.constData());
+        break;
+    case QtCriticalMsg:
+        logger.debug("Critical: %s\n", localMsg.constData());
+        break;
+    case QtFatalMsg:
+        logger.error("Fatal: %s\n", localMsg.constData());
+        abort();
+    }
+}
  
 int main(int argc, char *argv[]) {
 
     string logname = (QDir::tempPath() + QDir::separator()).toStdString() + "mtfmapperlog.txt";
     logger.redirect(logname);
     logger.enable_level(Logger::DEBUG);
+    qInstallMessageHandler(message_output);
 
     QApplication app(argc, argv);
     
