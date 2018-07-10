@@ -50,15 +50,14 @@ bool GL_image_viewer::viewportEvent(QEvent* e)  {
         // can only do this once the image has been loaded, though
         if (must_update_bars) {
             QSize areaSize = viewport()->size();
-            QSize widgetSize(
-                widget->zoom_scale()*widget->img_size().width(), 
-                widget->zoom_scale()*widget->img_size().height()
-            );
             
             verticalScrollBar()->setPageStep(areaSize.height());
             horizontalScrollBar()->setPageStep(areaSize.width());
-            verticalScrollBar()->setRange(-0.5*(widgetSize.height()), 0.5*(widgetSize.height()) - areaSize.height());
-            horizontalScrollBar()->setRange(-0.5*(widgetSize.width()), 0.5*(widgetSize.width()) - areaSize.width());
+            
+            Image_viewport vp = widget->get_viewport();
+            verticalScrollBar()->setRange(vp.y_range.x, vp.y_range.y);
+            horizontalScrollBar()->setRange(vp.x_range.x, vp.x_range.y);
+            
             must_update_bars = false;
         }
         return false;
@@ -193,16 +192,15 @@ void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
 
 void GL_image_viewer::zoom_action(double direction, int zx, int zy) {
     QPoint np = widget->zoom(direction, zx, zy);
-      
-    // update scroll bars with new scale factor
-    QSize areaSize = viewport()->size();
-    QSize widgetSize(
-        widget->zoom_scale()*widget->img_size().width(), 
-        widget->zoom_scale()*widget->img_size().height()
-    );
-    verticalScrollBar()->setRange(-0.5*(widgetSize.height()), 0.5*(widgetSize.height()) - areaSize.height());
-    horizontalScrollBar()->setRange(-0.5*(widgetSize.width()), 0.5*(widgetSize.width()) - areaSize.width());
-      
+    
+    QSize areaSize = viewport()->size();  
+    verticalScrollBar()->setPageStep(areaSize.height());
+    horizontalScrollBar()->setPageStep(areaSize.width());
+    
+    Image_viewport vp = widget->get_viewport();
+    verticalScrollBar()->setRange(vp.y_range.x, vp.y_range.y);
+    horizontalScrollBar()->setRange(vp.x_range.x, vp.x_range.y);
+    
     horizontalScrollBar()->setValue(np.x());
     verticalScrollBar()->setValue(np.y());
 }

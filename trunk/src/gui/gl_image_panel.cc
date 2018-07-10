@@ -35,8 +35,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 GL_image_panel::GL_image_panel(QWidget *parent)
     : QOpenGLWidget(parent),
-      program(0),
-      tlx(0), tly(0) {
+      program(0) {
       
     logger.debug("GL_image_panel ctor: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
 }
@@ -157,29 +156,17 @@ void GL_image_panel::initializeGL() {
 
 void GL_image_panel::paintGL() {
     
-    double iw = imgsize.width();
-    double ih = imgsize.height();
     int w = size().width();
     int h = size().height();
     
-    
-    
-    // ensure the image at least fills the window ?
-    double min_scale_factor = std::min(1.0, std::max(w/iw, h/ih));
-    if (min_scale_factor > 0 && scale_factor < min_scale_factor) {
-        scale_factor = min_scale_factor;
-    }
-    
-    reset_bias();
+    reset_scroll_range();
     
     glClearColor(1,1,1,0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    QMatrix4x4 view;
-    
-    view.translate(-tlx, -tly);
+    view = QMatrix4x4();
+    view.translate(-vp.centre.x + w/2, -vp.centre.y + h/2);
     view.scale(scale_factor);
-    view.translate(-iw/2 - bias_x, -ih/2 - bias_y);
     
     QMatrix4x4 projection;
     projection.ortho(0, w, h, 0, -1, 1);
@@ -268,10 +255,10 @@ void GL_image_panel::resizeGL(int /*width*/, int /*height*/) {
     double w = size().width();
     double h = size().height();
     if (imgsize.width() > w || imgsize.height() > h) {
-        scale_factor = std::max(w / imgsize.width(), h / imgsize.height());
+        scale_factor = std::min(w / imgsize.width(), h / imgsize.height());
     }
     
-    reset_bias();
+    reset_scroll_range();
     
     update();
 }
@@ -349,6 +336,9 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     int cblocks = (int)ceil(imgsize.width()/double(texw));
     int rblocks = (int)ceil(imgsize.height()/double(texw));
     
+    int x_off = imgsize.width() / 2;
+    int y_off = imgsize.height() / 2;
+    
     for (int r=0; r < rblocks; r++) {
         int rstart = r*texw;
         int rend = std::min((r+1)*texw, imgsize.height() - 1);
@@ -360,26 +350,26 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
             int tex_width = next_pow2(cend-cstart);
             int tex_height = next_pow2(rend-rstart);
             
-            vertData.append(cstart);
-            vertData.append(rstart);
+            vertData.append(cstart - x_off);
+            vertData.append(rstart - y_off);
             vertData.append(0);
             vertData.append(0);
             vertData.append(0);
             
-            vertData.append(cend);
-            vertData.append(rstart);
+            vertData.append(cend - x_off);
+            vertData.append(rstart - y_off);
             vertData.append(0);
             vertData.append(double(cend - cstart - 1)/tex_width);
             vertData.append(0);
             
-            vertData.append(cend);
-            vertData.append(rend);
+            vertData.append(cend - x_off);
+            vertData.append(rend - y_off);
             vertData.append(0);
             vertData.append(double(cend - cstart - 1)/tex_width);
             vertData.append(double(rend - rstart - 1)/tex_height);
             
-            vertData.append(cstart);
-            vertData.append(rend);
+            vertData.append(cstart - x_off);
+            vertData.append(rend - y_off);
             vertData.append(0);
             vertData.append(0);
             vertData.append(double(rend - rstart - 1)/tex_height);
@@ -409,11 +399,14 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     
     double w = size().width();
     double h = size().height();
-    if (!keep_zoom && (imgsize.width() > w || imgsize.height() > h)) {
-        scale_factor = std::max(w / imgsize.width(), h / imgsize.height());
+    if (!keep_zoom) {
+        scale_factor = std::min(1.0, std::min(w / imgsize.width(), h / imgsize.height()));
+        
+        // reset centre position (in image)
+        vp.centre = cv::Point2d(0,0);
     }
     
-    reset_bias();
+    reset_scroll_range();
     
     vbo.create();
     vbo.bind();
@@ -455,8 +448,7 @@ void GL_image_panel::make_dots(void) {
 }
 
 void GL_image_panel::move(int nx, int ny) {
-    tlx = nx;
-    tly = ny;
+    vp.centre = cv::Point2d(nx, ny);
 }
 
 QPoint GL_image_panel::zoom(int step, int mx, int my) {
@@ -465,40 +457,52 @@ QPoint GL_image_panel::zoom(int step, int mx, int my) {
     int w = size().width();
     int h = size().height();
     
-    if (iw < w || ih < h) {
-        // do not allow zooming if the image is smaller than the window
-        return QPoint(tlx, tly);
-    }
-    
-    // reconstruct mouse position relative to tlx, tly at old scale
-    double old_sf = scale_factor;
-    
-    double min_scale_factor = std::min(1.0, std::max(w/iw, h/ih));
+    // scale to next power of two, but skip to the next larger/smaller scale
+    // if the relative change in scale is less than 25% when near the minimum scale
+    double min_scale_factor = std::min(1.0, std::min(w/iw, h/ih));
+    double next_scale_factor = scale_factor;
     if (step < 0) {
         double p = floor(log(scale_factor*0.5)/log(2.0));
-        scale_factor = std::min(2.0, std::max(min_scale_factor, pow(2.0, p)));
+        next_scale_factor = std::min(2.0, std::max(min_scale_factor, pow(2.0, p)));
+        if (fabs(next_scale_factor - min_scale_factor)/min_scale_factor < 0.25) {
+            next_scale_factor = min_scale_factor;
+        }
     } else {
         if (step >= 0) {
             double p = floor(log(scale_factor*2)/log(2.0));
-            scale_factor = std::max(min_scale_factor, std::min(2.0, pow(2.0, p)));
+            next_scale_factor = std::max(min_scale_factor, std::min(2.0, pow(2.0, p)));
+            if (fabs(next_scale_factor - min_scale_factor)/min_scale_factor < 0.25) {
+                next_scale_factor = std::max(min_scale_factor, std::min(2.0, pow(2.0, p+1)));
+            }
         }
     }
+    scale_factor = next_scale_factor;
     
-    tlx = tlx/old_sf * scale_factor;
-    tly = tly/old_sf * scale_factor;
+    QPointF m(mx, my);
+    QPointF mp = view.inverted().map(m);
     
-    tlx += -mx + mx*scale_factor/old_sf;
-    tly += -my + my*scale_factor/old_sf;
+    QMatrix4x4 nview;
+    nview.translate(-vp.centre.x + w/2, -vp.centre.y + h/2);
+    nview.scale(scale_factor);
     
-    return QPoint(tlx, tly);
+    QPointF mpi = nview.map(mp);
+    QPointF delta = m - mpi;
+    
+    vp.centre.x -= delta.x();
+    vp.centre.y -= delta.y();
+    
+    reset_scroll_range();
+    
+    return QPoint(vp.centre.x, vp.centre.y);
 }
 
 QPoint GL_image_panel::locate(QPoint pos) {
     double iw = imgsize.width();
     double ih = imgsize.height();
     
-    double ix = (tlx + pos.x() + bias_x + iw/2*scale_factor)/scale_factor;
-    double iy = (tly + pos.y() + bias_y + ih/2*scale_factor)/scale_factor;
+    QPointF p = view.inverted().map(QPointF(pos));
+    double ix = p.x() + iw/2;
+    double iy = p.y() + ih/2;
     
     dot_pos = QPoint(ix, iy);
     
@@ -508,8 +512,8 @@ QPoint GL_image_panel::locate(QPoint pos) {
 
 void GL_image_panel::click_marker(QPoint pos, bool add) {
     
-    int ix = pos.x();
-    int iy = pos.y();
+    int ix = pos.x() - imgsize.width()/2;
+    int iy = pos.y() - imgsize.height()/2;
     
     int dot_no = 0;
     for (auto it=dot_list.begin(); it != dot_list.end(); it++) {
@@ -541,21 +545,14 @@ void GL_image_panel::click_marker(QPoint pos, bool add) {
 // A bit of a hack, but this is required to ensure that small images remain
 // centered. Resetting this is necessary after scale changes, or window
 // resizing, or loading a new image
-void GL_image_panel::reset_bias(void) {
+void GL_image_panel::reset_scroll_range(void) {
     int w = size().width();
     int h = size().height();
-
     double iw = imgsize.width();
     double ih = imgsize.height();
-    bias_x = bias_y = 0;
-    if (iw < w) {
-        bias_x = (iw - w)/2;
-        scale_factor = 1.0;
-    } 
-    if (ih < h) {
-        bias_y = (ih - h)/2;
-        scale_factor = 1.0;
-    }
+    
+    vp.set_x_range(-iw/2*scale_factor + w/2, iw/2*scale_factor - w/2);
+    vp.set_y_range(-ih/2*scale_factor + h/2, ih/2*scale_factor - h/2);
 }
 
 void GL_image_panel::set_cache_size(uint64_t size) { 
