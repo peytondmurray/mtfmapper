@@ -44,9 +44,11 @@ using std::string;
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLBuffer>
+#include <QMatrix4x4>
 
 #include "sfr_marker.h"
 #include "cache_entry.h"
+#include "image_viewport.h"
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram);
 QT_FORWARD_DECLARE_CLASS(QOpenGLTexture)
@@ -66,8 +68,6 @@ public:
     void move(int nx, int ny);
     QPoint zoom(int step, int x, int y);
     
-    double zoom_scale(void) const { return scale_factor; }
-    QPoint pos(void) const { return QPoint(tlx, tly); }
     QPoint locate(QPoint pos);
     void click_marker(QPoint pos, bool add=false);
     void load_image(const QString& fname);
@@ -75,6 +75,7 @@ public:
     void set_cache_size(uint64_t size);
     void clear_dots(void) { dot_list.clear(); }
     void set_default_image(QImage* qimg) { default_image = qimg; }
+    Image_viewport get_viewport(void) { return vp; }
 
 protected:
     void initializeGL() override;
@@ -85,7 +86,7 @@ private:
     void make_dots();
     void draw_dot(double x, double y, double r, double g, double b);
     void load_image(cv::Mat cvimg);
-    void reset_bias(void);
+    void reset_scroll_range(void);
     void trim_cache(void);
 
     QColor clearColor;
@@ -104,11 +105,10 @@ private:
     
     QSize imgsize = QSize(0,0);
     
-    double tlx;
-    double tly;
+    QMatrix4x4 view;
+    
     double scale_factor = 1.0;
-    double bias_x = 0;
-    double bias_y = 0;
+    Image_viewport vp;
     
     QImage* default_image;
     QPoint dot_pos;
