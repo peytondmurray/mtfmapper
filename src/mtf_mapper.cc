@@ -552,6 +552,7 @@ int main(int argc, char** argv) {
                     tc_zscale.getValue()
                 );
                 grid.set_gnuplot_warning(gnuplot_warning);
+                grid.set_sparse_chart(tc_ima_mode.getValue());
                 grid.render(mtf_core.get_blocks());
             }
         }
@@ -616,6 +617,7 @@ int main(int argc, char** argv) {
                 lpmm_mode,
                 pixel_size
             );
+            printer.set_sparse_chart(tc_ima_mode.getValue());
             printer.render(mtf_core.get_blocks());
         }
         
