@@ -267,18 +267,6 @@ void Mtf_renderer_lensprofile::lsfit(const vector<Ordered_point>& in_data,
     }
     sort(data.begin(), data.end());
     
-    printf("total data length = %ld\n", data.size());
-    
-    static int seq = 0;
-    char fname[1024];
-    sprintf(fname, "data_%d.txt", seq);
-    seq++;
-    FILE* fout = fopen(fname, "wt");
-    for (auto p: data) {
-        fprintf(fout, "%lf %lf\n", p.first, p.second);
-    }
-    fclose(fout);
-    
     int tdim = 2;
     double scale = 5.0;
     double h = x_span/scale; 
@@ -309,7 +297,6 @@ void Mtf_renderer_lensprofile::lsfit(const vector<Ordered_point>& in_data,
         
         if (sparse_chart) {
             int cur_samples = upper_idx - lower_idx;
-            printf("initial samples = %d, ", cur_samples);       
             while (data.size() > 20 && cur_samples < 20) {
                 if (lower_idx > 0) {
                     lower_idx--;
@@ -320,7 +307,6 @@ void Mtf_renderer_lensprofile::lsfit(const vector<Ordered_point>& in_data,
                     cur_samples++;
                 }
             }
-            printf("final samples = %d\n", cur_samples);
         }
         
         vector< vector<double> > cov(tdim, vector<double>(tdim, 0.0));
