@@ -33,14 +33,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "airy_sampler.h"
 #include "render.h"
 #include "polygon_geom.h"
-#include "render_importance_sampling.h"
+#include "render_is_airy_base.h"
 
 //==============================================================================
-class Render_polygon_is_airy : public Render_polygon_is {
+class Render_polygon_is_airy : public Render_polygon_is_airy_base {
   public:
     Render_polygon_is_airy(Geometry& target, Geometry& photosite,
         double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60) 
-        : Render_polygon_is(
+        : Render_polygon_is_airy_base(
             target, photosite, 
             AIRY, in_aperture, in_pitch, in_lambda,
             hs // hs=60 for Airy PSF

@@ -349,6 +349,8 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<int> tc_roi_width("", "roi-width", "Region Of Interest (ROI) width", false, 0, "pixels", cmd);
     TCLAP::ValueArg<int> tc_roi_height("", "roi-height", "Region Of Interest (ROI) height", false, 0, "pixels", cmd);
     TCLAP::ValueArg<std::string> tc_photosite_poly("", "photosite-poly", "Photosite polygon file name", false, "photo.txt", "filename", cmd);
+    TCLAP::ValueArg<double> tc_w020("", "w020", "Defocus w020 magnitude (wavelengths)", false, 0.0, "wavelengths", cmd);
+    TCLAP::ValueArg<double> tc_w040("", "w040", "Spherical aberration w040 magnitude (wavelengths)", false, 0.0, "wavelengths", cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -356,6 +358,8 @@ int main(int argc, char** argv) {
     psf_names.push_back("airy");
     psf_names.push_back("airy-box");
     psf_names.push_back("airy-4dot-olpf");
+    psf_names.push_back("wavefront");
+    psf_names.push_back("wavefront-box");
     TCLAP::ValuesConstraint<string> psf_constraints(psf_names);
     TCLAP::ValueArg<std::string> tc_psf("p", "psf-type", "Point Spread Function (PSF) type", false, "gaussian", &psf_constraints );
     cmd.add(tc_psf);
@@ -395,6 +399,12 @@ int main(int argc, char** argv) {
     }
     if ( tc_psf.getValue().compare("airy-4dot-olpf") == 0) {
         psf_type = Render_polygon::AIRY_PLUS_4DOT_OLPF;
+    }
+    if ( tc_psf.getValue().compare("wavefront") == 0) {
+        psf_type = Render_polygon::WAVEFRONT;
+    }
+    if ( tc_psf.getValue().compare("wavefront-box") == 0) {
+        psf_type = Render_polygon::WAVEFRONT_PLUS_BOX;
     }
     
     // perform some sanity checking
@@ -466,7 +476,9 @@ int main(int argc, char** argv) {
     if (tc_samples.isSet() && 
         psf_type != Render_polygon::AIRY &&
         psf_type != Render_polygon::AIRY_PLUS_BOX &&
-        psf_type != Render_polygon::AIRY_PLUS_4DOT_OLPF ) {
+        psf_type != Render_polygon::AIRY_PLUS_4DOT_OLPF &&
+        psf_type != Render_polygon::WAVEFRONT &&
+        psf_type != Render_polygon::WAVEFRONT_PLUS_BOX) {
         
         printf("Warning: You have specified the number of Airy samples (--airy-samples), but you\n");
         printf("         are not rendering with an Airy-based PSF.\n");
@@ -679,6 +691,8 @@ int main(int argc, char** argv) {
         case Render_polygon::AIRY:
         case Render_polygon::AIRY_PLUS_BOX:
         case Render_polygon::AIRY_PLUS_4DOT_OLPF:
+        case Render_polygon::WAVEFRONT:
+        case Render_polygon::WAVEFRONT_PLUS_BOX:
             rect = build_psf(psf_type, 
                 *target_geom,
                 *photosite_geom,
@@ -686,7 +700,9 @@ int main(int argc, char** argv) {
                 tc_pitch.getValue(),
                 tc_lambda.getValue(),
                 tc_olpf_split.getValue(),
-                tc_samples.isSet() ? tc_samples.getValue() : 0
+                tc_samples.isSet() ? tc_samples.getValue() : 0,
+                tc_w020.getValue(),
+                tc_w040.getValue()
             );
             break;
         case Render_polygon::GAUSSIAN:

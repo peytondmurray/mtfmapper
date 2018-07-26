@@ -25,61 +25,40 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef RENDER_IMPORTANCE_SAMPLING_AIRYBOX_H
-#define RENDER_IMPORTANCE_SAMPLING_AIRYBOX_H
+#ifndef RENDER_IMPORTANCE_SAMPLING_WAVEFRONT_BOX_H
+#define RENDER_IMPORTANCE_SAMPLING_WAVEFRONT_BOX_H
 
 #include "include/common_types.h"
-
-#include "airy_sampler.h"
-#include "render.h"
-#include "polygon_geom.h"
-#include "render_is_airy_base.h"
+#include "render_is_wavefront_base.h"
 
 //==============================================================================
-class Render_polygon_is_airybox : public Render_polygon_is_airy_base {
+class Render_polygon_is_wavefront_box : public Render_polygon_is_wavefront_base {
   public:
-    Render_polygon_is_airybox(Geometry& target, Geometry& photosite, 
-        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=40) 
-        : Render_polygon_is_airy_base(
+    Render_polygon_is_wavefront_box(Geometry& target, Geometry& photosite,
+        double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, int hs=60,
+        double w020=0.0, double w040=0.0) 
+        : Render_polygon_is_wavefront_base(
             target, photosite, 
-            AIRY_PLUS_BOX, in_aperture, in_pitch, in_lambda,
-            hs // #half-samples
-          )
-          {
+            WAVEFRONT_PLUS_BOX, in_aperture, in_pitch, in_lambda,
+            hs, // hs=60 for Wavefront PSF
+            w020, w040
+          ) {
           
-          initialise();
     }
     
-    virtual ~Render_polygon_is_airybox(void) {
+    virtual ~Render_polygon_is_wavefront_box(void) {
     }
     
-    virtual string get_mtf_curve(void) const {
-        char buffer[1024];
-        double scale = (lambda/pitch) * aperture;
-        sprintf(buffer, "2.0/pi*abs(sin(x*pi)/(x*pi))*(acos(x*%lg) - (x*%lg)*sqrt(1-(x*%lg)*(x*%lg)))", 
-            scale, scale, scale, scale
-        );
-        return string(buffer);
-    }
-    
-    virtual string get_psf_curve(void) const {
-        return string("not implemented (no simple analytical form)");
-    }
-    
-    virtual double get_mtf50_value(void) const {
-        return  bisect_airy(&airy_box_mtf, 0);
-    }
-      
   protected:
+    virtual double mtf_modifier(double f) const {
+        return f == 0 ? 1.0 : fabs(sin(f*M_PI)/(f*M_PI));
+    }
+    
     virtual inline double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const {
-    
+        
         double area = target.intersection_area(photosite, ex + x, ey + y) / photosite.own_area;
         return object_value * area + background_value * (1 - area);
-    }
-    
-    double static airy_box_mtf(double x, double s, double)  {
-        return 2.0/M_PI*fabs(sin(x*M_PI)/(x*M_PI))*(acos(x*s) - (x*s)*sqrt(1-(x*s)*(x*s))) - 0.5;
     }
 };
 

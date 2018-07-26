@@ -55,7 +55,9 @@ class Render_polygon : public Render_target {
         GAUSSIAN_SAMPLED,
         AIRY,
         AIRY_PLUS_BOX,
-        AIRY_PLUS_4DOT_OLPF
+        AIRY_PLUS_4DOT_OLPF,
+        WAVEFRONT,
+        WAVEFRONT_PLUS_BOX
     } Render_type;
   
     Render_polygon(Geometry& target, 

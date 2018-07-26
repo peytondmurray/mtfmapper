@@ -165,70 +165,7 @@ class Render_polygon_is : public Render_polygon {
     }
       
   protected:
-    void initialise(void) {
-    
-        nsamples = SQR(hs*2 + 1);
-        pos_x   = vector<double>(nsamples);
-        pos_y   = vector<double>(nsamples);
-        weights = vector<double>(nsamples);
-        
-        normal_sampler sampler;
-        Airy_sampler airy(lambda, pitch, aperture);
-        
-        vector< pair<double, int> > radius_list;
-        
-        for (int sidx=0; sidx < nsamples; sidx++) {
-            double& ex = pos_x[sidx];
-            double& ey = pos_y[sidx];
-            
-            double sample_prob = airy.rairy2d(ex, ey, sampler);
-            double rad = sqrt(ex*ex + ey*ey);
-            
-            rad /= (lambda/pitch)*aperture;
-            
-            // collect the indices of the outermost points
-            // this ensures that the early stopping criterion works well
-            if (rad > Airy_sampler::diam*0.15) {
-                radius_list.push_back(make_pair(fabs(rad - Airy_sampler::diam*0.8), sidx));
-            }
-            
-            double jinc_weight = 4*Airy_sampler::jinc(rad)*Airy_sampler::jinc(rad);
-            
-            weights[sidx] = jinc_weight/sample_prob;
-        } // supersamples
-        
-        // now swap out the outermost points with the first points
-        sort(radius_list.begin(), radius_list.end());
-        for (size_t i=0; i < radius_list.size(); i++) {
-            swap(pos_x[i], pos_x[radius_list[i].second]);
-            swap(pos_y[i], pos_y[radius_list[i].second]);
-            swap(weights[i], weights[radius_list[i].second]);
-        }
-        /*
-        double disc_rad = 1.0;
-        printf("distributing samples with an additional disc of radius %lf\n", disc_rad);
-        for (int sidx=0; sidx < nsamples; sidx++) {
-            double& ex = pos_x[sidx];
-            double& ey = pos_y[sidx];
-            double px;
-            double py;
-            sampler.runif2d(px, py, 0.5, 0.5);
-            px += 0.5; // undo the scaling of runif2d
-            py += 0.5;
-            py *= 2*M_PI;
-            
-            // treat px as radius (0-1), and py as angle (0-2pi)
-            px = sqrt(px); // compensate for area-proportional sampling on a uniform disc
-            px = sqrt(px); // compensate for area-proportional sampling on a uniform disc
-            fprintf(stderr, "%lf %lf ", ex, ey);
-            ex += px*cos(py);
-            ey += px*sin(py);
-            fprintf(stderr, "%lf %lf\n", ex, ey);
-        }
-        */
-        
-        printf("using IS renderer with %d samples per pixel\n", nsamples);
-    }
+    virtual void initialise(void) = 0;
   
     virtual double sample_core(const double& ex, const double& ey, const double& x, const double& y,
         const double& object_value, const double& background_value) const  = 0;
@@ -240,7 +177,6 @@ class Render_polygon_is : public Render_polygon {
         double a = 1e-5;
         double b = min((1-1e-5) / s, 1.0);
         double fa = f(a, s, p);
-        double fb = f(b, s, p);
         for (int n=0; n < nmax; n++) {
             double c = 0.5 * (a + b);
             double fc = f(c, s, p);
@@ -252,7 +188,6 @@ class Render_polygon_is : public Render_polygon {
                 fa = fc;
             } else {
                 b = c;
-                fb = fc;
             }
         }
         return a;
@@ -276,10 +211,12 @@ class Render_polygon_is : public Render_polygon {
 #include "render_is_airy.h"
 #include "render_is_airybox.h"
 #include "render_is_airyolpf.h"
+#include "render_is_wavefront.h"
+#include "render_is_wavefront_box.h"
 
 Render_polygon_is* build_psf(Render_polygon::Render_type render_t, Geometry& target, Geometry& photosite,
     double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375,
-    int hs=0) {
+    int hs=0, double w020=0.0, double w040=0.0) {
 
     switch (render_t) {
         case Render_polygon::AIRY: 
@@ -300,6 +237,21 @@ Render_polygon_is* build_psf(Render_polygon::Render_type render_t, Geometry& tar
                     olpf_split, hs == 0 ? 30 : hs
                 );
             break;
+        case Render_polygon::WAVEFRONT:
+            return new Render_polygon_is_wavefront(target, photosite, 
+                    in_aperture, in_pitch, in_lambda,
+                    hs == 0 ? 60 : hs,
+                    w020, w040
+                );
+            break;
+        case Render_polygon::WAVEFRONT_PLUS_BOX:
+            return new Render_polygon_is_wavefront_box(target, photosite, 
+                    in_aperture, in_pitch, in_lambda,
+                    hs == 0 ? 40 : hs,
+                    w020, w040
+                );
+            break;
+            
         default:
             printf("Warning! Trying to use an unsupported PSF type with Render_rectangle_is path!\n");
             break;

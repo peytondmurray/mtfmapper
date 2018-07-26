@@ -48,14 +48,14 @@ class Geometry  {
       virtual ~Geometry(void) {
       }
       
-      virtual double intersection_area(const Geometry& b, double xoffset = 0, double yoffset = 0) const {
+      virtual double intersection_area(const Geometry&, double, double) const {
           printf("\n\nnot defined\n\n");
-          return xoffset + yoffset; // just to keep the warnings down
+          return 0;
       }
 
-      virtual bool is_inside(double x, double y) const {
+      virtual bool is_inside(double, double) const {
           printf("\n\nnot defined\n\n");
-          return x + y; // just to keep the warnings down
+          return 0;
       }
       
       virtual void print(void) const {
