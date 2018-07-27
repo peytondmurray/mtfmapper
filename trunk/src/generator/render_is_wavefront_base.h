@@ -68,13 +68,11 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
         return string(buffer);
     }
     
+    // #define DEBUG_PSF
+    
     virtual double get_mtf50_value(void) const {
-        // we can scrape the PSF rendered in the Wavefront_sampler
-        // use that to build a 2D PSF
-        // apply 2D fft
-        // extract MTF
-        // use bisection on the result
         
+        #ifdef DEBUG_PSF
         printf("get_mtf50_value() called on wavefront_based\n");
         
         FILE* fout = fopen("rpsf.txt", "wt");
@@ -82,6 +80,7 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
             fprintf(fout, "%le %le\n", r, wave.get_psf(r)); 
         }
         fclose(fout);
+        #endif
         
         const double psf_width = 200*aperture;
         constexpr int fft_width = 1024;
@@ -109,6 +108,7 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
         cv::Mat mtf;
         cv::dft(psf, mtf);
         
+        #ifdef DEBUG_PSF
         for (int r=0; r < psf.rows; r++) {
             for (int c=0; c < psf.cols; c++) {
                 psf.at<float>(r, c) = sqrt(sqrt(psf.at<float>(r, c)));
@@ -118,10 +118,8 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
         cv::Mat psf8(psf.rows, psf.cols, CV_8UC1);
         psf.convertTo(psf8, CV_8U, 255.0, 0);
         imwrite("psf8.png", psf8);
+        #endif
         
-        
-        fout = fopen("rmtf.txt", "wt");
-        fprintf(fout, "0.0 1.0\n");
         double mnorm = fabs(mtf.at<float>(0, 0));
         double prev_mag = 1.0;
         double prev_f = 0.0;
@@ -131,7 +129,6 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
             double mod = sqrt(sqr(mtf.at<float>(0, c)) + sqr(mtf.at<float>(0, c+1)));
             double mag = mtf_modifier(f) * mod / mnorm;
             
-            fprintf(fout, "%f %f\n", f, mag);
             if (mtf50 == 0 && mag < 0.5 && prev_mag >= 0.5) {
                 double dy = f - prev_f;
                 double dx = mag - prev_mag;
@@ -141,8 +138,6 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
             prev_mag = mag;
             prev_f = f;
         }
-        fclose(fout);
-        
         
         return mtf50;
     }
