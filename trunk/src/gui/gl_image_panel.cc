@@ -79,8 +79,8 @@ void GL_image_panel::initializeGL() {
     const char *vsrc =
         "#version 120\n"
         "attribute highp vec4 vertex;\n"
-        "attribute mediump vec4 texCoord;\n"
-        "varying mediump vec4 texc;\n"
+        "attribute highp vec4 texCoord;\n"
+        "varying highp vec4 texc;\n"
         "uniform mediump mat4 projectionMatrix;\n"
         "uniform mediump mat4 modelMatrix;\n"
         "void main(void)\n"
@@ -94,7 +94,7 @@ void GL_image_panel::initializeGL() {
     const char *fsrc =
         "#version 120\n"
         "uniform sampler2D texture;\n"
-        "varying mediump vec4 texc;\n"
+        "varying highp vec4 texc;\n"
         "void main(void)\n"
         "{\n"
         "    gl_FragColor = texture2D(texture, texc.st);\n"
@@ -165,7 +165,7 @@ void GL_image_panel::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT);
     
     view = QMatrix4x4();
-    view.translate(-vp.centre.x + w/2, -vp.centre.y + h/2);
+    view.translate(-vp.centre.x + int(w/2), -vp.centre.y + int(h/2));
     view.scale(scale_factor);
     
     QMatrix4x4 projection;
@@ -341,10 +341,10 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     
     for (int r=0; r < rblocks; r++) {
         int rstart = r*texw;
-        int rend = std::min((r+1)*texw, imgsize.height() - 1);
+        int rend = std::min((r+1)*texw, imgsize.height());
         for (int c=0; c < cblocks; c++) {
             int cstart = c*texw;
-            int cend = std::min((c+1)*texw, imgsize.width() - 1);
+            int cend = std::min((c+1)*texw, imgsize.width());
             
             // obtain pow2 dimensions for this block
             int tex_width = next_pow2(cend-cstart);
@@ -359,20 +359,20 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
             vertData.append(cend - x_off);
             vertData.append(rstart - y_off);
             vertData.append(0);
-            vertData.append(double(cend - cstart - 1)/tex_width);
+            vertData.append(double(cend - cstart)/tex_width);
             vertData.append(0);
             
             vertData.append(cend - x_off);
             vertData.append(rend - y_off);
             vertData.append(0);
-            vertData.append(double(cend - cstart - 1)/tex_width);
-            vertData.append(double(rend - rstart - 1)/tex_height);
+            vertData.append(double(cend - cstart)/tex_width);
+            vertData.append(double(rend - rstart)/tex_height);
             
             vertData.append(cstart - x_off);
             vertData.append(rend - y_off);
             vertData.append(0);
             vertData.append(0);
-            vertData.append(double(rend - rstart - 1)/tex_height);
+            vertData.append(double(rend - rstart)/tex_height);
             
             // we copy parts of the cv::Mat image into a QImage
             // this way we can have large images (>10k dims were problematic QT 5.7), and
@@ -386,6 +386,7 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
                 QImage tex_block(tex_width, tex_height, QImage::Format_RGB888);
                 cv::Mat srcimg(cvimg, cv::Rect(cstart, rstart, cend-cstart, rend-rstart)); // the ROI we want
                 cv::Mat teximg(tex_height, tex_width, CV_8UC3, tex_block.bits());
+                teximg = cv::Scalar(255, 255, 255); // fill the image to avoid borders (during mipmap building)
                 srcimg.copyTo(teximg(cv::Rect(0, 0, cend-cstart, rend-rstart)));
                 textures.push_back(new QOpenGLTexture(tex_block));
             }
