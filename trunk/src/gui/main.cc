@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
     logger.redirect(logname);
     logger.enable_level(Logger::DEBUG);
     qInstallMessageHandler(message_output);
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
 
     QApplication app(argc, argv);
     
