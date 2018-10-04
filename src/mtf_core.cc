@@ -560,7 +560,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     double prev_freq = 0;
     double prev_val  = n0;
     
-    double mtf50 = 0;
+    double mtf50 = 0; // we'll call it MTF50, but it could be anything between MTF10 and MTF90
 
     // first estimate mtf50 using simple linear interpolation
     bool done = false;
@@ -568,10 +568,10 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     for (int i=0; i < NYQUIST_FREQ*2 && !done; i++) {
         double mag = magnitude[i];
         mag /= base_mtf[i];
-        if (prev_val > 0.5 && mag <= 0.5) {
+        if (prev_val > mtf_contrast && mag <= mtf_contrast) {
             // interpolate
             double m = -(mag - prev_val)*(FFT_SIZE);
-            mtf50 = -(0.5 - prev_val - m*prev_freq) / m;
+            mtf50 = -(mtf_contrast - prev_val - m*prev_freq) / m;
             cross_idx = i;
             done = true;
         }
@@ -601,7 +601,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
             
             Eigen::VectorXd sol = design.colPivHouseholderQr().solve(b);
             
-            double mid = sol[0] + 0.5*sol[1] + 0.5*0.5*sol[2];
+            double mid = sol[0] + mtf_contrast*sol[1] + mtf_contrast*mtf_contrast*sol[2];
             mid = (mid + double(cross_idx))/double(FFT_SIZE);
             
             // at lower MTF50s, slowly blend in the smoothed value

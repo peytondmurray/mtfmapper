@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_stereographic("", "stereographic", "Treat input image as stereographic mapping (fisheye) with the specified focal length", false, 8.0, "focal length(mm)", cmd);
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
     TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
+    TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -441,6 +442,19 @@ int main(int argc, char** argv) {
             mtf_core.use_full_sfr();
         }
         
+        if (tc_mtf_contrast.isSet()) {
+            double contrast = tc_mtf_contrast.getValue();
+            if (contrast < 10) {
+                logger.error("Warning: Requested MTF%02d, clamped to MTF10 instead\n", int(contrast));
+                contrast = 10;
+            }
+            if (contrast > 90) {
+                logger.error("Warning: Requested MTF%02d, clamped to MTF90 instead\n", int(contrast));
+                contrast = 90;
+            }
+            mtf_core.set_mtf_contrast(contrast / 100.0);
+        }
+        
         Mtf_core_tbb_adaptor ca(&mtf_core);
         
         if (tc_single_roi.getValue()) {
@@ -450,7 +464,7 @@ int main(int argc, char** argv) {
             if (tc_single.getValue()) {
                 ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
             } else {
-                logger.debug("Parallel MTF50 calculation\n");
+                logger.debug("Parallel MTF%2d calculation\n", int(mtf_core.get_mtf_contrast()*100));
                 Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
             }
             #else
@@ -503,7 +517,7 @@ int main(int argc, char** argv) {
         
         if (tc_profile.getValue()) {
             if (mtf_core.get_blocks().size() < 10) {
-                logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+                logger.info("Warning: fewer than 10 edges found, so MTF%2d surfaces/profiles will not be generated. Are you using suitable input images?\n", int(mtf_core.get_mtf_contrast()*100));
                 few_edges_warned = true;
             } else {
                 Mtf_renderer_profile profile(
@@ -515,7 +529,8 @@ int main(int argc, char** argv) {
                     cvimg,
                     gnuplot_width,
                     lpmm_mode,
-                    pixel_size
+                    pixel_size,
+                    int(mtf_core.get_mtf_contrast()*100)
                 );
                 profile.render(mtf_core.get_blocks());
                 gnuplot_warning = !profile.gnuplot_failed();
@@ -537,7 +552,7 @@ int main(int argc, char** argv) {
         if (tc_surface.getValue()) {
             if (mtf_core.get_blocks().size() < 10) {
                 if (!few_edges_warned) {
-                    logger.info("Warning: fewer than 10 edges found, so MTF50 surfaces/profiles will not be generated. Are you using suitable input images?\n");
+                    logger.info("Warning: fewer than 10 edges found, so MTF%2d surfaces/profiles will not be generated. Are you using suitable input images?\n", int(mtf_core.get_mtf_contrast()*100));
                 }
             } else {
                 Mtf_renderer_grid grid(
