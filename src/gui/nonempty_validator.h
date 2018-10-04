@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define NONEMPTY_VALIDATOR_H
 
 #include <QDoubleValidator>
+#include <QIntValidator>
 
 class Nonempty_DoubleValidator : public QDoubleValidator {
   public:
@@ -42,6 +43,20 @@ class Nonempty_DoubleValidator : public QDoubleValidator {
     }
     
     double fallback = 0;
+};
+
+class Nonempty_IntValidator : public QIntValidator {
+  public:
+    explicit Nonempty_IntValidator(QObject* parent= nullptr) :QIntValidator(parent){}
+    
+    Nonempty_IntValidator(double bottom, double top, double fallback, QObject* parent=nullptr)
+        :QIntValidator(bottom, top, parent), fallback(fallback) {}
+
+    virtual void fixup(QString& input)const override {
+        input = QString::number(fallback);
+    }
+    
+    int fallback = 0;
 };
 
 #endif

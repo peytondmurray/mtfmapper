@@ -71,6 +71,8 @@ const QString setting_dcraw = "setting_dcraw";
 const QString setting_lens = "setting_lens_correction_type";
 const QString setting_cache = "image_cache_size";
 const double setting_cache_default = 1024;
+const QString setting_mtf_contrast = "mtf_contrast";
+const double setting_mtf_contrast_default = 50.0;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -108,6 +110,11 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cache_line->setValidator(dv_cachesize);
     cache_line->setMaximumWidth(reasonable_width);
     
+    QIntValidator* dv_contrast = new Nonempty_IntValidator(10, 90, 50, this);
+    contrast_label   = new QLabel(tr("MTF-XX:"), this);
+    contrast_line    = new QLineEdit(this);
+    contrast_line->setValidator(dv_contrast);
+    contrast_line->setMaximumWidth(reasonable_width);
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"), this);
     gnuplot_line   = new QLineEdit(this);
@@ -164,6 +171,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
+    contrast_line->setText(settings.value(setting_mtf_contrast, setting_mtf_contrast_default).toString());
     cache_line->setText(settings.value(setting_cache, setting_cache_default).toString());
     cb_linear_gamma->setCheckState(
         (Qt::CheckState)settings.value(setting_linear_gamma, setting_linear_gamma_default).toInt()
@@ -297,13 +305,16 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     adv_layout->addWidget(pixsize_label, 1, 0);
     adv_layout->addWidget(pixsize_line, 1, 1);
     adv_layout->addWidget(new QLabel("\xc2\xb5m", this), 1, 2);
-    adv_layout->addWidget(zscale_label, 2, 0, 1, 3);
-    adv_layout->addWidget(zscale_slider, 3, 0, 1, 3);
-    adv_layout->addWidget(cache_label, 4, 0);
-    adv_layout->addWidget(cache_line, 4, 1);
-    adv_layout->addWidget(new QLabel("MB", this), 4, 2);
-    adv_layout->addWidget(arguments_label, 5, 0);
-    adv_layout->addWidget(arguments_line, 5, 1, 1, 2);
+    adv_layout->addWidget(contrast_label, 2, 0);
+    adv_layout->addWidget(contrast_line, 2, 1);
+    adv_layout->addWidget(new QLabel("% contrast", this), 2, 2);
+    adv_layout->addWidget(zscale_label, 3, 0, 1, 3);
+    adv_layout->addWidget(zscale_slider, 4, 0, 1, 3);
+    adv_layout->addWidget(cache_label, 5, 0);
+    adv_layout->addWidget(cache_line, 5, 1);
+    adv_layout->addWidget(new QLabel("MB", this), 5, 2);
+    adv_layout->addWidget(arguments_label, 6, 0);
+    adv_layout->addWidget(arguments_line, 6, 1, 1, 2);
     advanced->setLayout(adv_layout);
 
     
@@ -404,6 +415,8 @@ void Settings_dialog::send_argument_string(void) {
     }
     args = args + QString(" --zscale %1").arg(zscale_slider->value()/20.0);
     
+    args = args + QString(" --mtf %1").arg(contrast_line->text());
+    
     args = args + QString(" %1").arg(arguments_line->text());
     
     emit argument_string(args);
@@ -414,6 +427,7 @@ void Settings_dialog::save_and_close() {
     check_exiv2_binary();
     settings.setValue(setting_threshold, threshold_line->text());
     settings.setValue(setting_pixsize, pixsize_line->text());
+    settings.setValue(setting_mtf_contrast, contrast_line->text());
     settings.setValue(setting_linear_gamma, cb_linear_gamma->checkState());
     settings.setValue(setting_annotation, cb_annotation->checkState());
     settings.setValue(setting_profile, cb_profile->checkState());
