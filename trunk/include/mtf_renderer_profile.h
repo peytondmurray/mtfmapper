@@ -41,12 +41,13 @@ class Mtf_renderer_profile : public Mtf_renderer {
         const std::string& img_filename,
         const std::string& wdir, const std::string& prof_fname, 
         const std::string& peak_fname, const std::string& gnuplot_binary,
-        const cv::Mat& img, int gnuplot_width, bool lpmm_mode=false, double pixel_size=1.0) 
+        const cv::Mat& img, int gnuplot_width, bool lpmm_mode=false, double pixel_size=1.0, 
+        int mtf_contrast=50) 
       :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
-         gnuplot_width(gnuplot_width), img_filename(img_filename) {
+         gnuplot_width(gnuplot_width), img_filename(img_filename), mtf_contrast(mtf_contrast) {
       
     }
     
@@ -90,7 +91,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         }
         
         if (row_max.empty()) {
-            logger.debug("Warning: All mtf50 values are zero; cannot generate a profile.\n");
+            logger.debug("Warning: All MTF%2d values are zero; cannot generate a profile.\n", mtf_contrast);
             return;
         }
         
@@ -227,7 +228,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
 		       
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
-        fprintf(gpf, "set ylab \"MTF50 (%s)\"\n", lpmm_mode ? "line pairs per mm" : "cycles/pixel");
+        fprintf(gpf, "set ylab \"MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "line pairs per mm" : "cycles/pixel");
         double ar = 768.0/1024.0;
         int fontsize = lrint(12.0*gnuplot_width/1024.0);
         int title_fontsize = lrint(14.0*gnuplot_width/1024.0);
@@ -238,10 +239,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
             fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
         }
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF50 (%s) raw\" w p ps %lf, \"%s\" u 1:3 t \"MTF50 (%s) smoothed\" w l lw %d, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw %d\n", 
+        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF%2d (%s) raw\" w p ps %lf, \"%s\" u 1:3 t \"MTF%2d (%s) smoothed\" w l lw %d, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw %d\n", 
             effective_max*pixel_size,
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p", pointsize,
-            (wdir+prname).c_str(), lpmm_mode ? "lp/mm" : "c/p", linewidth,
+            (wdir+prname).c_str(), mtf_contrast, lpmm_mode ? "lp/mm" : "c/p", pointsize,
+            (wdir+prname).c_str(), mtf_contrast, lpmm_mode ? "lp/mm" : "c/p", linewidth,
             (wdir+pfname).c_str(), peak_quality_good ? 3 : 1, linewidth
         );
         
@@ -394,6 +395,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
     bool gnuplot_warning;
     int gnuplot_width;
     string img_filename;
+    int mtf_contrast = 50;
 };
 
 #endif

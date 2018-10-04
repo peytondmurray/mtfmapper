@@ -184,6 +184,14 @@ class Mtf_core {
         mtf_width = 4 * NYQUIST_FREQ;
     }
     
+    void set_mtf_contrast(double contrast) {
+        mtf_contrast = std::max(0.1, std::min(contrast, 0.9));
+    }
+    
+    double get_mtf_contrast(void) const {
+        return mtf_contrast;
+    }
+    
     void process_image_as_roi(void);
     
     const Component_labeller& cl;
@@ -217,6 +225,7 @@ class Mtf_core {
     bool ridges_only;
     size_t mtf_width = 2 * NYQUIST_FREQ;
     Esf_sampler* esf_sampler = nullptr;
+    double mtf_contrast = 0.5; // target MTF contrast, e.g., 0.5 -> MTF50
     
     void process_with_sliding_window(Mrectangle& rrect);
     bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
