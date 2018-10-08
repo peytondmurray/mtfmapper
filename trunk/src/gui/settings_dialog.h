@@ -68,6 +68,10 @@ class Settings_dialog : public QDialog
     QLineEdit*  cache_line;
     QLabel*     contrast_label;
     QLineEdit*  contrast_line;
+    QLabel*     lpmm_label;
+    QLineEdit*  lp1_line;
+    QLineEdit*  lp2_line;
+    QLineEdit*  lp3_line;
     QPushButton* accept_button;
     QPushButton* cancel_button;
     

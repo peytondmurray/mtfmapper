@@ -73,6 +73,12 @@ const QString setting_cache = "image_cache_size";
 const double setting_cache_default = 1024;
 const QString setting_mtf_contrast = "mtf_contrast";
 const double setting_mtf_contrast_default = 50.0;
+const QString setting_lp1 = "lp1";
+const double setting_lp1_default = 10.0;
+const QString setting_lp2 = "lp2";
+const double setting_lp2_default = 20.0;
+const QString setting_lp3 = "lp3";
+const double setting_lp3_default = 30.0;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -87,34 +93,53 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
  : settings("mtfmapper", "mtfmapper"), gnuplot_img_width(1024)
 {
     arguments_label = new QLabel(tr("Arguments:"), this);
+    arguments_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     arguments_line  = new QLineEdit(this);
+    arguments_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     
     QFontMetrics fm(QApplication::font());
     int reasonable_width = fm.width("1048576000");
+    int adv_width = fm.width("Threshold: ");
     
     QDoubleValidator* dv_thresh = new Nonempty_DoubleValidator(0.001, 1.0, 3, 0.55, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
+    threshold_label->setMinimumWidth(adv_width);
     threshold_line  = new QLineEdit(this);
     threshold_line->setValidator(dv_thresh);
     threshold_line->setMaximumWidth(reasonable_width);
     
     QDoubleValidator* dv_pixsize = new Nonempty_DoubleValidator(0.001, 999.0, 3, 4.0, this);
     pixsize_label   = new QLabel(tr("Pixel size:"), this);
+    pixsize_label->setMinimumWidth(adv_width);
     pixsize_line    = new QLineEdit(this);
     pixsize_line->setValidator(dv_pixsize);
     pixsize_line->setMaximumWidth(reasonable_width);
     
     QDoubleValidator* dv_cachesize = new Nonempty_DoubleValidator(1, 1024*1024, 1, 1024, this);
     cache_label   = new QLabel(tr("Cache size:"), this);
+    cache_label->setMinimumWidth(adv_width);
     cache_line    = new QLineEdit(this);
     cache_line->setValidator(dv_cachesize);
     cache_line->setMaximumWidth(reasonable_width);
     
     QIntValidator* dv_contrast = new Nonempty_IntValidator(10, 90, 50, this);
     contrast_label   = new QLabel(tr("MTF-XX:"), this);
+    contrast_label->setMinimumWidth(adv_width);
     contrast_line    = new QLineEdit(this);
     contrast_line->setValidator(dv_contrast);
     contrast_line->setMaximumWidth(reasonable_width);
+    
+    QIntValidator* dv_lpmm = new QIntValidator(1, 500, this);
+    lpmm_label  = new QLabel(tr("Lensprofile lp/mm:"), this);
+    lp1_line    = new QLineEdit(this);
+    lp1_line->setValidator(dv_lpmm);
+    lp1_line->setMaximumWidth(fm.width("50000"));
+    lp2_line    = new QLineEdit(this);
+    lp2_line->setValidator(dv_lpmm);
+    lp2_line->setMaximumWidth(fm.width("50000"));
+    lp3_line    = new QLineEdit(this);
+    lp3_line->setValidator(dv_lpmm);
+    lp3_line->setMaximumWidth(fm.width("50000"));
 
     gnuplot_label  = new QLabel(tr("gnuplot executable:"), this);
     gnuplot_line   = new QLineEdit(this);
@@ -173,6 +198,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
     contrast_line->setText(settings.value(setting_mtf_contrast, setting_mtf_contrast_default).toString());
     cache_line->setText(settings.value(setting_cache, setting_cache_default).toString());
+    lp1_line->setText(settings.value(setting_lp1, setting_lp1_default).toString());
+    lp2_line->setText(settings.value(setting_lp2, setting_lp2_default).toString());
+    lp3_line->setText(settings.value(setting_lp3, setting_lp3_default).toString());
     cb_linear_gamma->setCheckState(
         (Qt::CheckState)settings.value(setting_linear_gamma, setting_linear_gamma_default).toInt()
     );
@@ -267,6 +295,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     rb_layout->addWidget(rb_colour_red);
     rb_layout->addWidget(rb_colour_green);
     rb_layout->addWidget(rb_colour_blue);
+    rb_layout->addStretch(2);
     v4GroupBox->setLayout(rb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
@@ -295,26 +324,60 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     lens_layout->addWidget(sg_f_label, 5, 1);
     lens_layout->addWidget(sg_f_line, 5, 2);
     lens->setLayout(lens_layout);
+    
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
-    QGridLayout* adv_layout = new QGridLayout(this);
-    adv_layout->setColumnStretch(2, 10);
-    adv_layout->addWidget(threshold_label, 0, 0);
-    adv_layout->addWidget(threshold_line, 0, 1);
-    adv_layout->addWidget(new QLabel("", this), 0, 2);
-    adv_layout->addWidget(pixsize_label, 1, 0);
-    adv_layout->addWidget(pixsize_line, 1, 1);
-    adv_layout->addWidget(new QLabel("\xc2\xb5m", this), 1, 2);
-    adv_layout->addWidget(contrast_label, 2, 0);
-    adv_layout->addWidget(contrast_line, 2, 1);
-    adv_layout->addWidget(new QLabel("% contrast", this), 2, 2);
-    adv_layout->addWidget(zscale_label, 3, 0, 1, 3);
-    adv_layout->addWidget(zscale_slider, 4, 0, 1, 3);
-    adv_layout->addWidget(cache_label, 5, 0);
-    adv_layout->addWidget(cache_line, 5, 1);
-    adv_layout->addWidget(new QLabel("MB", this), 5, 2);
-    adv_layout->addWidget(arguments_label, 6, 0);
-    adv_layout->addWidget(arguments_line, 6, 1, 1, 2);
+    QVBoxLayout* adv_layout = new QVBoxLayout(this);
+    
+    QHBoxLayout* r1_layout = new QHBoxLayout(this);
+    r1_layout->addWidget(threshold_label);
+    r1_layout->addWidget(threshold_line);
+    r1_layout->addStretch(2);
+    adv_layout->addLayout(r1_layout);
+    
+    QHBoxLayout* r2_layout = new QHBoxLayout(this);
+    r2_layout->addWidget(pixsize_label);
+    r2_layout->addWidget(pixsize_line);
+    r2_layout->addWidget(new QLabel("\xc2\xb5m", this));
+    r2_layout->addStretch(2);
+    adv_layout->addLayout(r2_layout);
+    
+    QHBoxLayout* r3_layout = new QHBoxLayout(this);
+    r3_layout->addWidget(contrast_label);
+    r3_layout->addWidget(contrast_line);
+    r3_layout->addWidget(new QLabel("% contrast", this));
+    r3_layout->addStretch(2);
+    adv_layout->addLayout(r3_layout);
+    
+    QHBoxLayout* r4_layout = new QHBoxLayout(this);
+    r4_layout->addWidget(lpmm_label);
+    r4_layout->addWidget(lp1_line);
+    r4_layout->addWidget(lp2_line);
+    r4_layout->addWidget(lp3_line);
+    r4_layout->addStretch(2);
+    adv_layout->addLayout(r4_layout);
+    
+    QHBoxLayout* r5_layout = new QHBoxLayout(this);
+    r5_layout->addWidget(zscale_label);
+    r5_layout->addStretch(2);
+    adv_layout->addLayout(r5_layout);
+    
+    QHBoxLayout* r6_layout = new QHBoxLayout(this);
+    r6_layout->addWidget(zscale_slider);
+    adv_layout->addLayout(r6_layout);
+    
+    QHBoxLayout* r7_layout = new QHBoxLayout(this);
+    r7_layout->addWidget(cache_label);
+    r7_layout->addWidget(cache_line);
+    r7_layout->addWidget(new QLabel("MB", this));
+    r7_layout->addStretch(2);
+    adv_layout->addLayout(r7_layout);
+    
+    QHBoxLayout* r8_layout = new QHBoxLayout(this);
+    r8_layout->addWidget(arguments_label);
+    r8_layout->addWidget(arguments_line);
+    adv_layout->addLayout(r8_layout);
+    
     advanced->setLayout(adv_layout);
 
     
@@ -417,6 +480,21 @@ void Settings_dialog::send_argument_string(void) {
     
     args = args + QString(" --mtf %1").arg(contrast_line->text());
     
+    // only add --lpX arguments if we are in lp/mm mode
+    if (cb_lpmm->checkState()) {
+        if (lp1_line->text().length() > 0) {
+            args = args + QString(" --lp1 %1").arg(lp1_line->text());
+        }
+        
+        if (lp2_line->text().length() > 0) {
+            args = args + QString(" --lp2 %1").arg(lp2_line->text());
+        }
+        
+        if (lp3_line->text().length() > 0) {
+            args = args + QString(" --lp3 %1").arg(lp3_line->text());
+        }
+    }
+    
     args = args + QString(" %1").arg(arguments_line->text());
     
     emit argument_string(args);
@@ -442,6 +520,9 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_dcraw, dcraw_line->text());
     settings.setValue(setting_zscale, zscale_slider->value());
     settings.setValue(setting_cache, cache_line->text());
+    settings.setValue(setting_lp1, lp1_line->text());
+    settings.setValue(setting_lp2, lp2_line->text());
+    settings.setValue(setting_lp3, lp3_line->text());
     
     if (rb_colour_none->isChecked()) {
         settings.setValue(setting_bayer, 0);
