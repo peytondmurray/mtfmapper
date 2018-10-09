@@ -54,6 +54,7 @@ void Worker_thread::set_files(const QStringList& files) {
 }
 
 void Worker_thread::run(void) {
+    bool any_failed = false;
     abort = false;
     output_files.clear();
     QString arguments = update_arguments(settings_arguments);
@@ -128,6 +129,7 @@ void Worker_thread::run(void) {
         int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
         if (!rval) {
             logger.error("Error. mtf mapper call failed\n");
+            any_failed = true;
         } else {
             emit send_delete_item(tempdir + "/log.txt");
         }
@@ -208,6 +210,10 @@ void Worker_thread::run(void) {
     set_imatest_mode(false);
     emit send_progress_indicator(input_files.size()+1);
     emit send_all_done();
+    
+    if (any_failed) {
+        emit mtfmapper_call_failed();
+    }
 }
 
 void Worker_thread::receive_arg_string(QString s) {

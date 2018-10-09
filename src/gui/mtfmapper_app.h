@@ -174,6 +174,8 @@ class mtfmapper_app : public QMainWindow
     void disable_save_button(void);
     void save_button_pressed(void);
     void save_subset_button_pressed(void);
+    
+    void mtfmapper_call_failed(void);
 
     void enable_file_open(void);
     
