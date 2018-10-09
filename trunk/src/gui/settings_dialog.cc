@@ -79,6 +79,7 @@ const QString setting_lp2 = "lp2";
 const double setting_lp2_default = 20.0;
 const QString setting_lp3 = "lp3";
 const double setting_lp3_default = 30.0;
+const QString setting_arguments = "arguments";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -201,6 +202,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     lp1_line->setText(settings.value(setting_lp1, setting_lp1_default).toString());
     lp2_line->setText(settings.value(setting_lp2, setting_lp2_default).toString());
     lp3_line->setText(settings.value(setting_lp3, setting_lp3_default).toString());
+    arguments_line->setText(settings.value(setting_arguments, "").toString());
     cb_linear_gamma->setCheckState(
         (Qt::CheckState)settings.value(setting_linear_gamma, setting_linear_gamma_default).toInt()
     );
@@ -523,6 +525,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_lp1, lp1_line->text());
     settings.setValue(setting_lp2, lp2_line->text());
     settings.setValue(setting_lp3, lp3_line->text());
+    settings.setValue(setting_arguments, arguments_line->text());
     
     if (rb_colour_none->isChecked()) {
         settings.setValue(setting_bayer, 0);
@@ -672,4 +675,14 @@ void Settings_dialog::stereographic_toggled() {
     if (rb_lens_stereo->isChecked() && cb_lpmm->checkState() == Qt::Unchecked) {
         cb_lpmm->setCheckState(Qt::Checked);
     }
+}
+
+QString Settings_dialog::peek_argument_line(void) const {
+    return arguments_line->text();
+}
+
+void Settings_dialog::reset_argument_line(void) {
+    arguments_line->setText(QString(""));
+    settings.setValue(setting_arguments, arguments_line->text());
+    send_argument_string();
 }

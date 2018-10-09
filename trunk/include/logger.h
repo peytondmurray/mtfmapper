@@ -50,6 +50,10 @@ class Logger {
               fclose(destination);
           }
       }
+      
+      void flush(void) {
+          fflush(destination);
+      }
 
       void enable_level(log_level_t ll) {
           log_level |= ll;

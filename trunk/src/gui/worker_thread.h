@@ -83,6 +83,7 @@ class Worker_thread : public QThread
     
     void send_progress_indicator(int p);
     void send_all_done(void);
+    void mtfmapper_call_failed(void);
     
   public slots:
     void receive_arg_string(QString s);

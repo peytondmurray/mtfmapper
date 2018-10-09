@@ -215,6 +215,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(save_subset_button, SIGNAL(clicked()), this, SLOT(save_subset_button_pressed()));
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
+    connect(&processor, SIGNAL(mtfmapper_call_failed()), this, SLOT(mtfmapper_call_failed()));
 
     // rather a lot of code, but extract the icon and store it in a QImage
     mtfmapper_logo = new QIcon;
@@ -737,5 +738,41 @@ void mtfmapper_app::closeEvent(QCloseEvent* event) {
 
 void mtfmapper_app::set_cache_size(int size) {
     img_panel->set_cache_size(uint64_t(size)*uint64_t(1024*1024));
+}
+
+void mtfmapper_app::mtfmapper_call_failed(void) {
+    if (settings->peek_argument_line().trimmed().length() > 0) {
+        QMessageBox call_failed;
+        call_failed.setIcon(QMessageBox::Critical);
+        call_failed.setWindowTitle("MTF Mapper call failed");
+        call_failed.setText(
+            "MTF Mapper call failed.\n\n"
+            "It is likely that this error has been caused by an invalid option in the Preferences/Arguments field.\n\n"
+            "Reset Arguments field in the Preferences dialogue?"
+        );
+        call_failed.setStandardButtons(QMessageBox::Reset | QMessageBox::Ignore);
+        int ret = call_failed.exec();
+        switch (ret) {
+        case QMessageBox::Reset:
+            settings->reset_argument_line();
+            break;
+        case QMessageBox::Ignore:
+        default:
+            break;
+        }
+    } else {
+        QString logname = QDir::tempPath() + QDir::separator() + QString("mtfmapperlog.txt");
+        logger.flush();
+        QMessageBox call_failed;
+        call_failed.setIcon(QMessageBox::Critical);
+        call_failed.setWindowTitle("MTF Mapper call failed");
+        call_failed.setText(
+            "MTF Mapper call failed.\n\n"
+            "Please contact fvdbergh@gmail.com for assistance.\n"
+            "Attach the file '" + logname + "' if possible.\n"
+        );
+        call_failed.setStandardButtons(QMessageBox::Ok);
+        call_failed.exec();
+    }
 }
 
