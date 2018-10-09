@@ -163,7 +163,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     setCentralWidget(img_frame);
     
-    worker_thread = new QThread;
+    worker_thread = new QThread(this);
     
     settings = new Settings_dialog(this);
     about    = new About_dialog(this);
@@ -242,6 +242,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
 mtfmapper_app::~mtfmapper_app(void) {
     // clean up all the old folders
     clear_temp_files();
+    delete icon_image;
+    delete mtfmapper_logo;
 }
 
 void mtfmapper_app::clear_temp_files(void) {
