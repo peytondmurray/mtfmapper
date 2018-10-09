@@ -273,7 +273,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     zscale_slider->setValue(settings.value(setting_zscale, setting_zscale_default).toInt());
 
     QGroupBox* voGroupBox = new QGroupBox(tr("Output types"), this);
-    QVBoxLayout *vo_layout = new QVBoxLayout(this);
+    QVBoxLayout *vo_layout = new QVBoxLayout;
     vo_layout->addWidget(cb_annotation);
     vo_layout->addWidget(cb_profile);
     vo_layout->addWidget(cb_grid);
@@ -282,7 +282,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     voGroupBox->setLayout(vo_layout);
     
     QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"), this);
-    QVBoxLayout *cb_layout = new QVBoxLayout(this);
+    QVBoxLayout *cb_layout = new QVBoxLayout;
     cb_layout->addWidget(cb_linear_gamma);
     cb_layout->addWidget(cb_autocrop);
     cb_layout->addWidget(cb_lpmm);
@@ -290,7 +290,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     v2GroupBox->setLayout(cb_layout);
     
     QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"), this);
-    QVBoxLayout *rb_layout = new QVBoxLayout(this);
+    QVBoxLayout *rb_layout = new QVBoxLayout;
     rb_layout->addWidget(rb_colour_none);
     rb_layout->addWidget(rb_colour_red);
     rb_layout->addWidget(rb_colour_green);
@@ -299,7 +299,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     v4GroupBox->setLayout(rb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
-    QGridLayout *helper_layout = new QGridLayout(this);
+    QGridLayout *helper_layout = new QGridLayout;
     helper_layout->addWidget(gnuplot_label, 0, 0);
     helper_layout->addWidget(gnuplot_line, 1, 0);
     helper_layout->addWidget(gnuplot_button, 1, 1);
@@ -312,7 +312,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     v3GroupBox->setLayout(helper_layout);
     
     QGroupBox* lens = new QGroupBox(tr("Lens distortion correction"), this);
-    QGridLayout* lens_layout = new QGridLayout(this);
+    QGridLayout* lens_layout = new QGridLayout;
     lens_layout->addWidget(rb_lens_pw_quad, 0, 0);
     lens_layout->addWidget(rb_lens_quad, 1, 0);
     lens_layout->addWidget(rb_lens_none, 2, 0);
@@ -327,29 +327,29 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
-    QVBoxLayout* adv_layout = new QVBoxLayout(this);
+    QVBoxLayout* adv_layout = new QVBoxLayout;
     
-    QHBoxLayout* r1_layout = new QHBoxLayout(this);
+    QHBoxLayout* r1_layout = new QHBoxLayout;
     r1_layout->addWidget(threshold_label);
     r1_layout->addWidget(threshold_line);
     r1_layout->addStretch(2);
     adv_layout->addLayout(r1_layout);
     
-    QHBoxLayout* r2_layout = new QHBoxLayout(this);
+    QHBoxLayout* r2_layout = new QHBoxLayout;
     r2_layout->addWidget(pixsize_label);
     r2_layout->addWidget(pixsize_line);
     r2_layout->addWidget(new QLabel("\xc2\xb5m", this));
     r2_layout->addStretch(2);
     adv_layout->addLayout(r2_layout);
     
-    QHBoxLayout* r3_layout = new QHBoxLayout(this);
+    QHBoxLayout* r3_layout = new QHBoxLayout;
     r3_layout->addWidget(contrast_label);
     r3_layout->addWidget(contrast_line);
     r3_layout->addWidget(new QLabel("% contrast", this));
     r3_layout->addStretch(2);
     adv_layout->addLayout(r3_layout);
     
-    QHBoxLayout* r4_layout = new QHBoxLayout(this);
+    QHBoxLayout* r4_layout = new QHBoxLayout;
     r4_layout->addWidget(lpmm_label);
     r4_layout->addWidget(lp1_line);
     r4_layout->addWidget(lp2_line);
@@ -357,23 +357,23 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     r4_layout->addStretch(2);
     adv_layout->addLayout(r4_layout);
     
-    QHBoxLayout* r5_layout = new QHBoxLayout(this);
+    QHBoxLayout* r5_layout = new QHBoxLayout;
     r5_layout->addWidget(zscale_label);
     r5_layout->addStretch(2);
     adv_layout->addLayout(r5_layout);
     
-    QHBoxLayout* r6_layout = new QHBoxLayout(this);
+    QHBoxLayout* r6_layout = new QHBoxLayout;
     r6_layout->addWidget(zscale_slider);
     adv_layout->addLayout(r6_layout);
     
-    QHBoxLayout* r7_layout = new QHBoxLayout(this);
+    QHBoxLayout* r7_layout = new QHBoxLayout;
     r7_layout->addWidget(cache_label);
     r7_layout->addWidget(cache_line);
     r7_layout->addWidget(new QLabel("MB", this));
     r7_layout->addStretch(2);
     adv_layout->addLayout(r7_layout);
     
-    QHBoxLayout* r8_layout = new QHBoxLayout(this);
+    QHBoxLayout* r8_layout = new QHBoxLayout;
     r8_layout->addWidget(arguments_label);
     r8_layout->addWidget(arguments_line);
     adv_layout->addLayout(r8_layout);
@@ -381,7 +381,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     advanced->setLayout(adv_layout);
 
     
-    QGridLayout* vlayout = new QGridLayout(this);
+    QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
     vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
