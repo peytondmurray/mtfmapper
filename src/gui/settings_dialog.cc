@@ -291,14 +291,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_gnuplot_scaled);
     v2GroupBox->setLayout(cb_layout);
     
-    QGroupBox* v4GroupBox = new QGroupBox(tr("Bayer channel"), this);
+    QGroupBox* bayer_GroupBox = new QGroupBox(tr("Bayer channel"), this);
     QVBoxLayout *rb_layout = new QVBoxLayout;
     rb_layout->addWidget(rb_colour_none);
     rb_layout->addWidget(rb_colour_red);
     rb_layout->addWidget(rb_colour_green);
     rb_layout->addWidget(rb_colour_blue);
-    rb_layout->addStretch(2);
-    v4GroupBox->setLayout(rb_layout);
+    bayer_GroupBox->setLayout(rb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
     QGridLayout *helper_layout = new QGridLayout;
@@ -386,12 +385,12 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
-    vlayout->addWidget(v4GroupBox, 2, 0, 1, 2);
+    vlayout->addWidget(bayer_GroupBox, 2, 0, 1, 2);
     vlayout->addWidget(v3GroupBox, 0, 3, 1, 2);
     vlayout->addWidget(lens, 1, 3, 1, 2);
-    vlayout->addWidget(advanced, 2, 3, 1, 2);
-    vlayout->addWidget(accept_button, 3, 0);
-    vlayout->addWidget(cancel_button, 3, 1);
+    vlayout->addWidget(advanced, 2, 3, 3, 2);
+    vlayout->addWidget(accept_button, 4, 0);
+    vlayout->addWidget(cancel_button, 4, 1);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
