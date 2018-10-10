@@ -120,6 +120,15 @@ You may want to use a lower threshold value (*-t*) of 0.4 or even lower when
 using *--imatest-chart* to ensure that all the square targets are detected.
 This option should not be used with native MTF Mapper test charts.
 
+*--mtf* 'contrast'::
+By default MTF Mapper computes MTF50, i.e., the resolution (in lp/mm or
+cycles/pixel) at which the SFR curve first reaches a contrast of 50%. This
+option allows you to change the target contrast value to compute MTF20, for
+example. Valid 'contrast' values are in the range [10, 90], and will be
+clamped to this range if necessary. This option affects all outputs,
+including the Annotated image, Profile, Grid and Focus position outputs; 
+only the SFR outputs are unaffected.
+
 *--gnuplot-executable* 'filepath'::
 Specify the full path to the gnuplot executable. Defaults to 
 _/usr/bin/gnuplot_, which is usually correct on most Linux distributions

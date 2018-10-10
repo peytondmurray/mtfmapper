@@ -607,6 +607,24 @@ The default value of 0.55 is a reasonable balance between these two
 extremes, and works well enough until it doesn't, in which case you can
 decrease it. Simple enough, right?
 
+\item[MTF-XX:] By default, MTF Mapper will calculate MTF50 for most of its
+outputs, such as the \textsf{Annotated image}, \textsf{Grid},
+and \textsf{Profile} outputs. MTF50 is defined as the resolution (either in
+lp/mm, or cycles/pixel) at which the MTF curve first reaches a value of
+50\% contrast. This option allows you to specify a different target contrast
+value in the range [10\%, 90\%], so you can calculate MTF20 or whatever you
+desire. This affects all MTF Mapper outputs except the SFR curves and the
+\textsf{Lensprofile} output.
+
+\item[Lensprofile lp/mm:] By default, MTF Mapper will produce
+\textsf{Lensprofile} plots at resolutions of 10 lp/mm and 30 lp/mm,
+corresponding to the popular resolutions chosen by lens manufacturers. You can
+override these default resolutions with this setting by specifying up to
+three resolution choices in the range [1 lp/mm, 500 lp/mm]. Note that you
+must have the `Line pairs/mm units' option checked in the \textsf{Flags}
+panel for these values to be used, and the `Pixel size' field in the
+\textsf{Advanced} panel must be set to the correct value.
+
 \item[3D plot z-axis relative scale factor:]
 Old versions of MTF Mapper (0.4.x and earlier) would plot the \textsf{Grid}
 output (as illustrated in Figure~\ref{fig:surface_example}) scaled so that
@@ -643,19 +661,22 @@ This field gives you the opportunity to pass additional options to the MTF
 Mapper command-line tool, thus you can obtain behaviour that is not
 (currently) exposed in the \textsf{Preferences} dialog. See the MTF Mapper
 command-line tool manual page (in Appendix~\ref{sec:manpages}) for a
-comprehensive list of available options. For example, if you have cropped
-out a single edge of an incompatible test chart, e.g., the DP Review studio test
-chart, then you can add the option \texttt{--single-roi} to the `Arguments'
-field to obtain the desired behaviour with, say, the \textsf{Annotated
-image} output; now you can click on the edge in the \textsf{Annotated image}
-to display the SFR curve, for example.
+comprehensive list of available options. For example, if you wish to turn
+off the Savitzky-Golay filtering that MTF Mapper applies to the computed SFR
+curves, you can add the \texttt{--nosmoothing} option to the `Arguments'
+field.
 
 If you find yourself using the `Arguments' field often, let me know and I
 can try to extend the \textsf{Preferences} dialog to include the option you
 require.
 
-Note that the contents of this field is \emph{not} saved between MTF Mapper
-sessions.
+Note that from version 0.7.5 and upwards the contents of this field is saved
+between MTF Mapper sessions. The contents of the `Arguments' field is not
+sanitized, so it is possible to input invalid arguments, e.g.,
+\texttt{--bogus}. If you entered such invalid arguments, the call to the MTF
+Mapper command-line tool will fail, and you will get a pop-up dialogue that
+will offer to reset the `Arguments' field. My advice is to accept this
+offer.
 
 \end{description}
 
@@ -1670,12 +1691,15 @@ have the following advice to offer:
   a spray glue to fix the printed chart to the foam board.
   \item Even spray glue combined with a foam board is not good enough to
   prevent thin paper from warping due to changes in humidity. If you plan on
-  using a chart more than once, you \emph{must} use thick paper.
+  using a chart more than once, you \emph{must} use thick paper. It might
+  also help if you use mechanical clamps (e.g., Bulldog clips) in stead of
+  spray glue to fasten your chart to the backing.
   \item I have yet to try this myself, but a local printer can print on a
   self-adhesive vinyl sheet. This should be immune to humidity, but
   obviously this will be much more expensive than printing on plain paper.
-  \item Another untested idea is to use a laser-marking machine to ``print''
-  onto a painted aluminium sheet. Let me know if you've tried this!
+  \item Another untested idea is to use a laser-marking (laser-engraving)
+  machine to ``print'' onto a painted aluminium sheet. Let me know if 
+  you've tried this!
   \item Print quality is probably not critical when using the perspective
   charts --- I have used badly printed (streaky, not quite solid) charts,
   and that seemed to be OK on an A0 scale.
@@ -1687,6 +1711,11 @@ have the following advice to offer:
   (e.g., 200 mm or longer). Furthermore, at greater distances, you can get
   away with lower quality prints --- 300 DPI prints are fine on an A0 chart,
   but may become a problem on A4 charts.
+  \item Test chart quality is critical if you want to obtain \emph{absolute}
+  results, such as when you want to compare your results to other sources
+  (online, etc.). If you are just evaluating the relative performance of two
+  lenses, e.g., two copies of the same lens, or two different brands of 50
+  mm prime lenses, then you can get away with a lower quality test chart.
 \end{itemize}
 
 \newpage
