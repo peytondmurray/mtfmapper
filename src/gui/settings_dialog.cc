@@ -74,11 +74,11 @@ const double setting_cache_default = 1024;
 const QString setting_mtf_contrast = "mtf_contrast";
 const double setting_mtf_contrast_default = 50.0;
 const QString setting_lp1 = "lp1";
-const double setting_lp1_default = 10.0;
+const QString setting_lp1_default = "10";
 const QString setting_lp2 = "lp2";
-const double setting_lp2_default = 20.0;
+const QString setting_lp2_default = "30";
 const QString setting_lp3 = "lp3";
-const double setting_lp3_default = 30.0;
+const QString setting_lp3_default = "";
 const QString setting_arguments = "arguments";
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
