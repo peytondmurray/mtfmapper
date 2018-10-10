@@ -112,20 +112,29 @@ noise.
 
 PSF/RENDERING OPTIONS
 ---------------------
-*-p* 'gaussian|gaussian-sampled|airy|airy-box|airy-4dot-olpf'::
+*-p* 'gaussian|gaussian-sampled|airy|airy-box|airy-4dot-olpf|wavefront|wavefront-box'::
 Specify the desired PSF type. PSF types 'gaussian' and 'gaussian-sampled' accept the
 *-m* and *-b* arguments to control PSF shape, and produce, unsurprisingly, Gaussian-shaped PSFs. Note that
 these PSFs are pure Gaussians, i.e., they have not been convolved with the photosite aperture, and
-are therefore not (directly) useful for sensor simulations. The remaining PSFs,
-namely 'airy', 'airy-box' and 'airy-4dot-olpf' simulate an Airy pattern PSF, such as would be observed when diffraction
+are therefore not (directly) useful for sensor simulations. +
+{nbsp} +
+The remaining PSFs, namely 'airy', 'airy-box', 'airy-4dot-olpf', 'wavefront' and 'wavefront-box' simulate an Airy pattern PSF, such as would be observed when diffraction
 through a circular aperture is considered. These accept the *--lambda*,
 *--pixel-pitch* and *--aperture* arguments to control the diffraction pattern. The
 'airy' PSF models only diffraction, and does not include convolution with a photosite aperture. In contrast, the
 'airy-box' PSF includes this final convolution step, and is thus a useful PSF for simulating lens + sensor combinations that do not
-include an Optical Low-Pass Filter (OLPF), also commonly called an Anti-Aliasing (AA) filter. Lastly,
-the 'airy-4dot-olpf' PSF simulates a lens + OLPF + sensor combination, assuming that the AA filter
+include an Optical Low-Pass Filter (OLPF), also commonly called an Anti-Aliasing (AA) filter. +
+The 'wavefront' PSF is similar to the 'airy' PSF, and the 'wavefront-box'
+PSF is similar to the 'airy-box' PSF; the main difference being that the
+wavefront-PSFs can model the effects of defocus and spherical aberration in
+addition to aperture diffraction. The *--w020* option controls the amount of
+defocus, and the *--w040* option controls the amount of spherical
+aberration. +
+{nbsp} +
+Lastly, the 'airy-4dot-olpf' PSF simulates a lens + OLPF + sensor combination, assuming that the AA filter
 is a 4-way beam splitter (e.g., Lithium Niobate birefringent designs) with a displacement of 0.35 
 pixels, which appears to match current Nikon DSLR sensor designs.
+
 
 *--airy-samples* 'n'::
 Number of half-samples (n) per axis per pixel for Airy PSFs (actual number
@@ -142,7 +151,29 @@ Specify the photosite pitch of the sensor. This is required to convert the wavel
 into a pixel-scale value.
 
 *--aperture* 'f-number'::
-Specify the relative numeric aperture of the lens used to render a diffraction PSF.
+Specify the relative aperture (f-number) of the lens used to render a diffraction PSF.
+
+*--w020* 'magnitude'::
+Specify the magnitude of defocus applied to the 'wavefront' and
+'wavefront-box' PSF models. The 'magnitude' is expressed as a multiple of the
+wavelength, meaning *--w020 1.0* results in a defocus wavefront distortion
+with a magnitude of one lambda (0.55 micron by default) at the edge of the
+simulated exit pupil. Note that changing the simulated
+lens aperture will change the size of the simulated exit pupil, and will
+therefore affect the amount of simulated defocus. +
+The recommended range for the defocus magnitude is [-20, 20]; values outside
+this range may lead to unacceptable truncation of the simulated PSF.
+
+*--w040* 'magnitude'::
+Specify the magnitude of spherical aberration applied to the 'wavefront' and
+'wavefront-box' PSF models. The 'magnitude' is expressed as a multiple of the
+wavelength, meaning *--w040 1.0* results in a spherical aberration wavefront distortion
+with a magnitude of one lambda (0.55 micron by default) at the edge of the
+simulated exit pupil. Note that changing the simulated
+lens aperture will change the size of the simulated exit pupil, and will
+therefore affect the amount of simulated spherical aberration. +
+The recommended range for the spherical aberration magnitude is [-20, 20]; 
+values outside this range may lead to unacceptable truncation of the simulated PSF.
 
 *--target-poly* 'filename'::
 Target polygon data file. This option overrides the default target (a
@@ -204,7 +235,7 @@ for the outer tails of the noise distribution. The headroom is also criticial fo
 processing, e.g., sharpening or resizing. When in doubt, rather specify some extra headroom
 (*-c* 0.2), especially if you push the noise levels higher. 
 
-*Linear vs. Gamma corrected values*
+*Linear vs. Gamma corrected values*::
 By default, mtf_generate_rectangle will generate output files with linear intensities only when 16-bit
 output is specified (*--b16*). This implies that if no parameters are specified, then 
 *mtf_generate_rectangle* will generate 8-bit files in the SRGB space, i.e., intensities will be gamma corrected.
@@ -213,6 +244,10 @@ It is crucial that you keep track of whether you are dealing with gamma-correcte
 *mtf_mapper* will not measure correct MTF values if there is a gamma mismatch (i.e., generated with linear 8-bit intensities
 but processed as if images were gamma corrected). Please use the *-l* switch with
 *mtf_mapper* if you generated your test images with the *-l* switch of
-*mtf_generate_rectangle*.
-
+*mtf_generate_rectangle*. +
+{nbsp} +
 Better yet, always use 16-bit images, since all the MTF Mapper tools assume they are linear.
+
+*Spherical aberration example*::
+mtf_generate_rectangle -p wavefront-box --aperture 2.8 --w040 4.0 +
+#Enough spherical aberration to produce the characteristic "glow"
