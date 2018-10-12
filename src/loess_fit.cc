@@ -33,6 +33,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <stdio.h>
 #include <cmath>
 #include <algorithm>
+#include <array>
+#include <thread>
 using std::lower_bound;
 using std::upper_bound;
 
@@ -103,6 +105,19 @@ inline double tri(double x) {
 
 int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
+    
+    static map<std::thread::id, std::array< vector<double>, 4 > > thread_storage;
+    std::thread::id tid = std::this_thread::get_id();
+    if (thread_storage.find(tid) == thread_storage.end()) {
+        thread_storage[tid] = std::array <vector<double>, 4 >();
+        for (size_t k=0; k < 4; k++) {
+            thread_storage[tid][k] = vector<double>(fft_size, 0.0);
+        }
+    }
+    vector<double>& weights = thread_storage[tid][0];
+    vector<double>& mean = thread_storage[tid][1];
+    vector<double>& slopes = thread_storage[tid][2];
+    vector<double>& smoothed = thread_storage[tid][3];
 
     constexpr double missing = -1e7;
     constexpr double shift_tolerance = 4;
@@ -123,8 +138,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int leftcount = 0;
     int left_non_missing  = 0;
     int right_non_missing = 0;
-    vector<double> weights(fft_size, 0);
-    vector<double> mean(fft_size, 0);
+    fill(weights.begin(), weights.end(), 0);
+    fill(mean.begin(), mean.end(), 0);
     
     int clipped_count = 0;
     
@@ -176,7 +191,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     
     
-    vector<double> slopes(fft_size, 0);
+    fill(slopes.begin(), slopes.end(), 0);
     int peak_slope_idx = 0;
     constexpr int pw = 16;
     for (int idx=pw+1; idx < fft_size-1-pw; idx++) {
@@ -316,8 +331,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     leftcount = 0;
     left_non_missing  = 0;
     right_non_missing = 0;
-    weights = vector<double>(fft_size, 0);
-    mean = vector<double>(fft_size, 0);
+    fill(weights.begin(), weights.end(), 0.0);
+    fill(mean.begin(), mean.end(), 0.0);
     int left_trans = fft_size2;
     int right_trans = fft_size2;
     const double nbin_scale = 1.0/std::max(fft_right - fft_size2, fft_size2 - fft_left);
@@ -416,7 +431,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     // quickly apply some additional smoothing to the PSF, for good luck
     const int sgh = 2;
     const double sgw[] = {-0.086, 0.343, 0.486, 0.343, -0.086};
-    vector<double> smoothed(fft_size, 0);
+    fill(smoothed.begin(), smoothed.end(), 0);
     for (int idx=fft_left+sgh; idx <= fft_right-sgh; idx++) {
         for (int x=-sgh; x <= sgh; x++) {
             smoothed[idx] += sampled[idx+x] * sgw[x+sgh];
