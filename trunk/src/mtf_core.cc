@@ -43,6 +43,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/edge_model.h" // TODO: just to test compilation, for now
 
 #include <mutex>
+#include <thread>
+#include <array>
 
 // global lock to prevent race conditions on detected_blocks
 static std::mutex global_mutex;
@@ -480,8 +482,20 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     
     vector<Ordered_point> ordered;
     double edge_length = 0;
+    
+    static map<std::thread::id, std::array< vector<double>, 3 > > thread_storage;
+    std::thread::id tid = std::this_thread::get_id();
+    if (thread_storage.find(tid) == thread_storage.end()) {
+        thread_storage[tid] = std::array <vector<double>, 3 >();
+        thread_storage[tid][0] = vector<double>(FFT_SIZE*2, 0.0);
+        thread_storage[tid][1] = vector<double>(NYQUIST_FREQ*4, 0.0);
+        thread_storage[tid][2] = vector<double>(NYQUIST_FREQ*4, 0.0);
+    }
+    vector<double>& fft_out_buffer = thread_storage[tid][0];
+    vector<double>& magnitude = thread_storage[tid][1];
+    vector<double>& smoothed = thread_storage[tid][2];
 
-    vector<double> fft_out_buffer(FFT_SIZE * 2, 0);
+    fill(fft_out_buffer.begin(), fft_out_buffer.end(), 0);
     
     esf_sampler->sample(edge_model, ordered, scanset, edge_length, img, bayer_img);
     sort(ordered.begin(), ordered.end());
@@ -502,7 +516,6 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     double quad = angle_reduce(atan2(edge_model.get_direction().y, edge_model.get_direction().x));
     
     double n0 = fabs(fft_out_buffer[0]);
-    vector<double> magnitude(NYQUIST_FREQ*4);
     for (int i=0; i < NYQUIST_FREQ*4; i++) {
         magnitude[i] = sqrt(SQR(fft_out_buffer[i]) + SQR(fft_out_buffer[FFT_SIZE - i])) / n0;
     }
@@ -510,7 +523,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     
     if (sfr_smoothing) {
         // apply narrow SG filter to lower frequencies
-        vector<double> smoothed(NYQUIST_FREQ*4, 0);
+        fill(smoothed.begin(), smoothed.end(), 0);
         const double lf_sgw[5] = {-0.086, 0.343, 0.486, 0.343, -0.086};
         for (int idx=0; idx < NYQUIST_FREQ*4-3; idx++) {
             for (int x=-2; x <= 2; x++) {
