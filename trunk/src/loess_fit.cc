@@ -106,19 +106,11 @@ inline double tri(double x) {
 int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
     
-    static map<std::thread::id, std::array< vector<double>, 4 > > thread_storage;
-    std::thread::id tid = std::this_thread::get_id();
-    if (thread_storage.find(tid) == thread_storage.end()) {
-        thread_storage[tid] = std::array <vector<double>, 4 >();
-        for (size_t k=0; k < 4; k++) {
-            thread_storage[tid][k] = vector<double>(fft_size, 0.0);
-        }
-    }
-    vector<double>& weights = thread_storage[tid][0];
-    vector<double>& mean = thread_storage[tid][1];
-    vector<double>& slopes = thread_storage[tid][2];
-    vector<double>& smoothed = thread_storage[tid][3];
-
+    thread_local vector<double> weights(fft_size);
+    thread_local vector<double> mean(fft_size);
+    thread_local vector<double> slopes(fft_size);
+    thread_local vector<double> smoothed(fft_size);
+    
     constexpr double missing = -1e7;
     constexpr double shift_tolerance = 4;
 
@@ -150,8 +142,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
-        int left = max(fft_left, cbin-8);
-        int right = min(fft_right-1, cbin+8);
+        int left = max(fft_left, cbin-5);
+        int right = min(fft_right-1, cbin+5);
         
         for (int b=left; b <= right; b++) {
             double mid = b*scale*(upper-lower)*inv_fft_size_m1 + scale*lower;
@@ -181,7 +173,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    
     // now just pad out the ends of the sequences with the last non-missing values
     for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
@@ -189,7 +180,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
     }
-    
     
     fill(slopes.begin(), slopes.end(), 0);
     int peak_slope_idx = 0;
@@ -336,13 +326,22 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int left_trans = fft_size2;
     int right_trans = fft_size2;
     const double nbin_scale = 1.0/std::max(fft_right - fft_size2, fft_size2 - fft_left);
-    constexpr double bwidth = 2;
+    constexpr double bwidth = 1.85;
     constexpr double lwidth = 0.5;
+    left_trans = std::max(midpoint - bwidth*twidth, 64.0);
+    right_trans = std::min(midpoint + bwidth*twidth, fft_size - 65.0);
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
         
-        int nbins = int(16 + 32.0*fabs(cbin - midpoint)*nbin_scale);
-        
+        int nbins = 5;
+        if (fabs(cbin - midpoint) > lwidth*twidth) {
+            if (fabs(cbin - midpoint) > 2*lwidth*twidth) {
+                nbins = 12;
+            } else {
+                nbins = 7;
+            }
+        }
+                
         int left = max(fft_left, cbin-nbins);
         int right = min(fft_right-1, cbin+nbins);
         
@@ -361,14 +360,12 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                         w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
                     } else {
                         constexpr double start_factor = 1;
-                        constexpr double end_factor =   0.05;
+                        constexpr double end_factor =   0.01;
                         double alpha = (fabs(double(b - midpoint))/twidth - lwidth)/(bwidth - lwidth);
                         double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
                         // between edge and tail region, use slightly wider low-pass function
                         w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
                     }
-                    left_trans = min(left_trans, b);
-                    right_trans = max(right_trans, b);
                 }
                 mean[b] += ordered[i].second * w;
                 weights[b] += w;
@@ -404,14 +401,27 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = sampled[right_non_missing];
     }
     
-    double lslope = (sampled[left_trans+2] - sampled[left_trans-3]) / (5.0);
-    for (int idx=left_trans-2; idx <= left_trans+2; idx++) {
-        sampled[idx] = sampled[left_trans-3] + (idx - left_trans +3)*lslope;
+    // apply some box smoothing in the tails
+    smoothed[fft_left-1] = sampled[fft_left];
+    for (int idx=fft_left; idx < fft_right; idx++) {
+        smoothed[idx] = smoothed[idx-1] + sampled[idx];
     }
-    
-    double rslope = (sampled[right_trans+2] - sampled[right_trans-3]) / (5.0);
-    for (int idx=right_trans+2; idx >= right_trans-2; idx--) {
-        sampled[idx] = sampled[right_trans-3] + (idx - right_trans +3)*rslope;
+    constexpr int tpad = 16;
+    constexpr int bhw = 16;
+    constexpr int bhw_min = 1;
+    for (int idx=left_trans - tpad; idx < left_trans; idx++) {
+        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=right_trans+tpad - 1; idx > right_trans; idx--) {
+        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=fft_left+bhw+1; idx < left_trans - tpad; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+    for (int idx=right_trans + tpad; idx < fft_right-bhw; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
     }
     
     int lidx = 0;
@@ -457,7 +467,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     // apply stronger SG filtering on outer tails
     const int sgh2 = 7;
-    const double sgw2[] = {-0.070588, -0.011765, 0.038009, 0.078733, 0.110407, 0.133032, 0.146606, 0.151131, 0.146606, 0.133032, 0.110407, 0.078733, 0.038009, -0.011765, -0.070588};
+    const double sgw2[] = {-0.070588, -0.011765, 0.038009, 0.078733, 0.110407, 0.133032, 0.146606, 0.151131, 0.146606, 0.133032, 0.110407, 0.078733, 0.038009, -0.011765, -0.070588}; 
+    
     for (int idx=fft_left; idx <= fft_right; idx++) {
         for (int x=-sgh2; x <= sgh2; x++) {
             smoothed[idx] += sampled[idx+x] * sgw2[x+sgh2];
@@ -476,8 +487,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_trans+1-16; idx < right_trans; idx++) {
         sampled[idx] = 0.5*(smoothed[idx] + sampled[idx]);
     }
-    
-    
     
     return rval;
 }

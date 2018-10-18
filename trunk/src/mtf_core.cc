@@ -483,17 +483,9 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     vector<Ordered_point> ordered;
     double edge_length = 0;
     
-    static map<std::thread::id, std::array< vector<double>, 3 > > thread_storage;
-    std::thread::id tid = std::this_thread::get_id();
-    if (thread_storage.find(tid) == thread_storage.end()) {
-        thread_storage[tid] = std::array <vector<double>, 3 >();
-        thread_storage[tid][0] = vector<double>(FFT_SIZE*2, 0.0);
-        thread_storage[tid][1] = vector<double>(NYQUIST_FREQ*4, 0.0);
-        thread_storage[tid][2] = vector<double>(NYQUIST_FREQ*4, 0.0);
-    }
-    vector<double>& fft_out_buffer = thread_storage[tid][0];
-    vector<double>& magnitude = thread_storage[tid][1];
-    vector<double>& smoothed = thread_storage[tid][2];
+    thread_local vector<double> fft_out_buffer(FFT_SIZE*2);
+    thread_local vector<double> magnitude(NYQUIST_FREQ*4);
+    thread_local vector<double> smoothed(NYQUIST_FREQ*4);
 
     fill(fft_out_buffer.begin(), fft_out_buffer.end(), 0);
     
