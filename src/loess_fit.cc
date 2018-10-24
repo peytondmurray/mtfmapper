@@ -312,8 +312,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
     int midpoint = fft_size2;
-    int left_twidth = std::max(fft_size2 - p90idx, p10idx - fft_size2);
-    int right_twidth = left_twidth;
+    int twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
     
     // now recompute ESF using box() for tails, and exp() for transition
     rightsum = 0;
@@ -329,34 +328,24 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     const double nbin_scale = 1.0/std::max(fft_right - fft_size2, fft_size2 - fft_left);
     constexpr double bwidth = 1.85;
     constexpr double lwidth = 0.5;
-    left_trans = std::max(midpoint - bwidth*left_twidth, fft_left + 2.0);
-    right_trans = std::min(midpoint + bwidth*right_twidth, fft_right - 3.0);
+    left_trans = std::max(midpoint - bwidth*twidth, fft_left + 2.0);
+    right_trans = std::min(midpoint + bwidth*twidth, fft_right - 3.0);
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
         
         int nbins = 5;
-        if (cbin > midpoint) {
-            if (cbin - midpoint > lwidth*right_twidth) {
-                if (cbin - midpoint > 2*lwidth*right_twidth) {
-                    nbins = 12;
-                } else {
-                    nbins = 7;
-                }
-            }
-        } else {
-            if (midpoint - cbin > lwidth*left_twidth) {
-                if (midpoint - cbin > 2*lwidth*left_twidth) {
-                    nbins = 12;
-                } else {
-                    nbins = 7;
-                }
+        if (fabs(cbin - midpoint) > lwidth*twidth) {
+            if (fabs(cbin - midpoint) > 2*lwidth*twidth) {
+                nbins = 12;
+            } else {
+                nbins = 7;
             }
         }
                 
         int left = max(fft_left, cbin-nbins);
         int right = min(fft_right-1, cbin+nbins);
         
-        if (right < midpoint - bwidth*left_twidth || left > midpoint + bwidth*right_twidth) {
+        if (right < midpoint - bwidth*twidth || left > midpoint + bwidth*twidth) {
             for (int b=left; b <= right; b++) {
                 mean[b] += ordered[i].second;
                 weights[b] += 1.0;
@@ -364,35 +353,18 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         } else {
             for (int b=left; b <= right; b++) {
                 double w = 1; // in extreme tails, just plain box filter
-                if (b > midpoint) {
-                    if (b - midpoint < bwidth*right_twidth) {
-                        double mid = b*scale*(upper-lower)*inv_fft_size + scale*lower;
-                        if (b - midpoint < lwidth*right_twidth) {
-                            // edge transition itself, use preferred low-pass function
-                            w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
-                        } else {
-                            constexpr double start_factor = 1;
-                            constexpr double end_factor =   0.01;
-                            double alpha = ((double(b - midpoint))/right_twidth - lwidth)/(bwidth - lwidth);
-                            double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
-                            // between edge and tail region, use slightly wider low-pass function
-                            w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
-                        }
-                    }
-                } else {
-                    if (midpoint - b < bwidth*left_twidth) {
-                        double mid = b*scale*(upper-lower)*inv_fft_size + scale*lower;
-                        if (midpoint - b < lwidth*left_twidth) {
-                            // edge transition itself, use preferred low-pass function
-                            w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
-                        } else {
-                            constexpr double start_factor = 1;
-                            constexpr double end_factor =   0.01;
-                            double alpha = ((double(midpoint - b))/left_twidth - lwidth)/(bwidth - lwidth);
-                            double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
-                            // between edge and tail region, use slightly wider low-pass function
-                            w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
-                        }
+                if (fabs(b - midpoint) < bwidth*twidth) {
+                    double mid = b*scale*(upper-lower)*inv_fft_size + scale*lower;
+                    if (fabs(b - midpoint) < twidth*lwidth) {
+                        // edge transition itself, use preferred low-pass function
+                        w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
+                    } else {
+                        constexpr double start_factor = 1;
+                        constexpr double end_factor =   0.01;
+                        double alpha = (fabs(double(b - midpoint))/twidth - lwidth)/(bwidth - lwidth);
+                        double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
+                        // between edge and tail region, use slightly wider low-pass function
+                        w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
                     }
                 }
                 mean[b] += ordered[i].second * w;
