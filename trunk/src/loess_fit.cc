@@ -312,8 +312,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
     int midpoint = fft_size2;
-    int left_twidth = fft_size2 - p90idx;
-    int right_twidth = p10idx - fft_size2;
+    int left_twidth = std::max(fft_size2 - p90idx, p10idx - fft_size2);
+    int right_twidth = left_twidth;
     
     // now recompute ESF using box() for tails, and exp() for transition
     rightsum = 0;
