@@ -377,18 +377,15 @@ void Sfr_dialog::save_image(void) {
         savename += ".png";
     }
     
+    show();
     raise();
     activateWindow();
-    QThread::msleep(500); // force a delay to allow for WM effects
     
-    while (repainting == 1) {
-        printf("sleeping for a bit\n");
-        QThread::msleep(100); // give the window a chance to repaint after qfiledialog exposes it
-    }
-    
-    QScreen* screen = QGuiApplication::primaryScreen();
-    QPixmap grab(screen->grabWindow(this->winId()));
-    grab.save(savename);
+    QTimer::singleShot(300, [=] {
+        QScreen* screen = QGuiApplication::primaryScreen();
+        QPixmap grab(screen->grabWindow(this->winId()));
+        grab.save(savename);
+    });
 }
 
 void Sfr_dialog::save_data(void) {
