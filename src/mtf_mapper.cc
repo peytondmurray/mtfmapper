@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <math.h>
 #include <string>
 #include <string.h>
+#include <locale.h>
 
 #include <tclap/CmdLine.h>
 
@@ -79,6 +80,7 @@ void print_version_info(void) {
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv) {
+    setlocale(LC_ALL, "C");
 
     stringstream ss;
     ss << mtfmapper_VERSION_MAJOR << "." << mtfmapper_VERSION_MINOR << "." << mtfmapper_VERSION_SUB;
