@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "common.h"
 #include "config.h"
+#include <locale.h>
 
 static double multiple(double x) {
     double rval = 0;
@@ -376,6 +377,10 @@ void Sfr_dialog::save_image(void) {
         savename += ".png";
     }
     
+    raise();
+    activateWindow();
+    QThread::msleep(500); // force a delay to allow for WM effects
+    
     while (repainting == 1) {
         printf("sleeping for a bit\n");
         QThread::msleep(100); // give the window a chance to repaint after qfiledialog exposes it
@@ -387,6 +392,8 @@ void Sfr_dialog::save_image(void) {
 }
 
 void Sfr_dialog::save_data(void) {
+    setlocale(LC_ALL, "C");
+
     QString savename = QFileDialog::getSaveFileName(
         this,
         tr("Save CSV data"),
