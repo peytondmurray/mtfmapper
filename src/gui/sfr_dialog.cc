@@ -377,15 +377,10 @@ void Sfr_dialog::save_image(void) {
         savename += ".png";
     }
     
-    show();
-    raise();
-    activateWindow();
-    
-    QTimer::singleShot(300, [=] {
-        QScreen* screen = QGuiApplication::primaryScreen();
-        QPixmap grab(screen->grabWindow(this->winId()));
-        grab.save(savename);
-    });
+    QImage img(size(), QImage::Format_RGB888);
+    QPainter painter(&img);
+    render(&painter);
+    img.save(savename);
 }
 
 void Sfr_dialog::save_data(void) {
