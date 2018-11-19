@@ -1,6 +1,0 @@
-1. add some basic quality evaluation for each mtf edge
-2. re-write gradient to use opencv
-3. add threading to gradient 
-4. add threading to threshold (use opencv integral)
-5. make tbb optional (maybe use boost?)
-
