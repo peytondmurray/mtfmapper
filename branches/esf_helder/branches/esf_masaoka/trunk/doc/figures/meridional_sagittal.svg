@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.0"
+   width="125.09638mm"
+   height="100.61866mm"
+   viewBox="0 0 12509.638 10061.866"
+   id="svg5909"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="meridional_sagittal.svg"
+   inkscape:export-filename="/home/fvdbergh/workspace/mtfmapper_current/doc/figures/meridional_sagittal.png"
+   inkscape:export-xdpi="160.57001"
+   inkscape:export-ydpi="160.57001">
+  <metadata
+     id="metadata6329">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs6327" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1030"
+     id="namedview6325"
+     showgrid="false"
+     inkscape:zoom="1.2685914"
+     inkscape:cx="176.90905"
+     inkscape:cy="134.99473"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg5909"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <path
+     d="m 6359.6516,2577.9129 a 354,354 0 0 1 0,708 354,354 0 1 1 0,-708 z m 0,312 a 42,42 0 0 1 0,84 42,42 0 1 1 0,-84 z"
+     id="path5915"
+     inkscape:connector-curvature="0"
+     style="fill-rule:evenodd" />
+  <path
+     d="m 6359.6516,7032.9129 a 354,354 0 0 1 0,708 354,354 0 1 1 0,-708 z m 0,312 a 42,42 0 0 1 0,84 42,42 0 1 1 0,-84 z"
+     id="path5917"
+     inkscape:connector-curvature="0"
+     style="fill-rule:evenodd" />
+  <path
+     d="m 10437.652,934.91286 a 354,354 0 0 1 0,707.00004 354,354 0 0 1 0,-707.00004 z m -212,354.00004 a 212,212 0 0 1 146,-202 l 22,67 a 141,141 0 0 0 -98,135 z m 353,0 a 141,141 0 1 1 -212,-123 l 50,86 a 42,42 0 1 0 63,37 z m -141,-43 a 42.5,42.5 0 0 1 0,85 42.5,42.5 0 1 1 0,-85 z"
+     id="path5919"
+     inkscape:connector-curvature="0"
+     style="fill-rule:evenodd" />
+  <path
+     d="m 2280.6516,8676.9129 a 354,354 0 0 1 0,707 354,354 0 0 1 0,-707 z m -212,353 a 212,212 0 1 1 147,202 l 21,-67 a 141,141 0 1 0 -97,-135 z m 354,0 -99,0 z m -142,-42 a 42.5,42.5 0 0 1 0,85 42.5,42.5 0 1 1 0,-85 z"
+     id="path5923"
+     inkscape:connector-curvature="0"
+     style="fill-rule:evenodd" />
+  <polygon
+     points="7126,9133 6431,9605 6946,10268 7553,9856 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6069"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9101,9224 8303,9485 8621,10262 9304,10039 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6071"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11218,9412 10379,9366 10414,10207 11091,10244 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6073"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="13047,9642 12268,9329 12050,10145 12639,10381 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6075"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="14907,9886 14244,9369 13771,10063 14349,10514 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6077"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9101,10764 8337,11112 8758,11839 9373,11559 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6089"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11145,11037 10307,10988 10349,11827 11005,11865 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6091"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="13045,11363 12322,10936 11975,11701 12543,12037 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6093"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="14881,11652 14334,11014 13762,11634 14180,12122 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6095"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="6752,12324 6349,13061 7121,13394 7449,12794 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6109"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="8776,12357 8158,12926 8807,13459 9253,13048 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6111"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11050,12659 10211,12610 10318,13443 10845,13474 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6113"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="13052,13217 12506,12579 11950,13209 12344,13670 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6115"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="14812,13502 14488,12727 13750,13129 14007,13745 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6117"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="6393,14146 6335,14984 7175,14949 7220,14296 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6131"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="14606,15553 14664,14715 13824,14750 13779,15403 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6133"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="6187,16197 6511,16972 7249,16570 6992,15954 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6147"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="7947,16482 8493,17120 9049,16490 8655,16029 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6149"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9949,17040 10788,17089 10681,16256 10154,16225 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6151"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="12223,17342 12841,16773 12192,16240 11746,16651 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6153"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="14247,17375 14650,16638 13878,16305 13550,16905 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6155"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="6118,18047 6665,18685 7237,18065 6819,17577 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6169"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="7954,18336 8677,18763 9024,17998 8456,17662 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6171"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9854,18662 10692,18711 10650,17872 9994,17834 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6173"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11898,18935 12662,18587 12241,17860 11626,18140 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6175"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="6092,19813 6755,20330 7228,19636 6650,19185 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6187"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="7952,20057 8731,20370 8949,19554 8360,19318 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6189"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9781,20287 10620,20333 10585,19492 9908,19455 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6191"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11898,20475 12696,20214 12378,19437 11695,19660 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6193"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="13873,20566 14568,20094 14053,19431 13446,19843 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6195"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="9660,15690 9660,14010 10500,14850 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6305"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <polygon
+     points="11340,15690 11340,14010 10500,14850 "
+     style="fill:#000000;stroke:#000000;stroke-width:1"
+     id="polygon6307"
+     transform="matrix(0,-1,1,0,-8490.3484,15658.913)" />
+  <g
+     transform="translate(-1533.9922,-349.04614)"
+     id="g5403">
+    <rect
+       y="649.49744"
+       x="3334.8477"
+       height="1137.8171"
+       width="7369.5229"
+       id="rect5401"
+       style="opacity:1;fill:#f6f6f6;fill-opacity:0.90985885;fill-rule:evenodd;stroke:none;stroke-width:84.66665649;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text5361"
+       y="1497.2991"
+       x="3487.8191"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:776.11114502px;line-height:125%;font-family:Verdana;-inkscape-font-specification:'Verdana, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#f85710;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="1497.2991"
+         x="3487.8191"
+         id="tspan5363"
+         sodipodi:role="line">A meridional edge</tspan></text>
+  </g>
+  <ellipse
+     style="opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#f85710;stroke-width:84.66667143;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+     id="path5359"
+     cx="-195.04956"
+     cy="1582.6737"
+     rx="571.63586"
+     ry="190.54526"
+     transform="matrix(0.60451874,-0.79659092,0.79659092,0.60451874,0,0)" />
+  <g
+     transform="matrix(0,-1,1,0,10304.265,11404.704)"
+     id="g5403-8"
+     inkscape:transform-center-x="-3523.7288"
+     inkscape:transform-center-y="3240.572">
+    <rect
+       y="649.49744"
+       x="3201.3665"
+       height="1115.5702"
+       width="6358.5869"
+       id="rect5401-6"
+       style="opacity:1;fill:#f6f6f6;fill-opacity:0.90985879;fill-rule:evenodd;stroke:none;stroke-width:84.66665649;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text5361-2"
+       y="1497.2991"
+       x="3487.8191"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:776.11114502px;line-height:125%;font-family:Verdana;-inkscape-font-specification:'Verdana, Normal';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#f85710;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         sodipodi:role="line"
+         id="tspan5447"
+         x="3487.8191"
+         y="1497.2991">A sagittal edge</tspan></text>
+  </g>
+  <ellipse
+     style="opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#f85710;stroke-width:84.66667143;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+     id="path5359-6"
+     cx="-14379.722"
+     cy="-228.22037"
+     rx="668.81836"
+     ry="222.93941"
+     transform="matrix(-0.80666507,-0.59100886,0.59100886,-0.80666507,0,0)" />
+  <path
+     style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#f85710;stroke-width:28.22222328px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="M 6360.1876,5181.3569 8.6983696,209.17446"
+     id="path6949"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cc" />
+  <path
+     style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#f85710;stroke-width:28.22222328px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="M 303.20997,2143.7289 1993.7026,8.7606555"
+     id="path6951"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cc" />
+  <path
+     style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#f85710;stroke-width:28.22222328px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="m 6360.0496,5162.8469 6141.6194,4202.714"
+     id="path6953"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cc" />
+  <path
+     style="fill:none;fill-opacity:0.75;fill-rule:evenodd;stroke:#f85710;stroke-width:28.22222328px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="M 10431.371,10053.428 12211.123,7667.4479"
+     id="path6955"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cc" />
+</svg>
