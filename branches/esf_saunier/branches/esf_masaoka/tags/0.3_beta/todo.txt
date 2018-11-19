@@ -1,0 +1,5 @@
+1. add some basic quality evaluation for each mtf edge
+2. add threading to threshold (use opencv integral)
+3. make tbb optional (maybe use boost?)
+4. use the knowledge of block shapes to improve systematic edge orientation
+estimation

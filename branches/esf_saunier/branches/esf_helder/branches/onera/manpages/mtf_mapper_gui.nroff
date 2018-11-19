@@ -1,0 +1,18 @@
+.\" Process this file with
+.\" groff -man -Tascii foo.1
+.\"
+.TH mtf_mapper_gui 1 "SEPT 2011" Linux "User Manuals"
+.SH NAME
+mtf_mapper_gui \- GUI for mtf_mapper
+.SH DESCRIPTION
+.B mtf_mapper_gui
+is a QT4 graphical frontend to mtf_mapper. Only a subset of mtf_mapper functionality
+is available through the GUI.
+.SH BUGS
+In hiding, I am sure.
+.SH AUTHOR
+Frans van den Bergh <fvdbergh at gmail dot com>
+.SH "SEE ALSO"
+.BR mtf_mapper (1),
+.BR mtf_generate_rectangle (1),
+.BR mtf_generate_test_chart (1),
