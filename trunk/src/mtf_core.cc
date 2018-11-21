@@ -366,9 +366,12 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             double max_dot_angle = snap_to_angle;
             double max_dot = 0;
             
-            double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
-            
-            for (int l=0; l < 4; l++) {
+            double angles[8] = {
+                snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, M_PI/2 + snap_to_angle,
+                -M_PI/2 + snap_to_angle, -M_PI/2 - snap_to_angle, M_PI + snap_to_angle, M_PI - snap_to_angle
+            };
+                
+            for (int l=0; l < 8; l++) {
             
                 double sa = angles[l];
                 
@@ -1035,9 +1038,12 @@ void Mtf_core::process_image_as_roi(void) {
         double max_dot_angle = snap_to_angle;
         double max_dot = 0;
         
-        double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
+        double angles[8] = {
+            snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, M_PI/2 + snap_to_angle,
+            -M_PI/2 + snap_to_angle, -M_PI/2 - snap_to_angle, M_PI + snap_to_angle, M_PI - snap_to_angle
+        };
         
-        for (int l=0; l < 4; l++) {
+        for (int l=0; l < 8; l++) {
         
             double sa = angles[l];
             
