@@ -60,9 +60,9 @@ typedef vector<Block> block_vector;
 // global constants for ESF-fourier MTF method
 // TODO: these can be dynamic parameters, with some effort
 const double max_dot = 28;
-const int SAMPLES_PER_PIXEL = 32;
+const int SAMPLES_PER_PIXEL = 32*4;
 const size_t FFT_SIZE = int(16)*SAMPLES_PER_PIXEL;
-const int NYQUIST_FREQ = FFT_SIZE/16;
+const int NYQUIST_FREQ = 32;
 
 class Mtf_core {
   public:
@@ -200,7 +200,7 @@ class Mtf_core {
     const cv::Mat&            bayer_img;
     Bayer::bayer_t bayer;
     
-    AFFT<512> afft; // FFT_SIZE = 512 ??
+    AFFT<512*4> afft; // FFT_SIZE = 512 ??
     vector<int> valid_obj;
     
     vector<Block> detected_blocks;  
