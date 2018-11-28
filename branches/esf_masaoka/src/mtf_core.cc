@@ -366,11 +366,14 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             double max_dot_angle = snap_to_angle;
             double max_dot = 0;
             
-            double angles[4] = {snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, snap_to_angle - M_PI/2};
+            double angles[8] = {
+                snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, M_PI/2 + snap_to_angle,
+                -M_PI/2 + snap_to_angle, -M_PI/2 - snap_to_angle, M_PI + snap_to_angle, M_PI - snap_to_angle
+            };
+                
+            for (int l=0; l < 8; l++) {
             
-            for (int k=0; k < 4; k++) {
-            
-                double sa = angles[k];
+                double sa = angles[l];
                 
                 double dot = cos(edge_record[k].angle)*cos(sa) + sin(edge_record[k].angle)*sin(sa);
                 if (dot > max_dot) {
@@ -380,6 +383,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             }
             
             ea = max_dot_angle;
+            edge_record[k].angle = ea;
         }
         
         edge_model[k].update_location(
@@ -621,9 +625,9 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     }
     
     if (!done || fabs(quad) < 0.1) {
-        mtf50 = 0.125;
+        mtf50 = 1/32.0;
     }
-    mtf50 *= 8;
+    mtf50 *= 32;
 
     if (absolute_sfr) {
         for (size_t i=0; i < sfr.size();  i++) {
@@ -1028,6 +1032,31 @@ void Mtf_core::process_image_as_roi(void) {
     }
     er.reduce();
     em.estimate_ridge();
+    
+    if (snap_to) {
+    
+        double max_dot_angle = snap_to_angle;
+        double max_dot = 0;
+        
+        double angles[8] = {
+            snap_to_angle, -snap_to_angle, M_PI/2 - snap_to_angle, M_PI/2 + snap_to_angle,
+            -M_PI/2 + snap_to_angle, -M_PI/2 - snap_to_angle, M_PI + snap_to_angle, M_PI - snap_to_angle
+        };
+        
+        for (int l=0; l < 8; l++) {
+        
+            double sa = angles[l];
+            
+            double dot = cos(er.angle)*cos(sa) + sin(er.angle)*sin(sa);
+            if (dot > max_dot) {
+                max_dot = dot;
+                max_dot_angle = sa;
+            }
+        }
+        
+        er.angle = max_dot_angle;
+    }
+    
     logger.debug("updated: ER reduce grad estimate: %lf, centroid (%lf,%lf) -> (%lf, %lf)\n", 
         er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
     );
