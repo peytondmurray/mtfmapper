@@ -229,22 +229,12 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     
     
-    #if 0
     double old = sampled[fft_left];
     for (int idx=fft_left; idx <= fft_right; idx++) {
         double temp = sampled[idx];
         sampled[idx] = (sampled[idx+1] - old);
         old = temp;
     }
-    #else
-    vector<double> copy(fft_size);
-    for (int idx=0; idx < fft_size; idx++) {
-        copy[idx] = sampled[idx];
-    }
-    for (int idx=fft_left; idx <= fft_right; idx++) {
-        sampled[idx] = copy[idx+1] - copy[idx-1];
-    }
-    #endif
     for (int idx=0; idx < fft_left; idx++) {
         sampled[idx] = 0;
     }
