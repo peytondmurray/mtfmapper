@@ -134,7 +134,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     auto left_it = ordered.begin();
     auto right_it = ordered.end();
     const double alpha = Loess_parms::get_instance().get_alpha();
-    const int target_size = ordered.size() * alpha;
+    const int target_size = ordered.size() * 0.035; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
     for (int b=fft_left; b < fft_right; b++) {
         weights[b] = 1.0;
         
@@ -167,15 +167,9 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             Eigen::VectorXd v(npts);
             size_t row = 0;
             for (auto it=left_it; it != right_it; it++, row++) {
-                
                 double d = fabs(it->first - mid);
-                if (it > mid_it) {
-                    d /= right_it - mid_it;
-                } else {
-                    d /= mid_it - left_it;
-                }
-                d = std::min(1.0, d);
-                double w = ( (1 - d*d)*(1 - d*d)*(1 - d*d) + 1);
+                double w = exp(-fabs(d)*alpha);
+                
                 double x = it->first - left_it->first;
                 v[row] = w*it->second;
                 design(row, 0) = w*1;
@@ -225,7 +219,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = sampled[right_non_missing];
     }
     
-    #if 0
+    #if 1
     vector<double> smoothed(fft_size, 0);
     int left_trans = 200;
     int right_trans = 300;
