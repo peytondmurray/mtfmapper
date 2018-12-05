@@ -135,7 +135,10 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     auto right_it = ordered.end();
     const double alpha = Loess_parms::get_instance().get_alpha();
     const int target_size = ordered.size() * 0.037; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
-    for (int b=fft_left; b < fft_right; b++) {
+    int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
+    int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
+    constexpr double max_width = 5.0;
+    for (int b=min_left_bin; b < max_right_bin; b++) {
         weights[b] = 1.0;
         
         double mid = (b - fft_size/2)*0.125;
@@ -149,7 +152,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             right_it = mid_it + (target_size - left_available);
         } else {
             if (right_available < target_size/2) {
-                right_it = ordered.end();
+                right_it = ordered.end() - 1;
                 left_it = mid_it - (target_size - right_available);
             } else {
                 left_it = mid_it - target_size/2;
@@ -309,11 +312,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     #endif
     
+    /*
     FILE* fo1 = fopen("raw_esf.txt", "wt");
     for (int i=0; i < fft_size; i++) {
         fprintf(fo1, "%d %lf\n", i, sampled[i]);
     }
     fclose(fo1);
+    */
     
     int lidx = 0;
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
@@ -333,11 +338,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = 0;
     }
     
+    /*
     FILE* fo2 = fopen("raw_psf.txt", "wt");
     for (int i=0; i < fft_size; i++) {
         fprintf(fo2, "%d %lf\n", i, sampled[i]);
     }
     fclose(fo2);
+    */
     
     return rval;
 }
