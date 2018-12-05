@@ -134,7 +134,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     auto left_it = ordered.begin();
     auto right_it = ordered.end();
     const double alpha = Loess_parms::get_instance().get_alpha();
-    const int target_size = ordered.size() * 0.035; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
+    const int target_size = ordered.size() * 0.037; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
     for (int b=fft_left; b < fft_right; b++) {
         weights[b] = 1.0;
         
@@ -211,6 +211,38 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    #if 1
+    // estimate a reasonable value for the non-missing samples
+    constexpr int nm_target = 8*3;
+    int nm_count = 1;
+    double l_nm_mean = sampled[left_non_missing];
+    for (int idx=left_non_missing+1; idx < fft_size/2 && nm_count < nm_target; idx++) {
+        if (sampled[idx] != missing) {
+            l_nm_mean += sampled[idx];
+            nm_count++;
+        }                                                                                                                                                                   
+    }                                                                                                                                                                       
+    l_nm_mean /= nm_count;
+    
+    nm_count = 1;
+    double r_nm_mean = sampled[right_non_missing];
+    for (int idx=right_non_missing-1; idx > fft_size/2 && nm_count < nm_target; idx--) {
+        if (sampled[idx] != missing) {
+            r_nm_mean += sampled[idx];
+            nm_count++;
+        }
+    }
+    r_nm_mean /= nm_count;
+    
+    // now just pad out the ends of the sequences with the last non-missing values
+    for (int idx=left_non_missing-1; idx >= 0; idx--) {
+        sampled[idx] = l_nm_mean;
+    }
+    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
+        sampled[idx] = r_nm_mean;
+    }
+
+    #else
     // now just pad out the ends of the sequences with the last non-missing values
     for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
@@ -218,11 +250,42 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
     }
+    #endif    
     
     #if 1
     vector<double> smoothed(fft_size, 0);
-    int left_trans = 200;
-    int right_trans = 300;
+    // now find 10% / 90% thresholds
+    leftsum /= double(leftcount);
+    rightsum /= double(rightcount);
+    double bright = max(leftsum, rightsum);
+    double dark   = min(leftsum, rightsum);
+    int p10idx = fft_left-1;
+    int p90idx = fft_left-1;
+    double p10err = 1e50;
+    double p90err = 1e50;
+    for (int idx=fft_left; idx <= fft_right; idx++) {
+        double smoothed = (sampled[idx-2] + sampled[idx-1] + sampled[idx] + sampled[idx+1] + sampled[idx+2])/5.0;
+        if ( fabs((smoothed - dark) - 0.1*(bright - dark)) <  p10err) {
+            p10idx = idx;
+            p10err = fabs((smoothed - dark) - 0.1*(bright - dark));
+        }
+        if ( fabs((smoothed - dark) - 0.9*(bright - dark)) <  p90err) {
+            p90idx = idx;
+            p90err = fabs((smoothed - dark) - 0.9*(bright - dark));
+        }
+    }
+    // we know that mtf50 ~ 1/(p90idx - p10idx) * (1/samples_per_pixel)
+    double rise_dist = max(double(4), fabs(double(p10idx - p90idx))*0.125);
+    if (p10idx < p90idx) {
+        std::swap(p10idx, p90idx);
+    }
+    p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
+    p90idx -= 4 + 2*lrint(rise_dist);
+    int twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
+    constexpr double bwidth = 1.85;
+    int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
+    int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
+    
     smoothed[0] = sampled[0];
     for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
