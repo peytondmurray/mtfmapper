@@ -39,6 +39,8 @@ using std::string;
 #include "geom.h"
 #include "polygon_geom.h"
 
+#include <random>
+
 //==============================================================================
 class Render_target {
   public:
@@ -129,12 +131,22 @@ class Render_polygon : public Render_target {
     void set_img_dimensions(int rows, int cols) {
         img_width = cols;
         img_height = rows;
+        
+        
+        std::mt19937 gen(10);
+        std::uniform_real_distribution<float> dis(0, 2*M_PI);
+        
+        uint64_t isize = uint64_t(img_height)*uint64_t(img_width);
+        rseed = vector<float>(isize);
+        for (uint64_t i=0; i < isize; i++) {
+            rseed[i] = dis(gen);
+        }
     }
     
     void set_psf_ratio(double ratio) {
         psf_ratio = ratio;
     }
-      
+    
   public:
       
     double sigma;
@@ -147,6 +159,7 @@ class Render_polygon : public Render_target {
     double psf_ratio;
     int img_width;
     int img_height;
+    vector<float> rseed;
 };
 
 #endif // RENDER_H
