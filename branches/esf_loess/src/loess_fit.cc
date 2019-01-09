@@ -40,6 +40,7 @@ using std::lower_bound;
 using std::upper_bound;
 
 const int MIN_POINTS_TO_FIT = 8;
+constexpr double missing = -1e7;
 
 double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
     double mid,  Point2d& sol) {
@@ -95,42 +96,37 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
-inline double sgn(double x) {
-    return x < 0 ? -1 : 1;
-}
-
-inline double kernel(double d, double alpha, double w=0.125) {
-    if (fabs(d) < w) return 1.0;
-    return fastexp(-fabs(fabs(d)-w)*alpha);
-}
-
-int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
-    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
+int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
+    const int fft_size, bool allow_peak_shift, 
+    int effective_maxdot, vector<double>& mean, vector<double>& weights,
+    int& fft_left, int& fft_right, int& twidth) {
     
-    thread_local vector<double> weights(fft_size, 0);
-    thread_local vector<double> mean(fft_size, 0);
-
-    constexpr double missing = -1e7;
-
-    for (int i=0; i < fft_size; i++) {
-        sampled[i] = missing;
-    }
+    thread_local vector<double> slopes(fft_size, 0);
     
+    constexpr double shift_tolerance = 4;
+
     int rval = 0;
-    
+
     const int fft_size2 = fft_size/2;
+    const double inv_fft_size_m1 = 1.0/double(fft_size-1);
+    const double inv_fft_size = 1.0/double(fft_size);
     double rightsum = 0;
     int rightcount = 0;
     double leftsum = 0;
     int leftcount = 0;
     int left_non_missing  = 0;
     int right_non_missing = 0;
+    fill(weights.begin(), weights.end(), 0);
+    fill(mean.begin(), mean.end(), 0);
     
-    int fft_left = 32;
-    int fft_right = fft_size-32;
+    int clipped_count = 0;
     
-    fill(weights.begin(), weights.end(), 0.0);
-    fill(mean.begin(), mean.end(), 0.0);
+    fft_left = fft_size2 - 8*effective_maxdot;
+    fft_right = fft_size2 + 8*effective_maxdot;
+    
+    //printf("initial: fl:%d, fr:%d ", fft_left, fft_right);
+    
+    retry:
     
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
@@ -138,7 +134,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         int right = min(fft_right-1, cbin+5);
         
         for (int b=left; b <= right; b++) {
-            double mid = (b - fft_size/2)*0.125;
+            double mid = (b - fft_size2)*0.125;
             double w = 1 - abs((ordered[i].first - mid)*1.75) > 0 ? 1 - abs((ordered[i].first - mid)*1.75) : 0;
             mean[b] += ordered[i].second * w;
             weights[b] += w;
@@ -173,10 +169,114 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = sampled[right_non_missing];
     }
     
-    thread_local vector<double> smoothed(fft_size, 0);
-    // now find 10% / 90% thresholds
+    fill(slopes.begin(), slopes.end(), 0);
+    int peak_slope_idx = 0;
+    constexpr int pw = 16;
+    for (int idx=pw+1; idx < fft_size-1-pw; idx++) {
+        double sx2 = 0;
+        double sxy = 0;
+        // sx == 0 because the window is symmetric
+        for (int j=-pw; j <= pw; j++) {
+            sxy += sampled[idx+j] * j;
+            sx2 += j*j;
+        }
+        slopes[idx] = sxy/(sx2);
+        if (fabs(slopes[idx]) > fabs(slopes[peak_slope_idx]) && idx > fft_left+pw && idx < fft_right-pw-1) {
+            peak_slope_idx = idx;
+        }
+    }
+    
+    if (!allow_peak_shift) {
+        if (abs(peak_slope_idx - fft_size / 2) > 2 * 8 &&    // peak is more than 2 pixels from centre
+            abs(peak_slope_idx - fft_size / 2) < 12 * 8) { // but not at the edge?
+            logger.debug("edge rejected because of shifted peak slope: %lf\n", abs(peak_slope_idx - fft_size / 2) / 8.0);
+            return -1;
+        }
+    }
+    
+    // compute central peak magnitude and sign
+    double central_peak = 0;
+    for (int w=-16; w <= 16; w++) {
+        if (fabs(slopes[fft_size2+w]) > fabs(central_peak)) {
+            central_peak = slopes[fft_size2+w];
+        }
+    }
+    
+    double peak_threshold = fabs(central_peak * 0.001); // must be negative by at least a little bit
+    // scan for significant slope sign change
+    bool clipped = false;
+    for (int idx=fft_size2-16; idx >= fft_left+4; idx--) {
+        if (slopes[idx]*central_peak < 0 && fabs(slopes[idx]) > peak_threshold) {
+            // check if a fair number of the remaining slopes are also negative (relative to peak)
+            int below = 0;
+            double maxdev = 0;
+            int scount = 0;
+            for (int j=idx; j >= fft_left; j--) {
+                if (slopes[j]*central_peak < 0) {
+                    below++;
+                    maxdev = max(maxdev, fabs(slopes[j]));
+                }
+                scount++;
+            }
+            if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
+                fft_left = min(idx, fft_size2 - 2*8);
+                clipped = true;
+                break;
+            } 
+        }
+    }
+    for (int idx=fft_size2+16; idx < fft_right-4; idx++) {
+        if (slopes[idx]*central_peak < 0 && fabs(slopes[idx]) > peak_threshold) {
+            // check if a fair number of the remaining slopes are also negative (relative to peak)
+            int below = 0;
+            double maxdev = 0;
+            int scount=0;
+            for (int j=idx; j < fft_right; j++) {
+                if (slopes[j]*central_peak < 0) {
+                    below++;
+                    maxdev = max(maxdev, fabs(slopes[j]));
+                }
+                scount++;
+            }
+            if ((below > scount*0.4 && maxdev/fabs(central_peak) > 0.25) || (below > 0.9*scount && scount > 16)) {
+                fft_right = max(idx, fft_size2 + 2*8);
+                clipped = true;
+                break;
+            } 
+        }
+    }
+    
+    
+    if (clipped) {
+        if (fft_size2 - fft_left < shift_tolerance*8 ||
+            fft_right  - fft_size2 < shift_tolerance*8) {
+            
+            logger.debug("probably contamination. tagging edge as dodgy\n");
+            rval = 1;
+        }
+    }
+    
+    if (clipped && clipped_count < 2) {
+        for (size_t idx=0; idx < weights.size(); idx++) {
+            sampled[idx] = 0;
+            weights[idx] = 0;
+        }
+        leftsum = 0;
+        rightsum = 0;
+        rightcount = 0;
+        leftcount = 0;
+        left_non_missing = 0;
+        right_non_missing = 0;
+        clipped_count++;
+        goto retry;
+    }
+    
+    //printf("final: fl:%d, fr:%d \n", fft_left, fft_right);
+    
     leftsum /= double(leftcount);
     rightsum /= double(rightcount);
+    
+    // now find 10% / 90% thresholds
     double bright = max(leftsum, rightsum);
     double dark   = min(leftsum, rightsum);
     int p10idx = fft_left-1;
@@ -201,18 +301,71 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
-    int twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
+    twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
+    
+    return rval;
+}
+
+void moving_average_smoother(vector<double>& smoothed, double* sampled, 
+    int fft_size, int fft_left, int fft_right, int left_trans, int right_trans) {
+    
+    smoothed[0] = sampled[0];
+    for (int idx=1; idx < fft_size; idx++) {
+        smoothed[idx] = smoothed[idx-1] + sampled[idx];
+    }
+    constexpr int tpad = 16;
+    constexpr int bhw = 16;
+    constexpr int bhw_min = 1;
+    for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
+        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=std::min(right_trans + tpad - 1, fft_right - bhw - 1); idx > right_trans; idx--) {
+        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+}
+
+inline double kernel(double d, double alpha, double w=0.125) {
+    if (fabs(d) < w) return 1.0;
+    return fastexp(-fabs(fabs(d)-w)*alpha);
+}
+
+int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
+    const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
+    
+    thread_local vector<double> weights(fft_size, 0);
+    thread_local vector<double> mean(fft_size, 0);
+
+    for (int i=0; i < fft_size; i++) {
+        sampled[i] = missing;
+    }
+    
+    int rval = 0;
+    
+    int fft_left = 0;
+    int fft_right = fft_size-1;
+    int twidth = 32;
+    
+    rval = estimate_esf_clipping(ordered, sampled, fft_size, allow_peak_shift, 
+        fabs(upper), mean, weights, fft_left, fft_right, twidth
+    );
+    
+    if (rval < 0) return rval;
+    
     constexpr double bwidth = 1.85;
     int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
     int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
-    leftsum = rightsum = 0;
-    leftcount = rightcount = 0;
-    left_non_missing = 0;
-    right_non_missing = 0;
-    
     fill(weights.begin(), weights.end(), 0.0);
     fill(mean.begin(), mean.end(), 0.0);
+    
     auto left_it = ordered.begin();
     auto right_it = ordered.end();
     const double alpha = Loess_parms::get_instance().get_alpha();
@@ -300,21 +453,16 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    int left_non_missing = 0;
+    int right_non_missing = 0;
+    
     // some housekeeping to take care of missing values
     for (int i=0; i < fft_size; i++) {
         sampled[i] = 0;
     }
     for (int idx=fft_left-1; idx <= fft_right+1; idx++) {
         if (weights[idx] > 0) {
-            sampled[idx] = mean[idx] / weights[idx];
-            if (idx < fft_size2 - fft_size/8) {
-                leftsum += sampled[idx];
-                leftcount++;
-            }
-            if (idx > fft_size2 + fft_size/8) {
-                rightsum += sampled[idx];
-                rightcount++;
-            }
+            sampled[idx] = mean[idx];
             if (!left_non_missing) {
                 left_non_missing = idx; // first non-missing value from left
             }
@@ -354,27 +502,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = r_nm_mean;
     }
 
-    smoothed[0] = sampled[0];
-    for (int idx=1; idx < fft_size; idx++) {
-        smoothed[idx] = smoothed[idx-1] + sampled[idx];
-    }
-    constexpr int tpad = 16;
-    constexpr int bhw = 16;
-    constexpr int bhw_min = 1;
-    for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
-        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
-        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
-    }
-    for (int idx=std::min(right_trans + tpad - 1, fft_right - bhw - 1); idx > right_trans; idx--) {
-        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
-        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
-    }
-    for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
-        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
-    }
-    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
-        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
-    }
+    thread_local vector<double> smoothed(fft_size, 0);
+    moving_average_smoother(smoothed, sampled, fft_size, fft_left, fft_right, left_trans, right_trans);
     
     int lidx = 0;
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
