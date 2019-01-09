@@ -72,6 +72,7 @@ Logger logger;
 #include "include/tiffsniff.h"
 #include "include/display_profile.h"
 #include "config.h"
+#include "include/loess_parms.h"
 
 //-----------------------------------------------------------------------------
 void print_version_info(void) {
@@ -135,6 +136,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
     TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
     TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
+    TCLAP::ValueArg<double> tc_alpha("", "alpha", "Specify LOESS alpha parameter [0,1]", false, 7.42, "unitless", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -456,6 +458,8 @@ int main(int argc, char** argv) {
             }
             mtf_core.set_mtf_contrast(contrast / 100.0);
         }
+        
+        Loess_parms::get_instance().set_alpha(tc_alpha.getValue());
         
         Mtf_core_tbb_adaptor ca(&mtf_core);
         

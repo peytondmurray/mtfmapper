@@ -33,7 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Airy_sampler {
   public:
     Airy_sampler(double lambda, double pitch, double N) 
-      : lambda(lambda), pitch(pitch), N(N), diam(std::max(85.0, 45.0*pitch/(lambda*N))) {
+      : lambda(lambda), pitch(pitch), N(N) {
         
         diam_prob = 1 - j0(diam*M_PI)*j0(diam*M_PI) - j1(diam*M_PI)*j1(diam*M_PI);
     }
@@ -86,17 +86,19 @@ class Airy_sampler {
         return fabs((1 - j0(v*M_PI)*j0(v*M_PI) - j1(v*M_PI)*j1(v*M_PI)) - target);
     }
     
+    static const double diam;
     double diam_prob;
     
     double lambda;
     double pitch;
     double N;
-    double diam;
     
     size_t nsamples;
     vector<double> x;
     vector<double> y;
 };
+
+const double Airy_sampler::diam = 55.0;
 
 #endif
 
