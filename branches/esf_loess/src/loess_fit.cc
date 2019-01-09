@@ -99,16 +99,16 @@ inline double sgn(double x) {
     return x < 0 ? -1 : 1;
 }
 
-inline double tri(double x) {
-    const double alpha = 0.95;
-    return alpha*(1 - fabs(x*8))*0.5*(sgn(x+0.125) - sgn(x-0.125)) + (1-alpha)*(1 - fabs(x*1.5))*0.5*(sgn(x+0.6666666) - sgn(x-0.6666666));
+inline double kernel(double d, double alpha, double w=0.125) {
+    if (fabs(d) < w) return 1.0;
+    return fastexp(-fabs(fabs(d)-w)*alpha);
 }
 
 int bin_fit(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double lower, double upper, vector<double>& esf, bool allow_peak_shift) {
     
-    vector<double> weights(fft_size, 0);
-    vector<double> mean(fft_size, 0);
+    thread_local vector<double> weights(fft_size, 0);
+    thread_local vector<double> mean(fft_size, 0);
 
     constexpr double missing = -1e7;
 
@@ -131,69 +131,20 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     fill(weights.begin(), weights.end(), 0.0);
     fill(mean.begin(), mean.end(), 0.0);
-    auto left_it = ordered.begin();
-    auto right_it = ordered.end();
-    const double alpha = Loess_parms::get_instance().get_alpha();
-    const int target_size = ordered.size() * 0.037; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
-    int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
-    int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
-    constexpr double max_width = 5.0;
-    for (int b=min_left_bin; b < max_right_bin; b++) {
-        weights[b] = 1.0;
-        
-        double mid = (b - fft_size/2)*0.125;
-        
-        auto mid_it = lower_bound(ordered.begin(), ordered.end(), mid);
-        int left_available = mid_it - ordered.begin();
-        int right_available = ordered.end() - mid_it;
-        
-        if (left_available < target_size/2) {
-            left_it = ordered.begin();
-            right_it = mid_it + (target_size - left_available);
-        } else {
-            if (right_available < target_size/2) {
-                right_it = ordered.end() - 1;
-                left_it = mid_it - (target_size - right_available);
-            } else {
-                left_it = mid_it - target_size/2;
-                right_it = mid_it + target_size/2;
-            }
-        }
-        
-        constexpr int order = 4;
-        size_t npts = right_it - left_it;
-        if (npts < (order+1)) {
-            printf("empty interval in bin %d\n", b);
-            weights[b] = 0;
-        } else {
-            Eigen::MatrixXd design(npts, order + 1);
-            Eigen::VectorXd v(npts);
-            size_t row = 0;
-            for (auto it=left_it; it != right_it; it++, row++) {
-                double d = fabs(it->first - mid);
-                double w = exp(-fabs(d)*alpha);
-                
-                double x = it->first - left_it->first;
-                v[row] = w*it->second;
-                design(row, 0) = w*1;
-                design(row, 1) = w*x;
-                design(row, 2) = w*x*x;
-                design(row, 3) = w*x*x*x;
-                design(row, 4) = w*x*x*x*x;
-            }
-            Eigen::VectorXd sol = design.colPivHouseholderQr().solve(v);
-            
-            double ex = mid - left_it->first;
-            double ey = sol[0] + ex*sol[1] + ex*ex*sol[2] + ex*ex*ex*sol[3] + ex*ex*ex*ex*sol[4];
-            
-            mean[b] = ey;
-        }
-    }
     
-    // some housekeeping to take care of missing values
-    for (int i=0; i < fft_size; i++) {
-        sampled[i] = 0;
+    for (int i=0; i < int(ordered.size()); i++) {
+        int cbin = int(ordered[i].first*8 + fft_size2);
+        int left = max(fft_left, cbin-5);
+        int right = min(fft_right-1, cbin+5);
+        
+        for (int b=left; b <= right; b++) {
+            double mid = (b - fft_size/2)*0.125;
+            double w = 1 - abs((ordered[i].first - mid)*1.75) > 0 ? 1 - abs((ordered[i].first - mid)*1.75) : 0;
+            mean[b] += ordered[i].second * w;
+            weights[b] += w;
+        }
     }
+    // some housekeeping to take care of missing values
     for (int idx=fft_left-1; idx <= fft_right+1; idx++) {
         if (weights[idx] > 0) {
             sampled[idx] = mean[idx] / weights[idx];
@@ -214,38 +165,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
-    #if 1
-    // estimate a reasonable value for the non-missing samples
-    constexpr int nm_target = 8*3;
-    int nm_count = 1;
-    double l_nm_mean = sampled[left_non_missing];
-    for (int idx=left_non_missing+1; idx < fft_size/2 && nm_count < nm_target; idx++) {
-        if (sampled[idx] != missing) {
-            l_nm_mean += sampled[idx];
-            nm_count++;
-        }                                                                                                                                                                   
-    }                                                                                                                                                                       
-    l_nm_mean /= nm_count;
-    
-    nm_count = 1;
-    double r_nm_mean = sampled[right_non_missing];
-    for (int idx=right_non_missing-1; idx > fft_size/2 && nm_count < nm_target; idx--) {
-        if (sampled[idx] != missing) {
-            r_nm_mean += sampled[idx];
-            nm_count++;
-        }
-    }
-    r_nm_mean /= nm_count;
-    
-    // now just pad out the ends of the sequences with the last non-missing values
-    for (int idx=left_non_missing-1; idx >= 0; idx--) {
-        sampled[idx] = l_nm_mean;
-    }
-    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
-        sampled[idx] = r_nm_mean;
-    }
-
-    #else
     // now just pad out the ends of the sequences with the last non-missing values
     for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
@@ -253,10 +172,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
     }
-    #endif    
     
-    #if 1
-    vector<double> smoothed(fft_size, 0);
+    thread_local vector<double> smoothed(fft_size, 0);
     // now find 10% / 90% thresholds
     leftsum /= double(leftcount);
     rightsum /= double(rightcount);
@@ -289,6 +206,154 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
     int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
+    leftsum = rightsum = 0;
+    leftcount = rightcount = 0;
+    left_non_missing = 0;
+    right_non_missing = 0;
+    
+    fill(weights.begin(), weights.end(), 0.0);
+    fill(mean.begin(), mean.end(), 0.0);
+    auto left_it = ordered.begin();
+    auto right_it = ordered.end();
+    const double alpha = Loess_parms::get_instance().get_alpha();
+    int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
+    int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
+    
+    constexpr int order = 4;
+    
+    for (int b=min_left_bin; b < max_right_bin; b++) {
+        weights[b] = 1.0;
+        
+        double mid = (b - fft_size/2)*0.125;
+        
+        int target_size = ordered.size() * 0.037;
+        if (fabs(b - fft_size/2) > bwidth*twidth) {
+            target_size = ordered.size() * 0.075;
+        } else {
+            if (fabs(b - fft_size/2) > twidth) {
+                target_size = ordered.size() * 0.055;
+            }
+        }
+        
+        auto mid_it = lower_bound(ordered.begin(), ordered.end(), mid);
+        int left_available = mid_it - ordered.begin();
+        int right_available = ordered.end() - mid_it;
+        
+        if (left_available < target_size/2) {
+            left_it = ordered.begin();
+            right_it = mid_it + (target_size - left_available);
+        } else {
+            if (right_available < target_size/2) {
+                right_it = ordered.end() - 1;
+                left_it = mid_it - (target_size - right_available);
+            } else {
+                left_it = mid_it - target_size/2;
+                right_it = mid_it + target_size/2;
+            }
+        }
+        
+        size_t npts = right_it - left_it;
+        if (npts < (order+1)) {
+            printf("empty interval in bin %d\n", b);
+            weights[b] = 0;
+        } else {
+            if (fabs(mid) < 0.125*twidth) {
+            
+                Eigen::MatrixXd design(npts, order + 1);
+                Eigen::VectorXd v(npts);
+                
+                double fw = 0.125*0.5;
+                if (fabs(mid) >= 0.125*0.5*twidth) {
+                    fw = 0.125;
+                }
+                
+                size_t row = 0;
+                for (auto it=left_it; it != right_it; it++, row++) {
+                    double d = fabs(it->first - mid);
+                    double w = kernel(d, alpha, fw);
+                    
+                    double x = it->first - left_it->first;
+                    v[row] = w*it->second;
+                    design(row, 0) = w*1;
+                    design(row, 1) = w*x;
+                    design(row, 2) = w*x*x;
+                    design(row, 3) = w*x*x*x;
+                    design(row, 4) = w*x*x*x*x;
+                }
+                Eigen::VectorXd sol = (design.transpose() * design).llt().solve(design.transpose() * v);
+                
+                double ex = mid - left_it->first;
+                double ey = sol[0] + ex*sol[1] + ex*ex*sol[2] + ex*ex*ex*sol[3] + ex*ex*ex*ex*sol[4];
+                
+                mean[b] = ey;
+            } else {
+                double sum = 0;
+                double count = 0;
+                for (auto it=left_it; it != right_it; it++) {
+                    double d = fabs(it->first - mid);
+                    double w = kernel(d, alpha, 0.25);
+                    sum += w*it->second;
+                    count += w;
+                }
+                mean[b] = sum / count;
+            }
+        }
+    }
+    
+    // some housekeeping to take care of missing values
+    for (int i=0; i < fft_size; i++) {
+        sampled[i] = 0;
+    }
+    for (int idx=fft_left-1; idx <= fft_right+1; idx++) {
+        if (weights[idx] > 0) {
+            sampled[idx] = mean[idx] / weights[idx];
+            if (idx < fft_size2 - fft_size/8) {
+                leftsum += sampled[idx];
+                leftcount++;
+            }
+            if (idx > fft_size2 + fft_size/8) {
+                rightsum += sampled[idx];
+                rightcount++;
+            }
+            if (!left_non_missing) {
+                left_non_missing = idx; // first non-missing value from left
+            }
+            right_non_missing = idx; // last non-missing value
+        } else {
+            sampled[idx] = missing;
+        }
+    }
+    
+    // estimate a reasonable value for the non-missing samples
+    constexpr int nm_target = 8*3;
+    int nm_count = 1;
+    double l_nm_mean = sampled[left_non_missing];
+    for (int idx=left_non_missing+1; idx < fft_size/2 && nm_count < nm_target; idx++) {
+        if (sampled[idx] != missing) {
+            l_nm_mean += sampled[idx];
+            nm_count++;
+        }                                                                                                                                                                   
+    }                                                                                                                                                                       
+    l_nm_mean /= nm_count;
+    
+    nm_count = 1;
+    double r_nm_mean = sampled[right_non_missing];
+    for (int idx=right_non_missing-1; idx > fft_size/2 && nm_count < nm_target; idx--) {
+        if (sampled[idx] != missing) {
+            r_nm_mean += sampled[idx];
+            nm_count++;
+        }
+    }
+    r_nm_mean /= nm_count;
+    
+    // now just pad out the ends of the sequences with the last non-missing values
+    for (int idx=left_non_missing-1; idx >= 0; idx--) {
+        sampled[idx] = l_nm_mean;
+    }
+    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
+        sampled[idx] = r_nm_mean;
+    }
+
     smoothed[0] = sampled[0];
     for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
@@ -310,15 +375,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
         sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
     }
-    #endif
-    
-    /*
-    FILE* fo1 = fopen("raw_esf.txt", "wt");
-    for (int i=0; i < fft_size; i++) {
-        fprintf(fo1, "%d %lf\n", i, sampled[i]);
-    }
-    fclose(fo1);
-    */
     
     int lidx = 0;
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
@@ -337,14 +393,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=fft_right; idx < fft_size; idx++) {
         sampled[idx] = 0;
     }
-    
-    /*
-    FILE* fo2 = fopen("raw_psf.txt", "wt");
-    for (int i=0; i < fft_size; i++) {
-        fprintf(fo2, "%d %lf\n", i, sampled[i]);
-    }
-    fclose(fo2);
-    */
     
     return rval;
 }
