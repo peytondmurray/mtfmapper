@@ -108,8 +108,6 @@ int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled,
     int rval = 0;
 
     const int fft_size2 = fft_size/2;
-    const double inv_fft_size_m1 = 1.0/double(fft_size-1);
-    const double inv_fft_size = 1.0/double(fft_size);
     double rightsum = 0;
     int rightcount = 0;
     double leftsum = 0;
@@ -381,7 +379,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         
         int target_size = ordered.size() * 0.037;
         if (fabs(b - fft_size/2) > bwidth*twidth) {
-            target_size = ordered.size() * 0.075;
+            target_size = ordered.size() * 0.037;
         } else {
             if (fabs(b - fft_size/2) > twidth) {
                 target_size = ordered.size() * 0.055;
@@ -416,14 +414,22 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                 Eigen::VectorXd v(npts);
                 
                 double fw = 0.125*0.5;
+                double alpha_factor = 1.0;
                 if (fabs(mid) >= 0.125*0.5*twidth) {
                     fw = 0.125;
+                    alpha_factor = 0.01;
                 }
                 
                 size_t row = 0;
                 for (auto it=left_it; it != right_it; it++, row++) {
                     double d = fabs(it->first - mid);
-                    double w = kernel(d, alpha, fw);
+                    double w = 0;
+                    
+                    if ((mid < 0 && it->first < mid) || (mid > 0 && it->first > mid)) {
+                        w = kernel(d, alpha*alpha_factor, fw);
+                    } else {
+                        w = kernel(d, alpha, fw); 
+                    }
                     
                     double x = it->first - left_it->first;
                     v[row] = w*it->second;
@@ -440,15 +446,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                 
                 mean[b] = ey;
             } else {
+                left_it = lower_bound(left_it, mid_it, mid - 0.5);
+                right_it = lower_bound(mid_it, right_it, mid + 0.5);
                 double sum = 0;
-                double count = 0;
                 for (auto it=left_it; it != right_it; it++) {
-                    double d = fabs(it->first - mid);
-                    double w = kernel(d, alpha, 0.25);
-                    sum += w*it->second;
-                    count += w;
+                    sum += it->second;
                 }
-                mean[b] = sum / count;
+                mean[b] = sum / double(right_it - left_it);
             }
         }
     }
