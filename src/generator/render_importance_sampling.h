@@ -42,6 +42,8 @@ using std::swap;
   #define SQR(x) ((x)*(x))
 #endif
 
+//#define STATIONARY_PSF
+
 //==============================================================================
 class Render_polygon_is : public Render_polygon {
   protected:
@@ -75,12 +77,16 @@ class Render_polygon_is : public Render_polygon {
         
         int samples_threshold = min((long)nsamples, lrint(sqrt((double)nsamples)*12));
         
-        uint64_t y_row = std::max(0, std::min(img_height - 1, int(y)));
-        uint64_t x_col = std::max(0, std::min(img_width - 1, int(x)));
-        double phi = rseed[y_row*img_width + x_col];
-        
+        double dx = x - img_width/2;
+        double dy = y - img_height/2;
+        double phi = atan2(dy, dx);
         double cosx = cos(phi);
         double sinx = sin(phi);
+        bool rotate_psf = psf_ratio > 0;
+
+        double max_rad = sqrt((img_width / 2)*(img_width / 2) + (img_height / 2)*(img_height / 2));
+        double rad = sqrt(dx*dx + dy*dy);
+        double erad = 1 + psf_ratio*rad/max_rad;
         
         // take initial batch of samples, checking for convergence along the way
         for (size_t sidx=0; sidx < size_t(samples_threshold); sidx++) {
@@ -90,9 +96,14 @@ class Render_polygon_is : public Render_polygon {
             double rx = pos_x[sidx];
             double ry = pos_y[sidx];
             
-            // rotate samples through per-pixel random orientation
-            rx = cosx*pos_x[sidx] - sinx*pos_y[sidx];
-            ry = sinx*pos_x[sidx] + cosx*pos_y[sidx];
+            if (rotate_psf) {
+                #ifndef STATIONARY_PSF 
+                rx = cosx*pos_x[sidx]*erad - sinx*pos_y[sidx];
+                ry = sinx*pos_x[sidx]*erad + cosx*pos_y[sidx];
+                #else
+                rx *= psf_ratio;
+                #endif
+            }
             
             double sample = sample_core(rx, ry, x, y, object_value, background_value);
             wsum += weight;
@@ -121,9 +132,14 @@ class Render_polygon_is : public Render_polygon {
                 double rx = pos_x[sidx];
                 double ry = pos_y[sidx];
                 
-                // rotate samples through per-pixel random orientation
-                rx = cosx*pos_x[sidx] - sinx*pos_y[sidx];
-                ry = sinx*pos_x[sidx] + cosx*pos_y[sidx];
+                if (rotate_psf) {
+                    #ifndef STATIONARY_PSF
+                    rx = cosx*pos_x[sidx]*erad - sinx*pos_y[sidx];
+                    ry = sinx*pos_x[sidx]*erad + cosx*pos_y[sidx];
+                    #else
+                    rx *= psf_ratio;
+                    #endif
+                }
                 
                 double sample = sample_core(rx, ry, x, y, object_value, background_value);
                 wsum += weight;

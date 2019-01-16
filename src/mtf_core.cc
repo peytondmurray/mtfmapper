@@ -625,9 +625,9 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     }
     
     if (!done || fabs(quad) < 0.1) {
-        mtf50 = 0.125;
+        mtf50 = 1/32.0;
     }
-    mtf50 *= 8;
+    mtf50 *= 32;
 
     if (absolute_sfr) {
         for (size_t i=0; i < sfr.size();  i++) {
