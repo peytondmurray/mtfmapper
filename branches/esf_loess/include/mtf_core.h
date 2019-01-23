@@ -212,6 +212,11 @@ class Mtf_core {
     
     cv::Mat od_img;
     
+    #ifdef MDEBUG
+    double noise_seed = 10;
+    double noise_sd = 0;
+    #endif
+    
   private:
     bool absolute_sfr;
     bool snap_to;

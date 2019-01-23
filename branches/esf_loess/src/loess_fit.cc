@@ -96,10 +96,36 @@ double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_i
     return rsq/double(n);
 }
 
+void moving_average_smoother(vector<double>& smoothed, double* sampled, 
+    int fft_size, int fft_left, int fft_right, int left_trans, int right_trans) {
+    
+    smoothed[0] = sampled[0];
+    for (int idx=1; idx < fft_size; idx++) {
+        smoothed[idx] = smoothed[idx-1] + sampled[idx];
+    }
+    constexpr int tpad = 16*2;
+    constexpr int bhw = 16;
+    constexpr int bhw_min = 1;
+    for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
+        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=std::min(right_trans + tpad - 1, fft_right - bhw - 1); idx > right_trans; idx--) {
+        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
+        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    }
+    for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+}
+
 int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, bool allow_peak_shift, 
     int effective_maxdot, vector<double>& mean, vector<double>& weights,
-    int& fft_left, int& fft_right, int& twidth) {
+    int& fft_left, int& fft_right, int& twidth, double& cnr, double& contrast) {
     
     thread_local vector<double> slopes(fft_size, 0);
     
@@ -114,8 +140,6 @@ int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled,
     int leftcount = 0;
     int left_non_missing  = 0;
     int right_non_missing = 0;
-    fill(weights.begin(), weights.end(), 0);
-    fill(mean.begin(), mean.end(), 0);
     
     int clipped_count = 0;
     
@@ -126,6 +150,8 @@ int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled,
     
     retry:
     
+    fill(weights.begin(), weights.end(), 0);
+    fill(mean.begin(), mean.end(), 0);
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
         int left = max(fft_left, cbin-5);
@@ -269,8 +295,6 @@ int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled,
         goto retry;
     }
     
-    //printf("final: fl:%d, fr:%d \n", fft_left, fft_right);
-    
     leftsum /= double(leftcount);
     rightsum /= double(rightcount);
     
@@ -301,33 +325,63 @@ int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled,
     p90idx -= 4 + 2*lrint(rise_dist);
     twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
     
-    return rval;
-}
-
-void moving_average_smoother(vector<double>& smoothed, double* sampled, 
-    int fft_size, int fft_left, int fft_right, int left_trans, int right_trans) {
+    /*
+    // Contrast-to-Noise-Ratio (CNR), effectively SNR for the S-E method
+    // The result is not currently used by anything, but it would be a shame
+    // to delete this code again
+    vector<double> smooth_esf(fft_size, 0);
+    constexpr double bwidth = 1.85;
+    int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
+    int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
-    smoothed[0] = sampled[0];
-    for (int idx=1; idx < fft_size; idx++) {
-        smoothed[idx] = smoothed[idx-1] + sampled[idx];
+    moving_average_smoother(smooth_esf, sampled, fft_size, fft_left, fft_right, left_trans, right_trans);
+    
+    
+    constexpr int tail_len = 2*8;
+    double left_tail = 0;
+    for (int idx=fft_left; idx < fft_left + tail_len; idx++) {
+        left_tail += sampled[idx];
     }
-    constexpr int tpad = 16;
-    constexpr int bhw = 16;
-    constexpr int bhw_min = 1;
-    for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
-        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
-        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    left_tail /= tail_len;
+    double right_tail = 0;
+    for (int idx=fft_right - tail_len; idx < fft_right; idx++) {
+        right_tail += sampled[idx];
     }
-    for (int idx=std::min(right_trans + tpad - 1, fft_right - bhw - 1); idx > right_trans; idx--) {
-        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
-        sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
+    right_tail /= tail_len;
+    
+    auto right_it = lower_bound(ordered.begin(), ordered.end(), -2*twidth*0.125);
+    
+    double sse = 0;
+    size_t sse_count = 0;
+    for (auto it = ordered.begin(); it != right_it; it++) {
+        int cbin = std::max(fft_left, int(it->first*8 + 0.5 + fft_size2));
+        
+        double e = sampled[cbin] - it->second;
+        
+        sse += e*e;
     }
-    for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
-        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    sse_count = right_it - ordered.begin();
+    
+    auto left_it = lower_bound(right_it, ordered.end(), 2*twidth*0.125);
+    for (auto it = left_it; it != ordered.end(); it++) {
+        int cbin = std::min(fft_right, int(it->first*8 + 0.5 + fft_size2));
+        
+        double e = sampled[cbin] - it->second;
+        sse += e*e;
     }
-    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
-        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
-    }
+    sse_count += ordered.end() - left_it;
+    
+    sse /= sse_count;
+    double rmse = sqrt(sse);
+    contrast = fabs(right_tail - left_tail);
+    cnr = fabs(right_tail - left_tail) / rmse;
+    */
+    
+    // just return some dummy values for now
+    cnr = 15000;
+    contrast = 1;
+    
+    return rval;
 }
 
 inline double kernel(double d, double alpha, double w=0.125) {
@@ -350,14 +404,16 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int fft_left = 0;
     int fft_right = fft_size-1;
     int twidth = 32;
+    double cnr = 1;
+    double contrast = 1;
     
     rval = estimate_esf_clipping(ordered, sampled, fft_size, allow_peak_shift, 
-        fabs(upper), mean, weights, fft_left, fft_right, twidth
+        fabs(upper), mean, weights, fft_left, fft_right, twidth, cnr, contrast
     );
     
     if (rval < 0) return rval;
     
-    constexpr double bwidth = 1.85;
+    constexpr double bwidth = 1.0;
     int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
     int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
@@ -367,41 +423,20 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     auto left_it = ordered.begin();
     auto right_it = ordered.end();
     const double alpha = Loess_parms::get_instance().get_alpha();
+    const double ridge_parm = Loess_parms::get_instance().get_ridge();
     int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
     int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
     
-    constexpr int order = 4;
+    constexpr int order = 6;
     
     for (int b=min_left_bin; b < max_right_bin; b++) {
         weights[b] = 1.0;
         
         double mid = (b - fft_size/2)*0.125;
         
-        int target_size = ordered.size() * 0.037;
-        if (fabs(b - fft_size/2) > bwidth*twidth) {
-            target_size = ordered.size() * 0.037;
-        } else {
-            if (fabs(b - fft_size/2) > twidth) {
-                target_size = ordered.size() * 0.055;
-            }
-        }
-        
-        auto mid_it = lower_bound(ordered.begin(), ordered.end(), mid);
-        int left_available = mid_it - ordered.begin();
-        int right_available = ordered.end() - mid_it;
-        
-        if (left_available < target_size/2) {
-            left_it = ordered.begin();
-            right_it = mid_it + (target_size - left_available);
-        } else {
-            if (right_available < target_size/2) {
-                right_it = ordered.end() - 1;
-                left_it = mid_it - (target_size - right_available);
-            } else {
-                left_it = mid_it - target_size/2;
-                right_it = mid_it + target_size/2;
-            }
-        }
+        constexpr double loess_span = 4.5;
+        left_it = lower_bound(ordered.begin(), ordered.end(), mid - 0.5*loess_span);
+        right_it = lower_bound(left_it, ordered.end(), mid + 0.5*loess_span);
         
         size_t npts = right_it - left_it;
         if (npts < (order+1)) {
@@ -413,41 +448,40 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
                 Eigen::MatrixXd design(npts, order + 1);
                 Eigen::VectorXd v(npts);
                 
-                double fw = 0.125*0.5;
-                double alpha_factor = 1.0;
+                double fw = 0.125;
                 if (fabs(mid) >= 0.125*0.5*twidth) {
-                    fw = 0.125;
-                    alpha_factor = 0.01;
+                    fw = 0.250;
                 }
                 
                 size_t row = 0;
                 for (auto it=left_it; it != right_it; it++, row++) {
                     double d = fabs(it->first - mid);
-                    double w = 0;
+                    double w = kernel(d, alpha, fw); 
                     
-                    if ((mid < 0 && it->first < mid) || (mid > 0 && it->first > mid)) {
-                        w = kernel(d, alpha*alpha_factor, fw);
-                    } else {
-                        w = kernel(d, alpha, fw); 
-                    }
+                    double x = (it->first - mid)/(0.5*loess_span);
+                    v[row] = w*(it->second - mean[b-1])/contrast;
+                    double x2 = x*x;
+                    double x3 = x2*x;
+                    double x4 = x2*x2;
+                    double x5 = x4*x;
+                    double x6 = x4*x2;
                     
-                    double x = it->first - left_it->first;
-                    v[row] = w*it->second;
                     design(row, 0) = w*1;
-                    design(row, 1) = w*x;
-                    design(row, 2) = w*x*x;
-                    design(row, 3) = w*x*x*x;
-                    design(row, 4) = w*x*x*x*x;
+                    design(row, 1) = w*(x);
+                    design(row, 2) = w*(2*x2 - 1);
+                    design(row, 3) = w*(4*x3 - 3*x);
+                    design(row, 4) = w*(8*x4 - 8*x2 + 1);
+                    design(row, 5) = w*(16*x5 - 20*x3 + 5*x);
+                    design(row, 6) = w*(32*x6 - 48*x4 + 18*x2 - 1);
                 }
-                Eigen::VectorXd sol = (design.transpose() * design).llt().solve(design.transpose() * v);
+                const double phi = (fabs(mid) > 0.75*twidth*0.125) ? ridge_parm : 5e-8;
+                Eigen::VectorXd sol = (design.transpose() * design + phi*Eigen::MatrixXd::Identity(order+1, order+1)).llt().solve(design.transpose() * v);
                 
-                double ex = mid - left_it->first;
-                double ey = sol[0] + ex*sol[1] + ex*ex*sol[2] + ex*ex*ex*sol[3] + ex*ex*ex*ex*sol[4];
-                
-                mean[b] = ey;
+                mean[b] = (sol[0] + sol[4])*contrast - (sol[2] + sol[6])*contrast + mean[b-1];
             } else {
-                left_it = lower_bound(left_it, mid_it, mid - 0.5);
-                right_it = lower_bound(mid_it, right_it, mid + 0.5);
+                left_it = lower_bound(left_it, right_it, mid - 0.5);
+                right_it = lower_bound(left_it, right_it, mid + 0.5);
+                
                 double sum = 0;
                 for (auto it=left_it; it != right_it; it++) {
                     sum += it->second;
