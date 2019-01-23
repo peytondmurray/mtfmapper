@@ -89,8 +89,8 @@ class Render_polygon_is_airy_base : public Render_polygon_is {
             
             // collect the indices of the outermost points
             // this ensures that the early stopping criterion works well
-            if (rad > airy.diam*0.15) {
-                radius_list.push_back(make_pair(fabs(rad - airy.diam*0.8), sidx));
+            if (rad > Airy_sampler::diam*0.15) {
+                radius_list.push_back(make_pair(fabs(rad - Airy_sampler::diam*0.8), sidx));
             }
             
             double jinc_weight = 4*Airy_sampler::jinc(rad)*Airy_sampler::jinc(rad);
