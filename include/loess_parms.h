@@ -13,6 +13,14 @@ class Loess_parms {
           return alpha;
       }
       
+      void set_ridge(double r) {
+          ridge = r;
+      }
+        
+      double get_ridge(void) const {
+          return ridge;
+      }
+      
       static Loess_parms& get_instance(void) {
           static Loess_parms singleton;
           return singleton;
@@ -20,6 +28,7 @@ class Loess_parms {
       
   private:
       double alpha = 0.5;
+      double ridge = 5e-8;
 };
 
 

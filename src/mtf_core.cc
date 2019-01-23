@@ -46,6 +46,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <thread>
 #include <array>
 
+#include <random>
+
 // global lock to prevent race conditions on detected_blocks
 static std::mutex global_mutex;
 
@@ -494,6 +496,17 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     fill(fft_out_buffer.begin(), fft_out_buffer.end(), 0);
     
     esf_sampler->sample(edge_model, ordered, scanset, edge_length, img, bayer_img);
+    
+    #ifdef MDEBUG
+    if (fabs(noise_sd) > 1e-8) {
+        std::mt19937 mt(noise_seed);
+        std::normal_distribution<double> d(0.0, 65536.0*noise_sd);
+        for (auto it=ordered.begin(); it != ordered.end(); it++) {
+            it->second += d(mt);
+        }
+    }
+    #endif
+
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
@@ -1070,7 +1083,20 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
+    #if 1
     double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
+    #else
+    // leave this timing code here for now, since it is still required for 
+    // further optimization
+    double mtf50 = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int rep=0; rep < 1000; rep++) {
+        mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end-start;
+    std::cout << "elapsed time " << diff.count() << "s \n";
+    #endif
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
