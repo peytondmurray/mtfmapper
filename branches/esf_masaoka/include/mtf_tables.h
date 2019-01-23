@@ -37,12 +37,10 @@ using std::vector;
 class Mtf_correction {
 
   public:
-    Mtf_correction(void) : w(NYQUIST_FREQ*4, 0.0) {
-        w[0] = 1.0;
-        for (int i=1; i < NYQUIST_FREQ*4; i++) {
-            double dc_x = M_PI*i/double(NYQUIST_FREQ*32); // 32 is correction factor for 32x oversample discrete derivative
-            w[i] = (sin(dc_x)/dc_x) * (sin(2*dc_x)/(2*dc_x));
-        }
+    Mtf_correction(void);
+    
+    inline double sinc(double x) {
+        return x == 0 ? 1 : sin(x)/x;
     }
     
     static Mtf_correction& get_instance(void) {
