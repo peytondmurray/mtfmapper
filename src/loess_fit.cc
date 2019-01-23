@@ -131,10 +131,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     fill(weights.begin(), weights.end(), 0.0);
     fill(mean.begin(), mean.end(), 0.0);
     for (int i=0; i < int(ordered.size()); i++) {
-        int b = (int)floor(ordered[i].first*32 + fft_size2);
-        //double jx = ordered[i].first + (rand()/double(RAND_MAX)-0.5)/8.0;
-        //int b = (int)floor(jx*32 + fft_size2);
-        
+        int b = (int)floor(ordered[i].first*32 + 0.5 + fft_size2);
         mean[b] += ordered[i].second;
         weights[b] += 1.0;
     }
@@ -163,6 +160,42 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }
     }
     
+    #if 1
+    // estimate a reasonable value for the non-missing samples
+    constexpr int nm_target = 32*2;
+    constexpr int nm_max_dist = 64;
+    int nm_count = 1;
+    double l_nm_mean = sampled[left_non_missing];
+    int nm_idx;
+    for (nm_idx=left_non_missing+1; nm_idx < (left_non_missing + nm_max_dist) && nm_count < nm_target; nm_idx++) {
+        if (sampled[nm_idx] != missing) {
+            l_nm_mean += sampled[nm_idx];
+            nm_count++;
+        }
+    }
+    l_nm_mean /= nm_count;
+    //printf("left nm count = %d, nm_idx=%d / %d\n", nm_count, nm_idx, fft_size/2 - nm_idx);
+    
+    nm_count = 1;
+    double r_nm_mean = sampled[right_non_missing];
+    for (nm_idx=right_non_missing-1; nm_idx >= (right_non_missing - nm_max_dist) && nm_count < nm_target; nm_idx--) {
+        if (sampled[nm_idx] != missing) {
+            r_nm_mean += sampled[nm_idx];
+            nm_count++;
+        }
+    }
+    r_nm_mean /= nm_count;
+    //printf("right nm count = %d, nm_idx=%d / %d\n", nm_count, nm_idx, fft_size/2 - nm_idx);
+    
+    // now just pad out the ends of the sequences with the last non-missing values
+    for (int idx=left_non_missing-1; idx >= 0; idx--) {
+        sampled[idx] = l_nm_mean;
+    }
+    for (int idx=right_non_missing+1; idx < fft_size; idx++) {
+        sampled[idx] = r_nm_mean;
+    }
+    
+    #else
     // now just pad out the ends of the sequences with the last non-missing values
     for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = sampled[left_non_missing];
@@ -170,6 +203,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = sampled[right_non_missing];
     }
+    #endif
     
     vector<double> interpolated(fft_size, 0);
     // now do something about all those missing values
@@ -189,23 +223,63 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         }         
     }
     
-    #if 0
+    
+    /*
+    FILE* fo0 = fopen("raw_esf0.txt", "wt");
+    for (int i=0; i < fft_size; i++) {
+        fprintf(fo0, "%d %lf %lg\n", i, sampled[i], interpolated[i]);
+    }
+    fclose(fo0);
+    */
+    
+    
+    #if 1
     vector<double> smoothed(fft_size, 0);
-    int left_trans = 200*4;
-    int right_trans = 300*4;
+    // now find 10% / 90% thresholds
+    leftsum /= double(leftcount);
+    rightsum /= double(rightcount);
+    double bright = max(leftsum, rightsum);
+    double dark   = min(leftsum, rightsum);
+    int p10idx = fft_left-1;
+    int p90idx = fft_left-1;
+    double p10err = 1e50;
+    double p90err = 1e50;
+    for (int idx=fft_left; idx <= fft_right; idx++) {
+        double smoothed = (sampled[idx-2] + sampled[idx-1] + sampled[idx] + sampled[idx+1] + sampled[idx+2])/5.0;
+        if ( fabs((smoothed - dark) - 0.1*(bright - dark)) <  p10err) {
+            p10idx = idx;
+            p10err = fabs((smoothed - dark) - 0.1*(bright - dark));
+        }
+        if ( fabs((smoothed - dark) - 0.9*(bright - dark)) <  p90err) {
+            p90idx = idx;
+            p90err = fabs((smoothed - dark) - 0.9*(bright - dark));
+        }
+    }
+    // we know that mtf50 ~ 1/(p90idx - p10idx) * (1/samples_per_pixel)
+    double rise_dist = max(double(4), fabs(double(p10idx - p90idx))*0.03125);
+    if (p10idx < p90idx) {
+        std::swap(p10idx, p90idx);
+    }
+    p10idx += 4*4 + 2*lrint(rise_dist); // advance at least one more full pixel
+    p90idx -= 4*4 + 2*lrint(rise_dist);
+    int twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
+    constexpr double bwidth = 1.0;
+    int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
+    int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
+    
     smoothed[0] = sampled[0];
     for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
     }
-    constexpr int tpad = 16*4;
+    constexpr int tpad = 16*4*2;
     constexpr int bhw = 16*4;
     constexpr int bhw_min = 1;
     for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
-        int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
+        int lbhw = (left_trans - idx)*(bhw-bhw_min)/tpad + bhw_min;
         sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
     }
     for (int idx=std::min(right_trans + tpad - 1, fft_right - bhw - 1); idx > right_trans; idx--) {
-        int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
+        int lbhw = (idx-right_trans)*(bhw-bhw_min)/tpad + bhw_min;
         sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
     }
     for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
@@ -216,12 +290,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     #endif
 
-    
+    /*
     FILE* fo1 = fopen("raw_esf.txt", "wt");
     for (int i=0; i < fft_size; i++) {
         fprintf(fo1, "%d %lf %lg\n", i, sampled[i], interpolated[i]);
     }
     fclose(fo1);
+    */
     
     int lidx = 0;
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
@@ -242,11 +317,13 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         sampled[idx] = 0;
     }
     
+    /*
     FILE* fo2 = fopen("raw_psf.txt", "wt");
     for (int i=0; i < fft_size; i++) {
         fprintf(fo2, "%d %lf\n", i, sampled[i]);
     }
     fclose(fo2);
+    */
     
     return rval;
 }
