@@ -131,69 +131,26 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     
     fill(weights.begin(), weights.end(), 0.0);
     fill(mean.begin(), mean.end(), 0.0);
-    auto left_it = ordered.begin();
-    auto right_it = ordered.end();
-    const double alpha = Loess_parms::get_instance().get_alpha();
-    const int target_size = ordered.size() * 0.037; // a LOESS q-fraction of 0.035 was necessary for 26.565 degree edges with noise
     int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
     int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
-    constexpr double max_width = 5.0;
-    for (int b=min_left_bin; b < max_right_bin; b++) {
-        weights[b] = 1.0;
+    Mtf_correction& kernel = Mtf_correction::get_instance();
+    
+    for (int i=0; i < int(ordered.size()); i++) {
+        int cbin = int((ordered[i].first - 0.125*0.5)*8 + fft_size2);
         
-        double mid = (b - fft_size/2)*0.125;
-        
-        auto mid_it = lower_bound(ordered.begin(), ordered.end(), mid);
-        int left_available = mid_it - ordered.begin();
-        int right_available = ordered.end() - mid_it;
-        
-        if (left_available < target_size/2) {
-            left_it = ordered.begin();
-            right_it = mid_it + (target_size - left_available);
-        } else {
-            if (right_available < target_size/2) {
-                right_it = ordered.end() - 1;
-                left_it = mid_it - (target_size - right_available);
-            } else {
-                left_it = mid_it - target_size/2;
-                right_it = mid_it + target_size/2;
-            }
-        }
-        
-        constexpr int order = 4;
-        size_t npts = right_it - left_it;
-        if (npts < (order+1)) {
-            printf("empty interval in bin %d\n", b);
-            weights[b] = 0;
-        } else {
-            Eigen::MatrixXd design(npts, order + 1);
-            Eigen::VectorXd v(npts);
-            size_t row = 0;
-            for (auto it=left_it; it != right_it; it++, row++) {
-                double d = fabs(it->first - mid);
-                double w = exp(-fabs(d)*alpha);
+        int nbins = kernel.get_nbins();
                 
-                double x = it->first - left_it->first;
-                v[row] = w*it->second;
-                design(row, 0) = w*1;
-                design(row, 1) = w*x;
-                design(row, 2) = w*x*x;
-                design(row, 3) = w*x*x*x;
-                design(row, 4) = w*x*x*x*x;
-            }
-            Eigen::VectorXd sol = design.colPivHouseholderQr().solve(v);
-            
-            double ex = mid - left_it->first;
-            double ey = sol[0] + ex*sol[1] + ex*ex*sol[2] + ex*ex*ex*sol[3] + ex*ex*ex*ex*sol[4];
-            
-            mean[b] = ey;
+        int left = max(fft_left, cbin-nbins);
+        int right = min(fft_right-1, cbin+nbins);
+        
+        for (int b=left; b <= right; b++) {
+            double mid = (b - fft_size/2)*0.125;
+            double w = kernel.evaluate(ordered[i].first - mid);
+            mean[b] += ordered[i].second * w;
+            weights[b] += w;
         }
     }
     
-    // some housekeeping to take care of missing values
-    for (int i=0; i < fft_size; i++) {
-        sampled[i] = 0;
-    }
     for (int idx=fft_left-1; idx <= fft_right+1; idx++) {
         if (weights[idx] > 0) {
             sampled[idx] = mean[idx] / weights[idx];
@@ -285,7 +242,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     p10idx += 4 + 2*lrint(rise_dist); // advance at least one more full pixel
     p90idx -= 4 + 2*lrint(rise_dist);
     int twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
-    constexpr double bwidth = 1.85;
+    constexpr double bwidth = 1.0;
     int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
     int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
@@ -293,7 +250,7 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
     }
-    constexpr int tpad = 16;
+    constexpr int tpad = 32;
     constexpr int bhw = 16;
     constexpr int bhw_min = 1;
     for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
