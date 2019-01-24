@@ -22,29 +22,29 @@ void Mtf_correction::update_correction_tables(void) {
     vector<double> fft_buffer(c_fft_size);
     AFFT<c_fft_size> afft;
     
-    FILE* fc = fopen("kernel.txt", "wt");
+    //FILE* fc = fopen("kernel.txt", "wt");
     
     for (int i=0; i < c_fft_size; i++) {
         double x = (i - c_fft_size/2)/(16*8.0);
         fft_buffer[i] = evaluate(x);
-        fprintf(fc, "%le %le\n", x, fft_buffer[i]);
+        //fprintf(fc, "%le %le\n", x, fft_buffer[i]);
     }
     
-    fclose(fc);
+    //fclose(fc);
     
     afft.realfft(fft_buffer.data());
     
-    fc = fopen("correction.txt", "wt");
+    //fc = fopen("correction.txt", "wt");
     
     vector<double> correction(w.size());
     double n0 = fabs(fft_buffer[0]);
     for (int i=0; i < NYQUIST_FREQ*4; i++) {
         double dc_x = 2*M_PI*i/double(NYQUIST_FREQ*2);
         correction[i] = sqrt(SQR(fft_buffer[i]) + SQR(fft_buffer[c_fft_size - i])) / n0;
-        fprintf(fc, "%le %le\n", dc_x, correction[i]);
+        //fprintf(fc, "%le %le\n", dc_x, correction[i]);
     }
 
-    fclose(fc);
+    //fclose(fc);
     
     w[0] = 1.0;
     for (int i=1; i < NYQUIST_FREQ*4; i++) {
