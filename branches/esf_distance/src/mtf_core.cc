@@ -1070,7 +1070,18 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
+    #if 1
     double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
+    #else
+    double mtf50 = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int rep=0; rep < 1000; rep++) {
+        mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end-start;
+    std::cout << "elapsed time " << diff.count() << "s \n";
+    #endif
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
