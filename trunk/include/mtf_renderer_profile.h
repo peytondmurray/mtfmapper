@@ -56,8 +56,15 @@ class Mtf_renderer_profile : public Mtf_renderer {
     void render(const vector<Block>& blocks) {
         size_t largest_block = 0;
         Point2d centroid(0,0);
-        
-        if (blocks.size() < 10) { // probably not a valid image for profiles
+       
+        size_t valid_blocks = 0;
+        for (auto b : blocks) {
+            for (size_t k = 0; k < 4; k++) {
+                valid_blocks += b.get_mtf50_value(k) < 1;
+            }
+        }
+
+        if (blocks.size() < 10 || valid_blocks < 40) { // probably not a valid image for profiles
             return;
         }
         
