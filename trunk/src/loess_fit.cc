@@ -130,15 +130,16 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     int leftcount = 0;
     int left_non_missing  = 0;
     int right_non_missing = 0;
-    fill(weights.begin(), weights.end(), 0);
-    fill(mean.begin(), mean.end(), 0);
-    
+        
     int clipped_count = 0;
     
     int fft_left = fft_size2 + 8*lower;
     int fft_right = fft_size2 + 8*upper;
     
     retry:
+
+    fill(weights.begin(), weights.end(), 0);
+    fill(mean.begin(), mean.end(), 0);
     
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
