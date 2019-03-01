@@ -55,6 +55,9 @@ if (NOT MSVC)
     elseif(EXISTS "/usr/share/opencv/OpenCVConfig.cmake")
         include("/usr/share/opencv/OpenCVConfig.cmake")
         message(STATUS "OpenCV version is" ${OpenCV_Version})
+    elseif(EXISTS "/usr/local/opt/opencv@3/share/OpenCV/OpenCVConfig.cmake") # brew on MacOS
+        include("/usr/local/opt/opencv@3/share/OpenCV/OpenCVConfig.cmake")
+        message(STATUS "MacOS OpenCV version is" ${OpenCV_Version})
     endif (EXISTS "/usr/share/OpenCV/OpenCVConfig.cmake")
 endif(NOT MSVC)
 
