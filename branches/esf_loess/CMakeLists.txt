@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 7)
-set(mtfmapper_VERSION_SUB 9) #increment on release
+set(mtfmapper_VERSION_SUB 11) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -55,6 +55,9 @@ if (NOT MSVC)
     elseif(EXISTS "/usr/share/opencv/OpenCVConfig.cmake")
         include("/usr/share/opencv/OpenCVConfig.cmake")
         message(STATUS "OpenCV version is" ${OpenCV_Version})
+    elseif(EXISTS "/usr/local/opt/opencv@3/share/OpenCV/OpenCVConfig.cmake") # brew on MacOS
+        include("/usr/local/opt/opencv@3/share/OpenCV/OpenCVConfig.cmake")
+        message(STATUS "MacOS OpenCV version is" ${OpenCV_Version})
     endif (EXISTS "/usr/share/OpenCV/OpenCVConfig.cmake")
 endif(NOT MSVC)
 
