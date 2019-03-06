@@ -207,6 +207,9 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     repainting.testAndSetAcquire(0, 1);
     QDialog::paintEvent(event);
     
+    QSettings settings("mtfmapper", "mtfmapper");
+    double mtf_contrast_target = settings.value("mtf_contrast").toFloat();
+    
     vector<double> contrast_list;
     vector<double> mtf50_list;
     if (series.size() > 0) {
@@ -221,7 +224,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
             bool done = false;
             for (int i=0; i < pts.size() && !done; i++) {
                 double mag = pts[i].y();
-                if (prev_val > 0.5 && mag <= 0.5) {
+                if (prev_val > mtf_contrast_target*0.01 && mag <= mtf_contrast_target*0.01) {
                     mtf50 = pts[i].x();
                     done = true;
                 }
@@ -246,9 +249,9 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         // add mtf50 tags in reverse
         for (int mi=mtf50_list.size()-1; mi >= 0; mi--) {
             if (mtf50_list[mi] < 1.0) {
-                sprintf(mtf50_str, "MTF50=%.3lf", mtf50_list[mi]);
+                sprintf(mtf50_str, "MTF%02d=%.3lf", int(mtf_contrast_target), mtf50_list[mi]);
             } else {
-                sprintf(mtf50_str, "MTF50=N/A");
+                sprintf(mtf50_str, "MTF%02d=N/A", int(mtf_contrast_target));
             }
             
             int tw = fm.width(mtf50_str) + 2*fm.width("m");
