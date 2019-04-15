@@ -201,6 +201,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_progress_indicator(int)), progress, SLOT(setValue(int)));
     connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
     connect(settings, SIGNAL(set_cache_size(int)), this, SLOT(set_cache_size(int)));
+    connect(settings, SIGNAL(settings_saved()), this, SLOT(settings_saved()));
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
     connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
@@ -738,6 +739,15 @@ void mtfmapper_app::closeEvent(QCloseEvent* event) {
 
 void mtfmapper_app::set_cache_size(int size) {
     img_panel->set_cache_size(uint64_t(size)*uint64_t(1024*1024));
+}
+
+// this slot is used to update the SFR dialog in case someone toggled
+// the lp/mm checkbox, which effectively changes the x axis of the SFR plots
+void mtfmapper_app::settings_saved(void) {
+    if (sfr_dialog) {
+        // it can be rather slow to repaint the SFR window, so rather do this asynchronously
+        auto f = QtConcurrent::run( [&](void) {sfr_dialog->repaint();} );
+    }
 }
 
 void mtfmapper_app::mtfmapper_call_failed(void) {

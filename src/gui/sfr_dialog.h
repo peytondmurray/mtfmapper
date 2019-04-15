@@ -57,6 +57,7 @@ class Sfr_dialog : public QDialog {
 
   private:
     void populate_series(const Sfr_entry& entry, QLineSeries* s);
+    void update_lp_mm_mode(void);
   
     vector<Sfr_entry> entries;
     QChart* chart;
@@ -73,6 +74,10 @@ class Sfr_dialog : public QDialog {
     QPushButton* save_data_button;
     QIcon* mtfmapper_logo;
     QAtomicInt repainting;
+    double freq_scale = 1.0;
+    double prev_freq_scale = 1.0;
+    bool lp_mm_mode = false;
+    size_t entry_size = 64;
     
   public slots:
     void save_image(void);

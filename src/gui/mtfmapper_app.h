@@ -33,6 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QFileDialog>
 #include <QStringList>
 #include <QList>
+#include <QtConcurrent/QtConcurrent>
 #include "settings_dialog.h"
 #include "worker_thread.h"
 #include "gl_image_viewer.h"
@@ -180,6 +181,7 @@ class mtfmapper_app : public QMainWindow
     void enable_file_open(void);
     
     void set_cache_size(int);
+    void settings_saved(void);
 };
                                
                                 
