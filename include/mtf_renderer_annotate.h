@@ -62,8 +62,14 @@ class Mtf_renderer_annotate : public Mtf_renderer {
     void write_number(cv::Mat& img, int px, int py, double val, double quality) {
         char buffer[10];
         
-        if (val < 1) {
-            sprintf(buffer, "%.2lf", val);
+        double freq_scale = lpmm_mode ? pixel_size : 1.0;
+        
+        if (val < 1.0*freq_scale) {
+            if (lpmm_mode) {
+                sprintf(buffer, "%.1lf", val*freq_scale);
+            } else {
+                sprintf(buffer, "%.2lf", val*freq_scale);
+            }
         } else {
             sprintf(buffer, "N/A");
         }
