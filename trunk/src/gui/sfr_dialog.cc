@@ -47,15 +47,19 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
 
     series.push_back(new QLineSeries());
     
+    update_lp_mm_mode();
+    
     double maxval = 0;
     for (size_t i=0; i < entry.sfr.size(); i++) {
         maxval = std::max(entry.sfr[i], maxval);
     }
     populate_series(entry, series[0]);
+    entry_size = entry.sfr.size();
     
     chart = new QChart();
     chart->legend()->hide();
     chart->addSeries(series[0]);
+    chart->setAnimationOptions(QChart::NoAnimation);
     
     logger.info("sfr entry size: %ld\n", entry.sfr.size());
 
@@ -209,6 +213,14 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     
     QSettings settings("mtfmapper", "mtfmapper");
     double mtf_contrast_target = settings.value("mtf_contrast").toFloat();
+    update_lp_mm_mode();
+
+    x_axis->setRange(0, entry_size > 64 ? 2.0 * freq_scale : 1.0 * freq_scale);
+    if (lp_mm_mode) {
+        x_axis->setTitleText("Frequency (lp/mm)");
+    } else {
+        x_axis->setTitleText("Frequency (c/p)");
+    }
     
     vector<double> contrast_list;
     vector<double> mtf50_list;
@@ -248,7 +260,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         
         // add mtf50 tags in reverse
         for (int mi=mtf50_list.size()-1; mi >= 0; mi--) {
-            if (mtf50_list[mi] < 1.0) {
+            if (mtf50_list[mi] < 1.0*freq_scale) {
                 sprintf(mtf50_str, "MTF%02d=%.3lf", int(mtf_contrast_target), mtf50_list[mi]);
             } else {
                 sprintf(mtf50_str, "MTF%02d=N/A", int(mtf_contrast_target));
@@ -307,6 +319,7 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
     for (size_t i=0; i < entry.sfr.size(); i++) {
         maxval = std::max(entry.sfr[i], maxval);
     }
+    entry_size = entry.sfr.size();
     double roundup_max = multiple(maxval);
     y_axis->setRange(0, roundup_max);
     y_axis->setTickCount(roundup_max*5 + 1);
@@ -350,7 +363,7 @@ void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
         for (int xi=0; xi < 20; xi++) {
             double dx = xi*(1.0/(20.0*64.0));
             double iy = coef[0] + coef[1]*dx + coef[2]*dx*dx + coef[3]*dx*dx*dx;
-            s->append(i*(1.0/64.0) + dx, iy);
+            s->append(freq_scale*(i*(1.0/64.0) + dx), iy);
         }
     }
 }
@@ -435,3 +448,18 @@ void Sfr_dialog::save_data(void) {
     }
 }
 
+void Sfr_dialog::update_lp_mm_mode(void) {
+    QSettings settings("mtfmapper", "mtfmapper");
+    lp_mm_mode = (Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked;
+    freq_scale = lp_mm_mode ? 1000.0/settings.value("setting_pixelsize").toFloat() : 1.0;
+    
+    if (freq_scale != prev_freq_scale && series.size() > 0) { // someone changed the settings while the SFR window was open
+        for (size_t si=0; si < series.size(); si++) {
+            for (int pi=0; pi < series[si]->count(); pi++) {
+                const QPointF& pt = series[si]->at(pi);
+                series[si]->replace(pi, pt.x()*freq_scale / prev_freq_scale, pt.y());
+            }
+        }
+        prev_freq_scale = freq_scale;
+    }
+}

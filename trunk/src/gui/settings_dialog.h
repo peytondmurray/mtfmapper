@@ -119,6 +119,7 @@ class Settings_dialog : public QDialog
   signals:
     void argument_string(QString s);  
     void set_cache_size(int);
+    void settings_saved(void);
     
   public slots:
     void open();

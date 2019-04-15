@@ -564,6 +564,7 @@ void Settings_dialog::save_and_close() {
     
     send_argument_string();
     set_cache_size(settings.value(setting_cache, setting_cache_default).toInt());
+    settings_saved();
     
     close();
 }
