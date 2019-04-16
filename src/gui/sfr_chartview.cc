@@ -34,8 +34,14 @@ Sfr_chartview::Sfr_chartview(QChart* chart, Sfr_dialog* sfr_dialog) : QChartView
 
 void Sfr_chartview::mouseMoveEvent(QMouseEvent* event) {
     QPointF pos = chart->mapToValue(event->pos());
-    sfr_dialog->notify_mouse_position(pos.x());
+    sfr_dialog->notify_mouse_position(pos.x(), false);
     QChartView::mouseMoveEvent(event);
+}
+
+void Sfr_chartview::mousePressEvent(QMouseEvent* event) {
+    QPointF pos = chart->mapToValue(event->pos());
+    sfr_dialog->notify_mouse_position(pos.x(), (event->buttons() & Qt::LeftButton) ==  Qt::LeftButton);
+    QChartView::mousePressEvent(event);
 }
 
 void Sfr_chartview::enterEvent(QEvent* event) {

@@ -45,7 +45,7 @@ class Sfr_dialog : public QDialog {
     Sfr_dialog(QWidget *parent, const Sfr_entry& entry);
     void replace_entry(const Sfr_entry& entry);
     void add_entry(const Sfr_entry& entry);
-    void notify_mouse_position(double value);
+    void notify_mouse_position(double value, bool click=false);
     void clear(void);
     
   signals:
@@ -78,6 +78,7 @@ class Sfr_dialog : public QDialog {
     double prev_freq_scale = 1.0;
     bool lp_mm_mode = false;
     size_t entry_size = 64;
+    bool lock_cursor = false;
     
   public slots:
     void save_image(void);
