@@ -745,8 +745,7 @@ void mtfmapper_app::set_cache_size(int size) {
 // the lp/mm checkbox, which effectively changes the x axis of the SFR plots
 void mtfmapper_app::settings_saved(void) {
     if (sfr_dialog) {
-        // it can be rather slow to repaint the SFR window, so rather do this asynchronously
-        auto f = QtConcurrent::run( [&](void) {sfr_dialog->repaint();} );
+        sfr_dialog->repaint();
     }
 }
 

@@ -368,16 +368,19 @@ void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
     }
 }
 
-void Sfr_dialog::notify_mouse_position(double value) { // we still need this to update the bottom label, but we could merge this in the chart?
-    cursor_domain_value = std::min(x_axis->max(), std::max(0.0, value));
-    
-    QPointF top(cursor_domain_value, 1);
-    QPointF bottom(cursor_domain_value, 0);
-    
-    top = chart->mapToPosition(top);
-    bottom = chart->mapToPosition(bottom);
-    
-    update();
+void Sfr_dialog::notify_mouse_position(double value, bool click) { // we still need this to update the bottom label, but we could merge this in the chart?
+    lock_cursor ^= click;
+    if (!lock_cursor) {
+        cursor_domain_value = std::min(x_axis->max(), std::max(0.0, value));
+        
+        QPointF top(cursor_domain_value, 1);
+        QPointF bottom(cursor_domain_value, 0);
+        
+        top = chart->mapToPosition(top);
+        bottom = chart->mapToPosition(bottom);
+        
+        update();
+    }
 }
 
 void Sfr_dialog::save_image(void) {
@@ -455,11 +458,13 @@ void Sfr_dialog::update_lp_mm_mode(void) {
     
     if (freq_scale != prev_freq_scale && series.size() > 0) { // someone changed the settings while the SFR window was open
         for (size_t si=0; si < series.size(); si++) {
-            for (int pi=0; pi < series[si]->count(); pi++) {
-                const QPointF& pt = series[si]->at(pi);
-                series[si]->replace(pi, pt.x()*freq_scale / prev_freq_scale, pt.y());
+            QVector<QPointF> pts(series[si]->pointsVector());
+            for (int pi=0; pi < pts.size(); pi++) {
+                pts[pi] = QPointF(pts[pi].x()*freq_scale / prev_freq_scale, pts[pi].y());
             }
+            series[si]->replace(pts);
         }
+        cursor_domain_value *= freq_scale / prev_freq_scale;
         prev_freq_scale = freq_scale;
     }
 }

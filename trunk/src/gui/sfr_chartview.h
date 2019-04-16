@@ -41,6 +41,7 @@ class Sfr_chartview : public QChartView  {
     
   protected:  
     void mouseMoveEvent(QMouseEvent* event);
+    void mousePressEvent(QMouseEvent* event);
     void enterEvent(QEvent* event);
     QChart* chart;
     Sfr_dialog* sfr_dialog;
