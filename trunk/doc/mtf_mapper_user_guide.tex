@@ -512,8 +512,8 @@ interesting if your input image is a raw camera format: with `None'
 selected, your raw image will be demosaiced with the AHD algorithm
 implemented in \texttt{dcraw} to produce a 16-bit linear RGB image, which
 MTF Mapper will then promptly convert to a 16-bit linear grayscale image.
-The conventional luminance conversion with a 0.299R + 0.587G + 0.114B weighing is
-employed. The implication is that MTF Mapper will report on the MTF values
+The conventional luminance conversion with a 0.213R + 0.715G + 0.072B weighting is
+employed (sRGB D65 illuminant). The implication is that MTF Mapper will report on the MTF values
 of the luminance channel of your RGB images if you leave the \textsf{Bayer
 channel} option set to `None'.
 
@@ -742,7 +742,10 @@ If your image contains an ICC profile, then MTF Mapper will use the embedded
 RGB-to-XYZ matrix which (according to the ICC specification) is already
 adapted to a D50 illuminant. If your image is a JPEG file, then the
 D50-adapted matrix for either sRGB or Adobe RGB will be used, as appropriate.
-For all other file types, the D50-adapted sRGB matrix will be assumed.
+For all other file types, the D65-adapted sRGB matrix will be assumed (I am
+aware of the discrepancy in using the D50-adapted matrix from the ICC profile
+if present, but the D65-adapted matrix if no ICC profile is found. I might
+change everything to D50 in future).
 
 \newpage
 
