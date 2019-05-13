@@ -447,8 +447,12 @@ int main(int argc, char** argv) {
         if (tc_mtf_contrast.isSet()) {
             double contrast = tc_mtf_contrast.getValue();
             if (contrast < 10) {
-                logger.error("Warning: Requested MTF%02d, clamped to MTF10 instead\n", int(contrast));
-                contrast = 10;
+                if (contrast < 1) {
+                    logger.error("Warning: Requested MTF%02d, clamped to MTF01 instead\n", int(contrast));
+                    contrast = 1;
+                } else {
+                    logger.error("Warning: Requested MTF%02d, which is highly likely to be affected by noise, and may cause some edges not be detected.\n", int(contrast));
+                }
             }
             if (contrast > 90) {
                 logger.error("Warning: Requested MTF%02d, clamped to MTF90 instead\n", int(contrast));

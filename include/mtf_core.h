@@ -185,7 +185,7 @@ class Mtf_core {
     }
     
     void set_mtf_contrast(double contrast) {
-        mtf_contrast = std::max(0.1, std::min(contrast, 0.9));
+        mtf_contrast = std::max(0.01, std::min(contrast, 0.9));
     }
     
     double get_mtf_contrast(void) const {
