@@ -51,6 +51,7 @@ class Settings_dialog : public QDialog
     void check_gnuplot_binary(void);
     void check_exiv2_binary(void);
     void check_dcraw_binary(void);
+    void check_mtf_lower(void);
     QString peek_argument_line(void) const;
     void reset_argument_line(void);
     

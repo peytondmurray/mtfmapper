@@ -123,7 +123,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cache_line->setValidator(dv_cachesize);
     cache_line->setMaximumWidth(reasonable_width);
     
-    QIntValidator* dv_contrast = new Nonempty_IntValidator(10, 90, 50, this);
+    QIntValidator* dv_contrast = new Nonempty_IntValidator(1, 90, 50, this);
     contrast_label   = new QLabel(tr("MTF-XX:"), this);
     contrast_label->setMinimumWidth(adv_width);
     contrast_line    = new QLineEdit(this);
@@ -504,6 +504,7 @@ void Settings_dialog::send_argument_string(void) {
 void Settings_dialog::save_and_close() {
     check_gnuplot_binary();
     check_exiv2_binary();
+    check_mtf_lower();
     settings.setValue(setting_threshold, threshold_line->text());
     settings.setValue(setting_pixsize, pixsize_line->text());
     settings.setValue(setting_mtf_contrast, contrast_line->text());
@@ -584,6 +585,19 @@ void Settings_dialog::browse_for_gnuplot(void) {
     check_gnuplot_binary();
 }
 
+void Settings_dialog::check_mtf_lower(void) {
+    double min_contrast = contrast_line->text().toDouble();
+    if (min_contrast < 10) {
+        QMessageBox::warning(
+            this, 
+            QString("Low MTF-XX value warning"), 
+            QString(
+                "Selecting MTF-XX values below 10 may result in unexpected behaviour (some edges may not be"
+                " detected, or results may be very sensitive to noise)."
+            )
+        );
+    }
+}
 
 void Settings_dialog::check_gnuplot_binary(void) {
     bool gnuplot_exists = QFile::exists(get_gnuplot_binary());
