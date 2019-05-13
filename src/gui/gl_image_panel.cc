@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QMouseEvent>
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 
 #include <cmath>
 
@@ -280,7 +281,7 @@ void GL_image_panel::load_image(const QString& fname) {
     if (image_cache.find(fname.toStdString()) != image_cache.end()) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
-        cvimg = cv::imread(fname.toStdString(), CV_LOAD_IMAGE_COLOR);
+        cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR);
         
         // manual conversion, cvtColor seems a bit slow
         uint8_t* sptr = cvimg.data;

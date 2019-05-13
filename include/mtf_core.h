@@ -52,7 +52,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <map>
 using std::map;
 
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 typedef vector<Block> block_vector;

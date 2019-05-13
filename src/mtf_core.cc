@@ -38,7 +38,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/ellipse_decoder.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 #include "include/edge_model.h" // TODO: just to test compilation, for now
 

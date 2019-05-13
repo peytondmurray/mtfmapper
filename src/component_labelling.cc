@@ -26,8 +26,7 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/component_labelling.h"
-
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 
 //------------------------------------------------------------------------------
 Component_labeller::Component_labeller(void) 

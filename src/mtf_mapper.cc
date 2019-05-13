@@ -34,6 +34,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <tclap/CmdLine.h>
 
+#include <opencv2/imgcodecs/imgcodecs.hpp>
+
 using std::string;
 using std::stringstream;
 

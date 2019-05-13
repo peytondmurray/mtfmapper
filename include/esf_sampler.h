@@ -31,7 +31,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/common_types.h"
 #include "include/ordered_point.h"
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "include/bayer.h"

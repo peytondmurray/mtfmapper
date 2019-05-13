@@ -28,12 +28,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/logger.h"
 #include "include/demosaic.h"
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <string>
 using std::string;
 #include <vector>
 using std::vector;
-
-#include <opencv2/highgui/highgui.hpp>
 
 void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scene, bool swap_diag=false);
 void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bayer, Bayer::cfa_pattern_t cfa_pattern);

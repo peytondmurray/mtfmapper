@@ -29,7 +29,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define SRGB_RENDER_H
 
 #include "include/common_types.h"
-#include <opencv2/highgui/highgui.hpp>
 
 class Srgb_render {
   public:
