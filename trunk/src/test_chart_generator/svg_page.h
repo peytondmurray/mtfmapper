@@ -41,7 +41,7 @@ using std::string;
 	#define lrint(x) ( (x < 0) ? int(floor(x-0.5)) : int(floor(x+0.5)) )
 #endif
 
-#include "opencv/cv.h"
+#include <opencv2/core/core.hpp>
 using namespace cv;
 
 #include "include/fiducial_positions.h"

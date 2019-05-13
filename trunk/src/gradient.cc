@@ -32,7 +32,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <stdio.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 //------------------------------------------------------------------------------
 Gradient::Gradient(const cv::Mat& in_img)

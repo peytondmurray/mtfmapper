@@ -38,8 +38,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "../../include/threadpool.h"
 #include <string.h>
 
-#include <opencv2/highgui/highgui.hpp>
-
 #include "config.h"
 
 #include "tclap/CmdLine.h"

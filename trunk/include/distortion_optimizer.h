@@ -34,7 +34,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <limits>
 #include <cmath>
 
-#include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "include/block.h"

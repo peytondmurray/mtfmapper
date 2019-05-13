@@ -29,7 +29,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define EDGE_MODEL_H
 
 #include "include/logger.h"
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <map>
