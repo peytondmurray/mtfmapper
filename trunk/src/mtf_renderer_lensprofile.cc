@@ -206,8 +206,13 @@ void Mtf_renderer_lensprofile::render(const vector<Block>& blocks) {
     
     lower_limit = min(-0.05, lower_limit);
     upper_limit = max(1.0, upper_limit);
-    
-    fprintf(gpf, "plot [][%.3lf:%.3lf] ", lower_limit, upper_limit);
+    if (fixed_size) {
+        double max_radius = sqrt(img.cols*img.cols/4 + img.rows*img.rows/4);
+        max_radius /= pixel_size;
+        fprintf(gpf, "plot [0:%.3lf][%.3lf:%.3lf] ", max_radius, lower_limit, upper_limit);
+    } else {
+        fprintf(gpf, "plot [][%.3lf:%.3lf] ", lower_limit, upper_limit);
+    }
     for (size_t j=0; j < resolution.size(); j++) {
         double res = lpmm_mode ? resolution[j]*pixel_size : resolution[j] ;
         fprintf(gpf,   
