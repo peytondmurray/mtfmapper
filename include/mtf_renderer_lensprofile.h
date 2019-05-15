@@ -95,6 +95,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     vector<double> in_resolution;
     int gnuplot_width;
     bool sparse_chart = false;
+    bool fixed_size = false;
 };
 
 #endif
