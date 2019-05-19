@@ -87,6 +87,7 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_autocrop;
     QCheckBox*  cb_lpmm;
     QCheckBox*  cb_gnuplot_scaled;
+    QCheckBox*  cb_lensprofile_fixed;
     
     QRadioButton* rb_colour_none;
     QRadioButton* rb_colour_red;

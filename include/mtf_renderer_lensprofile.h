@@ -57,6 +57,10 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
         sparse_chart = s;
     }
     
+    void set_fixed_size(bool f) {
+        fixed_size = f;
+    }
+    
     void render(const vector<Block>& blocks);
     
     void lsfit(const vector<Ordered_point>& in_data, vector<Ordered_point>& recon, 
