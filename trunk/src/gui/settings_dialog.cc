@@ -80,6 +80,8 @@ const QString setting_lp2_default = "30";
 const QString setting_lp3 = "lp3";
 const QString setting_lp3_default = "";
 const QString setting_arguments = "arguments";
+const QString setting_lensprofile_fixed = "lens_profile_fixed_scale";
+const Qt::CheckState setting_lensprofile_fixed_default = Qt::Unchecked;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -168,6 +170,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_autocrop     = new QCheckBox("Autocrop", this);
     cb_lpmm         = new QCheckBox("Line pairs/mm units", this);
     cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
+    cb_lensprofile_fixed = new QCheckBox("Lens profile fixed scale", this);
     
     rb_colour_none  = new QRadioButton("none");
     rb_colour_red   = new QRadioButton("red");
@@ -229,6 +232,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     );
     cb_gnuplot_scaled->setCheckState(
         (Qt::CheckState)settings.value(setting_gnuplot_scaled, setting_gnuplot_scaled_default).toInt()
+    );
+    cb_lensprofile_fixed->setCheckState(
+        (Qt::CheckState)settings.value(setting_lensprofile_fixed, setting_lensprofile_fixed_default).toInt()
     );
     
     switch(settings.value(setting_bayer, 0).toInt()) {
@@ -359,25 +365,29 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     adv_layout->addLayout(r4_layout);
     
     QHBoxLayout* r5_layout = new QHBoxLayout;
-    r5_layout->addWidget(zscale_label);
-    r5_layout->addStretch(2);
+    r5_layout->addWidget(cb_lensprofile_fixed);
     adv_layout->addLayout(r5_layout);
     
     QHBoxLayout* r6_layout = new QHBoxLayout;
-    r6_layout->addWidget(zscale_slider);
+    r6_layout->addWidget(zscale_label);
+    r6_layout->addStretch(2);
     adv_layout->addLayout(r6_layout);
     
     QHBoxLayout* r7_layout = new QHBoxLayout;
-    r7_layout->addWidget(cache_label);
-    r7_layout->addWidget(cache_line);
-    r7_layout->addWidget(new QLabel("MB", this));
-    r7_layout->addStretch(2);
+    r7_layout->addWidget(zscale_slider);
     adv_layout->addLayout(r7_layout);
     
     QHBoxLayout* r8_layout = new QHBoxLayout;
-    r8_layout->addWidget(arguments_label);
-    r8_layout->addWidget(arguments_line);
+    r8_layout->addWidget(cache_label);
+    r8_layout->addWidget(cache_line);
+    r8_layout->addWidget(new QLabel("MB", this));
+    r8_layout->addStretch(2);
     adv_layout->addLayout(r8_layout);
+    
+    QHBoxLayout* r9_layout = new QHBoxLayout;
+    r9_layout->addWidget(arguments_label);
+    r9_layout->addWidget(arguments_line);
+    adv_layout->addLayout(r9_layout);
     
     advanced->setLayout(adv_layout);
 
@@ -477,6 +487,11 @@ void Settings_dialog::send_argument_string(void) {
     if (cb_gnuplot_scaled->checkState()) {
         args = args + QString(" --gnuplot-width %1").arg(gnuplot_img_width);
     }
+    
+    if (cb_lensprofile_fixed->checkState()) {
+        args = args + QString(" --lensprofile-fixed-size");
+    }
+    
     args = args + QString(" --zscale %1").arg(zscale_slider->value()/20.0);
     
     args = args + QString(" --mtf %1").arg(contrast_line->text());
@@ -517,6 +532,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_orientation, cb_orientation->checkState());
     settings.setValue(setting_autocrop, cb_autocrop->checkState());
     settings.setValue(setting_gnuplot_scaled, cb_gnuplot_scaled->checkState());
+    settings.setValue(setting_lensprofile_fixed, cb_lensprofile_fixed->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());

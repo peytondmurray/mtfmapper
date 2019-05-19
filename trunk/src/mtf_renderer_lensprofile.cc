@@ -35,7 +35,7 @@ void Mtf_renderer_lensprofile::render(const vector<Block>& blocks) {
     vector<double> resolution;
     for (size_t i=0; i < min(size_t(3), in_resolution.size()); i++) {
         resolution.push_back(in_resolution[i] / pixel_size);
-        logger.debug("resolution = %lf (in= %lf, ps=%lf\n", resolution.back(), in_resolution[i], pixel_size);
+        logger.debug("resolution = %lf (in= %lf, ps=%lf)\n", resolution.back(), in_resolution[i], pixel_size);
     }
     
     vector< vector<Ordered_point> > sagittal(resolution.size());
