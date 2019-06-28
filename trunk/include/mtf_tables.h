@@ -37,24 +37,30 @@ using std::vector;
 class Mtf_correction {
 
   public:
-    Mtf_correction(void) : w(NYQUIST_FREQ*4, 0.0) {
-        w[0] = 1.0;
-        for (int i=1; i < NYQUIST_FREQ*4; i++) {
-            double dc_x = 2*M_PI*i/double(NYQUIST_FREQ*2*8); // 8 is correction factor for 8x oversample discrete derivative
-            double lp_x = M_PI*i/double(NYQUIST_FREQ*2);
-            double expcor = (sdev*sdev)/(sdev*sdev + 4*lp_x*lp_x);
-            w[i] = (sin(dc_x)/dc_x) * expcor;
-        }
-    }
+    Mtf_correction(void);
     
     static Mtf_correction& get_instance(void) {
         static Mtf_correction instance;
         return instance;
     }
     
+    void update_correction_tables(void);
+    
+    double evaluate(double x, double scale = 1.0);
+    
+    double get_sdev(void) const {
+        return sdev;
+    }
+    
+    void set_sdev(double d) {
+        sdev = d;
+        update_correction_tables();
+    }
+    
     vector<double> w;
     
-    static constexpr double sdev = 13;
+  private:
+    double sdev;
 private:
 
     

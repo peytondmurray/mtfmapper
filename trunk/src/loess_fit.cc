@@ -29,7 +29,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/loess_fit.h"
 #include "include/gaussfilter.h"
 #include "include/mtf_tables.h"
-#include "include/fastexp.h"
 #include <stdio.h>
 #include <cmath>
 #include <algorithm>
@@ -123,7 +122,6 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     constexpr double scale = 2 * 16.0 / 28.0; // maxdot relative to 16
     const int fft_size2 = fft_size/2;
     const double inv_fft_size_m1 = 1.0/double(fft_size-1);
-    const double inv_fft_size = 1.0/double(fft_size);
     double rightsum = 0;
     int rightcount = 0;
     double leftsum = 0;
@@ -326,11 +324,11 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     fill(mean.begin(), mean.end(), 0.0);
     int left_trans = fft_size2;
     int right_trans = fft_size2;
-    const double nbin_scale = 1.0/std::max(fft_right - fft_size2, fft_size2 - fft_left);
     constexpr double bwidth = 1.85;
     constexpr double lwidth = 0.5;
     left_trans = std::max(midpoint - bwidth*twidth, fft_left + 2.0);
     right_trans = std::min(midpoint + bwidth*twidth, fft_right - 3.0);
+    Mtf_correction& kernel = Mtf_correction::get_instance();
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
         
@@ -355,17 +353,17 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
             for (int b=left; b <= right; b++) {
                 double w = 1; // in extreme tails, just plain box filter
                 if (fabs(b - midpoint) < bwidth*twidth) {
-                    double mid = b*scale*(upper-lower)*inv_fft_size + scale*lower;
+                    double mid = (b - fft_size2)*0.125;
                     if (fabs(b - midpoint) < twidth*lwidth) {
                         // edge transition itself, use preferred low-pass function
-                        w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev );
+                        w = kernel.evaluate(ordered[i].first - mid);
                     } else {
                         constexpr double start_factor = 1;
                         constexpr double end_factor =   0.01;
                         double alpha = (fabs(double(b - midpoint))/twidth - lwidth)/(bwidth - lwidth);
                         double sfactor = start_factor * (1 - alpha) + end_factor * alpha;
                         // between edge and tail region, use slightly wider low-pass function
-                        w = fastexp( -fabs(ordered[i].first - mid)*Mtf_correction::sdev*sfactor );
+                        w = kernel.evaluate(ordered[i].first - mid, sfactor);
                     }
                 }
                 mean[b] += ordered[i].second * w;
@@ -403,8 +401,8 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
     }
     
     // apply some box smoothing in the tails
-    smoothed[fft_left-1] = sampled[fft_left];
-    for (int idx=fft_left; idx < fft_right; idx++) {
+    smoothed[0] = sampled[1];
+    for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
     }
     constexpr int tpad = 16;
@@ -418,10 +416,10 @@ int bin_fit(vector< Ordered_point  >& ordered, double* sampled,
         int lbhw = (idx-right_trans)*bhw/tpad + bhw_min;
         sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
     }
-    for (int idx=fft_left + bhw + 1; idx < left_trans - tpad; idx++) {
+    for (int idx=bhw + 1; idx < left_trans - tpad; idx++) {
         sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
     }
-    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_right-bhw; idx++) {
+    for (int idx=std::min(right_trans + tpad, fft_right - bhw - 1); idx < fft_size-bhw-1; idx++) {
         sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
     }
     
