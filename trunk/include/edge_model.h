@@ -57,7 +57,7 @@ class Edge_model {
     
     Edge_model(const Point2d& centroid, const Point2d& direction) 
     : centroid{centroid}, direction{direction}, normal{-direction.y, direction.x}  {
-        coeff[0] = coeff[1] = coeff[2]; 
+        coeff[0] = coeff[1] = coeff[2] = 0; 
     }
     
     Edge_model(const Point2d& centroid, const Point2d& direction, const double coeffs[3]) 
