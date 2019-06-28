@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
     TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
     TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
+    TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 10.65, "unitless", cmd);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
@@ -425,6 +426,7 @@ int main(int argc, char** argv) {
         if (tc_border.getValue()) {
             logger.debug("setting border to %d\n", border_width);
         }
+        Mtf_correction::get_instance().set_sdev(tc_alpha.getValue());
         
         if (tc_snap.isSet()) {
             mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);
