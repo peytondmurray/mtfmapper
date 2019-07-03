@@ -503,8 +503,9 @@ window if this option is turned on (as it is by default). You can safely
 leave this on.
 \end{description}
 
-The bottom-left panel, \textsf{Bayer channel}, is a lot more powerful than
-its unassuming appearance might lead you to believe. If the `None' option is
+The bottom-left panel, \textsf{ESF construction}, is a lot more powerful than
+its unassuming appearance might lead you to believe. The ``Bayer channel''
+option allows you to control how a colour image is processed: If the `None' option is
 selected, then your input image will be converted to a grayscale image
 before the main MTF Mapper processing starts. Nothing (much) will happen if
 your input image was already a grayscale image. Things get a little more
@@ -517,7 +518,7 @@ employed (sRGB D65 illuminant). The implication is that MTF Mapper will report o
 of the luminance channel of your RGB images if you leave the \textsf{Bayer
 channel} option set to `None'.
 
-If you choose a different \textsf{Bayer channel} option (`red', `green' or
+If you choose a different ``Bayer channel'' option (`red', `green' or
 `blue') \emph{and} your input image is a raw camera file, then two things
 happen:
 \begin{enumerate}
@@ -534,7 +535,8 @@ to really obtain the lens MTF, but you get the idea.)
 This approach gives us the most accurate method of measuring effects like
 longitudinal chromatic aberration, or any other phenomenon that could cause
 the demosaicing algorithm to inadvertently mix the MTFs of the different
-wavelength subsets (e.g., Red, Green, or Blue).
+wavelength subsets (e.g., Red, Green, or Blue). You can read up on this
+feature of MTF Mapper in a journal paper \cite{fvdb2018}.
 
 
 NB: Just keep in mind that only 25\% of the photosites of the sensor will be
@@ -549,6 +551,17 @@ pattern (rather unlikely) you can add \texttt{--cfa-pattern bggr} (or
 whatever your pattern is) to the `Arguments' field in the \textsf{Advanced}
 panel of the \textsf{Prefences} dialog. See Appendix~\ref{sec:manpages} for
 all the supported CFA patterns.
+
+The second entry in the \textsf{ESF construction} panel, called ``ESF
+model'', is used to select which algorithm MTF Mapper will use internally
+to estimate the Edge Spread Function (ESF). The `loess' algorithm produces
+more accurate results, but it is slightly slower than the legacy `kernel'
+algorithm. I would recommend using the `loess' algorithm unless you have a
+specific requirement to produce SFR measurements that are compatible with
+earlier versions of MTF Mapper (pre- version 0.7.16). The `loess' algorithm
+is also recommended if you are using a ``Bayer channel'' setting of `red' or
+`blue', since this algorithm is better at dealing with sparse image subsets
+near critical edge orientations --- see \cite{fvdb2019} for details.
 
 The middle-right panel, \textsf{Lens distortion correction}, deals with
 methods to work around lens distortion. Although MTF Mapper supports
@@ -1790,6 +1803,15 @@ Sensing}, 20:12--23, 2004.
 technique},
 \newblock{\textit{Computer Vision and Image Understanding}}, \textbf{93(2)}:206--220,
 2004
+\bibitem{fvdb2018} Van den Bergh, F,
+\newblock{Deferred slanted-edge analysis: a unified approach to spatial frequency response measurement on distorted images and color filter array
+subsets},
+\newblock{Journal of the Optical Society of America A},
+\textbf{35(3)}:442--451, 2018.
+\bibitem{fvdb2019} Van den Bergh, F,
+\newblock{Robust edge-spread function construction methods to counter poor sample spacing uniformity in the slanted-edge
+method},
+\newblock{Journal of the Optical Society of America A}, \textbf{36(7)}:1126--1136, 2019.
 \end{thebibliography}
 
 \end{document}
