@@ -70,6 +70,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
         
         map<int, double> row_max;
         extract_row_maxima(row_max, blocks, false);
+        
+        if (row_max.size() == 0) {
+            return;
+        }
 
         // check distribution: a bimodal distribution probably means the image is rotated
         bool transpose = test_for_bimodal_distribution(row_max);
