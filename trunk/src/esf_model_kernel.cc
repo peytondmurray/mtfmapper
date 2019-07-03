@@ -220,7 +220,8 @@ void Esf_model_kernel::compute_mtf_corrections(void) {
     
     vector<double> correction(w.size());
     double n0 = fabs(fft_buffer[0]);
-    for (int i=0; i < NYQUIST_FREQ*4; i++) {
+    correction[0] = 1.0;
+    for (int i=1; i < NYQUIST_FREQ*4; i++) {
         correction[i] = sqrt(SQR(fft_buffer[i]) + SQR(fft_buffer[c_fft_size - i])) / n0;
     }
     
