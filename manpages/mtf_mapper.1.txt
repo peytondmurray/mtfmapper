@@ -66,6 +66,12 @@ Select the Bayer pattern to use when the *--bayer* option has been
 specified. The default is rggb, which appears to be the most popular choice
 amongst DSLRs.
 
+*--esf-model* 'kernel|loess'::
+Choose the algorithm that MTF Mapper uses to construct the Edge Spread
+Function (ESF) with. The `loess' algorithm is recommended, unless you are
+trying to produce results that are compatible (ahem, `roughly similar' is more like
+it) with older versions of MTF Mapper (pre- version 0.7.16).
+
 *--single-roi*::
 Treat the entire input image as the region of interest (ROI). This option
 is only intended for use with small cropped images containing only a single
