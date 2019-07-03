@@ -41,6 +41,7 @@ const QString setting_threshold_default = "0.55";
 const QString setting_pixsize = "setting_pixelsize";
 const QString setting_pixsize_default = "4.78";
 const QString setting_bayer = "setting_bayer";
+const QString setting_esf_model = "setting_esf_model";
 const QString setting_linear_gamma = "setting_gamma";
 const Qt::CheckState setting_linear_gamma_default = Qt::Unchecked;
 const QString setting_annotation = "setting_annotation";
@@ -172,10 +173,15 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
     cb_lensprofile_fixed = new QCheckBox("Lens profile fixed scale", this);
     
-    rb_colour_none  = new QRadioButton("none");
-    rb_colour_red   = new QRadioButton("red");
-    rb_colour_green = new QRadioButton("green");
-    rb_colour_blue  = new QRadioButton("blue");
+    box_colour = new QComboBox;
+    box_colour->addItem("none");
+    box_colour->addItem("red");
+    box_colour->addItem("green");
+    box_colour->addItem("blue");
+    
+    box_esf_model = new QComboBox;
+    box_esf_model->addItem("kernel");
+    box_esf_model->addItem("loess");
     
     rb_lens_pw_quad  = new QRadioButton("piecewise-quadratic");
     rb_lens_quad  = new QRadioButton("quadratic");
@@ -237,12 +243,8 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
         (Qt::CheckState)settings.value(setting_lensprofile_fixed, setting_lensprofile_fixed_default).toInt()
     );
     
-    switch(settings.value(setting_bayer, 0).toInt()) {
-        case 0: rb_colour_none->setChecked(true); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(false); break;
-        case 1: rb_colour_none->setChecked(false); rb_colour_red->setChecked(true); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(false); break;
-        case 2: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(true); rb_colour_blue->setChecked(false); break;
-        case 3: rb_colour_none->setChecked(false); rb_colour_red->setChecked(false); rb_colour_green->setChecked(false); rb_colour_blue->setChecked(true); break;
-    }
+    box_colour->setCurrentIndex(settings.value(setting_bayer, 0).toInt());
+    box_esf_model->setCurrentIndex(settings.value(setting_esf_model, 0).toInt());
     
     rb_lens_pw_quad->setChecked(false);
     rb_lens_quad->setChecked(false);
@@ -297,12 +299,14 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_layout->addWidget(cb_gnuplot_scaled);
     v2GroupBox->setLayout(cb_layout);
     
-    QGroupBox* bayer_GroupBox = new QGroupBox(tr("Bayer channel"), this);
-    QVBoxLayout *rb_layout = new QVBoxLayout;
-    rb_layout->addWidget(rb_colour_none);
-    rb_layout->addWidget(rb_colour_red);
-    rb_layout->addWidget(rb_colour_green);
-    rb_layout->addWidget(rb_colour_blue);
+    QGroupBox* bayer_GroupBox = new QGroupBox(tr("ESF construction"), this);
+    QGridLayout* rb_layout = new QGridLayout;
+    bayer_label = new QLabel("Bayer channel", this);
+    rb_layout->addWidget(bayer_label, 0, 0);
+    rb_layout->addWidget(box_colour, 0, 1);
+    esf_model_label = new QLabel("ESF model", this);
+    rb_layout->addWidget(esf_model_label, 1, 0);
+    rb_layout->addWidget(box_esf_model, 1, 1);
     bayer_GroupBox->setLayout(rb_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
@@ -454,16 +458,17 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --pixelsize " + pixsize_line->text());
     }
     
-    if (rb_colour_red->isChecked()) {
-        args = args + QString(" --bayer red");
-    }
-    if (rb_colour_green->isChecked()) {
-        args = args + QString(" --bayer green");
-    }
-    if (rb_colour_blue->isChecked()) {
-        args = args + QString(" --bayer blue");
+    switch(box_colour->currentIndex()) {
+    case 0: break;
+    case 1: args = args + QString(" --bayer red"); break;
+    case 2: args = args + QString(" --bayer green"); break;
+    case 3: args = args + QString(" --bayer blue"); break;
     }
     
+    switch(box_esf_model->currentIndex()) {
+    case 0: args = args + QString(" --esf-model kernel"); break;
+    case 1: args = args + QString(" --esf-model loess"); break;
+    }
     
     if (rb_lens_pw_quad->isChecked()) {
         args = args + QString(" --esf-sampler piecewise-quadratic");
@@ -542,20 +547,9 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_lp2, lp2_line->text());
     settings.setValue(setting_lp3, lp3_line->text());
     settings.setValue(setting_arguments, arguments_line->text());
+    settings.setValue(setting_bayer, box_colour->currentIndex());
+    settings.setValue(setting_esf_model, box_esf_model->currentIndex());
     
-    if (rb_colour_none->isChecked()) {
-        settings.setValue(setting_bayer, 0);
-    }
-    if (rb_colour_red->isChecked()) {
-        settings.setValue(setting_bayer, 1);
-    }
-    if (rb_colour_green->isChecked()) {
-        settings.setValue(setting_bayer, 2 );
-    }
-    if (rb_colour_blue->isChecked()) {
-        settings.setValue(setting_bayer, 3);
-    }
-
     if (rb_lens_pw_quad->isChecked()) {
         settings.setValue(setting_lens, 0);
     }
