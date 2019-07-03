@@ -509,7 +509,8 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     double quad = angle_reduce(atan2(edge_model.get_direction().y, edge_model.get_direction().x));
     
     double n0 = fabs(fft_out_buffer[0]);
-    for (int i=0; i < NYQUIST_FREQ*4; i++) {
+    magnitude[0] = 1.0;
+    for (int i=1; i < NYQUIST_FREQ*4; i++) {
         magnitude[i] = sqrt(SQR(fft_out_buffer[i]) + SQR(fft_out_buffer[FFT_SIZE - i])) / n0;
     }
     
