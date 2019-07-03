@@ -37,6 +37,7 @@ class QPushButton;
 class QCheckBox;
 class QRadioButton;
 class QSlider;
+class QComboBox;
 
 class Settings_dialog : public QDialog 
 {
@@ -89,10 +90,10 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_gnuplot_scaled;
     QCheckBox*  cb_lensprofile_fixed;
     
-    QRadioButton* rb_colour_none;
-    QRadioButton* rb_colour_red;
-    QRadioButton* rb_colour_green;
-    QRadioButton* rb_colour_blue;
+    QComboBox* box_colour; // Bayer channel, actually
+    QComboBox* box_esf_model;
+    QLabel* bayer_label;
+    QLabel* esf_model_label;
     
     QRadioButton* rb_lens_pw_quad;
     QRadioButton* rb_lens_quad;
