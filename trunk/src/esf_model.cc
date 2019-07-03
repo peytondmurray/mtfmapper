@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/esf_model.h"
 #include "include/logger.h"
+#include <array>
 
 const std::array<string, 2> Esf_model::esf_model_names  = {{
     "kernel", "loess"
