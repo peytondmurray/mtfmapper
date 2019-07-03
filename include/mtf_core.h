@@ -48,7 +48,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/esf_sampler_piecewise_quad.h"
 #include "include/undistort.h"
 
+#include "include/esf_model.h"
 
+#include <memory>
 #include <map>
 using std::map;
 
@@ -58,10 +60,8 @@ typedef vector<Block> block_vector;
 
 // global constants for ESF-fourier MTF method
 // TODO: these can be dynamic parameters, with some effort
-const double max_dot = 28;
-const int SAMPLES_PER_PIXEL = 32;
-const size_t FFT_SIZE = int(16)*SAMPLES_PER_PIXEL;
-const int NYQUIST_FREQ = FFT_SIZE/16;
+constexpr double max_dot = 28;
+#include "include/sampling_rate.h"
 
 class Mtf_core {
   public:
@@ -193,6 +193,14 @@ class Mtf_core {
     
     void process_image_as_roi(void);
     
+    void set_esf_model(std::unique_ptr<Esf_model>&& model) {
+        esf_model = std::move(model);
+    }
+    
+    void set_esf_model_alpha_parm(double alpha) {
+        esf_model->set_alpha(alpha);
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -225,6 +233,7 @@ class Mtf_core {
     size_t mtf_width = 2 * NYQUIST_FREQ;
     Esf_sampler* esf_sampler = nullptr;
     double mtf_contrast = 0.5; // target MTF contrast, e.g., 0.5 -> MTF50
+    std::unique_ptr<Esf_model> esf_model;
     
     void process_with_sliding_window(Mrectangle& rrect);
     bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;

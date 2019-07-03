@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "mtf_renderer.h"
 #include "common_types.h"
 #include "include/loess_fit.h"
-#include "include/mtf_tables.h"
+#include "include/savitzky_golay_tables.h"
 
 class Mtf_renderer_lensprofile : public Mtf_renderer {
   public:

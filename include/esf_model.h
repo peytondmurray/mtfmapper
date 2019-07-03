@@ -25,65 +25,57 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#include "include/logger.h"
-#include "include/loess_fit.h"
-#include <stdio.h>
-#include <cmath>
-#include <algorithm>
+#ifndef ESF_MODEL_H
+#define ESF_MODEL_H
 
-const int MIN_POINTS_TO_FIT = 8;
+#include "include/ordered_point.h"
+#include "include/sampling_rate.h"
+#include <vector>
+#include <string>
+using std::vector;
+using std::string;
 
-double loess_core(vector<Ordered_point>& ordered, size_t start_idx, size_t end_idx,
-    double mid,  Point2d& sol) {
-
-    double rsq = 0;
-
-    int n = end_idx - start_idx;
+class Esf_model {
+  public:
+    Esf_model(double alpha=13.7) 
+    : alpha(alpha), w(NYQUIST_FREQ*4, 0.0)  {}
     
-    if (n < MIN_POINTS_TO_FIT) {
-        sol.x = 0;
-        sol.y = 0;
-        return 1e10;
+    virtual int build_esf(vector< Ordered_point  >& ordered, double* sampled, 
+        const int fft_size, double max_distance_from_edge, vector<double>& esf, 
+        bool allow_peak_shift=false) = 0;
+        
+    void moving_average_smoother(vector<double>& smoothed, double* sampled, int fft_size, 
+        int fft_left, int fft_right, int left_trans, int right_trans);
+        
+    int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
+        const int fft_size, bool allow_peak_shift, int effective_maxdot, vector<double>& mean,
+        vector<double>& weights, int& fft_left, int& fft_right, int& twidth, double& cnr, 
+        double& contrast);
+        
+    virtual void set_alpha(double a) {
+        alpha = a;
+        compute_mtf_corrections();
     }
     
-    double span = max(ordered[end_idx-1].first - mid, mid - ordered[start_idx].first);
-    vector<double> sig(n,1.0);
-    for (int i=0; i < n; i++) {
-        double d = fabs((ordered[i + start_idx].first - mid)/span) / 1.2;
-        if (d > 1.0) {
-            sig[i] = 20;
-        } else {
-            sig[i] = 1.0 / ( (1 - d*d)*(1 - d*d)*(1 - d*d) + 1);
-        }
+    virtual void compute_mtf_corrections(void);
+    
+    const vector<double>& get_correction(void) const {
+        return w;
+    }
+        
+    const static std::array<string, 2> esf_model_names;
+  protected:
+    inline double get_alpha(void) const {
+        return alpha;
     }
     
-    double sx  = 0;
-    double sy  = 0;
-    double ss  = 0;
+    inline double sinc(double x) {
+        return x == 0 ? 1 : sin(x)/x;
+    }
     
-    for (int i=0; i < n; i++) {
-        double weight = 1.0/SQR(sig[i]);
-        ss += weight;
-        sx += ordered[i+start_idx].first * weight;
-        sy += ordered[i+start_idx].second * weight;
-    }
-    double sxoss = sx / ss;
-    
-    double st2 = 0;
-    double b = 0;
-    for (int i=0; i < n; i++) {
-        double t = (ordered[i+start_idx].first - sxoss) / sig[i];
-        st2 += t*t;
-        b += t*ordered[i+start_idx].second / sig[i];
-    }
-    b /= st2;
-    double a = (sy - sx*b)/ss;
-    sol.x = a;
-    sol.y = b;
-    for (int i=0; i < n; i++) {
-        double r = (ordered[i+start_idx].first*sol.y + sol.x) - ordered[i+start_idx].second;
-        rsq += fabs(r); // m-estimate of goodness-of-fit 
-    }
-    return rsq/double(n);
-}
+    double alpha = 13.5;
+    vector<double> w; // MTF correction weight
+    static constexpr double missing = -1e7;
+};
 
+#endif

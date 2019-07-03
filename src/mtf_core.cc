@@ -28,18 +28,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/mtf_core.h"
 
-#include "include/loess_fit.h"
-#include "include/gaussfilter.h"
 #include "include/peak_detector.h"
 
 #include "include/point_helpers.h"
 #include "include/mtf50_edge_quality_rating.h"
-#include "include/mtf_tables.h"
+#include "include/savitzky_golay_tables.h"
 #include "include/ellipse_decoder.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "include/edge_model.h" // TODO: just to test compilation, for now
+#include "include/edge_model.h"
 
 #include <mutex>
 #include <thread>
@@ -500,7 +498,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
         return 0;
     }
     
-    int success = bin_fit(ordered, fft_out_buffer.data(), FFT_SIZE, -max_dot, max_dot, esf, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
+    int success = esf_model->build_esf(ordered, fft_out_buffer.data(), FFT_SIZE,  max_dot, esf, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
         logger.debug("failed edge\n");
@@ -563,7 +561,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
         }
     }
 
-    double* base_mtf = Mtf_correction::get_instance().w.data();
+    const vector<double>& base_mtf = esf_model->get_correction();
 
     double prev_freq = 0;
     double prev_val  = n0;

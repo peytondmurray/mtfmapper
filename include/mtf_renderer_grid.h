@@ -31,7 +31,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "mtf_renderer.h"
 #include "common_types.h"
-#include "gaussfilter.h"
 #include <Eigen/Dense>
 #include "mtf50_edge_quality_rating.h"
 #include "mtf_profile_sample.h"
