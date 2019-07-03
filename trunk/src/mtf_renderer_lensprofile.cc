@@ -27,6 +27,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
 #include "include/mtf_renderer_lensprofile.h"
+#include "include/sampling_rate.h"
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 
 void Mtf_renderer_lensprofile::render(const vector<Block>& blocks) {

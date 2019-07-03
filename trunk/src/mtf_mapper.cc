@@ -58,7 +58,6 @@ Logger logger;
 #include "include/mtf_renderer_lensprofile.h"
 #include "include/mtf_renderer_chart_orientation.h"
 #include "include/mtf_renderer_focus.h"
-#include "include/mtf_tables.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
 #include "include/auto_crop.h"
@@ -73,6 +72,8 @@ Logger logger;
 #include "include/esf_sampler.h"
 #include "include/tiffsniff.h"
 #include "include/display_profile.h"
+#include "include/esf_model_kernel.h"
+#include "include/esf_model_loess.h"
 #include "config.h"
 
 //-----------------------------------------------------------------------------
@@ -168,6 +169,14 @@ int main(int argc, char** argv) {
     TCLAP::ValuesConstraint<string> cfa_pattern_constraints(allowed_cfa_patterns);
     TCLAP::ValueArg<std::string> tc_cfa_pattern("", "cfa-pattern", "Select CFA pattern", false, "rggb", &cfa_pattern_constraints);
     cmd.add(tc_cfa_pattern);
+    
+    vector<string> allowed_esf_models;
+    for (const auto& s: Esf_model::esf_model_names) {
+        allowed_esf_models.push_back(s);
+    }
+    TCLAP::ValuesConstraint<string> esf_model_constraints(allowed_esf_models);
+    TCLAP::ValueArg<std::string> tc_esf_model("", "esf-model", "Select ESF model type", false, "kernel", &esf_model_constraints);
+    cmd.add(tc_esf_model);
     
     cmd.parse(argc, argv);
     
@@ -426,7 +435,14 @@ int main(int argc, char** argv) {
         if (tc_border.getValue()) {
             logger.debug("setting border to %d\n", border_width);
         }
-        Mtf_correction::get_instance().set_sdev(tc_alpha.getValue());
+        if (tc_esf_model.getValue().compare("kernel") == 0) {
+            mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_kernel()));
+        } else { // only alternative at the moment is "loess"
+            mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_loess()));
+        }
+        if (tc_alpha.isSet()) {
+            mtf_core.set_esf_model_alpha_parm(tc_alpha.getValue());
+        }
         
         if (tc_snap.isSet()) {
             mtf_core.set_snap_angle(tc_snap.getValue()/180*M_PI);

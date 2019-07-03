@@ -25,46 +25,8 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef MTFTABLES_H
-#define MTFTABLES_H
-
-#include <vector>
-using std::vector;
-#include <cmath>
-
-#include "mtf_core.h"
-
-class Mtf_correction {
-
-  public:
-    Mtf_correction(void);
-    
-    static Mtf_correction& get_instance(void) {
-        static Mtf_correction instance;
-        return instance;
-    }
-    
-    void update_correction_tables(void);
-    
-    double evaluate(double x, double scale = 1.0);
-    
-    double get_sdev(void) const {
-        return sdev;
-    }
-    
-    void set_sdev(double d) {
-        sdev = d;
-        update_correction_tables();
-    }
-    
-    vector<double> w;
-    
-  private:
-    double sdev;
-private:
-
-    
-};
+#ifndef SAVITZKY_GOLAY_TABLES_H
+#define SAVITZKY_GOLAY_TABLES_H
 
 const double savitsky_golay[6][15] = {
   {0,0,0,0,0,-0.085714285714286,0.342857142857143,0.485714285714286,0.342857142857143,-0.085714285714286,0,0,0,0,0},
@@ -75,4 +37,4 @@ const double savitsky_golay[6][15] = {
   {-0.070588235294118,-0.011764705882353,0.038009049773756,0.078733031674208,0.110407239819004,0.133031674208145,0.146606334841629,0.151131221719457,0.146606334841629,0.133031674208145,0.110407239819004,0.078733031674208,0.038009049773756,-0.011764705882353,-0.070588235294118}
 };
 
-#endif // MTFTABLES_H
+#endif
