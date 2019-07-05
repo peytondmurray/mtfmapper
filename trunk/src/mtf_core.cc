@@ -516,6 +516,38 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     
     
     if (sfr_smoothing) {
+        // first, convert a "bounce" to a sign change
+        double uw_phase[3] = {0,0,0}; // store the most recent three unwrapped phase values
+        double m1 = -1.0;
+        double current_sign = 1.0;
+        int last_change = -1;
+        for (int idx=1; idx < NYQUIST_FREQ*4-1; idx++) {
+            if (magnitude[idx] > 1e-4) {
+                uw_phase[2] = atan2(fft_out_buffer[FFT_SIZE - idx] * m1, fft_out_buffer[idx] * m1);
+                int min_k = 0;
+                // apply some basic phase unwrapping
+                for (int k=-5; k <= 5; k++) {
+                    if ( abs((uw_phase[2] + k*2*M_PI) - uw_phase[1]) < abs((uw_phase[2] + min_k*2*M_PI) - uw_phase[1]) ) {
+                        min_k = k;
+                    }
+                }
+                uw_phase[2] += min_k * 2*M_PI;
+            } else {
+                uw_phase[2] = 0;
+            }
+        
+            if (idx > 3 && fabs(uw_phase[2] - uw_phase[0]) > M_PI/2.0 && last_change < idx - 1 && magnitude[idx] < 0.5) {
+                current_sign *= -1;
+                last_change = idx;
+            }
+            magnitude[idx] *= current_sign;
+            m1 *= -1;
+            
+            // shift
+            uw_phase[0] = uw_phase[1];
+            uw_phase[1] = uw_phase[2];
+        }
+        
         // apply narrow SG filter to lower frequencies
         fill(smoothed.begin(), smoothed.end(), 0);
         const double lf_sgw[5] = {-0.086, 0.343, 0.486, 0.343, -0.086};
@@ -559,6 +591,11 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
             for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
                 magnitude[idx] = smoothed[idx]/smoothed[0];
             }
+        }
+        
+        // undo and sign changes we introduced above to remove a "bounce"
+        for (int idx=0; idx < NYQUIST_FREQ*4; idx++) {
+            magnitude[idx] = fabs(magnitude[idx]);
         }
     }
 
