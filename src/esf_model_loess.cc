@@ -37,6 +37,26 @@ static inline double local_kernel(double d, double alpha, double w=0.125) {
     return fastexp(-fabs(fabs(d)-w)*alpha);
 }
 
+static double interpolate(double cnr, const vector< std::pair<double, double> >& lut) {
+    if (cnr < lut.back().first) {
+        if (cnr > lut.front().first) {
+            size_t i = lut.size() - 1;
+            while (i > 0 && cnr < lut[i].first) {
+                i--;
+            }
+            if (i < lut.size() - 1) {
+                return lut[i].second + (lut[i+1].second - lut[i].second) * (cnr - lut[i].first) / (lut[i+1].first - lut[i].first);
+            } else {
+                return lut.back().second;
+            }
+        } else {
+            return lut.front().second;
+        }
+    } else {
+        return lut.back().second;
+    }
+}
+
 int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double max_distance_from_edge, vector<double>& esf, 
     bool allow_peak_shift) {
@@ -71,16 +91,23 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     
     auto left_it = ordered.begin();
     auto right_it = ordered.end();
-    const double alpha = get_alpha();
-    const double ridge_parm = 5e-8; // TODO: this parameter should be adjusted as a function of CNR
+    double alpha = get_alpha();
+    constexpr double model_switch_bias = 3*0.125;
     int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
     int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
     
-    constexpr int order = 6;
+    // TODO: I still see a lot of noise in the transition area (0.75*twidth*0.125 up to 1.0*twidth + model_switch_bias)
+    // so some additional smoothing in this area will help
     
+    vector< std::pair<double, double> > ridge_lut = {
+        {20, 250},{22, 231},{24, 190},{26, 163},{28, 143},{30, 130},{35, 106},{40, 93},{45, 87},
+        {50, 78},{60, 67},{70, 60},{80, 55},{90, 51},{99, 47},{124, 42},{149, 37},{174, 34},{199, 32},
+        {298, 26},{398, 13},{497, 8},{596, 2},{696, 2},{794, 1},{894, 1},{1000, 5e-8}
+    };
+    const double ridge_parm = interpolate(cnr, ridge_lut);
+    
+    constexpr int order = 6;
     for (int b=min_left_bin; b < max_right_bin; b++) {
-        weights[b] = 1.0;
-        
         double mid = (b - fft_size/2)*0.125;
         
         constexpr double loess_span = 4.5;
@@ -92,8 +119,7 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
             printf("empty interval in bin %d\n", b);
             weights[b] = 0;
         } else {
-            if (fabs(mid) < 0.125*twidth) {
-            
+            if (fabs(mid) < 0.125*twidth + model_switch_bias) {
                 Eigen::MatrixXd design(npts, order + 1);
                 Eigen::VectorXd v(npts);
                 
@@ -127,19 +153,38 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
                 Eigen::VectorXd sol = (design.transpose() * design + phi*Eigen::MatrixXd::Identity(order+1, order+1)).llt().solve(design.transpose() * v);
                 
                 mean[b] = (sol[0] + sol[4])*contrast - (sol[2] + sol[6])*contrast + mean[b-1];
+                weights[b] = 1.0;
             } else {
-                left_it = lower_bound(left_it, right_it, mid - 0.5);
-                right_it = lower_bound(left_it, right_it, mid + 0.5);
+                // blend in the box filter, otherwise f/16 LSFs lose some detail right at the foot
+                const double upper_thresh = 2.0*0.125*twidth;
+                const double lower_thresh = 0.125*twidth;
+                constexpr double min_span = 0.126; // such a narrow interval can produce empty bins, handled below
+                constexpr double max_span = 1.0;
+                double span = min_span;
+                if (fabs(mid) >= upper_thresh) {
+                    span = max_span;
+                } else {
+                    double t = (fabs(mid) - lower_thresh)/(upper_thresh - lower_thresh);
+                    span = min_span + t*(max_span - min_span);
+                }
+                left_it = lower_bound(left_it, right_it, mid - span);
+                right_it = lower_bound(left_it, right_it, mid + span);
                 
                 double sum = 0;
                 for (auto it=left_it; it != right_it; it++) {
                     sum += it->second;
                 }
-                mean[b] = sum / double(right_it - left_it);
-            }
+                if (right_it - left_it > 0) {
+                    mean[b] = sum / double(right_it - left_it);
+                    weights[b] = 1.0;
+                } else {
+                    mean[b] = mean[b-1];
+                    weights[b] = weights[b-1];
+                }
+            } 
         }
     }
-    
+
     int left_non_missing = 0;
     int right_non_missing = 0;
     
@@ -188,9 +233,20 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = r_nm_mean;
     }
-
+    
     thread_local vector<double> smoothed(fft_size, 0);
-    moving_average_smoother(smoothed, sampled, fft_size, fft_left, fft_right, left_trans, right_trans);
+    
+    vector< std::pair<double, double> > smoothing_lut = {
+        {4, 30},{5, 30},{6, 30},{7, 30},{8, 30},{9, 30},{10, 30},{12, 30},{14, 30},{16, 30},{18, 30},
+        {20, 30},{22, 30},{24, 30},{26, 30},{28, 30},{30, 30},{35, 30},{40, 30},{45, 30},{49, 30},
+        {59, 30},{69, 30},{79, 30},{89, 21},{99, 21},{124, 19},{148, 14},{173, 14},{198, 14},
+        {297, 13},{395, 6},{493, 6},{591, 1},{690, 1},{787, 0},{885, 0}
+    };
+    
+    int sw_width = lrint(interpolate(cnr, smoothing_lut));
+    if (sw_width > 0) {
+        moving_average_smoother(smoothed, sampled, fft_size, fft_left, fft_right, left_trans, right_trans, sw_width);
+    }
     
     int lidx = 0;
     for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
@@ -203,10 +259,10 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
         sampled[idx] = (sampled[idx+1] - old);
         old = temp;
     }
-    for (int idx=0; idx < fft_left; idx++) {
+    for (int idx=0; idx < fft_left+2; idx++) {
         sampled[idx] = 0;
     }
-    for (int idx=fft_right; idx < fft_size; idx++) {
+    for (int idx=fft_right-3; idx < fft_size; idx++) {
         sampled[idx] = 0;
     }
     

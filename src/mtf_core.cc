@@ -43,6 +43,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <thread>
 #include <array>
 
+#include <random>
+
 // global lock to prevent race conditions on detected_blocks
 static std::mutex global_mutex;
 
@@ -491,6 +493,19 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     fill(fft_out_buffer.begin(), fft_out_buffer.end(), 0);
     
     esf_sampler->sample(edge_model, ordered, scanset, edge_length, img, bayer_img);
+    
+    #ifdef MDEBUG
+    // The noise is added sequentially, row-by-row, which should be most similar to the way
+    // noise is added in mtf_generate_rectangle
+    if (fabs(noise_sd) > 1e-8) {
+        std::mt19937 mt(noise_seed);
+        std::normal_distribution<double> d(0.0, 65536.0*noise_sd);
+        for (auto it=ordered.begin(); it != ordered.end(); it++) {
+            it->second = lrint(it->second + d(mt));
+        }
+    }
+    #endif
+    
     sort(ordered.begin(), ordered.end());
     
     if (ordered.size() < 10) {
