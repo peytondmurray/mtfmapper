@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Esf_model_loess : public Esf_model {
   public:
-    Esf_model_loess(double in_alpha=5.5) {
+    Esf_model_loess(double in_alpha=5.5, double ridge=5e-8) : ridge(ridge) {
     
         set_alpha(in_alpha);
     }
@@ -40,6 +40,9 @@ class Esf_model_loess : public Esf_model {
     virtual int build_esf(vector< Ordered_point  >& ordered, double* sampled, 
         const int fft_size, double max_distance_from_edge, vector<double>& esf, 
         bool allow_peak_shift=false);
+        
+  private:
+    double ridge;
 };
 
 

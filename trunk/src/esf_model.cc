@@ -35,15 +35,18 @@ const std::array<string, 2> Esf_model::esf_model_names  = {{
 }};
 
 void Esf_model::moving_average_smoother(vector<double>& smoothed, double* sampled, int fft_size, 
-    int fft_left, int fft_right, int left_trans, int right_trans) {
+    int fft_left, int fft_right, int left_trans, int right_trans, int width) {
+    
+    if (width < 1) return;
+    width = std::min(width, 32);
     
     smoothed[0] = sampled[0];
     for (int idx=1; idx < fft_size; idx++) {
         smoothed[idx] = smoothed[idx-1] + sampled[idx];
     }
-    constexpr int tpad = 16*2;
-    constexpr int bhw = 16;
-    constexpr int bhw_min = 1;
+    const int tpad = width*2;
+    const int bhw = width;
+    const int bhw_min = 1;
     for (int idx=std::max(fft_left + bhw, left_trans - tpad); idx < left_trans; idx++) {
         int lbhw = (left_trans - idx)*bhw/tpad + bhw_min;
         sampled[idx] = (smoothed[idx+lbhw] - smoothed[idx-lbhw-1])/double(2*lbhw+1);
@@ -262,11 +265,8 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
     
     
-    #if 0
     // Contrast-to-Noise-Ratio (CNR), effectively SNR for the S-E method
-    // The result is not currently used by anything, but it would be a shame
-    // to delete this code again
-    // TODO: we can use this to alter the strength of the moving_average_smoother above
+    // Only the esf_model_loess currently uses this, but to good effect
     // TODO: we can record this in the v2 format of edge_mtf_values.txt
     vector<double> smooth_esf(fft_size, 0);
     constexpr double bwidth = 1.85;
@@ -314,11 +314,6 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     double rmse = sqrt(sse);
     contrast = fabs(right_tail - left_tail);
     cnr = fabs(right_tail - left_tail) / rmse;
-    #else    
-    // just return some dummy values for now
-    cnr = 15000;
-    contrast = 1;
-    #endif
     
     return rval;
 }

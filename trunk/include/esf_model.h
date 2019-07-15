@@ -45,7 +45,7 @@ class Esf_model {
         bool allow_peak_shift=false) = 0;
         
     void moving_average_smoother(vector<double>& smoothed, double* sampled, int fft_size, 
-        int fft_left, int fft_right, int left_trans, int right_trans);
+        int fft_left, int fft_right, int left_trans, int right_trans, int width=16);
         
     int estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
         const int fft_size, bool allow_peak_shift, int effective_maxdot, vector<double>& mean,

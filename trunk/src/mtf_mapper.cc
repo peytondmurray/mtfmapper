@@ -139,8 +139,11 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_zscale("", "zscale", "Z-axis scaling of '-s' outputs [0,1]. A value of 0 means z-axis scale starts at zero, and 1.0 means z-axis starts from minimum measurement", false, 0.0, "scale factor", cmd);
     TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
     TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
-    TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 10.65, "unitless", cmd);
+    TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 13, "unitless", cmd);
     #ifdef MDEBUG
+    TCLAP::ValueArg<double> tc_ridge("", "ridge", "Specify ridge regression parameter [0,+infy)", false, 5e-8, "unitless", cmd);
+    TCLAP::ValueArg<double> tc_noise_seed("", "noise-seed", "Image noise seed", false, 10, "unitless", cmd);
+    TCLAP::ValueArg<double> tc_noise_sd("", "noise-sd", "Image noise sd", false, 0, "unitless", cmd);
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
 
@@ -438,7 +441,18 @@ int main(int argc, char** argv) {
         if (tc_esf_model.getValue().compare("kernel") == 0) {
             mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_kernel()));
         } else { // only alternative at the moment is "loess"
+            #ifdef MDEBUG
+            mtf_core.set_esf_model(
+                std::unique_ptr<Esf_model>(
+                    new Esf_model_loess(
+                        tc_alpha.isSet() ? tc_alpha.getValue() : 5.5,
+                        tc_ridge.getValue()
+                    )
+                )
+            );
+            #else
             mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_loess()));
+            #endif
         }
         if (tc_alpha.isSet()) {
             mtf_core.set_esf_model_alpha_parm(tc_alpha.getValue());
@@ -481,6 +495,10 @@ int main(int argc, char** argv) {
             }
             mtf_core.set_mtf_contrast(contrast / 100.0);
         }
+        #ifdef MDEBUG
+        mtf_core.noise_seed = tc_noise_seed.getValue();
+        mtf_core.noise_sd = tc_noise_sd.getValue();
+        #endif
         
         Mtf_core_tbb_adaptor ca(&mtf_core);
         
