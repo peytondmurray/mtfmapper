@@ -597,7 +597,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
                     }
                 }
             }
-            for (int idx = NYQUIST_FREQ * 4 - sgh; idx < NYQUIST_FREQ * 4; idx++) {
+            for (int idx = NYQUIST_FREQ * 4 - sgh - 2; idx < NYQUIST_FREQ * 4; idx++) {
                 smoothed[idx] = magnitude[idx];
             }
             
