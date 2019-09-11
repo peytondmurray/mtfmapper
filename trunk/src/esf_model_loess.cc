@@ -57,6 +57,63 @@ static double interpolate(double cnr, const vector< std::pair<double, double> >&
     }
 }
 
+static void local_moving_average_smoother(vector<double>& smoothed, double* sampled, int fft_size, 
+    int fft_left, int fft_right, int left_trans, int right_trans, int width) {
+    
+    if (width < 1) return;
+    width = std::min(width, 32);
+    if (left_trans - fft_left <= 1) return;
+    if (fft_right - right_trans <= 1) return;
+    
+    smoothed[0] = sampled[0];
+    for (int idx=1; idx < fft_size; idx++) {
+        smoothed[idx] = smoothed[idx-1] + sampled[idx];
+    }
+    
+    const int bhw = width;
+    const int bhw_min = 1;
+    left_trans = std::max(left_trans, fft_left + bhw);
+    for (int idx=std::max(fft_left, bhw + 1); idx < left_trans; idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+    double delta = sampled[left_trans] - (smoothed[left_trans+bhw] - smoothed[left_trans-bhw-1])/double(2*bhw+1);
+    for (int idx=left_trans; idx < fft_size; idx++) {
+        sampled[idx] -= delta;
+        smoothed[idx] -= delta;
+    }
+    right_trans = std::min(right_trans, fft_right - bhw - 1);
+    delta = sampled[right_trans] - (smoothed[right_trans+bhw] - smoothed[right_trans-bhw-1])/double(2*bhw+1);
+    for (int idx=right_trans; idx < std::min(fft_right, fft_size-bhw-1); idx++) {
+        sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
+    }
+    for (int idx=right_trans; idx < fft_size; idx++) {
+        sampled[idx] += delta;
+    }
+}
+
+static void gauss_smooth(vector<double>& smoothed, double* sampled, size_t start_idx, size_t end_idx, int strength=1, double edge_value=0.5) {
+    
+    const int sgh = std::min(strength, 8);
+    double w[2*8+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    const double c = -log(edge_value);
+    for (int x=-sgh; x <= sgh; x++) {
+        w[x+sgh] = exp(-c * (double(x)/double(sgh)) * (double(x)/double(sgh)));
+    }
+    for (int idx=start_idx; idx <= int(end_idx); idx++) {
+        smoothed[idx] = 0;
+        double wsum = 0;
+        for (int x=-sgh; x <= sgh; x++) {
+            smoothed[idx] += sampled[idx+x] * w[x+sgh];
+            wsum += w[x+sgh];
+        }
+        smoothed[idx] /= wsum;
+    }
+    
+    for (int idx=start_idx; idx <= int(end_idx); idx++) {
+        sampled[idx] = smoothed[idx];
+    }
+}
+
 int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double max_distance_from_edge, vector<double>& esf, 
     bool allow_peak_shift) {
@@ -96,13 +153,11 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     int min_left_bin = ordered.front().first*8 + fft_size/2 + 1;
     int max_right_bin = ordered.back().first*8 + fft_size/2 - 1;
     
-    // TODO: I still see a lot of noise in the transition area (0.75*twidth*0.125 up to 1.0*twidth + model_switch_bias)
-    // so some additional smoothing in this area will help
-    
     vector< std::pair<double, double> > ridge_lut = {
-        {20, 250},{22, 231},{24, 190},{26, 163},{28, 143},{30, 130},{35, 106},{40, 93},{45, 87},
-        {50, 78},{60, 67},{70, 60},{80, 55},{90, 51},{99, 47},{124, 42},{149, 37},{174, 34},{199, 32},
-        {298, 26},{398, 13},{497, 8},{596, 2},{696, 2},{794, 1},{894, 1},{1000, 5e-8}
+        {4, 95}, {5, 92}, {6, 89}, {7, 86}, {8, 83}, {9, 79}, {10, 76}, {12, 70}, {14, 63}, {16, 58}, 
+        {18, 53}, {20, 49}, {22, 46}, {24, 43}, {26, 42}, {28, 40}, {30, 39}, {35, 38}, {40, 38}, 
+        {45, 36}, {50, 34}, {60, 30}, {70, 27}, {80, 22}, {90, 14}, {100, 7}, {124, 2}, {149, 2},
+        {794, 1}, {894, 1}, {1000, 5e-8}
     };
     const double ridge_parm = interpolate(cnr, ridge_lut);
     
@@ -156,16 +211,23 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
                 weights[b] = 1.0;
             } else {
                 // blend in the box filter, otherwise f/16 LSFs lose some detail right at the foot
-                const double upper_thresh = 2.0*0.125*twidth;
-                const double lower_thresh = 0.125*twidth;
-                constexpr double min_span = 0.126; // such a narrow interval can produce empty bins, handled below
-                constexpr double max_span = 1.0;
+                const double upper_thresh = 2.25*0.125*twidth;
+                const double mid_thresh = 2.0*0.125*twidth;
+                const double lower_thresh = 0.125*twidth + model_switch_bias;
+                constexpr double min_span = 0.24; // such a narrow interval can produce empty bins, handled below
+                constexpr double mid_span = 1.0;
+                constexpr double max_span = 1.5;
                 double span = min_span;
                 if (fabs(mid) >= upper_thresh) {
                     span = max_span;
                 } else {
-                    double t = (fabs(mid) - lower_thresh)/(upper_thresh - lower_thresh);
-                    span = min_span + t*(max_span - min_span);
+                    if (fabs(mid) >= mid_thresh) {
+                        double t = (fabs(mid) - mid_thresh)/(upper_thresh - mid_thresh);
+                        span = mid_span + t*(max_span - mid_span);
+                    } else {
+                        double t = (fabs(mid) - lower_thresh)/(mid_thresh - lower_thresh);
+                        span = min_span + t*(mid_span - min_span);
+                    }
                 }
                 left_it = lower_bound(left_it, right_it, mid - span);
                 right_it = lower_bound(left_it, right_it, mid + span);
@@ -205,7 +267,7 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     }
     
     // estimate a reasonable value for the non-missing samples
-    constexpr int nm_target = 8*3;
+    int nm_target = cnr > 500 ? 8 : 8*3;
     int nm_count = 1;
     double l_nm_mean = sampled[left_non_missing];
     for (int idx=left_non_missing+1; idx < fft_size/2 && nm_count < nm_target; idx++) {
@@ -227,8 +289,16 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     r_nm_mean /= nm_count;
     
     // now just pad out the ends of the sequences with the last non-missing values
+    for (int idx=left_non_missing+4; idx >= left_non_missing; idx--) {
+        double w = (idx - left_non_missing + 1)/5.0;
+        sampled[idx] = w*sampled[idx] + (1.0 - w)*l_nm_mean;
+    }
     for (int idx=left_non_missing-1; idx >= 0; idx--) {
         sampled[idx] = l_nm_mean;
+    }
+    for (int idx=right_non_missing-4; idx <= right_non_missing; idx++) {
+        double w = -(idx - right_non_missing - 1)/5.0;
+        sampled[idx] = w*sampled[idx] + (1.0 - w)*r_nm_mean;
     }
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = r_nm_mean;
@@ -236,16 +306,52 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     
     thread_local vector<double> smoothed(fft_size, 0);
     
-    vector< std::pair<double, double> > smoothing_lut = {
-        {4, 30},{5, 30},{6, 30},{7, 30},{8, 30},{9, 30},{10, 30},{12, 30},{14, 30},{16, 30},{18, 30},
-        {20, 30},{22, 30},{24, 30},{26, 30},{28, 30},{30, 30},{35, 30},{40, 30},{45, 30},{49, 30},
-        {59, 30},{69, 30},{79, 30},{89, 21},{99, 21},{124, 19},{148, 14},{173, 14},{198, 14},
-        {297, 13},{395, 6},{493, 6},{591, 1},{690, 1},{787, 0},{885, 0}
+    // smooth out the ESF before the calculate the LSF
+    // the degree of smoothing adapts to the estimated CNR
+    // the ESF is split into segments, with different types and levels of smoothing applied to different segments
+    
+    const vector< std::pair<double, double> > extreme_tails_lut = {
+        {6.996, 30},{7.990, 30},{8.985, 29},{9.979, 29},{11.968, 25},{13.958, 24},{15.947, 24},{17.937, 24},
+        {19.926, 23},{21.915, 23},{23.904, 22},{25.894, 19},{27.883, 18},{29.874, 17},{34.846, 16},{39.822, 15},
+        {44.795, 14},{49.770, 14},{59.715, 13},{69.671, 13},{79.614, 12},{89.571, 12},{99.506, 11},{124.374, 10},
+        {149.222, 10},{174.085, 9},{198.973, 9},{298.480, 8},{397.781, 8},{497.074, 7},{595.965, 4},{695.846, 4}
+    };
+    int sw_width = lrint(interpolate(cnr, extreme_tails_lut));
+    int lt = fft_size/2 - 2*twidth;
+    int rt = fft_size/2 + 2*twidth;
+    int prev_lt = lt - 4;
+    int prev_rt = rt + 4;
+    for (int rep=0; rep < 1; rep++) {
+        local_moving_average_smoother(smoothed, sampled, fft_size, 0, fft_size, lt, rt, sw_width);
+    }
+    
+    const vector< std::pair<double, double> > transition_lut = {
+        {99.5, 8},{124.4, 8},{149.2, 7},{174.1, 7},{199.0, 6},{298.5, 5},{397.8, 4},{497.1, 3},{596.0, 3},
+        {695.8, 3},{794.2, 2},{893.9, 2},{1000,0}, {1100,0}
+    };
+    sw_width = lrint(interpolate(cnr, transition_lut));
+    lt = fft_size/2 - 1.25*twidth;
+    rt = fft_size/2 + 1.25*twidth;
+    if (sw_width > 0) {
+        gauss_smooth(smoothed, sampled, prev_lt, lt, sw_width, 0.5);
+        gauss_smooth(smoothed, sampled, rt, prev_rt, sw_width, 0.5);
+    }
+    prev_lt = lt - 2;
+    prev_rt = rt + 2;
+    
+    const vector< std::pair<double, double> > core_lut = {
+        {4.0, 7},{5.0, 6},{6.0, 6},{7.0, 5},{8.0, 5},{9.0, 5},{10.0, 5},{12.0, 4},{14.0, 4},{15.9, 4},
+        {17.9, 3},{19.9, 3},{21.9, 3},{23.9, 3},{25.9, 3},{27.9, 3},{29.9, 3},{34.8, 2},{39.8, 2},{44.8, 2},
+        {49.8, 2},{59.7, 2},{69.7, 1},{79.6, 1},{89.6, 1},{99.5, 1},{124.4, 1},{149.2, 1},{174.1, 1},
+        {199.0, 1},{298.5, 0},{397.8, 0}
     };
     
-    int sw_width = lrint(interpolate(cnr, smoothing_lut));
+    sw_width = lrint(interpolate(cnr, core_lut));
+    lt = fft_size/2 - 0.75*twidth;
+    rt = fft_size/2 + 0.75*twidth;
     if (sw_width > 0) {
-        moving_average_smoother(smoothed, sampled, fft_size, fft_left, fft_right, left_trans, right_trans, sw_width);
+        gauss_smooth(smoothed, sampled, prev_lt, lt, sw_width, 0.5);
+        gauss_smooth(smoothed, sampled, rt, prev_rt, sw_width, 0.5);
     }
     
     int lidx = 0;
