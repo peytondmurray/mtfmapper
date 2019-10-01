@@ -117,7 +117,7 @@ static void gauss_smooth(vector<double>& smoothed, double* sampled, size_t start
 int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, double max_distance_from_edge, vector<double>& esf, 
     bool allow_peak_shift) {
-        
+    
     thread_local vector<double> weights(fft_size, 0);
     thread_local vector<double> mean(fft_size, 0);
 
@@ -309,12 +309,12 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     // smooth out the ESF before the calculate the LSF
     // the degree of smoothing adapts to the estimated CNR
     // the ESF is split into segments, with different types and levels of smoothing applied to different segments
-    
     const vector< std::pair<double, double> > extreme_tails_lut = {
-        {6.996, 30},{7.990, 30},{8.985, 29},{9.979, 29},{11.968, 25},{13.958, 24},{15.947, 24},{17.937, 24},
-        {19.926, 23},{21.915, 23},{23.904, 22},{25.894, 19},{27.883, 18},{29.874, 17},{34.846, 16},{39.822, 15},
-        {44.795, 14},{49.770, 14},{59.715, 13},{69.671, 13},{79.614, 12},{89.571, 12},{99.506, 11},{124.374, 10},
-        {149.222, 10},{174.085, 9},{198.973, 9},{298.480, 8},{397.781, 8},{497.074, 7},{595.965, 4},{695.846, 4}
+        {4.012, 27}, {5.006, 26}, {6.001, 25}, {6.996, 25}, {7.990, 24}, {8.985, 23}, {9.979, 22}, {11.968, 22}, 
+        {13.958, 21}, {15.947, 20}, {17.937, 20}, {19.926, 19}, {21.915, 19}, {23.904, 19}, {25.894, 18}, 
+        {27.884, 18}, {29.874, 17}, {34.846, 16}, {39.822, 16}, {44.795, 15}, {49.770, 14}, {59.715, 12}, 
+        {69.671, 12}, {79.614, 11}, {89.571, 10}, {99.506, 9}, {124.374, 8}, {149.222, 8}, {174.085, 7}, 
+        {198.973, 7}, {298.480, 7}, {397.781, 6}, {497.074, 6}, {595.965, 5}, {695.846, 4}, {794.242, 4}
     };
     int sw_width = lrint(interpolate(cnr, extreme_tails_lut));
     int lt = fft_size/2 - 2*twidth;
@@ -345,7 +345,6 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
         {49.8, 2},{59.7, 2},{69.7, 1},{79.6, 1},{89.6, 1},{99.5, 1},{124.4, 1},{149.2, 1},{174.1, 1},
         {199.0, 1},{298.5, 0},{397.8, 0}
     };
-    
     sw_width = lrint(interpolate(cnr, core_lut));
     lt = fft_size/2 - 0.75*twidth;
     rt = fft_size/2 + 0.75*twidth;
