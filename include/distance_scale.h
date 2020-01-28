@@ -231,6 +231,8 @@ class Distance_scale {
                             1.0
                         )
                     );
+                    fid_img_points.push_back(cv::Point2d(e.centroid_x, e.centroid_y));
+                    fid_world_points.push_back(cv::Point3d(ba_world_points.back()[0], ba_world_points.back()[1], ba_world_points.back()[2]));
                 }
                 
                 vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> >  > projection_matrices;
@@ -782,6 +784,9 @@ class Distance_scale {
     double pitch_angle = 0;
     
     double page_scale_factor = 1;
+    
+    vector<cv::Point2d> fid_img_points;
+    vector<cv::Point3d> fid_world_points;
     
   private:
     template <typename T> int sgn(T val) const {

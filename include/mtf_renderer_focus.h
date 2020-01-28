@@ -236,8 +236,27 @@ class Mtf_renderer_focus : public Mtf_renderer {
         
         if (ellipses) {
             cv::Scalar ellipse_col(200,200,0);
+            cv::Scalar vec_col(50,50,200);
+            constexpr double error_tolerance = 1.5; // allow roughly 1 pixel error in each axis, with a little bit of a tolerance
             for (auto e: *ellipses) {
                 if (!e.valid) continue;
+                
+                int fid_idx = -1;
+                for (size_t li=0; li < distance_scale.fid_img_points.size(); li++) {
+                    if (cv::norm(distance_scale.fid_img_points[li] - cv::Point2d(e.centroid_x, e.centroid_y)) < 0.001) {
+                        fid_idx = li;
+                    }
+                }
+                Point2d fid_offset(0, 0);
+                if (fid_idx >= 0) {
+                    cv::Point3d& p3d = distance_scale.fid_world_points[fid_idx];
+                    Point2d backproj_pt = distance_scale.world_to_image(p3d.x, p3d.y, p3d.z);
+                    fid_offset = backproj_pt - distance_scale.fid_img_points[fid_idx];
+                }
+                if (cv::norm(fid_offset) < error_tolerance) { 
+                    fid_idx = -1; // skip this fiducial since the error is small enough
+                }
+                
                 Point2d prev(0,0);
                 for (double theta=0; theta < 2*M_PI; theta += M_PI/64.0) {
                     double synth_x = e.major_axis * cos(theta);
@@ -254,9 +273,24 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     Point2d current(rot_x, rot_y);
                     if (theta > 0) {
                         cv::line(merged, prev, current, ellipse_col, 1, CV_AA);
+                        
+                        if (fid_idx >= 0) {
+                            cv::line(merged, prev + fid_offset, current + fid_offset, vec_col, 1, CV_AA);
+                        }
                     }
                     
                     prev = current;
+                }
+            }
+            
+            for (size_t li=0; li < distance_scale.fid_img_points.size(); li++) {
+                cv::Point3d& p3d = distance_scale.fid_world_points[li];
+                cv::Point2d& p2d = distance_scale.fid_img_points[li];
+                
+                Point2d backproj_pt = distance_scale.world_to_image(p3d.x, p3d.y, p3d.z);
+                
+                if (cv::norm(p2d - backproj_pt) >= error_tolerance) { 
+                    cv::line(merged, p2d, backproj_pt, vec_col, 1, CV_AA);
                 }
             }
         }
@@ -371,7 +405,11 @@ class Mtf_renderer_focus : public Mtf_renderer {
         draw.text(Point2d(50, initial_rows + ts.height*2*1.75), black, "Estimated chart distance=%.2lf mm.", distance_scale.centre_depth);
         
         
-        sprintf(tbuffer, "Bundle adjustment RMSE=%.3lf pixels (ideal < 1)", distance_scale.bundle_rmse);
+        if (distance_scale.bundle_rmse >= 1.5) {
+            sprintf(tbuffer, "Test chart not flat? Large geom. calib. error of %.1lf pixels", distance_scale.bundle_rmse);
+        } else {
+            sprintf(tbuffer, "Bundle adjustment RMSE=%.3lf pixels (ideal < 1)", distance_scale.bundle_rmse);
+        }
         draw.text(Point2d(50, initial_rows + ts.height*3*1.75), black, "%s", tbuffer);
         
         ts = cv::getTextSize(tbuffer, font, 1, 1, &baseline);
