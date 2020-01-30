@@ -168,6 +168,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             }
             errsum /= wsum;
             logger.debug("iter %d err: %lg dc=%lg\n", iter, errsum, dccount / double(data.size()));
+            cf.order_m = 2; // reset the denominator order, it will be reduced if necessary
             sol = rpfit(cf);
             if (iter > 0 && (prev_err - errsum)/prev_err < 0.0001) {
                 logger.debug("bailing out at iter %d\n", iter);
@@ -194,7 +195,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             for (size_t j=i; j < data.size(); j += 10) {
                 mc_data.push_back(data[j]);
             }
-            Ratpoly_fit mc_cf(mc_data, 4, 2);
+            Ratpoly_fit mc_cf(mc_data, 4, 2, true);
             VectorXd mc_sol = rpfit(mc_cf);
             
             double mc_peak = mc_cf.peak(mc_sol);
@@ -516,52 +517,67 @@ class Mtf_renderer_focus : public Mtf_renderer {
             cf.ysf = ysf = 1.0/ysf;
         }
         
-        int tdim = cf.dimension();
-        MatrixXd cov = MatrixXd::Zero(tdim, tdim);
-        VectorXd b = VectorXd::Zero(tdim);
-        VectorXd a = VectorXd::Zero(tdim);
-        
         VectorXd sol;
+        bool done = false;
         
-        for (int iter=0; iter < 1; iter++) {
-            cov.setZero();
-            b.setZero();
-            a.setZero();
+        while (!done) {
+            int tdim = cf.dimension();
+            MatrixXd cov = MatrixXd::Zero(tdim, tdim);
+            VectorXd b = VectorXd::Zero(tdim);
+            VectorXd a = VectorXd::Zero(tdim);
             
-            for (size_t i=0; i < pts_row.size(); i++) {
-                const Sample& sp = pts_row[i];
-                double w = sp.weight * sp.yweight;
-                a[0] = 1*w;
-                double prod = sp.x * cf.xsf; // top poly
-                for (int j=1; j <= cf.order_n; j++) {
-                    a[j] = prod*w;
-                    prod *= sp.x * cf.xsf;
-                }
-                prod = sp.x*cf.xsf; // bottom poly
-                for (int j=1; j <= cf.order_m; j++) {
-                    a[j+cf.order_n] = prod*w*sp.y*cf.ysf;
-                    prod *= sp.x*cf.xsf;
+            
+            
+            for (int iter=0; iter < 1; iter++) {
+                cov.setZero();
+                b.setZero();
+                a.setZero();
+                
+                for (size_t i=0; i < pts_row.size(); i++) {
+                    const Sample& sp = pts_row[i];
+                    double w = sp.weight * sp.yweight;
+                    a[0] = 1*w;
+                    double prod = sp.x * cf.xsf; // top poly
+                    for (int j=1; j <= cf.order_n; j++) {
+                        a[j] = prod*w;
+                        prod *= sp.x * cf.xsf;
+                    }
+                    prod = sp.x*cf.xsf; // bottom poly
+                    for (int j=1; j <= cf.order_m; j++) {
+                        a[j+cf.order_n] = prod*w*sp.y*cf.ysf;
+                        prod *= sp.x*cf.xsf;
+                    }
+                    
+                    for (int col=0; col < tdim; col++) { 
+                        for (int icol=0; icol < tdim; icol++) { // build covariance of design matrix : A'*A
+                            cov(col, icol) += a[col]*a[icol];
+                        }
+                        b[col] += cf.base_value*a[col]*sp.y*cf.ysf*w; // build rhs of system : A'*b
+                    }
                 }
                 
-                for (int col=0; col < tdim; col++) { 
-                    for (int icol=0; icol < tdim; icol++) { // build covariance of design matrix : A'*A
-                        cov(col, icol) += a[col]*a[icol];
-                    }
-                    b[col] += cf.base_value*a[col]*sp.y*cf.ysf*w; // build rhs of system : A'*b
+                for (int col=cf.order_n+1; col < cov.cols(); col++) {
+                    cov.col(col) = -cov.col(col);
                 }
+                
+                sol = cov.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
             }
             
-            for (int col=cf.order_n+1; col < cov.cols(); col++) {
-                cov.col(col) = -cov.col(col);
+            // now perform non-linear optimization
+            
+            if (refine) {
+                sol = cf.gauss_newton_armijo(sol);
             }
             
-            sol = cov.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-        }
-        
-        // now perform non-linear optimization
-        
-        if (refine) {
-            sol = cf.gauss_newton_armijo(sol);
+            if (cf.has_poles(sol)) {
+                cf.order_m--;
+                if (!cf.silent) {
+                    logger.debug("reduced order: (%d, %d)\n", cf.order_n, cf.order_m);
+                }
+                done = false;
+            } else {
+                done = true;
+            }
         }
         
         return sol;

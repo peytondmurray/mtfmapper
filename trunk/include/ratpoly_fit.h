@@ -54,9 +54,9 @@ class Sample {
 class Ratpoly_fit  {
   public:
     
-    Ratpoly_fit(const vector<Sample>& data, int order_n, int order_m)
+    Ratpoly_fit(const vector<Sample>& data, int order_n, int order_m, bool silent=false)
     : data(data), order_n(order_n), order_m(order_m), base_value(1.0), 
-      xsf(1), ysf(1), pscale(0.1), evaluation_count(0) {}
+      xsf(1), ysf(1), pscale(0.1), silent(silent), evaluation_count(0) {}
     
     
     virtual int dimension(void) {
@@ -172,6 +172,7 @@ class Ratpoly_fit  {
     double xsf;
     double ysf;
     double pscale;
+    bool silent;
     
     unsigned long long evaluations(void) {
         return evaluation_count;

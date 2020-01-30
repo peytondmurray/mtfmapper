@@ -179,11 +179,11 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
         return false; // cannot have poles
     case 1:
         {
-            double pole = -1 / v[order_n+1];
+            double pole = (-1.0 / v[order_n+1])/xsf;
             
             
-            if (pole >= xmin && pole <= xmax) {
-                printf("pole at %lf (v=%lf)\n", -1/v[order_n+1], v[order_n+1]);
+            if (!silent && pole >= xmin && pole <= xmax) {
+                logger.debug("pole at %lf on [%lf, %lf]\n", pole, xmin, xmax);
             }
             
             
@@ -196,11 +196,11 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
             double c = base_value;
             double sb = b < 0 ? -1 : 1;
             double q = -0.5*(b + sb*sqrt(b*b - 4*a*c));
-            double pole1 = q/a;
-            double pole2 = c/q;
+            double pole1 = (q/a)/xsf;
+            double pole2 = (c/q)/xsf;
             
-            if ((pole1 >= xmin && pole1 <= xmax) || (pole2 >= xmin && pole2 <= xmax)) {
-                printf("pole at %lf or %lf on [%lf, %lf]\n", pole1, pole2, xmin, xmax);
+            if (!silent && ((pole1 >= xmin && pole1 <= xmax) || (pole2 >= xmin && pole2 <= xmax))) {
+                logger.debug("pole at %lf or %lf on [%lf, %lf]\n", pole1, pole2, xmin, xmax);
             }
                           
             return (pole1 >= xmin && pole1 <= xmax) ||
