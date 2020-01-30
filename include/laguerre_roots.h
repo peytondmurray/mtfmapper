@@ -36,7 +36,14 @@ using std::vector;
 
 typedef std::complex<double> cplex;
 
-bool laguerre(vector<cplex>& a, cplex& x, int& its);
-void lroots(vector<cplex>& a, vector<cplex>& roots);
+// for both routines, the vector a contains the polynomial coefficients of the polynomial
+// f(x) = sum_{i=0}^{m} a[i]*x^i
+// where m = a.size() - 1 is the order of the polynomial
+
+// x is the initial guess to a single root, and laguerre refines that root
+bool laguerre(const vector<cplex>& a, cplex& x, int& its);
+
+// iteratively deflate the polynomial, using laguerre to refine each root
+void lroots(const vector<cplex>& a, vector<cplex>& roots, bool polish = false);
 
 #endif

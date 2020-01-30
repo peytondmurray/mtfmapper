@@ -29,7 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/laguerre_roots.h"
 #include <limits>
 
-bool laguerre(vector<cplex>& a, cplex& x, int& its) {
+bool laguerre(const vector<cplex>& a, cplex& x, int& its) {
     const int MR=8;
     const int MT=10;
     const int MAXIT=MT*MR;
@@ -75,7 +75,7 @@ bool laguerre(vector<cplex>& a, cplex& x, int& its) {
     return false;
 }
 
-void lroots(vector<cplex>& a, vector<cplex>& roots) {
+void lroots(const vector<cplex>& a, vector<cplex>& roots, bool polish) {
     const double EPS = 1e-14;
     int its;
     
@@ -97,6 +97,12 @@ void lroots(vector<cplex>& a, vector<cplex>& roots) {
             cplex c = ad[jj];
             ad[jj] = b;
             b = x*b + c;
+        }
+    }
+    
+    if (polish) {
+        for (int j=0; j < m; j++) {
+            laguerre(a, roots[j], its);
         }
     }
 }
