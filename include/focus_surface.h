@@ -141,7 +141,8 @@ class Focus_surface  {
                     dummy_data = pts_row;
                     best_fit.order_n = cf.order_n;
                     best_fit.order_m = cf.order_m;
-                    best_fit.xsf = cf.xsf;
+                    best_fit.xs_min = cf.xs_min;
+                    best_fit.xs_scale = cf.xs_scale;
                     best_fit.ysf = cf.ysf;
                 }
                 
@@ -184,7 +185,7 @@ class Focus_surface  {
             double errsum = 0;
             double wsum = 0;
             for (size_t i=0; i < peak_pts.size(); i++) {
-                double y = cf.rpeval(sol, peak_pts[i].x*cf.xsf) / cf.ysf;
+                double y = cf.rpeval(sol, cf.scale(peak_pts[i].x)) / cf.ysf;
                 double e = fabs(y - peak_pts[i].y);
                 peak_pts[i].yweight = iweights[i] / max(0.0001, e);
                 
@@ -230,7 +231,7 @@ class Focus_surface  {
             mc_pf.push_back(mc_cf.rpeval(mc_sol, 0)/mc_cf.ysf);
             
             for (double y=-maxy; y < maxy; y += 10) {
-                double x = mc_cf.rpeval(mc_sol, y*mc_cf.xsf)/mc_cf.ysf;
+                double x = mc_cf.rpeval(mc_sol, mc_cf.scale(y))/mc_cf.ysf;
                 mc_curve[y].push_back(x);
             }
             
@@ -243,7 +244,7 @@ class Focus_surface  {
         }
         
         for (double y=-maxy; y < maxy; y += 1) {
-            double x = cf.rpeval(sol, y*cf.xsf)/cf.ysf;
+            double x = cf.rpeval(sol, cf.scale(y))/cf.ysf;
             ridge.push_back(Point2d(x, y));
         }
         
@@ -273,7 +274,7 @@ class Focus_surface  {
         double curve_offset = curve_peak - x_inter;
         logger.debug("curve peak = %lf, x_inter = %lf\n", curve_peak, x_inter);
         for (double cx=curve_min; cx <= curve_max; cx += 1) {
-            double mtf = best_fit.rpeval(best_sol, cx*best_fit.xsf)/best_fit.ysf;
+            double mtf = best_fit.rpeval(best_sol, best_fit.scale(cx))/best_fit.ysf;
             double depth = 0;
             distance_scale.estimate_depth_world_coords(cx - curve_offset, 0.0, depth);
             fprintf(profile, "%lf %lf\n", depth, mtf);
@@ -285,13 +286,16 @@ class Focus_surface  {
         const vector<Sample>& pts_row = cf.get_data();
         
         if (scale) {
-            double xsf=0;
+            double xmin = 1e50;
+            double xmax = -1e50;
             double ysf=0;
             for (size_t i=0; i < pts_row.size(); i++) {
-                xsf = max(xsf, fabs(pts_row[i].x));
+                xmin = std::min(xmin, pts_row[i].x);
+                xmax = std::max(xmax, pts_row[i].x);
                 ysf = max(ysf, fabs(pts_row[i].y));
             }
-            cf.xsf = xsf = 1.0/xsf;
+            cf.xs_min = 0.5*(xmin + xmax);
+            cf.xs_scale = 2.0/(xmax - xmin);
             cf.ysf = ysf = 1.0/ysf;
         }
         
@@ -311,15 +315,13 @@ class Focus_surface  {
                 const Sample& sp = pts_row[i];
                 double w = sp.weight * sp.yweight;
                 a[0] = 1*w;
-                double prod = sp.x * cf.xsf; // top poly
+                double prod = cf.scale(sp.x); // top poly
                 for (int j=1; j <= cf.order_n; j++) {
-                    a[j] = prod*w;
-                    prod *= sp.x * cf.xsf;
+                    a[j] = w*cf.cheb(j, prod);
                 }
-                prod = sp.x*cf.xsf; // bottom poly
+                // bottom poly
                 for (int j=1; j <= cf.order_m; j++) {
-                    a[j+cf.order_n] = prod*w*sp.y*cf.ysf;
-                    prod *= sp.x*cf.xsf;
+                    a[j+cf.order_n] = cf.cheb(j, prod)*w*sp.y*cf.ysf;
                 }
                 
                 for (int col=0; col < tdim; col++) { 
