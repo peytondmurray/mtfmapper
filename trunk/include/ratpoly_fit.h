@@ -56,7 +56,7 @@ class Ratpoly_fit  {
     
     Ratpoly_fit(const vector<Sample>& data, int order_n, int order_m, bool silent=false)
     : data(data), order_n(order_n), order_m(order_m), base_value(1.0), 
-      xsf(1), ysf(1), pscale(0.1), silent(silent), evaluation_count(0) {}
+      ysf(1), pscale(0.1), silent(silent), evaluation_count(0) {}
     
     
     virtual int dimension(void) {
@@ -67,54 +67,15 @@ class Ratpoly_fit  {
         double top_val = v[0];
         double p = x;
         for (int n=1; n <= order_n; n++) {
-            top_val += p*v[n];
-            p *= x;
+            top_val += cheb(n, p)*v[n];
         }
         double bot_val = base_value;
         p = x;
         for (int m=0; m < order_m; m++) {
-            bot_val += p*v[m+order_n+1];
-            p *= x;
+            bot_val += cheb(m+1, p)*v[m+order_n+1];
         }
         
         return top_val / bot_val;
-    }
-    
-    inline bool rp_deriv_eval(const VectorXd& v, double x, VectorXd& d, double& f) {
-        // if x falls on a pole, we are in trouble
-        // and should probably just return the zero vector?
-    
-        VectorXd dp = VectorXd::Zero(v.rows());
-        VectorXd dq = VectorXd::Zero(v.rows());
-        
-        double top_val = v[0];
-        double p = 1;
-        dp[0] = 1;
-        for (int n=1; n <= order_n; n++) {
-            p *= x;
-            dp[n] = p;
-            top_val += p*v[n];
-        }
-        double bot_val = base_value;
-        p = 1;
-        for (int m=0; m < order_m; m++) {
-            p *= x;
-            dq[m+order_n+1] = p;
-            bot_val += p*v[m+order_n+1];
-        }
-        
-        double den = bot_val*bot_val;
-        if (den < 1e-12) {
-            d.setZero();
-            return false; // return zero derivative at pole
-        }
-        
-        f = top_val / bot_val;
-        den = 1.0/den;
-        
-        d = (dp*bot_val - top_val*dq) * den;
-        
-        return true;
     }
     
     inline VectorXd rp_deriv(const VectorXd& v, double x, double& f) {
@@ -127,19 +88,15 @@ class Ratpoly_fit  {
         VectorXd dq = VectorXd::Zero(v.rows());
         
         double top_val = v[0];
-        double p = 1;
         dp[0] = 1;
         for (int n=1; n <= order_n; n++) {
-            p *= x;
-            dp[n] = p;
-            top_val += p*v[n];
+            dp[n] = cheb(n, x);
+            top_val += cheb(n, x)*v[n];
         }
         double bot_val = base_value;
-        p = 1;
         for (int m=0; m < order_m; m++) {
-            p *= x;
-            dq[m+order_n+1] = p;
-            bot_val += p*v[m+order_n+1];
+            dq[m+order_n+1] = cheb(m+1, x);
+            bot_val += cheb(m+1, x)*v[m+order_n+1];
         }
         
         double den = bot_val*bot_val;
@@ -157,6 +114,21 @@ class Ratpoly_fit  {
         return data;
     }
     
+    inline double cheb(int order, double x) {
+        double y = 0;
+        switch (order) {
+            case 0: y = 1; break;
+            case 1: y = x; break;
+            case 2: y = 2*x*x - 1; break;
+            case 3: y = 4*x*x*x - 3*x; break;
+            case 4: y = 8*x*x*x*x - 8*x*x + 1; break;
+            case 5: y = 16*x*x*x*x*x - 20*x*x*x + 5*x; break;
+            case 6: y = 32*x*x*x*x*x*x - 48*x*x*x*x + 18*x*x - 1; break;
+            default: fprintf(stderr, "Unsupported Cheb poly order requested!\n"); break;
+        }
+        return y;
+    }
+    
     double evaluate(VectorXd& v);
     VectorXd evaluate_derivative(VectorXd& v);
     VectorXd gauss_newton_direction(VectorXd& v, VectorXd& deriv, double& fsse);
@@ -169,10 +141,20 @@ class Ratpoly_fit  {
     int order_m;
     double base_value;
     
-    double xsf;
     double ysf;
     double pscale;
     bool silent;
+    
+    double xs_min;
+    double xs_scale;
+    
+    inline double scale(double x) const {
+        return (x - xs_min) * xs_scale;
+    }
+    
+    inline double unscale(double x) const {
+        return x / xs_scale + xs_min;
+    }
     
     unsigned long long evaluations(void) {
         return evaluation_count;

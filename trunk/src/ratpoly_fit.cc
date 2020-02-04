@@ -32,34 +32,12 @@ double Ratpoly_fit::evaluate(VectorXd& v) {
     double err = 0;
     for (size_t i=0; i < data.size(); i++) {
         double w = data[i].weight * data[i].yweight;
-        double z = rpeval(v, data[i].x*xsf);
+        double z = rpeval(v, scale(data[i].x));
         double e = data[i].y*ysf - z;
         err += e*e*w;
     }
     evaluation_count++;
     return err*0.5;
-}
-
-VectorXd Ratpoly_fit::evaluate_derivative(VectorXd& v) {
-    // just assume "fit==LS" for now
-    
-    VectorXd deriv(v.rows());
-    deriv.setZero();
-    VectorXd d(v.rows());
-    for (size_t i=0; i < data.size(); i++) {
-        double w = data[i].weight * data[i].yweight;
-        double z=0;
-        
-        d.setZero();
-        if (rp_deriv_eval(v, data[i].x*xsf, d, z)) {
-            double e = z - data[i].y*ysf;
-            deriv += e*d*w;
-        } else {
-            logger.debug("hit a pole!\n");
-        }
-    }
-    evaluation_count++;
-    return deriv;
 }
 
 VectorXd Ratpoly_fit::gauss_newton_direction(VectorXd& v, VectorXd& deriv, double& fsse) {
@@ -72,7 +50,7 @@ VectorXd Ratpoly_fit::gauss_newton_direction(VectorXd& v, VectorXd& deriv, doubl
         double w = data[m].weight * data[m].yweight;
         double fx = 0;
         
-        J.row(m) = rp_deriv(v, data[m].x*xsf, fx); 
+        J.row(m) = rp_deriv(v, scale(data[m].x), fx); 
         double e = fx - data[m].y*ysf;
         r[m] = e*w;
         fsse += e*e*w;
@@ -131,7 +109,7 @@ double Ratpoly_fit::peak(const VectorXd& v) {
     double peak_x = (xmin + xmax)*0.5;
     double step = (xmax - xmin)/20.0;
     for (double x=xmin; x <= xmax; x += step) {
-        double z = rpeval(v, x*xsf);
+        double z = rpeval(v, scale(x));
         if (z > peak_z) {
             peak_x = x;
             peak_z = z;
@@ -146,8 +124,8 @@ double Ratpoly_fit::peak(const VectorXd& v) {
     double d = lower + phi*(upper - lower);
     const double tol = 1e-10;
     while ((upper - lower) > tol) {
-        double fc = rpeval(v, c*xsf);
-        double fd = rpeval(v, d*xsf);
+        double fc = rpeval(v, scale(c));
+        double fd = rpeval(v, scale(d));
         if (fc > fd) {
             upper = d;
             d = c;
@@ -168,6 +146,7 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
         xmin = std::min(data[i].x, xmin);
         xmax = std::max(data[i].x, xmax);
     }
+    
     // ensure the bounds are slightly wider than the actual data
     double span=xmax - xmin;
     xmin -= pscale*span;
@@ -179,7 +158,7 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
         return false; // cannot have poles
     case 1:
         {
-            double pole = (-1.0 / v[order_n+1])/xsf;
+            double pole = unscale(-1.0 / v[order_n+1]);
             
             
             if (!silent && pole >= xmin && pole <= xmax) {
@@ -196,8 +175,8 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
             double c = base_value;
             double sb = b < 0 ? -1 : 1;
             double q = -0.5*(b + sb*sqrt(b*b - 4*a*c));
-            double pole1 = (q/a)/xsf;
-            double pole2 = (c/q)/xsf;
+            double pole1 = unscale(q/a);
+            double pole2 = unscale(c/q);
             
             if (!silent && ((pole1 >= xmin && pole1 <= xmax) || (pole2 >= xmin && pole2 <= xmax))) {
                 logger.debug("pole at %lf or %lf on [%lf, %lf]\n", pole1, pole2, xmin, xmax);

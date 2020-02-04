@@ -155,7 +155,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             double wsum = 0;
             dccount = 0;
             for (size_t k=0; k < data.size(); k++) {
-                double y = cf.rpeval(sol, data[k].x*cf.xsf)/cf.ysf;
+                double y = cf.rpeval(sol, cf.scale(data[k].x))/cf.ysf;
                 double e = fabs(y - data[k].y);
                 errsum += e * data[k].yweight;
                 wsum += data[k].yweight;
@@ -179,7 +179,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         double errsum = 0;
         double wsum = 0;
         for (size_t k=0; k < data.size(); k++) {
-            double y = cf.rpeval(sol, data[k].x*cf.xsf)/cf.ysf;
+            double y = cf.rpeval(sol, cf.scale(data[k].x))/cf.ysf;
             double e = fabs(y - data[k].y);
             errsum += e * data[k].yweight;
             wsum += data[k].yweight;
@@ -217,7 +217,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
         string cp_name = wdir + ((bayer != Bayer::NONE) ? Bayer::to_string(bayer) + "_" : "") + "profile_curve.txt";
         FILE* fout = fopen(cp_name.c_str(), "wt");
         for (double x=min_long; x < max_long; x += 1) {
-            double y = cf.rpeval(sol, x*cf.xsf)/cf.ysf;
+            double y = cf.rpeval(sol, cf.scale(x))/cf.ysf;
             fprintf(fout, "%lf %lf\n", x, y);
             
             if (y > peak_y) {
@@ -310,7 +310,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
             distance_scale.estimate_depth_img_coords(px, py, depth);
             
             if (depth > min_long && depth < max_long) {
-                double mtf = cf.rpeval(sol, depth*cf.xsf)/cf.ysf;
+                double mtf = cf.rpeval(sol, cf.scale(depth))/cf.ysf;
                 
                 double world_y = psf*((mtf / peak_y) * 130 - 130);
                     
@@ -507,13 +507,16 @@ class Mtf_renderer_focus : public Mtf_renderer {
         const vector<Sample>& pts_row = cf.get_data();
         
         if (scale) {
-            double xsf=0;
+            double xmin = 1e50;
+            double xmax = -1e50;
             double ysf=0;
             for (size_t i=0; i < pts_row.size(); i++) {
-                xsf = max(xsf, fabs(pts_row[i].x));
+                xmin = std::min(xmin, pts_row[i].x);
+                xmax = std::max(xmax, pts_row[i].x);
                 ysf = max(ysf, fabs(pts_row[i].y));
             }
-            cf.xsf = xsf = 1.0/xsf;
+            cf.xs_min = 0.5*(xmin + xmax);
+            cf.xs_scale = 2.0/(xmax - xmin);
             cf.ysf = ysf = 1.0/ysf;
         }
         
@@ -537,15 +540,13 @@ class Mtf_renderer_focus : public Mtf_renderer {
                     const Sample& sp = pts_row[i];
                     double w = sp.weight * sp.yweight;
                     a[0] = 1*w;
-                    double prod = sp.x * cf.xsf; // top poly
+                    double prod = cf.scale(sp.x); // top poly
                     for (int j=1; j <= cf.order_n; j++) {
-                        a[j] = prod*w;
-                        prod *= sp.x * cf.xsf;
+                        a[j] = w*cf.cheb(j, prod);
                     }
-                    prod = sp.x*cf.xsf; // bottom poly
+                    // bottom poly
                     for (int j=1; j <= cf.order_m; j++) {
-                        a[j+cf.order_n] = prod*w*sp.y*cf.ysf;
-                        prod *= sp.x*cf.xsf;
+                        a[j+cf.order_n] = cf.cheb(j, prod)*w*sp.y*cf.ysf;
                     }
                     
                     for (int col=0; col < tdim; col++) { 
