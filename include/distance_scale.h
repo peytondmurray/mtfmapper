@@ -312,7 +312,7 @@ class Distance_scale {
                             }
                         }
                         
-                        if (rot_err < 0.01 && w > 0.3 && w < 52) { 
+                        if (rot_err < 0.01 && w > 0.01 && w < 18) { // roughly allow 2 mm to 3600 mm focal lengths on a 36 mm wide sensor
                             vector<double> residuals;
                             
                             Eigen::Matrix3d RMM(RM);
