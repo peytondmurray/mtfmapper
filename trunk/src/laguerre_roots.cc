@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/laguerre_roots.h"
 #include <limits>
+#include <algorithm>
 
 bool laguerre(const vector<cplex>& a, cplex& x, int& its) {
     const int MR=8;
