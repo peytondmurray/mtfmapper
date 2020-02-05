@@ -130,7 +130,7 @@ class Svg_page_focus : public Svg_page {
     }
     
     
-    void perspective_rectangle(double cx, double cy, double width, double height, double angle) {
+    void perspective_rectangle(double cx, double cy, double width, double height, double angle, bool print_centroid=false) {
         fprintf(fout, "  <polygon points=\"");
         for (int i=0; i < 4; i++) {
             double theta = 2*M_PI*i/double(4) + M_PI/4.0; 
@@ -140,8 +140,16 @@ class Svg_page_focus : public Svg_page {
             double ry = urx*sin(angle) + ury*cos(angle);
             iPoint p = project(cx + rx, cy + ry);
             fprintf(fout, "%d,%d ", p.x, p.y);
+            
+            
         }
         fprintf(fout, "\" style=\"%s\"/>", style.c_str());
+        #if 0
+        if (print_centroid) {
+            iPoint p2 = project(cx, cy);
+            fprintf(stderr, "{%lg,%lg}, ", double(p2.x)/sscale, double(p2.y)/sscale);
+        }
+        #endif
     }
     
     void strip(double tlx, double tly, double swidth, double sheight, size_t nrows, size_t ncols, double ang) {
@@ -153,7 +161,7 @@ class Svg_page_focus : public Svg_page {
                 double ypos = ry * 1.4 * sheight + tly; // perspective
                 double xpos = tlx - rx * 2.0 * swidth;
           
-                perspective_rectangle(xpos, ypos, swidth, sheight, -ang);
+                perspective_rectangle(xpos, ypos, swidth, sheight, -ang, true);
                 fprintf(fout, "\n");
       
             } // columns

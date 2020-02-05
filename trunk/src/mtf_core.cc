@@ -977,6 +977,8 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     if (local_samples.size() > 0) {
         std::lock_guard<std::mutex> lock(global_mutex);
         samples.insert(samples.end(), local_samples.begin(), local_samples.end());
+        sliding_edges.push_back(make_pair(b[0], d[0]));
+        sliding_edges.push_back(make_pair(b[1], d[1]));
     }
 }
 

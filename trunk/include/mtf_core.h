@@ -201,6 +201,10 @@ class Mtf_core {
         esf_model->set_alpha(alpha);
     }
     
+    const vector<std::pair<Point2d, Point2d>>& get_sliding_edges(void) const {
+        return sliding_edges;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -239,6 +243,7 @@ class Mtf_core {
     Esf_sampler* esf_sampler = nullptr;
     double mtf_contrast = 0.5; // target MTF contrast, e.g., 0.5 -> MTF50
     std::unique_ptr<Esf_model> esf_model;
+    vector<std::pair<Point2d, Point2d>> sliding_edges;
     
     void process_with_sliding_window(Mrectangle& rrect);
     bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
