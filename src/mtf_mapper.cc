@@ -715,6 +715,7 @@ int main(int argc, char** argv) {
         if (tc_focus.getValue()) {
             Mtf_renderer_focus profile(
                 distance_scale,
+                mtf_core.get_sliding_edges(),
                 wdir, 
                 string("focus_peak.png"),
                 cvimg,

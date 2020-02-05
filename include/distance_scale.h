@@ -475,6 +475,7 @@ class Distance_scale {
                     inlier_feature_points[k] = ba_img_points[inliers[k]];
                     inlier_world_points[k]   = ba_world_points[inliers[k]];
                 }
+                fiducial_code_set = min_fid_coding;
                 
                 Bundle_adjuster ba(
                     inlier_feature_points, inlier_world_points, 
@@ -784,6 +785,7 @@ class Distance_scale {
     double pitch_angle = 0;
     
     double page_scale_factor = 1;
+    int fiducial_code_set = -1; // this is an index into include/fiducial_positions.h : fiducial_scale_factor, thus it identifies the specific page
     
     vector<cv::Point2d> fid_img_points;
     vector<cv::Point3d> fid_world_points;

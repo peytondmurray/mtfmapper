@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/common_types.h"
 #include "include/distance_scale.h"
 #include "include/srgb_render.h"
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 
 class Camera_draw {
   public:
