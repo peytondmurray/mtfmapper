@@ -172,7 +172,7 @@ bool Ratpoly_fit::has_poles(const VectorXd& v) {
         {
             double a = v[order_n+2];
             double b = v[order_n+1];
-            double c = base_value;
+            double c = base_value - v[order_n+2]; // since this is a chebyshev polynomial a(x^2 - 1) -> c' = c - a
             double sb = b < 0 ? -1 : 1;
             double q = -0.5*(b + sb*sqrt(b*b - 4*a*c));
             double pole1 = unscale(q/a);
