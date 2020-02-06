@@ -81,12 +81,6 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
         }
     }
     mean_y /= double(data.size());
-    #if 0
-    for (const auto& e: sliding_edges) {
-        cv::Scalar edge_col(200,200,0);
-        cv::line(merged, e.first, e.first + e.second, edge_col, 1, CV_AA);
-    }
-    #else
     vector<Point2d> img_cents;
     auto sliding(sliding_edges);
     for (size_t k=0; k < sliding.size(); k+= 2) {
@@ -102,7 +96,6 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
         double dist = cv::norm(img_cents[i] - img_cents[i+1]);
         min_ic_dist = std::min(dist, min_ic_dist);
     }
-    #endif
     if (distance_scale.fiducial_code_set >= 0 && distance_scale.fiducial_code_set <= 4) {
         vector<vector<Point2d>> central_block_centroids {
             /*A0 */ {{411.913,983.093}, {411.844,969.094}, {411.773,954.867}, {411.702,940.407}, {411.629,925.707}, {411.555,910.761}, {411.479,895.564}, {411.403,880.109}, {411.325,864.389}, {411.246,848.398}, {411.165,832.128}, {411.083,815.572}, {411,798.722}, {410.914,781.571}, {410.828,764.11}, {410.74,746.331}, {410.65,728.225}, {410.559,709.784}, {410.466,690.996}, {410.371,671.854}, {410.274,652.346}, {410.176,632.462}, {410.075,612.192}, {409.973,591.522}, {409.868,570.443}, {409.762,548.941}, {409.653,527.004}, {409.542,504.618}, {409.429,481.77}, {409.313,458.444}, {409.195,434.626}, {409.075,410.3}, {408.952,385.45}, {408.826,360.058}, {408.697,334.107}, {408.566,307.578}, {408.431,280.451}, {408.294,252.706}, {408.153,224.321}, {408.009,195.275}, {407.862,165.543}, {407.711,135.102}, {407.556,103.925}, {407.398,71.9857}},
@@ -122,8 +115,8 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
             for (auto& ic: img_cents) {
                 min_dist = std::min(cv::norm(ic - cent), min_dist);
             }
-            constexpr double cross_w = 5;
-            constexpr double cross_l = 10;
+            const double cross_w = 0.5*min_ic_dist - std::max(0.1*min_ic_dist, 2.0);
+            const double cross_l = min_ic_dist;
             if (min_dist > 1.01*min_ic_dist) {
                 cv::line(merged, cent - cross_l*transverse - cross_w*longitudinal, cent + cross_l*transverse + cross_w*longitudinal, edge_col, 2, CV_AA);
                 cv::line(merged, cent - cross_l*transverse + cross_w*longitudinal, cent + cross_l*transverse - cross_w*longitudinal, edge_col, 2, CV_AA);
