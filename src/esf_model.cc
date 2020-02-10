@@ -103,15 +103,17 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
             weights[b] += w;
         }
     }
+    const int leftsum_limit = std::max(fft_size2 - fft_size/8, fft_left + 2*8);
+    const int rightsum_limit = std::min(fft_size2 + fft_size/8, fft_right - 2*8);
     // some housekeeping to take care of missing values
     for (int idx=fft_left-1; idx <= fft_right+1; idx++) {
         if (weights[idx] > 0) {
             sampled[idx] = mean[idx] / weights[idx];
-            if (idx < fft_size2 - fft_size/8) {
+            if (idx < leftsum_limit) {
                 leftsum += sampled[idx];
                 leftcount++;
             }
-            if (idx > fft_size2 + fft_size/8) {
+            if (idx > rightsum_limit) {
                 rightsum += sampled[idx];
                 rightcount++;
             }
@@ -264,7 +266,6 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     p90idx -= 4 + 2*lrint(rise_dist);
     twidth = max(fabs(double(p10idx - fft_size2)), fabs(double(p90idx - fft_size2)));
     
-    
     // Contrast-to-Noise-Ratio (CNR), effectively SNR for the S-E method
     // Only the esf_model_loess currently uses this, but to good effect
     // TODO: we can record this in the v2 format of edge_mtf_values.txt
@@ -274,7 +275,6 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
     moving_average_smoother(smooth_esf, sampled, fft_size, fft_left, fft_right, left_trans, right_trans);
-    
     
     constexpr int tail_len = 2*8;
     double left_tail = 0;
@@ -288,30 +288,43 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     }
     right_tail /= tail_len;
     
-    auto right_it = lower_bound(ordered.begin(), ordered.end(), -2*twidth*0.125);
+    const double fft_left_pix = 0.125*(double(fft_left)-fft_size/2);
+    const double fft_right_pix = 0.125*(double(fft_right)-fft_size/2);
+    // ensure that the range over which we will compute the CNR is at least two pixels wide
+    const double cnr_left_pix = std::max(fft_left_pix + 2, -2*twidth*0.125);
+    const double cnr_right_pix = std::min(fft_right_pix - 2, 2*twidth*0.125);
     
-    double sse = 0;
-    size_t sse_count = 0;
-    for (auto it = ordered.begin(); it != right_it; it++) {
+    auto left_it = fft_left_pix < ordered.front().first ? ordered.begin() : lower_bound(ordered.begin(), ordered.end(), fft_left_pix);
+    auto right_it = lower_bound(left_it, ordered.end(), cnr_left_pix);
+    
+    double left_sse = 0;
+    size_t left_sse_count = 0;
+    for (auto it = left_it; it != right_it; it++) {
         int cbin = std::max(fft_left, int(it->first*8 + 0.5 + fft_size2));
         
         double e = sampled[cbin] - it->second;
-        
-        sse += e*e;
+        left_sse += e*e;
     }
-    sse_count = right_it - ordered.begin();
+    left_sse_count = right_it - left_it;
     
-    auto left_it = lower_bound(right_it, ordered.end(), 2*twidth*0.125);
-    for (auto it = left_it; it != ordered.end(); it++) {
+    left_it = lower_bound(right_it, ordered.end(), cnr_right_pix);
+    right_it = fft_right_pix >= ordered.back().first ? ordered.end() : lower_bound(left_it, ordered.end(), fft_right_pix);
+    
+    double right_sse = 0;
+    size_t right_sse_count = 0;
+    for (auto it = left_it; it != right_it; it++) {
         int cbin = std::min(fft_right, int(it->first*8 + 0.5 + fft_size2));
         
         double e = sampled[cbin] - it->second;
-        sse += e*e;
+        right_sse += e*e;
     }
-    sse_count += ordered.end() - left_it;
+    right_sse_count += right_it - left_it;
     
-    sse /= sse_count;
-    double rmse = sqrt(sse);
+    left_sse /= left_sse_count;
+    right_sse /= right_sse_count;
+    double rmse = sqrt(0.5*left_sse + 0.5*right_sse);
+    // TODO: we can potentially exploit the left/right CNR values to further tweak noise reduction later
+    
     contrast = fabs(right_tail - left_tail);
     cnr = fabs(right_tail - left_tail) / rmse;
     
