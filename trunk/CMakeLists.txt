@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 7)
-set(mtfmapper_VERSION_SUB 17) #increment on release
+set(mtfmapper_VERSION_SUB 18) #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -167,7 +167,8 @@ set(CPACK_PACKAGE_EXECUTABLES "mtf_mapper_gui;MTF Mapper")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "MTF Mapper")
 set(CPACK_PACKAGE_DESCRIPTION "Measure slanted-edge SFR, lens testing, camera calibration")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
-set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
+set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico")
+set(CPACK_NSIS_MODIFY_PATH ON)
 
 if (UNIX)
     set(CPACK_GENERATOR "DEB")
