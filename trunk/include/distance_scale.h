@@ -493,7 +493,7 @@ class Distance_scale {
                 } else {
                     ba.focal_lower = user_focal_ratio/1.1;
                     ba.focal_upper = user_focal_ratio*1.1;
-                    ba.focal_mode_constraint = 1.0;
+                    ba.focal_mode_constraint = acos(fabs(RM(2,2)))/M_PI*180 < 15 ? 1.0 : 0.0;
                 }
                 logger.debug("focal mode = %lf, f=%lf\n", ba.focal_mode_constraint, 1/w);
                 ba.solve();
