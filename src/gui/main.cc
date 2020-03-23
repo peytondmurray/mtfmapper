@@ -57,7 +57,9 @@ void message_output(QtMsgType type, const QMessageLogContext& /*context*/, const
 }
  
 int main(int argc, char *argv[]) {
-    QLocale::setDefault(QLocale::C);
+    QLocale sane(QLocale::C);
+    sane.setNumberOptions(QLocale::RejectGroupSeparator);
+    QLocale::setDefault(sane);
 
     string logname = (QDir::tempPath() + QDir::separator()).toStdString() + "mtfmapperlog.txt";
     logger.redirect(logname);
