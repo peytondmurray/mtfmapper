@@ -416,8 +416,12 @@ int main(int argc, char** argv) {
         Gradient gradient(cvimg);
         
         logger.info("Component labelling ...\n");
-        Component_labeller::zap_borders(masked_img);    
-        Component_labeller cl(masked_img, 60, false, 8000);
+        Component_labeller::zap_borders(masked_img);
+        // largest component boundary length determined empirically
+        const int64_t boundary_long_side = 2*std::max(cvimg.rows, cvimg.cols)*0.4;
+        const int64_t boundary_short_side = 2*std::min(cvimg.rows, cvimg.cols)*0.4;
+        const int64_t max_boundary_length = std::max(int64_t(8000), boundary_long_side + boundary_short_side);
+        Component_labeller cl(masked_img, 60, true, max_boundary_length);
 
         if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
             logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
