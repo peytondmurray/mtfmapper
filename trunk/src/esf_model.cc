@@ -288,8 +288,8 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     }
     right_tail /= tail_len;
     
-    const double fft_left_pix = 0.125*(double(fft_left)-fft_size/2);
-    const double fft_right_pix = 0.125*(double(fft_right)-fft_size/2);
+    const double fft_left_pix = std::max(0.125*(double(fft_left)-fft_size/2), ordered.front().first);
+    const double fft_right_pix = std::min(0.125*(double(fft_right)-fft_size/2), ordered.back().first);
     // ensure that the range over which we will compute the CNR is at least two pixels wide
     const double cnr_left_pix = std::max(fft_left_pix + 2, -2*twidth*0.125);
     const double cnr_right_pix = std::min(fft_right_pix - 2, 2*twidth*0.125);

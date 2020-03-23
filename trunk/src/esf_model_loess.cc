@@ -317,8 +317,8 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
         {198.973, 7}, {298.480, 7}, {397.781, 6}, {497.074, 6}, {595.965, 5}, {695.846, 4}, {794.242, 4}
     };
     int sw_width = lrint(interpolate(cnr, extreme_tails_lut));
-    int lt = fft_size/2 - 2*twidth;
-    int rt = fft_size/2 + 2*twidth;
+    int lt = std::max(fft_left + 4, int(fft_size/2 - 2*twidth));
+    int rt = std::min(fft_right - 5, int(fft_size/2 + 2*twidth));
     int prev_lt = lt - 4;
     int prev_rt = rt + 4;
     for (int rep=0; rep < 1; rep++) {
@@ -330,8 +330,8 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
         {695.8, 3},{794.2, 2},{893.9, 2},{1000,0}, {1100,0}
     };
     sw_width = lrint(interpolate(cnr, transition_lut));
-    lt = fft_size/2 - 1.25*twidth;
-    rt = fft_size/2 + 1.25*twidth;
+    lt = std::max(fft_left + 2, int(fft_size/2 - 1.25*twidth));
+    rt = std::min(fft_right - 3, int(fft_size/2 + 1.25*twidth));
     if (sw_width > 0) {
         gauss_smooth(smoothed, sampled, prev_lt, lt, sw_width, 0.5);
         gauss_smooth(smoothed, sampled, rt, prev_rt, sw_width, 0.5);
@@ -346,8 +346,8 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
         {199.0, 1},{298.5, 0},{397.8, 0}
     };
     sw_width = lrint(interpolate(cnr, core_lut));
-    lt = fft_size/2 - 0.75*twidth;
-    rt = fft_size/2 + 0.75*twidth;
+    lt = std::max(fft_left, int(fft_size/2 - 0.75*twidth));
+    rt = std::min(fft_right - 1, int(fft_size/2 + 0.75*twidth));
     if (sw_width > 0) {
         gauss_smooth(smoothed, sampled, prev_lt, lt, sw_width, 0.5);
         gauss_smooth(smoothed, sampled, rt, prev_rt, sw_width, 0.5);
