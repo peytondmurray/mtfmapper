@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/esf_model_kernel.h"
 #include "include/fastexp.h"
 #include "include/afft.h"
+#include "include/pava.h"
 
 // Note: we avoid a virtual call by explicitly calling an inline version of the 
 // kernel function
@@ -175,6 +176,24 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
     }
     for (int idx=right_non_missing+1; idx < fft_size; idx++) {
         sampled[idx] = r_nm_mean;
+    }
+    
+    if (apply_monotonic_filter) {
+        vector<double> pre_pava(fft_size);
+        for (size_t i=0; i < fft_size; i++) {
+            pre_pava[i] = sampled[i];
+        }
+        
+        // first, reverse the vector if necessary
+        bool reversed = false;
+        if (l_nm_mean > r_nm_mean) {
+            reversed = true;
+            std::reverse(sampled, sampled + fft_size);
+        }
+        jbk_pava(sampled, fft_size);
+        if (reversed) {
+            std::reverse(sampled, sampled + fft_size);
+        }
     }
 
     thread_local vector<double> smoothed(fft_size, 0);

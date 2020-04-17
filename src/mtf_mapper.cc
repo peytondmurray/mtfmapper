@@ -120,6 +120,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_full_sfr("", "full-sfr", "Output the full SFR/MTF curve (up to 4 c/p) when combined with -q or -f", cmd, false);
     TCLAP::SwitchArg tc_ima_mode("", "imatest-chart", "Treat the input image as an Imatest chart (crop black bars out)", cmd, false);
     TCLAP::SwitchArg tc_lensprofile_fixed("", "lensprofile-fixed-size", "Lens profile output is scaled to maximum sensor radius", cmd, false);
+    TCLAP::SwitchArg tc_monotonic_filter("", "monotonic-esf-filter", "Force the application of a monontonic ESF noise filter (use at own risk!)", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -421,7 +422,7 @@ int main(int argc, char** argv) {
         const int64_t boundary_long_side = 2*std::max(cvimg.rows, cvimg.cols)*0.4;
         const int64_t boundary_short_side = 2*std::min(cvimg.rows, cvimg.cols)*0.4;
         const int64_t max_boundary_length = std::max(int64_t(8000), boundary_long_side + boundary_short_side);
-        Component_labeller cl(masked_img, 60, true, max_boundary_length);
+        Component_labeller cl(masked_img, 60, false, max_boundary_length);
 
         if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
             logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
@@ -458,6 +459,8 @@ int main(int argc, char** argv) {
             mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_loess()));
             #endif
         }
+        mtf_core.get_esf_model()->set_monotonic_filter(tc_monotonic_filter.getValue());
+        
         if (tc_alpha.isSet()) {
             mtf_core.set_esf_model_alpha_parm(tc_alpha.getValue());
         }
