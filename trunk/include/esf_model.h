@@ -62,6 +62,10 @@ class Esf_model {
     const vector<double>& get_correction(void) const {
         return w;
     }
+    
+    void set_monotonic_filter(bool b) {
+        apply_monotonic_filter = b;
+    }
         
     const static std::array<string, 2> esf_model_names;
   protected:
@@ -76,6 +80,7 @@ class Esf_model {
     double alpha = 13.5;
     vector<double> w; // MTF correction weight
     static constexpr double missing = -1e7;
+    bool apply_monotonic_filter = false;
 };
 
 #endif

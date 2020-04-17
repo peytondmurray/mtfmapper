@@ -30,6 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/fastexp.h"
 #include <Eigen/Dense>
 
+#include "include/pava.h"
+
 // Note: The kernel function is used during ESF construction, but remember that this kernel
 // is not used (at all) when calculating MTF corrections
 static inline double local_kernel(double d, double alpha, double w=0.125) {
@@ -305,6 +307,24 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     }
     
     thread_local vector<double> smoothed(fft_size, 0);
+    
+    if (apply_monotonic_filter) {
+        vector<double> pre_pava(fft_size);
+        for (size_t i=0; i < fft_size; i++) {
+            pre_pava[i] = sampled[i];
+        }
+        
+        // first, reverse the vector if necessary
+        bool reversed = false;
+        if (l_nm_mean > r_nm_mean) {
+            reversed = true;
+            std::reverse(sampled, sampled + fft_size);
+        }
+        jbk_pava(sampled, fft_size);
+        if (reversed) {
+            std::reverse(sampled, sampled + fft_size);
+        }
+    }
     
     // smooth out the ESF before the calculate the LSF
     // the degree of smoothing adapts to the estimated CNR

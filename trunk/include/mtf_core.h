@@ -197,6 +197,10 @@ class Mtf_core {
         esf_model = std::move(model);
     }
     
+    std::unique_ptr<Esf_model>& get_esf_model(void) {
+        return esf_model;
+    }
+    
     void set_esf_model_alpha_parm(double alpha) {
         esf_model->set_alpha(alpha);
     }
