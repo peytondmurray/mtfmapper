@@ -74,6 +74,7 @@ Logger logger;
 #include "include/display_profile.h"
 #include "include/esf_model_kernel.h"
 #include "include/esf_model_loess.h"
+#include "include/esf_model_hann.h"
 #include "config.h"
 
 //-----------------------------------------------------------------------------
@@ -445,19 +446,23 @@ int main(int argc, char** argv) {
         }
         if (tc_esf_model.getValue().compare("kernel") == 0) {
             mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_kernel()));
-        } else { // only alternative at the moment is "loess"
-            #ifdef MDEBUG
-            mtf_core.set_esf_model(
-                std::unique_ptr<Esf_model>(
-                    new Esf_model_loess(
-                        tc_alpha.isSet() ? tc_alpha.getValue() : 5.5,
-                        tc_ridge.getValue()
+        } else { 
+            if (tc_esf_model.getValue().compare("loess") == 0) {
+                #ifdef MDEBUG
+                mtf_core.set_esf_model(
+                    std::unique_ptr<Esf_model>(
+                        new Esf_model_loess(
+                            tc_alpha.isSet() ? tc_alpha.getValue() : 5.5,
+                            tc_ridge.getValue()
+                        )
                     )
-                )
-            );
-            #else
-            mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_loess()));
-            #endif
+                );
+                #else
+                mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_loess()));
+                #endif
+            } else {
+                mtf_core.set_esf_model(std::unique_ptr<Esf_model>(new Esf_model_hann()));
+            }
         }
         mtf_core.get_esf_model()->set_monotonic_filter(tc_monotonic_filter.getValue());
         

@@ -30,8 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include <array>
 
-const std::array<string, 2> Esf_model::esf_model_names  = {{
-    "kernel", "loess"
+const std::array<string, 3> Esf_model::esf_model_names  = {{
+    "kernel", "loess", "hann"
 }};
 
 void Esf_model::moving_average_smoother(vector<double>& smoothed, double* sampled, int fft_size, 
