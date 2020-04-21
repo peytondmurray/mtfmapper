@@ -358,6 +358,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         double quality = 0;
         vector <double> sfr(mtf_width, 0);
         vector <double> esf(FFT_SIZE/2, 0);
+        Snr snr;
         
         double ea = edge_record[k].angle;
         if (snap_to) {
@@ -392,7 +393,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         
         double mtf50 = 0.01;
         if (!ridges_only) {
-            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf);
+            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf, snr);
         }
         
         allzero &= fabs(mtf50) < 1e-6;
@@ -406,6 +407,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_normal(k, Point2d(cos(edge_record[k].angle), sin(edge_record[k].angle)));
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
+            shared_blocks_map[label].set_snr(k, snr);
             shared_blocks_map[label].set_ridge(k, edge_model[k].ridge);
             shared_blocks_map[label].rect.centroids[k] = edge_record[k].centroid;
         }
@@ -479,7 +481,7 @@ static double angle_reduce(double x) {
 double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset,
     double& quality,  
     vector<double>& sfr, vector<double>& esf, 
-    bool allow_peak_shift) {
+    Snr& snr, bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
     
@@ -513,7 +515,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
         return 0;
     }
     
-    int success = esf_model->build_esf(ordered, fft_out_buffer.data(), FFT_SIZE,  max_dot, esf, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
+    int success = esf_model->build_esf(ordered, fft_out_buffer.data(), FFT_SIZE,  max_dot, esf, snr, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
         logger.debug("failed edge\n");
@@ -963,8 +965,10 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             double quality = 0;
             vector <double> sfr(mtf_width, 0);
             vector <double> esf(FFT_SIZE/2, 0);
+            Snr snr;
             Edge_model edge_model(edge_record.centroid, Point2d(-sin(edge_record.angle), cos(edge_record.angle)));
-            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf);
+            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf, snr);
+            // TODO: there is no way to store the snr object of a non-block data point
             
             if (mtf50 < 1.0 && quality > very_poor_quality) {
                 local_samples.push_back(Mtf_profile_sample(edge_record.centroid, mtf50, edge_record.angle, quality));
@@ -1122,7 +1126,8 @@ void Mtf_core::process_image_as_roi(void) {
     
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
-    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, true);
+    Snr snr;
+    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, snr, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
@@ -1135,6 +1140,7 @@ void Mtf_core::process_image_as_roi(void) {
         
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
+        block.set_snr(0, snr);
         block.set_ridge(0, em.ridge);
         block.set_line_deviation(0, em.line_deviation());
         

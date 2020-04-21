@@ -46,6 +46,7 @@ Logger logger;
 #include "include/thresholding.h"
 #include "include/mtf_core.h"
 #include "include/mtf_core_tbb_adaptor.h"
+#include "include/output_version.h"
 #include "include/mtf_renderer_annotate.h"
 #include "include/mtf_renderer_profile.h"
 #include "include/mtf_renderer_mfprofile.h"
@@ -147,6 +148,10 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_noise_sd("", "noise-sd", "Image noise sd", false, 0, "unitless", cmd);
     TCLAP::SwitchArg tc_single("","single-threaded","Force single-threaded operation", cmd, false);
     #endif
+    
+    TCLAP::ValuesConstraint<int> output_version_constraints(Output_version::instance().get_versions());
+    TCLAP::ValueArg<int> tc_output_version("v", "output-version", "Specify output format version (affects -q)", false, 1, &output_version_constraints);
+    cmd.add(tc_output_version);
 
     vector<string> allowed_bayer_subsets;
     allowed_bayer_subsets.push_back("red");
@@ -640,6 +645,7 @@ int main(int argc, char** argv) {
                 wdir + string("edge_mtf_values.txt"), 
                 wdir + string("edge_sfr_values.txt"),
                 wdir + string("edge_line_deviation.txt"),
+                Output_version::type(tc_output_version.getValue()),
                 lpmm_mode, pixel_size
             );
             printer.render(mtf_core.get_blocks());

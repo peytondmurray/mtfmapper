@@ -28,8 +28,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef BLOCK_H
 #define BLOCK_H
 
-
 #include "include/rectangle.h"
+#include "include/snr.h"
 
 #include <map>
 using std::map;
@@ -41,13 +41,13 @@ class Block {
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
         ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), 
-        line_deviation(4, cv::Point3d(0,0,1)) {
+        line_deviation(4, cv::Point3d(0,0,1)), snr(4) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4, vector<double>(32,0)), 
         esf(4, vector<double>(2, 0)), ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), 
-        line_deviation(in_rect.line_deviation) {
+        line_deviation(in_rect.line_deviation), snr(4) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -98,6 +98,14 @@ class Block {
         );
         
         area = sqrt(SQR(e1.x) + SQR(e1.y)) * sqrt(SQR(e2.x) + SQR(e2.y));
+    }
+    
+    void set_snr(size_t edge_number, const Snr& in_snr) {
+        snr[edge_number] = in_snr;
+    }
+    
+    const Snr& get_snr(size_t edge_number) const {
+        return snr[edge_number];
     }
 
     void set_sfr(size_t edge_number, const vector<double>& in_sfr) {
@@ -217,6 +225,7 @@ class Block {
     double area;
     bool valid;
     vector<cv::Point3d> line_deviation;
+    vector<Snr> snr;
 };
 
 #endif

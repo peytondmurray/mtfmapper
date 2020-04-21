@@ -65,8 +65,7 @@ void Esf_model::moving_average_smoother(vector<double>& smoothed, double* sample
         
 int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, bool allow_peak_shift, int effective_maxdot, vector<double>& mean,
-    vector<double>& weights, int& fft_left, int& fft_right, int& twidth, double& cnr, 
-    double& contrast) {
+    vector<double>& weights, int& fft_left, int& fft_right, int& twidth, Snr& snr) {
    
     thread_local vector<double> slopes(fft_size, 0);
     
@@ -322,11 +321,16 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     
     left_sse /= left_sse_count;
     right_sse /= right_sse_count;
-    double rmse = sqrt(0.5*left_sse + 0.5*right_sse);
-    // TODO: we can potentially exploit the left/right CNR values to further tweak noise reduction later
     
-    contrast = fabs(right_tail - left_tail);
-    cnr = fabs(right_tail - left_tail) / rmse;
+    double bright_mean = left_tail;
+    double dark_mean = right_tail;
+    double bright_sd = sqrt(left_sse);
+    double dark_sd = sqrt(right_sse);
+    if (dark_mean > bright_mean) {
+        std::swap(bright_mean, dark_mean);
+        std::swap(bright_sd, dark_sd);
+    }
+    snr = Snr(dark_mean, dark_sd, bright_mean, bright_sd);
     
     return rval;
 }

@@ -25,25 +25,46 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef ESF_MODEL_LOESS_H
-#define ESF_MODEL_LOESS_H
+#ifndef SNR_H
+#define SNR_H
 
-#include "include/esf_model.h"
-
-class Esf_model_loess : public Esf_model {
+class Snr {
   public:
-    Esf_model_loess(double in_alpha=5.5, double ridge=5e-8) : ridge(ridge) {
-    
-        set_alpha(in_alpha);
+    Snr(double dark_mean=0, double dark_sd=1, double bright_mean=1, double bright_sd=1) 
+    : dark_mean(dark_mean), dark_sd(dark_sd), bright_mean(bright_mean), 
+      bright_sd(bright_sd), contrast_val(bright_mean - dark_mean) {
     }
     
-    virtual int build_esf(vector< Ordered_point  >& ordered, double* sampled, 
-        const int fft_size, double max_distance_from_edge, vector<double>& esf, 
-        Snr& snr, bool allow_peak_shift=false);
-        
+    inline double mean_cnr(void) const {
+        return contrast_val / sqrt(0.5*dark_sd*dark_sd + 0.5*bright_sd*bright_sd);
+    }
+    
+    inline double dark_cnr(void) const {
+        return contrast_val / dark_sd;
+    }
+    
+    inline double bright_cnr(void) const {
+        return contrast_val / bright_sd;
+    }
+    
+    inline double dark_snr(void) const {
+        return dark_mean / dark_sd;
+    }
+    
+    inline double bright_snr(void) const {
+        return bright_mean / bright_sd;
+    }
+    
+    inline double contrast(void) const {
+        return contrast_val;
+    }
+    
   private:
-    double ridge;
+    double dark_mean;
+    double bright_mean;
+    double dark_sd;
+    double bright_sd;
+    double contrast_val;
 };
-
 
 #endif
