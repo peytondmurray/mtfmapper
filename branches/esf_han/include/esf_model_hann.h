@@ -38,7 +38,7 @@ class Esf_model_hann : public Esf_model {
     
     virtual int build_esf(vector< Ordered_point  >& ordered, double* sampled, 
         const int fft_size, double max_distance_from_edge, vector<double>& esf, 
-        bool allow_peak_shift=false);
+        Snr& snr, bool allow_peak_shift=false);
         
     double kernel(double x) const;
     

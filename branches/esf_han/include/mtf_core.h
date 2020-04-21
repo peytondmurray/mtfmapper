@@ -49,6 +49,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/undistort.h"
 
 #include "include/esf_model.h"
+#include "include/snr.h"
 
 #include <memory>
 #include <map>
@@ -122,7 +123,7 @@ class Mtf_core {
     double compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset, 
                        double& poor, 
                        vector<double>& sfr, vector<double>& esf, 
-                       bool allow_peak_shift = false);
+                       Snr& snr, bool allow_peak_shift = false);
     
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
