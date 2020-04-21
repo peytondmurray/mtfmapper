@@ -65,10 +65,10 @@ void Esf_model::moving_average_smoother(vector<double>& smoothed, double* sample
         
 int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* sampled, 
     const int fft_size, bool allow_peak_shift, int effective_maxdot, vector<double>& mean,
-    vector<double>& weights, int& fft_left, int& fft_right, int& twidth, double& cnr, 
-    double& contrast) {
+    vector<double>& weights, int& fft_left, int& fft_right, int& twidth, Snr& snr) {
    
     thread_local vector<double> slopes(fft_size, 0);
+    int sample_histo[16];
     
     constexpr double shift_tolerance = 4;
 
@@ -89,8 +89,9 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     
     retry:
     
-    fill(weights.begin(), weights.end(), 0);
-    fill(mean.begin(), mean.end(), 0);
+    std::fill(weights.begin(), weights.end(), 0);
+    std::fill(mean.begin(), mean.end(), 0);
+    std::fill(sample_histo, sample_histo + 16, 0);
     for (int i=0; i < int(ordered.size()); i++) {
         int cbin = int(ordered[i].first*8 + fft_size2);
         int left = max(fft_left, cbin-5);
@@ -101,6 +102,13 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
             double w = 1 - abs((ordered[i].first - mid)*1.75) > 0 ? 1 - abs((ordered[i].first - mid)*1.75) : 0;
             mean[b] += ordered[i].second * w;
             weights[b] += w;
+            
+            if (fabs(mid) <= 1.0) {
+                int hist_idx = (ordered[i].first + 1.0)*8;
+                if (hist_idx >= 0 && hist_idx < 16) {
+                    sample_histo[hist_idx]++;
+                }
+            }
         }
     }
     const int leftsum_limit = std::max(fft_size2 - fft_size/8, fft_left + 2*8);
@@ -268,7 +276,6 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     
     // Contrast-to-Noise-Ratio (CNR), effectively SNR for the S-E method
     // Only the esf_model_loess currently uses this, but to good effect
-    // TODO: we can record this in the v2 format of edge_mtf_values.txt
     vector<double> smooth_esf(fft_size, 0);
     constexpr double bwidth = 1.85;
     int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
@@ -322,11 +329,25 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
     
     left_sse /= left_sse_count;
     right_sse /= right_sse_count;
-    double rmse = sqrt(0.5*left_sse + 0.5*right_sse);
-    // TODO: we can potentially exploit the left/right CNR values to further tweak noise reduction later
     
-    contrast = fabs(right_tail - left_tail);
-    cnr = fabs(right_tail - left_tail) / rmse;
+    double bright_mean = left_tail;
+    double dark_mean = right_tail;
+    double bright_sd = sqrt(left_sse);
+    double dark_sd = sqrt(right_sse);
+    if (dark_mean > bright_mean) {
+        std::swap(bright_mean, dark_mean);
+        std::swap(bright_sd, dark_sd);
+    }
+    snr = Snr(dark_mean, dark_sd, bright_mean, bright_sd);
+    
+    // analyze the distribution of samples to calculate effective oversampling factors
+    double neg_oversampling = 8;
+    double pos_oversampling = 8;
+    for (int i=0; i < 8; i++) {
+        neg_oversampling -= sample_histo[i] == 0 ? 1 : 0;
+        pos_oversampling -= sample_histo[i + 8] == 0 ? 1 : 0;
+    }
+    snr.set_oversampling(0.5 * (neg_oversampling + pos_oversampling));
     
     return rval;
 }
