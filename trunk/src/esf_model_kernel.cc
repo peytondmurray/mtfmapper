@@ -51,7 +51,7 @@ double Esf_model_kernel::kernel(double x) const {
 }
 
 int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampled, 
-    const int fft_size, double max_distance_from_edge, vector<double>& esf, 
+    const int fft_size, double max_distance_from_edge, vector<double>& esf, Snr& snr,
     bool allow_peak_shift) {
     
     thread_local vector<double> weights(fft_size, 0);
@@ -66,12 +66,13 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
     int fft_left = 0;
     int fft_right = fft_size-1;
     int twidth = 32;
-    double cnr = 1;
-    double contrast = 1;
     
     rval = estimate_esf_clipping(ordered, sampled, fft_size, allow_peak_shift, 
-        max_distance_from_edge, mean, weights, fft_left, fft_right, twidth, cnr, contrast
+        max_distance_from_edge, mean, weights, fft_left, fft_right, twidth, snr
     );
+    
+    double cnr = snr.mean_cnr();
+    double contrast = snr.contrast();
     
     if (rval < 0) return rval;
     
