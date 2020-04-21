@@ -32,39 +32,49 @@ class Snr {
   public:
     Snr(double dark_mean=0, double dark_sd=1, double bright_mean=1, double bright_sd=1) 
     : dark_mean(dark_mean), dark_sd(dark_sd), bright_mean(bright_mean), 
-      bright_sd(bright_sd), contrast_val(bright_mean - dark_mean) {
+      bright_sd(bright_sd), contrast_val(bright_mean - dark_mean), oversampling_val(0) {
     }
     
     inline double mean_cnr(void) const {
-        return contrast_val / sqrt(0.5*dark_sd*dark_sd + 0.5*bright_sd*bright_sd);
+        double denom = sqrt(0.5*dark_sd*dark_sd + 0.5*bright_sd*bright_sd);
+        return std::min(10000.0, contrast_val / std::max(0.01, denom));
     }
     
     inline double dark_cnr(void) const {
-        return contrast_val / dark_sd;
+        return std::min(10000.0, contrast_val / std::max(0.01, dark_sd));
     }
     
     inline double bright_cnr(void) const {
-        return contrast_val / bright_sd;
+        return std::min(10000.0, contrast_val / std::max(0.01, bright_sd));
     }
     
     inline double dark_snr(void) const {
-        return dark_mean / dark_sd;
+        return std::min(10000.0, dark_mean / std::max(0.01, dark_sd));
     }
     
     inline double bright_snr(void) const {
-        return bright_mean / bright_sd;
+        return std::min(10000.0, bright_mean / std::max(0.01, bright_sd));
     }
     
     inline double contrast(void) const {
         return contrast_val;
     }
     
+    inline double oversampling(void) const {
+        return oversampling_val;
+    }
+    
+    void set_oversampling(double val) {
+        oversampling_val = val;
+    }
+    
   private:
     double dark_mean;
-    double bright_mean;
     double dark_sd;
+    double bright_mean;
     double bright_sd;
     double contrast_val;
+    double oversampling_val;
 };
 
 #endif
