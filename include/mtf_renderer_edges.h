@@ -39,6 +39,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
       const std::string& sfrname,
       const std::string& devname,
       Output_version::type output_version,
+      double mtf_contrast,
       bool lpmm_mode=false, double pixel_size=1.0) 
       :  ofname(fname), sfrname(sfrname), devname(devname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
@@ -72,8 +73,25 @@ class Mtf_renderer_edges : public Mtf_renderer {
             fprintf(sfrout, "# column  9: dark side SNR\n");
             fprintf(sfrout, "# column 10: bright side SNR\n");
             fprintf(sfrout, "# column 11: contrast\n");
+            fprintf(sfrout, "# column 12: effective oversampling factor (maximum is 8x, below 4x is considered poor)\n");
+            
             fprintf(fout, "# MTF Mapper MTF summary, output format version %d \n", int(output_version));
+            fprintf(fout, "# column  1: block_id\n");
+            fprintf(fout, "# column  2: edge centroid x (pixels)\n");
+            fprintf(fout, "# column  3: edge centroid y (pixels)\n");
+            fprintf(fout, "# column  4: MTF-%d value (%s)\n", (int)lrint(mtf_contrast*100), lpmm_mode ? "lp/mm" : "c/p");
+            fprintf(fout, "# column  5: nearby corner x (pixels)\n");
+            fprintf(fout, "# column  6: nearby corner y (pixels)\n");
+            fprintf(fout, "# column  7: mean CNR (50%% weight to each of dark and bright sides)\n");
+            fprintf(fout, "# column  8: effective oversampling factor (maximum is 8x, below 4x is considered poor)\n");
+            
             fprintf(devout, "# MTF Mapper line deviation, output format version %d \n", int(output_version));
+            fprintf(devout, "# column  1: block_id\n");
+            fprintf(devout, "# column  2: edge centroid x (pixels)\n");
+            fprintf(devout, "# column  3: edge centroid y (pixels)\n");
+            fprintf(devout, "# column  4: slope, i.e., rise/run\n");
+            fprintf(devout, "# column  5: rise\n");
+            fprintf(devout, "# column  6: run\n");
         }
         
         vector<int> corder(4);
@@ -144,6 +162,12 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 Point2d cr = blocks[i].get_corner(j);
                 const Snr& snr = blocks[i].get_snr(l);
                 
+                // in later output format versions, skip the empty rows
+                if (output_version >= Output_version::V2 &&
+                    blocks[i].get_sfr(l)[0] == 0) {
+                    continue;
+                }
+                
                 if (output_version == Output_version::V1) {
                     fprintf(fout, "%d %lf %lf %lf %lf %lf\n",
                         int(i),
@@ -154,11 +178,11 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 }
                 
                 if (output_version >= Output_version::V2) {
-                    fprintf(fout, "%d %lf %lf %lf %lf %lf %lf\n",
+                    fprintf(fout, "%d %lf %lf %lf %lf %lf %.3lf %.1lf\n",
                         int(i),
                         ec.x, ec.y,
                         lpmm_mode ? val*pixel_size : val,
-                        cr.x, cr.y, snr.mean_cnr()
+                        cr.x, cr.y, snr.mean_cnr(), snr.oversampling()
                     );
                 }
                 
@@ -180,9 +204,10 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);
                 
                 if (output_version >= Output_version::V2) {
-                    fprintf(sfrout, "%.3lf %.3lf %.3lf %.3lf %.3lf %.1lf ",
+                    fprintf(sfrout, "%.3lf %.3lf %.3lf %.3lf %.3lf %.1lf %.1lf ",
                         snr.mean_cnr(), snr.dark_cnr(), snr.bright_cnr(),
-                        snr.dark_snr(), snr.bright_snr(), snr.contrast()
+                        snr.dark_snr(), snr.bright_snr(), snr.contrast(),
+                        snr.oversampling()
                     );
                 }
                 
@@ -219,6 +244,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     bool    lpmm_mode;
     double  pixel_size;
     Output_version::type output_version;
+    double mtf_contrast = 0.5;
 };
 
 #endif
