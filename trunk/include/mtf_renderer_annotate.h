@@ -41,63 +41,8 @@ class Mtf_renderer_annotate : public Mtf_renderer {
           out_img = Srgb_render::linear_to_sRGB(in_img);
     }
     
-    void render(const vector<Block>& blocks) {
-        for (size_t i=0; i < blocks.size(); i++) {
-            for (size_t k=0; k < 4; k++) {
-                double val = blocks[i].get_mtf50_value(k);
-                if (val > 0) {
-                    Point2d cent = blocks[i].get_edge_centroid(k);
-                    if (cent.x > 1 && cent.y > 1) {
-                        write_number(out_img, lrint(cent.x), lrint(cent.y), val, blocks[i].get_quality(k));
-                    }
-                }
-            }
-        }    
-        
-        imwrite(ofname, out_img);
-    }
-    
-    void write_number(cv::Mat& img, int px, int py, double val, double quality) {
-        char buffer[10];
-        
-        double freq_scale = lpmm_mode ? pixel_size : 1.0;
-        
-        if (val < 1.0*freq_scale) {
-            if (lpmm_mode) {
-                sprintf(buffer, "%.1lf", val*freq_scale);
-            } else {
-                sprintf(buffer, "%.2lf", val*freq_scale);
-            }
-        } else {
-            sprintf(buffer, "N/A");
-        }
-        
-        int baseline = 0;
-        
-        cv::Size ts = cv::getTextSize(buffer, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        cv::Point to(-ts.width/2,  ts.height/2);
-        to.x += px;
-        to.y += py;
-        
-        cv::putText(img, buffer, to, 
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-            CV_RGB(20, 20, 20), 2.5, CV_AA
-        );
-        
-        cv::Scalar col = CV_RGB(0, 255, 255);
-        if (quality < 0.8) {
-            col = CV_RGB(255, 255, 0);
-        }
-        if (quality <= 0.2 || val == 1.0) {
-            col = CV_RGB(255, 0, 0);
-        }
-        
-        cv::putText(img, buffer, to, 
-            cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-            col, 1, CV_AA
-        );
-        
-    }
+    void render(const vector<Block>& blocks);
+    void write_number(cv::Mat& img, int px, int py, double val, double quality, double font_scale);
     
     const cv::Mat& img;
     cv::Mat out_img;
