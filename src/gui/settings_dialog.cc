@@ -83,6 +83,10 @@ const QString setting_lp3_default = "";
 const QString setting_arguments = "arguments";
 const QString setting_lensprofile_fixed = "lens_profile_fixed_scale";
 const Qt::CheckState setting_lensprofile_fixed_default = Qt::Unchecked;
+const QString setting_surface_max_value = "surface_max_value";
+const QString setting_surface_max_value_default = "0";
+const QString setting_surface_max_flag = "surface_max_flag";
+const Qt::CheckState setting_surface_max_flag_default = Qt::Unchecked;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -104,6 +108,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     QFontMetrics fm(QApplication::font());
     int reasonable_width = fm.width("1048576000");
     int adv_width = fm.width("Threshold: ");
+    int surf_max_reasonable_width = fm.width("999.50");
     
     QDoubleValidator* dv_thresh = new Nonempty_DoubleValidator(0.001, 1.0, 3, 0.55, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
@@ -172,6 +177,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_lpmm         = new QCheckBox("Line pairs/mm units", this);
     cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
     cb_lensprofile_fixed = new QCheckBox("Lens profile fixed scale", this);
+    cb_surface_max = new QCheckBox("3D plot z-axis max value", this);
     
     box_colour = new QComboBox;
     box_colour->addItem("none");
@@ -203,6 +209,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     sg_f_line->setText(settings.value(setting_sg_f, setting_sg_f_default).toString());
     sg_f_line->setValidator(dv_f);
     sg_f_line->setMaximumWidth(reasonable_width);
+    
+    QDoubleValidator* dv_sm = new Nonempty_DoubleValidator(0, 999.0, 2, 80.0, this);
+    surface_max_value = new QLineEdit(this);
+    surface_max_value->setMaxLength(5);
+    surface_max_value->setText(settings.value(setting_surface_max_value, setting_surface_max_value_default).toString());
+    surface_max_value->setValidator(dv_sm);
+    surface_max_value->setMaximumWidth(surf_max_reasonable_width);
     
     threshold_line->setText(settings.value(setting_threshold, setting_threshold_default).toString());
     pixsize_line->setText(settings.value(setting_pixsize, setting_pixsize_default).toString());
@@ -242,6 +255,9 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_lensprofile_fixed->setCheckState(
         (Qt::CheckState)settings.value(setting_lensprofile_fixed, setting_lensprofile_fixed_default).toInt()
     );
+    cb_surface_max->setCheckState(
+        (Qt::CheckState)settings.value(setting_surface_max_flag, setting_surface_max_flag_default).toInt()
+    );
     
     box_colour->setCurrentIndex(settings.value(setting_bayer, 0).toInt());
     box_esf_model->setCurrentIndex(settings.value(setting_esf_model, 0).toInt());
@@ -271,6 +287,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     gnuplot_line->setText(settings.value(setting_gnuplot, setting_gnuplot_default).toString());
     exiv_line->setText(settings.value(setting_exiv, setting_exiv_default).toString());
     dcraw_line->setText(settings.value(setting_dcraw, setting_dcraw_default).toString());
+    surface_max_value->setText(settings.value(setting_surface_max_value, setting_surface_max_value_default).toString());
     
     zscale_label = new QLabel("3D plot z-axis relative scale factor", this);
     zscale_slider = new QSlider(Qt::Horizontal, this);
@@ -382,16 +399,22 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     adv_layout->addLayout(r7_layout);
     
     QHBoxLayout* r8_layout = new QHBoxLayout;
-    r8_layout->addWidget(cache_label);
-    r8_layout->addWidget(cache_line);
-    r8_layout->addWidget(new QLabel("MB", this));
+    r8_layout->addWidget(cb_surface_max);
+    r8_layout->addWidget(surface_max_value);
     r8_layout->addStretch(2);
     adv_layout->addLayout(r8_layout);
     
     QHBoxLayout* r9_layout = new QHBoxLayout;
-    r9_layout->addWidget(arguments_label);
-    r9_layout->addWidget(arguments_line);
+    r9_layout->addWidget(cache_label);
+    r9_layout->addWidget(cache_line);
+    r9_layout->addWidget(new QLabel("MB", this));
+    r9_layout->addStretch(2);
     adv_layout->addLayout(r9_layout);
+    
+    QHBoxLayout* r10_layout = new QHBoxLayout;
+    r10_layout->addWidget(arguments_label);
+    r10_layout->addWidget(arguments_line);
+    adv_layout->addLayout(r10_layout);
     
     advanced->setLayout(adv_layout);
 
@@ -497,6 +520,14 @@ void Settings_dialog::send_argument_string(void) {
         args = args + QString(" --lensprofile-fixed-size");
     }
     
+    if (cb_surface_max->checkState() && surface_max_value->text().length() > 0) {
+        double surface_max = surface_max_value->text().toDouble();
+        if (!cb_lpmm->checkState() && surface_max > 1.0) {
+            surface_max = 0.0;
+        }
+        args = args + QString(" --surface-max %1").arg(surface_max);
+    }
+    
     args = args + QString(" --zscale %1").arg(zscale_slider->value()/20.0);
     
     args = args + QString(" --mtf %1").arg(contrast_line->text());
@@ -538,6 +569,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_autocrop, cb_autocrop->checkState());
     settings.setValue(setting_gnuplot_scaled, cb_gnuplot_scaled->checkState());
     settings.setValue(setting_lensprofile_fixed, cb_lensprofile_fixed->checkState());
+    settings.setValue(setting_surface_max_flag, cb_surface_max->checkState());
     settings.setValue(setting_gnuplot, gnuplot_line->text());
     settings.setValue(setting_exiv, exiv_line->text());
     settings.setValue(setting_dcraw, dcraw_line->text());
@@ -549,6 +581,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_arguments, arguments_line->text());
     settings.setValue(setting_bayer, box_colour->currentIndex());
     settings.setValue(setting_esf_model, box_esf_model->currentIndex());
+    settings.setValue(setting_surface_max_value, surface_max_value->text());
     
     if (rb_lens_pw_quad->isChecked()) {
         settings.setValue(setting_lens, 0);

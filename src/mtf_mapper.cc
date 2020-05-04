@@ -142,6 +142,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_thresh_win("", "threshold-window", "Fraction of min(img width, img height) to use as window size during thresholding; range (0,1]", false, 0.33333, "fraction", cmd);
     TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
     TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 13, "unitless", cmd);
+    TCLAP::ValueArg<double> tc_surface_max("", "surface-max", "Specify maximum value in MTF50 surface plots", false, -1, "units depend on other settings", cmd);
     #ifdef MDEBUG
     TCLAP::ValueArg<double> tc_ridge("", "ridge", "Specify ridge regression parameter [0,+infy)", false, 5e-8, "unitless", cmd);
     TCLAP::ValueArg<double> tc_noise_seed("", "noise-seed", "Image noise seed", false, 10, "unitless", cmd);
@@ -621,7 +622,8 @@ int main(int argc, char** argv) {
                     gnuplot_width,
                     lpmm_mode,
                     pixel_size,
-                    tc_zscale.getValue()
+                    tc_zscale.getValue(),
+                    tc_surface_max.getValue()
                 );
                 grid.set_gnuplot_warning(gnuplot_warning);
                 grid.set_sparse_chart(tc_ima_mode.getValue());

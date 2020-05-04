@@ -33,13 +33,15 @@ Mtf_renderer_grid::Mtf_renderer_grid(
     const std::string& gnuplot_binary, 
     const cv::Mat& img, int gnuplot_width,
     bool lpmm_mode, double pixel_size,
-    double in_zscale)
+    double in_zscale, 
+    double surface_max)
     :  Mtf_renderer(img_filename),
         wdir(wdir), fname(fname), 
         gnuplot_binary(gnuplot_binary), img_y(img.rows), img_x(img.cols),
         img(img), lpmm_mode(lpmm_mode), pixel_size(pixel_size),
         gnuplot_failure(false), gnuplot_warning(true),
-        m_lower(0), m_upper(0), gnuplot_width(gnuplot_width) {
+        m_lower(0), m_upper(0), gnuplot_width(gnuplot_width),
+        surface_max(surface_max) {
 
     const int coarse_grid_size = 40;
     const int fine_grid_size = 200;
@@ -157,6 +159,10 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
         }
     }
     
+    if (surface_max > 0 && surface_max > zmax) { // valid user override on maximum value specified
+        zmax = surface_max;
+    }
+    
     double span = zmax - zmin;
     zmax = zmax + 0.05*span;
     zmin = zmin - 0.05*span;
@@ -166,7 +172,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     // zscale = 0 -> use zmin=0
     // zscale = 1 -> use measured zmin
     zmin *= zscale;
-
+    
     const int width_in_pixels = int(gnuplot_width*600.0/1024);
     const int height_in_pixels_3d = int(gnuplot_width*1200.0/1024);
     int fontsize = std::max(long(12), lrint(12.0*gnuplot_width/1024.0));
