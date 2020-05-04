@@ -87,7 +87,8 @@ class Mtf_renderer_grid : public Mtf_renderer {
         const std::string& gnuplot_binary, 
         const cv::Mat& img, int gnuplot_width,
         bool lpmm_mode, double pixel_size,
-        double in_zscale
+        double in_zscale, 
+        double surface_max = -1
     );
 
 
@@ -151,6 +152,7 @@ class Mtf_renderer_grid : public Mtf_renderer {
     int gnuplot_width;
     double zscale = 0.0;
     bool sparse_chart = false;
+    double surface_max = -1;
 };
 
 #endif

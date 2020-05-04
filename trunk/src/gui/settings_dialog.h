@@ -117,6 +117,9 @@ class Settings_dialog : public QDialog
     QLabel* zscale_label;
     QSlider* zscale_slider;
     
+    QCheckBox*  cb_surface_max;
+    QLineEdit*  surface_max_value;
+    
     int gnuplot_img_width;
     
   signals:
