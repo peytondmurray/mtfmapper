@@ -45,7 +45,7 @@ class Settings_dialog : public QDialog
   
   public:
     Settings_dialog(QWidget *parent);
-    void send_argument_string(void);
+    void send_argument_string(bool focus_mode);
     QString get_gnuplot_binary(void) const;
     QString get_exiv2_binary(void) const;
     QString get_dcraw_binary(void) const;
