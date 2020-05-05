@@ -398,9 +398,11 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     r7_layout->addWidget(zscale_slider);
     adv_layout->addLayout(r7_layout);
     
+    surface_max_units = new QLabel(cb_lpmm->checkState() == Qt::Unchecked ? "c/p" : "lp/mm", this);
     QHBoxLayout* r8_layout = new QHBoxLayout;
     r8_layout->addWidget(cb_surface_max);
     r8_layout->addWidget(surface_max_value);
+    r8_layout->addWidget(surface_max_units);
     r8_layout->addStretch(2);
     adv_layout->addLayout(r8_layout);
     
@@ -436,6 +438,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     connect(dcraw_button, SIGNAL(clicked()), this, SLOT( browse_for_dcraw() ));
     connect(rb_lens_equiangular, SIGNAL(clicked()), this, SLOT( equiangular_toggled() ));
     connect(rb_lens_stereo, SIGNAL(clicked()), this, SLOT( stereographic_toggled() ));
+    connect(cb_lpmm, SIGNAL(clicked()), this, SLOT( lpmm_toggled() ));
     
     setLayout(vlayout);
     setWindowTitle("Preferences");
@@ -731,6 +734,24 @@ void Settings_dialog::equiangular_toggled() {
 void Settings_dialog::stereographic_toggled() {
     if (rb_lens_stereo->isChecked() && cb_lpmm->checkState() == Qt::Unchecked) {
         cb_lpmm->setCheckState(Qt::Checked);
+    }
+}
+
+void Settings_dialog::lpmm_toggled() {
+    double resolution_scale = 1.0;
+    if (pixsize_line->text().length() > 0) {
+        resolution_scale = 1000.0/pixsize_line->text().toDouble();
+    }
+    if (cb_lpmm->checkState() == Qt::Unchecked) {
+        surface_max_units->setText("c/p");
+        char buffer[100];
+        sprintf(buffer, "%.3lf", surface_max_value->text().toDouble() / resolution_scale);
+        surface_max_value->setText(buffer);
+    } else {
+        surface_max_units->setText("lp/mm");
+        char buffer[100];
+        sprintf(buffer, "%.2lf", surface_max_value->text().toDouble() * resolution_scale);
+        surface_max_value->setText(buffer);
     }
 }
 
