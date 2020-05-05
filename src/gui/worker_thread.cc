@@ -84,7 +84,7 @@ void Worker_thread::run(void) {
             dcp.setStandardOutputFile(input_file);
             if (arguments.contains(QString("--bayer"))) {
                 dcp.setArguments(
-                    QStringList() << "-4" << "-T" << "-d" << "-c" << input_files.at(i)
+                    QStringList() << "-4" << "-T" << "-D" << "-c" << input_files.at(i)
                 );
             } else {
                 dcp.setArguments(
