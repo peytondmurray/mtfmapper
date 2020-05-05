@@ -197,7 +197,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     );
     fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
     if (img_filename.length() > 0) {
-        fprintf(gpf, "set multiplot title \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
+        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
         fprintf(gpf, "set tmargin 4\n");
     } else {
         fprintf(gpf, "set multiplot\n");
@@ -232,7 +232,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "unset xlab\n");
     fprintf(gpf, "unset ylab\n");
     if (img_filename.length() > 0) {
-        fprintf(gpf, "set multiplot title \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
+        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
         fprintf(gpf, "set tmargin 5\n");
     } else {
         fprintf(gpf, "set multiplot\n");
