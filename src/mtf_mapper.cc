@@ -313,22 +313,24 @@ int main(int argc, char** argv) {
 	
 	// strip off supposed extention suffix,
 	// and supposed path prefix
+    std::string in_img_name = tc_in_name.getValue();
+    std::replace(in_img_name.begin(), in_img_name.end(), '/', slashchar);
 	int ext_idx=-1;
 	int path_idx=0;
-	for (int idx=tc_in_name.getValue().length()-1; idx >= 0 && path_idx == 0; idx--) {
-	    if (tc_in_name.getValue()[idx] == '.' && ext_idx < 0) {
+	for (int idx= in_img_name.length()-1; idx >= 0 && path_idx == 0; idx--) {
+	    if (in_img_name[idx] == '.' && ext_idx < 0) {
 	        ext_idx = idx;
         }
-	    if (tc_in_name.getValue()[idx] == slashchar && path_idx == 0) {
+	    if (in_img_name[idx] == slashchar && path_idx == 0) {
 	        path_idx = idx;
 	    }
     }
     if (ext_idx < 0) {
-        ext_idx = tc_in_name.getValue().length();
+        ext_idx = in_img_name.length();
     }
     std::string img_filename;
     for (int idx=path_idx; idx < ext_idx; idx++) {
-        char c = tc_in_name.getValue()[idx];
+        char c = in_img_name[idx];
         if (c == slashchar) continue;
         if (c == '_') {
             img_filename.push_back('\\');

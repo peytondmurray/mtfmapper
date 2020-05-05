@@ -236,6 +236,17 @@ class Mtf_renderer_profile : public Mtf_renderer {
         );
         fclose(pffile);
 
+        // TODO: sort out the mess (basename, etc)
+        string img_name_clean;
+        for (size_t i = 0; i < img_filename.length(); i++) {
+            if (img_name_clean.length() > 0 && img_name_clean[img_name_clean.length() - 1] == '\\' &&
+                img_filename[i] == '\\') {
+                // skip
+            }
+            else {
+                img_name_clean.push_back(img_filename[i]);
+            }
+        }
 		       
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
@@ -247,7 +258,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         double pointsize = 0.5*gnuplot_width/1024.0;
         fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
         if (img_filename.length() > 0) {
-            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
+            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
         }
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
         fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF%2d (%s) raw\" w p ps %lf, \"%s\" u 1:3 t \"MTF%2d (%s) smoothed\" w l lw %d, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw %d\n", 
