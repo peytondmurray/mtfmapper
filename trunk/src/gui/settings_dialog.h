@@ -119,6 +119,7 @@ class Settings_dialog : public QDialog
     
     QCheckBox*  cb_surface_max;
     QLineEdit*  surface_max_value;
+    QLabel*     surface_max_units;
     
     int gnuplot_img_width;
     
@@ -136,6 +137,7 @@ class Settings_dialog : public QDialog
     void set_gnuplot_img_width(int w);
     void equiangular_toggled();
     void stereographic_toggled();
+    void lpmm_toggled();
 };
 
 #endif
