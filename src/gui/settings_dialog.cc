@@ -449,7 +449,7 @@ void Settings_dialog::open() {
     show();
 }
 
-void Settings_dialog::send_argument_string(void) {
+void Settings_dialog::send_argument_string(bool focus_mode) {
     QString args = QString("-t %1").arg(threshold_line->text());
     if (cb_linear_gamma->checkState()) {
         args = args + QString(" -l");
@@ -457,7 +457,6 @@ void Settings_dialog::send_argument_string(void) {
     
     if (cb_annotation->checkState()) {
         args = args + QString(" -a");
-        args = args + QString(" -q");
     }
     
     if (cb_profile->checkState()) {
@@ -550,6 +549,10 @@ void Settings_dialog::send_argument_string(void) {
         }
     }
     
+    if (!focus_mode) {
+        args = args + QString(" -q");
+    }
+    
     args = args + QString(" %1").arg(arguments_line->text());
     
     emit argument_string(args);
@@ -609,7 +612,7 @@ void Settings_dialog::save_and_close() {
         settings.setValue(setting_lpmm, cb_lpmm->checkState());
     }
     
-    send_argument_string();
+    send_argument_string(false);
     set_cache_size(settings.value(setting_cache, setting_cache_default).toInt());
     settings_saved();
     
@@ -621,10 +624,10 @@ void Settings_dialog::browse_for_gnuplot(void) {
         this,
         "Locate gnuplot binary",
         QString("/usr/bin/gnuplot"),
-        QString::null
+        QString()
     );
 
-    if (gnuplot != QString::null) {
+    if (gnuplot != QString()) {
         gnuplot_line->setText(gnuplot);
     }
 
@@ -661,10 +664,10 @@ void Settings_dialog::browse_for_exiv(void) {
         this,
         "Locate exiv2 binary",
         QString("/usr/bin/exiv2"),
-        QString::null
+        QString()
     );
 
-    if (exiv != QString::null) {
+    if (exiv != QString()) {
         exiv_line->setText(exiv);
     }
 
@@ -699,10 +702,10 @@ void Settings_dialog::browse_for_dcraw(void) {
         this,
         "Locate dcraw binary",
         QString("/usr/bin/dcraw"),
-        QString::null
+        QString()
     );
 
-    if (dcraw != QString::null) {
+    if (dcraw != QString()) {
         dcraw_line->setText(dcraw);
     }
 
@@ -762,5 +765,5 @@ QString Settings_dialog::peek_argument_line(void) const {
 void Settings_dialog::reset_argument_line(void) {
     arguments_line->setText(QString(""));
     settings.setValue(setting_arguments, arguments_line->text());
-    send_argument_string();
+    send_argument_string(false);
 }

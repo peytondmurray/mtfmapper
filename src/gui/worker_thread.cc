@@ -113,6 +113,9 @@ void Worker_thread::run(void) {
             Exiv2_property props(exiv2_binary, input_files.at(i), tempdir + "/exifinfo.txt");
             mma << "--focal-ratio" << props.get_focal_ratio();
         }
+        
+        bool q_output_requested = arguments.contains("-q");
+        printf("q_output_requested: %d\n", q_output_requested);
 
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
@@ -146,13 +149,16 @@ void Worker_thread::run(void) {
             QString fname(QFileInfo(input_file).baseName());
             emit send_parent_item(fname, input_file);
             
+            if (q_output_requested) {
+                emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
+                emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
+                emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
+            }
+            
             QString an_file = QString("%1/annotated.png").arg(tempdir);
             if (QFile().exists(an_file)) {
                 emit send_child_item(QString("annotated"), an_file);
                 emit send_delete_item(an_file);
-                emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
             }
             QString pr_file = QString("%1/profile_image.png").arg(tempdir);
             if (QFile().exists(pr_file)) {

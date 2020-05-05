@@ -237,7 +237,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
     
-    settings->send_argument_string();
+    settings->send_argument_string(false);
     check_if_helpers_exist();
 }
 
@@ -330,7 +330,7 @@ void mtfmapper_app::open_imatest_chart() {
  
 void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
 
-    QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString::null, QString::null);
+    QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString(), QString());
     open_dialog->setOption(QFileDialog::DontUseNativeDialog);
     
     if (!(roi || focus)) {
@@ -366,7 +366,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
         settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
         settings->set_gnuplot_img_width(int(img_viewer->size().height()*1.3));
-        settings->send_argument_string();
+        settings->send_argument_string(focus);
 
         input_files = open_dialog->selectedFiles();
         if (input_files.size() > 0) {
@@ -585,13 +585,13 @@ void mtfmapper_app::save_action(bool subset) {
                 QString dest_fname = save_path + "/" + prefix;
                 QString src_fname = dataset_files.at(idx++);
                 dest_fname += "_" + current_child->text() + ".png";
+                dest_fname.replace(' ', '_');
                 bool copy_allowed = false;
                 if (subset) {
                     if (keepers.find(prefix.toStdString()) != keepers.end()) {
                         copy_allowed = true;
                     }
-                }
-                else {
+                } else {
                     copy_allowed = true;
                 }
                 if (copy_allowed) {
@@ -599,6 +599,17 @@ void mtfmapper_app::save_action(bool subset) {
                     logger.info("cp [%s] [%s]\n", src_fname.toLocal8Bit().constData(), dest_fname.toLocal8Bit().constData());
                     if (QFile::exists(dest_fname)) {
                         overwrite_count++;
+                    }
+                    vector<QString> raw_names = {"edge_mtf_values.txt", "edge_sfr_values.txt"};
+                    if (j == 0) {
+                        for (QString name: raw_names) {
+                            QString raw_fname = QFileInfo(src_fname).path() + "/" + name;
+                            QString dest_fname = save_path + "/" + prefix + "_" + name;
+                            if (QFile::exists(raw_fname)) {
+                                copy_list.push_back(std::make_pair(raw_fname, dest_fname));
+                                logger.info("cp [%s] [%s]\n", raw_fname.toLocal8Bit().constData(), dest_fname.toLocal8Bit().constData());
+                            }
+                        }
                     }
                 }
             }
