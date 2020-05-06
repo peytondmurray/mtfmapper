@@ -605,6 +605,7 @@ void mtfmapper_app::save_action(bool subset) {
                         for (QString name: raw_names) {
                             QString raw_fname = QFileInfo(src_fname).path() + "/" + name;
                             QString dest_fname = save_path + "/" + prefix + "_" + name;
+                            dest_fname.replace(' ', '_');
                             if (QFile::exists(raw_fname)) {
                                 copy_list.push_back(std::make_pair(raw_fname, dest_fname));
                                 logger.info("cp [%s] [%s]\n", raw_fname.toLocal8Bit().constData(), dest_fname.toLocal8Bit().constData());

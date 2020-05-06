@@ -78,7 +78,7 @@ void Worker_thread::run(void) {
              fi.suffix().compare(QString("DNG"), Qt::CaseInsensitive) == 0 ||  // Pentax/Ricoh, maybe others
              fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
 
-            input_file = QString(tempdir + "/" + fi.baseName() + QString(".tiff"));
+            input_file = QString(tempdir + "/" + fi.completeBaseName() + QString(".tiff"));
             QProcess dcp(this);
             dcp.setProgram(dcraw_binary);
             dcp.setStandardOutputFile(input_file);
@@ -115,7 +115,6 @@ void Worker_thread::run(void) {
         }
         
         bool q_output_requested = arguments.contains("-q");
-        printf("q_output_requested: %d\n", q_output_requested);
 
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
@@ -145,8 +144,7 @@ void Worker_thread::run(void) {
             // to differ from the file containing the exif info
             
             emit send_exif_filename(input_files.at(i), tempdir);
-            
-            QString fname(QFileInfo(input_file).baseName());
+            QString fname(QFileInfo(input_file).completeBaseName());
             emit send_parent_item(fname, input_file);
             
             if (q_output_requested) {
