@@ -26,6 +26,7 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/mtf_renderer_grid.h"
+#include <opencv2/imgproc/imgproc.hpp>
 
 Mtf_renderer_grid::Mtf_renderer_grid(
     const std::string& img_filename,
@@ -330,20 +331,32 @@ void Mtf_renderer_grid::extract_mtf_grid(Edge_type target_edge_type, cv::Mat& gr
     double cell_r = grid_fine.rows / double(grid_coarse.rows);
     double cell_c = grid_fine.cols / double(grid_coarse.cols);
     
+    cv::Mat grid_occupancy(grid_coarse.rows, grid_coarse.cols, CV_8UC1, cv::Scalar::all(0));    
+    
     vector<Mtf_profile_sample> samples;
     for (int lr=0; lr < grid_fine.rows; lr++) {
         for (int lc=0; lc < grid_fine.cols; lc++) {
             if (grid_fine.at<float>(lr, lc) > 1e-6) {
                 samples.push_back(Mtf_profile_sample(Point2d(lc, lr), grid_fine.at<float>(lr, lc), 0, 1));
+                int cr = (int)floor(lr / cell_r);
+                int cc = (int)floor(lc / cell_c);
+                grid_occupancy.at<uint8_t>(cr, cc) = 255;
             }
         }
     }
+    
+    // map out approximately where the data points are
+    // we can use this later to allow a larger source are for the 2D quadratic fit
+    cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(5,5));
+    cv::dilate(grid_occupancy, grid_occupancy, element);
     
     // perform local LS fitting of low-order polynomial
     Eigen::MatrixXd design(samples.size(), 6);
     Eigen::VectorXd vy(samples.size());
     for (int t_row=0; t_row < grid_coarse.rows; t_row++) {
         for (int t_col=0; t_col < grid_coarse.cols; t_col++) {
+        
+            bool occupied = grid_occupancy.at<uint8_t>(t_row, t_col) > 0;
             
             int fine_row = t_row * grid_y_fine / grid_y_coarse;
             int fine_col = t_col * grid_x_fine / grid_x_coarse;
@@ -384,7 +397,9 @@ void Mtf_renderer_grid::extract_mtf_grid(Edge_type target_edge_type, cv::Mat& gr
                     vy[i] = samples[i].mtf * w;
                     lmax = max(lmax, samples[i].mtf);
                 }
-            } while (sparse_chart && cover_sum < 0.85 && iters++ < iters_max);
+            } while ((sparse_chart && cover_sum < 0.85) || 
+                     (!sparse_chart && occupied && cover_sum < 0.5 && cover_sum > 0.35) && // try to patch up some holes, if we have some samples nearby
+                     iters++ < iters_max);
             
             lmax = min(lmax, upper);
             
@@ -419,16 +434,11 @@ void Mtf_renderer_grid::extract_mtf_grid(Edge_type target_edge_type, cv::Mat& gr
             int fx = (int)floor(x);
             int fy = (int)floor(y);
 
-            int cx = (int)ceil(x);
-            int cy = (int)ceil(y);
+            int cx = fx + 1;
+            int cy = fy + 1;
 
-            int rx = (int)floor(x+0.5); // x, y positive, so this produces rounding
-            int ry = (int)floor(y+0.5);
-            
             cx = min(cx, grid_coarse.cols - 1);
             cy = min(cy, grid_coarse.rows - 1);
-            rx = min(rx, grid_coarse.cols - 1);
-            ry = min(ry, grid_coarse.rows - 1);
 
             double xfac = x - fx;
             double yfac = y - fy;
