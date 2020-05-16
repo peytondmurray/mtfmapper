@@ -172,7 +172,7 @@ void Ca_core::calculate_ca(Block& block) {
     thread_local vector<vector<double>> green_lsf(4);
     thread_local vector<vector<double>> blue_lsf(4);
     
-    constexpr double angle_threshold = cos(45.0/180.0*M_PI);
+    const double angle_threshold = cos(45.0/180.0*M_PI);
     
     if (channels.size() == 0) {
         extract_rgb_lsf_bayer(block, mtf_core.img, mtf_core.bayer_img, red_lsf, green_lsf, blue_lsf);
