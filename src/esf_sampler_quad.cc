@@ -62,7 +62,10 @@ vector<double> Esf_sampler_quad::quad_tangency(const Point2d& p, const std::arra
 
 void Esf_sampler_quad::sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
     const map<int, scanline>& scanset, double& edge_length,
-    const cv::Mat& geom_img, const cv::Mat& sampling_img) {
+    const cv::Mat& geom_img, const cv::Mat& sampling_img,
+    Bayer::cfa_mask_t cfa_mask) {
+    
+    cfa_mask = cfa_mask == Bayer::DEFAULT ? default_cfa_mask : cfa_mask;
     
     double max_along_edge = -1e50;
     double min_along_edge = 1e50;

@@ -25,31 +25,25 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef ESF_SAMPLER_DEFERRED_H
-#define ESF_SAMPLER_DEFERRED_H
+#ifndef CA_CORE_TBB_ADAPTOR
+#define CA_CORE_TBB_ADAPTOR
 
-#include "include/esf_sampler.h"
-#include "include/undistort.h"
+#include "include/ca_core.h"
+#include "include/stride_range.h"
+#include "include/point_helpers.h"
 
-class Esf_sampler_deferred : public Esf_sampler {
+class Ca_core_tbb_adaptor {
   public:
-    Esf_sampler_deferred(Undistort* undistort, double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double border_width=0) 
-    : Esf_sampler(max_dot, cfa_mask, 1e6 /*max_edge_length*/, border_width), undistort(undistort) {
-        
+    Ca_core_tbb_adaptor(Ca_core& core) : ca_core(core) {
     }
-    
-    void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
-        const map<int, scanline>& scanset, double& edge_length,
-        const cv::Mat& geom_img, const cv::Mat& sampling_img,
-        Bayer::cfa_mask_t cfa_mask = Bayer::DEFAULT);
-        
-  protected:
-    Point2d bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt);
-    Point2d derivative(double t0, const Point2d& l, const Point2d& p);
-    double quadmin(const Point2d& a, const Point2d& b, const Point2d& c);
-    
-  private:
-    Undistort* undistort = nullptr;
+
+    void operator()(const Stride_range& r) const {
+        for (size_t i=r.begin(); i != r.end(); r.increment(i)) {
+            ca_core.calculate_ca(ca_core.mtf_core.get_blocks()[i]);
+        }
+    }
+  
+    Ca_core& ca_core;  
 };
 
 #endif

@@ -186,6 +186,118 @@ cv::Mat Display_profile::to_luminance(const cv::Mat& img) {
     }
 }
 
+vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
+    // regardless of input type, output is always 16-bit linear
+    vector<cv::Mat> newmat;
+    for (int i=0; i < 3; i++) {
+        newmat.push_back(cv::Mat(img.rows, img.cols, CV_16UC1));
+    }
+    uint16_t* dptr_r = (uint16_t*)newmat[2].data;
+    uint16_t* dptr_g = (uint16_t*)newmat[1].data;
+    uint16_t* dptr_b = (uint16_t*)newmat[0].data;
+    
+    if (!is_linear) {
+        #ifdef MDEBUG
+        FILE* fout = fopen("final_trc.txt", "wt");
+        for (size_t i=0; i < lut.size(); i++) {
+            fprintf(fout, "%lf %lf\n", i/65535.0, lut[i]/65535.0);
+        }
+        fclose(fout);
+        #endif
+        
+        if (img.elemSize1() == 1) {
+            uint8_t* sptr = (uint8_t*)img.data;
+            if (img.channels() == 3) {
+                logger.info("8-bit nonlinear RGB -> 16-bit linear RGB\n");
+                uint8_t* sentinel = sptr + 3*img.rows*img.cols;
+                while (sptr < sentinel) {
+                    
+                    *dptr_b++ = uint16_t(lut[(*sptr++ << 8)]);
+                    *dptr_g++ = uint16_t(lut[(*sptr++ << 8)]);
+                    *dptr_r++ = uint16_t(lut[(*sptr++ << 8)]);
+                }
+            } else {
+                logger.info("8-bit nonlinear grayscale -> 16-bit linear gray RGB\n");
+                uint8_t* sentinel = sptr + img.rows*img.cols;
+                while (sptr < sentinel) {
+                
+                    *dptr_b++ = uint16_t(lut[(*sptr << 8)]);
+                    *dptr_g++ = uint16_t(lut[(*sptr << 8)]);
+                    *dptr_r++ = uint16_t(lut[(*sptr++ << 8)]);
+                }
+            }
+        } else {
+            if (img.channels() == 3) {
+                logger.info("16-bit nonlinear RGB -> 16-bit linear RGB\n");
+                uint16_t* sptr = (uint16_t*)img.data;
+                uint16_t* sentinel = sptr + 3*img.rows*img.cols;
+                while (sptr < sentinel) {
+                    
+                    *dptr_b++ = uint16_t(lut[*sptr++]);
+                    *dptr_g++ = uint16_t(lut[*sptr++]);
+                    *dptr_r++ = uint16_t(lut[*sptr++]);
+                }
+            } else {
+                logger.info("16-bit nonlinear grayscale -> 16-bit linear gray RGB\n");
+                uint16_t* sptr = (uint16_t*)img.data;
+                
+                uint16_t* sentinel = sptr + img.rows*img.cols;
+                while (sptr < sentinel) {
+                    
+                    *dptr_b++ = uint16_t(lut[*sptr]);
+                    *dptr_g++ = uint16_t(lut[*sptr]);
+                    *dptr_r++ = uint16_t(lut[*sptr++]);
+                }
+            }
+        }
+    } else {
+        if (img.elemSize1() == 1) {
+            uint8_t* sptr = (uint8_t*)img.data;
+            if (img.channels() == 3) {
+                logger.info("8-bit linear RGB -> 16-bit linear RGB\n");
+                uint8_t* sentinel = sptr + 3*img.rows*img.cols;
+                while (sptr < sentinel) {
+                    
+                    *dptr_b++ = uint16_t(*sptr++ << 8);
+                    *dptr_g++ = uint16_t(*sptr++ << 8);
+                    *dptr_r++ = uint16_t(*sptr++ << 8);
+                }
+            } else {
+                logger.info("8-bit linear grayscale -> 16-bit linear gray RGB\n");
+                uint8_t* sentinel = sptr + img.rows*img.cols;
+                while (sptr < sentinel) {
+                    *dptr_b++ = uint16_t(*sptr << 8);
+                    *dptr_g++ = uint16_t(*sptr << 8);
+                    *dptr_r++ = uint16_t(*sptr++ << 8);
+                }
+            }
+        } else {
+            if (img.channels() == 3) {
+                logger.info("16-bit linear RGB -> 16-bit linear RGB (separate channels)\n");
+                uint16_t* sptr = (uint16_t*)img.data;
+                uint16_t* sentinel = sptr + 3*img.rows*img.cols;
+                while (sptr < sentinel) {
+                    
+                    *dptr_b++ = uint16_t(*sptr++);
+                    *dptr_g++ = uint16_t(*sptr++);
+                    *dptr_r++ = uint16_t(*sptr++);
+                }
+            } else {
+                logger.info("16-bit linear grayscale -> 16-bit linear gray RGB\n");
+                uint16_t* sptr = (uint16_t*)img.data;
+                uint16_t* sentinel = sptr + img.rows*img.cols;
+                while (sptr < sentinel) {
+                    *dptr_b++ = uint16_t(*sptr);
+                    *dptr_g++ = uint16_t(*sptr);
+                    *dptr_r++ = uint16_t(*sptr++);
+                }
+            }
+        }
+    }    
+    
+    return newmat;
+}
+
 void Display_profile::render_parametric(const vector<double>& gparm) {
 
     is_linear = (gparm[0] == 1.0) && (gparm[1] == 1.0);

@@ -39,7 +39,8 @@ class Esf_sampler_line : public Esf_sampler {
     
     void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
         const map<int, scanline>& scanset, double& edge_length,
-        const cv::Mat& geom_img, const cv::Mat& sampling_img);
+        const cv::Mat& geom_img, const cv::Mat& sampling_img, 
+        Bayer::cfa_mask_t cfa_mask = Bayer::DEFAULT);
 };
 
 #endif

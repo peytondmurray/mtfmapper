@@ -408,8 +408,9 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_sfr(k, sfr);
             shared_blocks_map[label].set_esf(k, esf);
             shared_blocks_map[label].set_snr(k, snr);
-            shared_blocks_map[label].set_ridge(k, edge_model[k].ridge);
             shared_blocks_map[label].rect.centroids[k] = edge_record[k].centroid;
+            shared_blocks_map[label].set_scanset(k, scansets[k]);
+            shared_blocks_map[label].set_edge_model(k, edge_model[k]);
         }
     }
     if (allzero) {
@@ -1141,8 +1142,9 @@ void Mtf_core::process_image_as_roi(void) {
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
         block.set_snr(0, snr);
-        block.set_ridge(0, em.ridge);
         block.set_line_deviation(0, em.line_deviation());
+        block.set_scanset(0, scanset);
+        block.set_edge_model(0, em);
         
         for (int k=1; k < 4; k++) {
             block.set_mtf50_value(k, 1.0, 0.0);
@@ -1154,4 +1156,3 @@ void Mtf_core::process_image_as_roi(void) {
         detected_blocks.push_back(block);
     }
 }
-

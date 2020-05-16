@@ -47,6 +47,8 @@ Logger logger;
 #include "include/mtf_core.h"
 #include "include/mtf_core_tbb_adaptor.h"
 #include "include/output_version.h"
+#include "include/ca_core.h"
+#include "include/ca_core_tbb_adaptor.h"
 #include "include/mtf_renderer_annotate.h"
 #include "include/mtf_renderer_profile.h"
 #include "include/mtf_renderer_mfprofile.h"
@@ -59,6 +61,7 @@ Logger logger;
 #include "include/mtf_renderer_lensprofile.h"
 #include "include/mtf_renderer_chart_orientation.h"
 #include "include/mtf_renderer_focus.h"
+#include "include/ca_renderer_print.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
 #include "include/auto_crop.h"
@@ -122,6 +125,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_ima_mode("", "imatest-chart", "Treat the input image as an Imatest chart (crop black bars out)", cmd, false);
     TCLAP::SwitchArg tc_lensprofile_fixed("", "lensprofile-fixed-size", "Lens profile output is scaled to maximum sensor radius", cmd, false);
     TCLAP::SwitchArg tc_monotonic_filter("", "monotonic-esf-filter", "Force the application of a monontonic ESF noise filter (use at own risk!)", cmd, false);
+    TCLAP::SwitchArg tc_ca("", "ca", "Estimate chromatic aberration", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -213,37 +217,37 @@ int main(int argc, char** argv) {
     }
 
     cv::Mat cvimg;
-	try {
-	    cvimg = cv::imread(tc_in_name.getValue(),-1);
-	} catch (const cv::Exception& ex) {
-		cout << ex.what() << endl;
-	}
+    try {
+        cvimg = cv::imread(tc_in_name.getValue(),-1);
+    } catch (const cv::Exception& ex) {
+        cout << ex.what() << endl;
+    }
 
-	if (!cvimg.data) {
-		logger.error("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
-		return -2;
-	}
-	
-	struct STAT sb;
-	if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {
-	    logger.error("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
-	    return -3;
-	} else {
-	    if (!S_ISDIR(sb.st_mode)) {
-	        logger.error("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
-	        return -3;
-	    }
-	}
-	
-	Tiffsniff tiff(tc_in_name.getValue(), cvimg.elemSize1() == 1);
-	Display_profile display_profile;
-	if (tiff.profile_found()) {
-	    display_profile = tiff.profile();
-	} else {
-	    if (cvimg.elemSize1() == 1 && !tc_linear.getValue()) {
-	        display_profile.force_sRGB();
-	    }
-	}
+    if (!cvimg.data) {
+        logger.error("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
+        return -2;
+    }
+    
+    struct STAT sb;
+    if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {
+        logger.error("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
+        return -3;
+    } else {
+        if (!S_ISDIR(sb.st_mode)) {
+            logger.error("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
+            return -3;
+        }
+    }
+    
+    Tiffsniff tiff(tc_in_name.getValue(), cvimg.elemSize1() == 1);
+    Display_profile display_profile;
+    if (tiff.profile_found()) {
+        display_profile = tiff.profile();
+    } else {
+        if (cvimg.elemSize1() == 1 && !tc_linear.getValue()) {
+            display_profile.force_sRGB();
+        }
+    }
 	
     if (tc_linear.getValue()) {
         display_profile.force_linear();
@@ -255,6 +259,13 @@ int main(int argc, char** argv) {
         int from_to[] = {0,0, 1,1, 2,2};
         cv::mixChannels(&cvimg, 1, &reduced, 1, from_to, 3);
         cvimg = reduced;
+    }
+    
+    int in_num_channels = cvimg.channels();
+    cv::Mat rgb_img;
+    
+    if (tc_ca.getValue() && cvimg.channels() == 3) {
+        rgb_img = cvimg; // TODO: proper linearization ?
     }
     
     cvimg = display_profile.to_luminance(cvimg);
@@ -296,34 +307,34 @@ int main(int argc, char** argv) {
     }
 
     char slashchar='/';
-	#ifdef _WIN32
-	// on windows, mangle the '/' into a '\\'
-	std::string wdm;
-	for (size_t i=0; i < wdir.length(); i++) {
-		if (wdir[i] == '/') {
-			wdm.push_back('\\');
-			wdm.push_back('\\');
-		} else {
-			wdm.push_back(wdir[i]);
-		}
-	}
-	wdir = wdm;
-	slashchar='\\';
-	#endif
-	
-	// strip off supposed extention suffix,
-	// and supposed path prefix
+    #ifdef _WIN32
+    // on windows, mangle the '/' into a '\\'
+    std::string wdm;
+    for (size_t i=0; i < wdir.length(); i++) {
+        if (wdir[i] == '/') {
+            wdm.push_back('\\');
+            wdm.push_back('\\');
+        } else {
+            wdm.push_back(wdir[i]);
+        }
+    }
+    wdir = wdm;
+    slashchar='\\';
+    #endif
+    
+    // strip off supposed extention suffix,
+    // and supposed path prefix
     std::string in_img_name = tc_in_name.getValue();
     std::replace(in_img_name.begin(), in_img_name.end(), '/', slashchar);
-	int ext_idx=-1;
-	int path_idx=0;
-	for (int idx= in_img_name.length()-1; idx >= 0 && path_idx == 0; idx--) {
-	    if (in_img_name[idx] == '.' && ext_idx < 0) {
-	        ext_idx = idx;
+    int ext_idx=-1;
+    int path_idx=0;
+    for (int idx= in_img_name.length()-1; idx >= 0 && path_idx == 0; idx--) {
+        if (in_img_name[idx] == '.' && ext_idx < 0) {
+            ext_idx = idx;
         }
-	    if (in_img_name[idx] == slashchar && path_idx == 0) {
-	        path_idx = idx;
-	    }
+        if (in_img_name[idx] == slashchar && path_idx == 0) {
+            path_idx = idx;
+        }
     }
     if (ext_idx < 0) {
         ext_idx = in_img_name.length();
@@ -555,6 +566,30 @@ int main(int argc, char** argv) {
             continue; // effectively jump back to the start
         }
         
+        if (tc_ca.getValue()) {
+            Ca_core chromatic(mtf_core);
+        
+            if (in_num_channels == 3) {
+                logger.info("Using original RGB input image to estimate CA\n");
+                vector<cv::Mat> channels = display_profile.to_linear_rgb(rgb_img);
+                chromatic.set_rgb_channels(channels);
+            }
+            
+            Ca_core_tbb_adaptor ca_adaptor(chromatic);
+            
+            size_t num_blocks = mtf_core.get_blocks().size();
+            #ifdef MDEBUG
+            if (tc_single.getValue()) {
+                ca_adaptor(Stride_range(size_t(0), num_blocks - 1, 1));
+            } else {
+                logger.info("Parallel CA calculation with %ld blocks\n", num_blocks);
+                Stride_range::parallel_for(ca_adaptor, ThreadPool::instance(), num_blocks);
+            }
+            #else
+            logger.info("Parallel CA calculation with %ld blocks\n", num_blocks);
+            Stride_range::parallel_for(ca_adaptor, ThreadPool::instance(), num_blocks);
+            #endif
+        }
         
         Distance_scale distance_scale;
         if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
@@ -749,6 +784,12 @@ int main(int argc, char** argv) {
         } else {
             stats.render(mtf_core.get_blocks());
         }
+        
+        if (tc_ca.getValue()) {
+            Ca_renderer_print ca_print(wdir + string("chromatic_aberration.txt"), cvimg);
+            ca_print.render(mtf_core.get_blocks());
+        }
+        
     } while (!finished);
     
     return 0;

@@ -25,31 +25,32 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef ESF_SAMPLER_DEFERRED_H
-#define ESF_SAMPLER_DEFERRED_H
+#ifndef CA_CORE_H
+#define CA_CORE_H
 
-#include "include/esf_sampler.h"
-#include "include/undistort.h"
+#include "include/mtf_core.h"
 
-class Esf_sampler_deferred : public Esf_sampler {
+class Ca_core {
   public:
-    Esf_sampler_deferred(Undistort* undistort, double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double border_width=0) 
-    : Esf_sampler(max_dot, cfa_mask, 1e6 /*max_edge_length*/, border_width), undistort(undistort) {
-        
+    Ca_core(Mtf_core& mtf_core)
+    : mtf_core(mtf_core) {
     }
     
-    void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
-        const map<int, scanline>& scanset, double& edge_length,
-        const cv::Mat& geom_img, const cv::Mat& sampling_img,
-        Bayer::cfa_mask_t cfa_mask = Bayer::DEFAULT);
-        
-  protected:
-    Point2d bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt);
-    Point2d derivative(double t0, const Point2d& l, const Point2d& p);
-    double quadmin(const Point2d& a, const Point2d& b, const Point2d& c);
+    void set_rgb_channels(vector<cv::Mat> in_channels) {
+        channels = in_channels;
+    }
+    
+    void calculate_ca(Block& block);
+    
+    Mtf_core& mtf_core;
+    vector<cv::Mat> channels;
     
   private:
-    Undistort* undistort = nullptr;
+    void extract_rgb_lsf_bayer(Block& block, const cv::Mat& img, const cv::Mat& bayer_img,
+        vector<vector<double>>& red_lsf, vector<vector<double>>& green_lsf, vector<vector<double>>& blue_lsf);
+        
+    void extract_rgb_lsf(Block& block, const cv::Mat& img, const vector<cv::Mat>& channels,
+        vector<vector<double>>& red_lsf, vector<vector<double>>& green_lsf, vector<vector<double>>& blue_lsf);
 };
 
 #endif
