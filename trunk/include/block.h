@@ -30,6 +30,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/rectangle.h"
 #include "include/snr.h"
+#include "include/edge_model.h"
 
 #include <map>
 using std::map;
@@ -40,14 +41,16 @@ class Block {
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
-        ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), 
-        line_deviation(4, cv::Point3d(0,0,1)), snr(4) {
+        centroid(0,0), area(0.0), valid(true), 
+        line_deviation(4, cv::Point3d(0,0,1)), snr(4), scansets(4), 
+        chromatic_aberration(4), edge_model(4) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4, vector<double>(32,0)), 
-        esf(4, vector<double>(2, 0)), ridge(4, vector<Point2d>(1)), centroid(0,0), area(0.0), valid(true), 
-        line_deviation(in_rect.line_deviation), snr(4) {
+        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0), valid(true), 
+        line_deviation(in_rect.line_deviation), snr(4), scansets(4), 
+        chromatic_aberration(4), edge_model(4) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -124,12 +127,8 @@ class Block {
         return esf[edge_number];
     }
     
-    void set_ridge(size_t edge_number, const vector<Point2d>& in_ridge) {
-        ridge[edge_number] = in_ridge;
-    }
-
     const vector<Point2d>& get_ridge(size_t edge_number) const {
-        return ridge[edge_number];
+        return edge_model[edge_number].ridge;
     }
 
     void set_normal(size_t edge_number, const Point2d& rgrad) {
@@ -214,18 +213,50 @@ class Block {
         line_deviation[edge_number] = deviation;
     }
     
+    void set_scanset(size_t edge_number, const map<int, scanline>& scanset) {
+        assert(edge_number < 4);
+        scansets[edge_number] = scanset;
+    }
+    
+    const map<int, scanline>& get_scanset(size_t edge_number) const {
+        assert(edge_number < 4);
+        return scansets[edge_number];
+    }
+    
+    void set_ca(size_t edge_number, Point2d ca) {
+        assert(edge_number < 4);
+        chromatic_aberration[edge_number] = ca;
+    }
+    
+    const Point2d& get_ca(size_t edge_number) const {
+        assert(edge_number < 4);
+        return chromatic_aberration[edge_number];
+    }
+    
+    void set_edge_model(size_t edge_number, const Edge_model& em) {
+        assert(edge_number < 4);
+        edge_model[edge_number] = em;
+    }
+    
+    Edge_model& get_edge_model(size_t edge_number) {
+        assert(edge_number < 4);
+        return edge_model[edge_number];
+    }
+    
     Mrectangle rect;
     vector<double> mtf50;
     vector<double> quality;
     vector< vector<double> > sfr;
     vector< vector<double> > esf;
-    vector< vector<Point2d> > ridge;
     map<edge_position, size_t> edge_lut;
     Point2d centroid;
     double area;
     bool valid;
     vector<cv::Point3d> line_deviation;
     vector<Snr> snr;
+    vector< map<int, scanline> > scansets; 
+    vector<Point2d> chromatic_aberration;
+    vector<Edge_model> edge_model;
 };
 
 #endif

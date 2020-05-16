@@ -49,6 +49,7 @@ class Display_profile {
     void force_linear(void) { is_linear = true; }
     void force_sRGB(void);
     cv::Mat to_luminance(const cv::Mat& img);
+    vector<cv::Mat> to_linear_rgb(const cv::Mat& img);
     
   private:
     void render_parametric(const vector<double>& gparm);

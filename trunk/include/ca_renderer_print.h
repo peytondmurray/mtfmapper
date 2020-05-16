@@ -25,31 +25,23 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef ESF_SAMPLER_DEFERRED_H
-#define ESF_SAMPLER_DEFERRED_H
+#ifndef CA_RENDERER_PRINT_H
+#define CA_RENDERER_PRINT_H
 
-#include "include/esf_sampler.h"
-#include "include/undistort.h"
+#include "mtf_renderer.h"
+#include "common_types.h"
 
-class Esf_sampler_deferred : public Esf_sampler {
+class Ca_renderer_print : public Mtf_renderer {
   public:
-    Esf_sampler_deferred(Undistort* undistort, double max_dot, Bayer::cfa_mask_t cfa_mask=Bayer::ALL, double border_width=0) 
-    : Esf_sampler(max_dot, cfa_mask, 1e6 /*max_edge_length*/, border_width), undistort(undistort) {
-        
+    Ca_renderer_print(const std::string& fname, const cv::Mat& img) 
+      :  ofname(fname), img_centre(img.cols/2, img.rows/2) {
+      
     }
     
-    void sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
-        const map<int, scanline>& scanset, double& edge_length,
-        const cv::Mat& geom_img, const cv::Mat& sampling_img,
-        Bayer::cfa_mask_t cfa_mask = Bayer::DEFAULT);
-        
-  protected:
-    Point2d bracket_minimum(double t0, const Point2d& l, const Point2d& p, const Point2d& pt);
-    Point2d derivative(double t0, const Point2d& l, const Point2d& p);
-    double quadmin(const Point2d& a, const Point2d& b, const Point2d& c);
+    void render(const vector<Block>& blocks);
     
-  private:
-    Undistort* undistort = nullptr;
+    string ofname;
+    Point2d img_centre;
 };
 
 #endif

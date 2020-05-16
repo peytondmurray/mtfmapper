@@ -45,6 +45,7 @@ class Bayer {
     // C | D
     // => A<<3 | B << 2 | C << 1 | D
     typedef enum {
+      DEFAULT = 0x1f, // placeholder used as default argument to samplers
       ALL = 0xf,
       
       RGGB_RED = 1 << 3,

@@ -79,7 +79,7 @@ class Mtf_core {
         undistort(undistort), ridges_only(false) {
 
         bayer = Bayer::from_string(bayer_subset);
-        Bayer::cfa_pattern_t cfa_pattern = Bayer::from_cfa_string(cfa_pattern_name);
+        cfa_pattern = Bayer::from_cfa_string(cfa_pattern_name);
         logger.debug("Bayer subset is %d, CFA pattern type is %d\n", bayer, cfa_pattern);
         
         switch (Esf_sampler::from_string(esf_sampler_name)) {
@@ -124,7 +124,7 @@ class Mtf_core {
                        double& poor, 
                        vector<double>& sfr, vector<double>& esf, 
                        Snr& snr, bool allow_peak_shift = false);
-    
+                       
     vector<Block>& get_blocks(void) {
         // make a copy into an STL container if necessary
         if (detected_blocks.size() == 0) {
@@ -210,11 +210,20 @@ class Mtf_core {
         return sliding_edges;
     }
     
+    Esf_sampler* get_esf_sampler(void) const {
+        return esf_sampler;
+    }
+    
+    Bayer::cfa_pattern_t get_cfa_pattern(void) const {
+        return cfa_pattern;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
     const cv::Mat&            bayer_img;
     Bayer::bayer_t bayer;
+    Bayer::cfa_pattern_t cfa_pattern;
     
     AFFT<512> afft; // FFT_SIZE = 512 ??
     vector<int> valid_obj;
