@@ -115,6 +115,7 @@ void Worker_thread::run(void) {
         }
         
         bool q_output_requested = arguments.contains("-q");
+        bool e_output_requested = arguments.contains("-e") || arguments.contains("--esf ");
 
         QProcess mmp(this);
         mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
@@ -151,6 +152,15 @@ void Worker_thread::run(void) {
                 emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
+            }
+            
+            if (e_output_requested) {
+                if (QFile().exists(tempdir + QString("/raw_esf_values.txt"))) {
+                    emit send_delete_item(tempdir + QString("/raw_esf_values.txt"));
+                }
+                if (QFile().exists(tempdir + QString("/raw_psf_values.txt"))) {
+                    emit send_delete_item(tempdir + QString("/raw_psf_values.txt"));
+                }
             }
             
             QString an_file = QString("%1/annotated.png").arg(tempdir);
