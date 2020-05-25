@@ -134,37 +134,49 @@ double estimate_centroid(const vector<double>& a) {
     double wsum = 0;
     double sqsum = 0;
     // initial centroid estimate using Hann weight function
+    // this estimate can be quite far off if there is a large shift
     for (int i=pad; i <= (int)a.size() - pad; i++) {
         double theta = 2*M_PI*(i-pad)/double(512 - 2*pad);
         double w = 0.5 * (1.0 - cos(theta));
+        double x = i*0.125 - 32.0;
         
-        sum += i * a[i] * w;
+        sum += x * a[i] * w;
         wsum += a[i] * w;
     }
     
-    double centroid_idx = sum / wsum;
+    double centroid_x = sum / wsum;
     
-    // now estimate the variance
+    // now estimate the variance to determine the width of
+    // the Gaussian weighting function used below
+    wsum = 0;
     for (int i=pad; i <= (int)a.size() - pad; i++) {
         double theta = 2*M_PI*(i-pad)/double(512 - 2*pad);
         double w = 0.5 * (1.0 - cos(theta));
-        double x = (i - centroid_idx);
+        double x = (i*0.125 - 32.0) - centroid_x;
         
         sqsum += x * x * a[i] * w;
-    }
-    double var = std::min(6000.0, std::max(25.0, fabs(sqsum / wsum)));
-    
-    sum = wsum = 0;
-    // finally, estimate centroid with a Gaussian weight function
-    for (int i=pad; i <= (int)a.size() - pad; i++) {
-        double x = (double(i) - centroid_idx);
-        double w = exp(-x*x/(2.2*var));
-        
-        sum += i * a[i] * w;
         wsum += a[i] * w;
     }
+    double var = std::min(256.0, std::max(1.0, fabs(sqsum / wsum)));
     
-    return (sum / wsum - 256.0) * 0.125;
+    double delta_centroid = 50;
+    size_t iters = 0;
+    do {
+        sum = wsum = 0;
+        // estimate centroid with a Gaussian weight function
+        for (int i=pad; i <= (int)a.size() - pad; i++) {
+            double x = (i*0.125 - 32.0);
+            double wx = x - centroid_x;
+            double w = exp(-wx*wx/(2.2*var));
+            
+            sum += x * a[i] * w;
+            wsum += a[i] * w;
+        }
+        delta_centroid = centroid_x - sum/wsum;
+        centroid_x = sum/wsum;
+    } while (fabs(delta_centroid) > 1e-3 && iters++ < 10);
+    
+    return centroid_x;
 }
 
 void Ca_core::calculate_ca(Block& block) {
