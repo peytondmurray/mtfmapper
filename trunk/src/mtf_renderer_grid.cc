@@ -28,6 +28,25 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/mtf_renderer_grid.h"
 #include <opencv2/imgproc/imgproc.hpp>
 
+class Grid_functor_mtf : public Grid_functor {
+  public:
+    virtual double value(const Block& block, size_t edge) const {
+        return block.get_mtf50_value(edge);
+    }
+    
+    virtual bool in_range(double val) const {
+        return val > 0 && val < 1.0; 
+    }
+    
+    virtual double clamp(double value, double upper, double /*lower*/) const {
+        return std::max(0.0, std::min(value, upper));
+    }
+    
+    virtual double nodata(void) const {
+        return 2.0;
+    }
+};
+
 Mtf_renderer_grid::Mtf_renderer_grid(
     const std::string& img_filename,
     const std::string& wdir, const std::string& fname, 
@@ -82,13 +101,22 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     sort(allvals.begin(), allvals.end());
     m_upper = allvals[97*allvals.size()/100];
     m_lower = allvals[5*allvals.size()/100];
-
+    
     cv::Mat grid_mer_coarse(grid_y_coarse, grid_x_coarse, CV_32FC1, 0.0);
     cv::Mat grid_mer_fine(grid_y_fine, grid_x_fine, CV_32FC1, 0.0);
-    extract_mtf_grid(MERIDIONAL, grid_mer_coarse, grid_mer_fine, blocks, m_upper);
     cv::Mat grid_sag_coarse(grid_y_coarse, grid_x_coarse, CV_32FC1, 0.0);
     cv::Mat grid_sag_fine(grid_y_fine, grid_x_fine, CV_32FC1, 0.0);
+    
+    #if 1
+    Grid_functor_mtf mtf_ftor;
+    cv::Size img_dims(img.cols, img.rows);
+    interpolate_grid(mtf_ftor, MERIDIONAL, grid_mer_coarse, grid_mer_fine, img_dims, blocks, m_upper, sparse_chart);
+    interpolate_grid(mtf_ftor, SAGITTAL, grid_sag_coarse, grid_sag_fine, img_dims, blocks, m_upper, sparse_chart);
+    #else
+    // TODO: we leave this code here for now, but it should be deleted once the grid interpolator is fully debugged
+    extract_mtf_grid(MERIDIONAL, grid_mer_coarse, grid_mer_fine, blocks, m_upper);
     extract_mtf_grid(SAGITTAL, grid_sag_coarse, grid_sag_fine, blocks, m_upper);
+    #endif
     
     double zmax = 0;
     double zmin = 1e30;
