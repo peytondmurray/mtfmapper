@@ -35,6 +35,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "mtf50_edge_quality_rating.h"
 #include "mtf_profile_sample.h"
 
+#include "grid_interpolator.h"
+
 // Moreland's diverging colour map:
 // Moreland, K., Diverging Color Maps for Scientific Visualization, In Proceedings of 
 // the 5th International Symposium on Visual Computing, December 2009.
@@ -107,8 +109,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
     }
 
   private:
-
-    typedef enum {MERIDIONAL, SAGITTAL, NEITHER} Edge_type;
 
     void extract_mtf_grid(Edge_type target_edge_type, cv::Mat& grid_coarse, cv::Mat& grid_fine, const vector<Block>& blocks, double upper);
     

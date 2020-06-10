@@ -62,6 +62,7 @@ Logger logger;
 #include "include/mtf_renderer_chart_orientation.h"
 #include "include/mtf_renderer_focus.h"
 #include "include/ca_renderer_print.h"
+#include "include/ca_renderer_grid.h"
 #include "include/scanline.h"
 #include "include/distance_scale.h"
 #include "include/auto_crop.h"
@@ -126,6 +127,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_lensprofile_fixed("", "lensprofile-fixed-size", "Lens profile output is scaled to maximum sensor radius", cmd, false);
     TCLAP::SwitchArg tc_monotonic_filter("", "monotonic-esf-filter", "Force the application of a monontonic ESF noise filter (use at own risk!)", cmd, false);
     TCLAP::SwitchArg tc_ca("", "ca", "Estimate chromatic aberration", cmd, false);
+    TCLAP::SwitchArg tc_ca_fraction("", "ca-fraction", "Chromatic aberration image generated in units of radial distance fraction", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -788,6 +790,20 @@ int main(int argc, char** argv) {
         if (tc_ca.getValue()) {
             Ca_renderer_print ca_print(wdir + string("chromatic_aberration.txt"), cvimg);
             ca_print.render(mtf_core.get_blocks());
+            
+            Ca_renderer_grid grid(
+                img_filename,
+                wdir, 
+                string("ca_grid.txt"),
+                tc_gnuplot.getValue(),
+                cvimg,
+                gnuplot_width,
+                lpmm_mode,
+                pixel_size,
+                tc_ca_fraction.getValue()
+            );
+            grid.set_sparse_chart(tc_ima_mode.getValue());
+            grid.render(mtf_core.get_blocks());
         }
         
     } while (!finished);
