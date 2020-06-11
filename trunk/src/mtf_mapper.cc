@@ -662,7 +662,8 @@ int main(int argc, char** argv) {
                     lpmm_mode,
                     pixel_size,
                     tc_zscale.getValue(),
-                    tc_surface_max.getValue()
+                    tc_surface_max.getValue(),
+                    lrint(mtf_core.get_mtf_contrast()*100)
                 );
                 grid.set_gnuplot_warning(gnuplot_warning);
                 grid.set_sparse_chart(tc_ima_mode.getValue());

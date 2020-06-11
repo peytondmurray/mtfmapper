@@ -54,14 +54,15 @@ Mtf_renderer_grid::Mtf_renderer_grid(
     const cv::Mat& img, int gnuplot_width,
     bool lpmm_mode, double pixel_size,
     double in_zscale, 
-    double surface_max)
+    double surface_max,
+    int mtf_contrast)
     :  Mtf_renderer(img_filename),
         wdir(wdir), fname(fname), 
         gnuplot_binary(gnuplot_binary), img_y(img.rows), img_x(img.cols),
         img(img), lpmm_mode(lpmm_mode), pixel_size(pixel_size),
         gnuplot_failure(false), gnuplot_warning(true),
         m_lower(0), m_upper(0), gnuplot_width(gnuplot_width),
-        surface_max(surface_max) {
+        surface_max(surface_max), mtf_contrast(mtf_contrast) {
 
     const int coarse_grid_size = 40;
     const int fine_grid_size = 200;
@@ -177,17 +178,6 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     
     fclose(file);
     
-    // TODO: sort out the mess (basename, etc)
-    string img_name_clean;
-    for (size_t i=0; i < img_filename.length(); i++) {
-        if (img_name_clean.length() > 0 && img_name_clean[img_name_clean.length()-1] == '\\' &&
-            img_filename[i] == '\\') {
-            // skip
-        } else {
-            img_name_clean.push_back(img_filename[i]);
-        }
-    }
-    
     if (surface_max > 0 && surface_max > zmax) { // valid user override on maximum value specified
         zmax = surface_max;
     }
@@ -204,71 +194,93 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     
     const int width_in_pixels = int(gnuplot_width*600.0/1024);
     const int height_in_pixels_3d = int(gnuplot_width*1200.0/1024);
-    int fontsize = std::max(long(12), lrint(12.0*gnuplot_width/1024.0));
-    int title_fontsize = std::max(long(14), lrint(14.0*gnuplot_width/1024.0));
+    int fontsize = std::max(long(10), lrint(10.0*gnuplot_width/1024.0));
+    int title_fontsize = fontsize + 2;
     int fontsize3d = std::max(long(9), lrint(9.0*gnuplot_width/1024.0));
     double linewidth = std::max(double(0.5), double(0.5)*gnuplot_width/1024.0);
     
     FILE* gpf = fopen((wdir + std::string("grid.gnuplot")).c_str(), "wt");
-    //if (img_filename.length() > 0) {
-    //    fprintf(gpf, "set label 11 center at graph 0.5,char 1 \"%s\" font \"Arial,%d\"\n", img_name_clean.c_str(), title_fontsize);
-    //    fprintf(gpf, "set bmargin 5\n");
-    //}
     
     fprintf(gpf, "%s\n", diverging_palette.c_str());
     fprintf(gpf, "set cbrange [%lf:%lf]\n", zmin, zmax);
     fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
     fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
-    fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", 
+    fprintf(gpf, "set xtics out nomirror\n");
+    fprintf(gpf, "set xtics scale 0.3\n");
+    fprintf(gpf, "set ytics out nomirror\n");
+    fprintf(gpf, "set ytics scale 0.3\n");
+    if (!lpmm_mode) {
+        fprintf(gpf, "set ytics rotate by 45\n");
+    }
+    fprintf(gpf, "set pm3d map impl\n");
+    fprintf(gpf, "set hidden3d\n");
+    fprintf(gpf, "set cntrlabel onecolor\n");
+    fprintf(gpf, "set contour surface\n");
+    fprintf(gpf, "set cntrparam order 8\n");
+    fprintf(gpf, "set cntrparam bspline\n");
+    fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         width_in_pixels, 
-        (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
+        (int)lrint(width_in_pixels*2.3*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
+        #ifdef _WIN32
+        "Verdana",
+        #else
+        "Arial",
+        #endif
         fontsize
     );
+    
     fprintf(gpf, "set output \"%sgrid_image.png\"\n", wdir.c_str());
     if (img_filename.length() > 0) {
-        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
+        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
         fprintf(gpf, "set tmargin 4\n");
     } else {
         fprintf(gpf, "set multiplot\n");
     }
     fprintf(gpf, "set size 1,0.5\n");
     fprintf(gpf, "set origin 0.0,0.5\n");
-    fprintf(gpf, "set title \"Meridional\"\n");
+    fprintf(gpf, "set title \"Meridional MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-    fprintf(gpf, "plot [0:%lf] \"%s\" i 2 t \"MTF50 (%s)\" w image\n", 
+    fprintf(gpf, "splot [0:%lf] \"%s\" i 2 notitle w l lc rgb \"#77303030\"\n", 
         (img.cols-1)/pixel_size,
-        (wdir+fname).c_str(),
-        lpmm_mode ? "lp/mm" : "c/p"
+        (wdir+fname).c_str()
     );
     fprintf(gpf, "set origin 0.0,0.0\n");
-    fprintf(gpf, "set title \"Sagittal\"\n");
+    fprintf(gpf, "set title \"Sagittal MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-    fprintf(gpf, "plot [0:%lf] \"%s\" i 3 t \"MTF50 (%s)\" w image\n", 
+    fprintf(gpf, "splot [0:%lf] \"%s\" i 3 notitle w l lc rgb \"#77303030\"\n", 
         (img.cols-1)/pixel_size,
-        (wdir+fname).c_str(),
-        lpmm_mode ? "lp/mm" : "c/p"
+        (wdir+fname).c_str()
     );
     fprintf(gpf, "unset multiplot\n");
+    fprintf(gpf, "reset\n");
+    fprintf(gpf, "%s\n", diverging_palette.c_str());
+    fprintf(gpf, "set cbrange [%lf:%lf]\n", zmin, zmax);
+    fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
     fprintf(gpf, "unset label 11\n");
     fprintf(gpf, "set pm3d hidden3d 1 corners2color median\n");
     fprintf(gpf, "set style line 1 lc rgb \"black\" lw 0.75\n");
-    fprintf(gpf, "set term png size %d, %d font \"arial,%d\"\n", 
-        (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
+    fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
+        (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)),
         height_in_pixels_3d,
+        #ifdef _WIN32
+        "Verdana",
+        #else
+        "Arial",
+        #endif
         fontsize3d
     );
     fprintf(gpf, "set output \"%sgrid_surface.png\"\n", wdir.c_str());
     fprintf(gpf, "unset xlab\n");
     fprintf(gpf, "unset ylab\n");
     if (img_filename.length() > 0) {
-        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
+        fprintf(gpf, "set multiplot title \"%s\" font \",%d\"\n", img_filename.c_str(), fontsize);
         fprintf(gpf, "set tmargin 5\n");
     } else {
         fprintf(gpf, "set multiplot\n");
     }
     fprintf(gpf, "set ticslevel %lf\n", 0.0);
     fprintf(gpf, "set view 25, 350\n");
-    fprintf(gpf, "set title \"Meridional\"\n");
+    fprintf(gpf, "set title \"Meridional MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set size 1,0.5\n");   
     fprintf(gpf, "set origin 0.0,0.5\n");
     fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 0 w pm3d lc rgb \"black\" lw %lf notitle\n", 
@@ -277,7 +289,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
             linewidth
     );
     fprintf(gpf, "set view 25, 350\n");
-    fprintf(gpf, "set title \"Sagittal\"\n");
+    fprintf(gpf, "set title \"Sagittal MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set origin 0.0,0.0\n");
     fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 1 w pm3d lc rgb \"black\" lw %lf notitle\n", 
             zmin, zmax,

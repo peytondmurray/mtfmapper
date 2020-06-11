@@ -25,6 +25,7 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
+#include "include/logger.h"
 #include "include/mtf_renderer_grid.h"
 #include "include/ca_renderer_grid.h"
 #include "include/grid_interpolator.h"
@@ -129,6 +130,11 @@ Ca_renderer_grid::Ca_renderer_grid(
 }
 
 void Ca_renderer_grid::render(const vector<Block>& blocks) {
+
+    if (blocks.size() < 6) {
+        logger.error("Too few valid blocks found. No CA surface can be generated\n");
+        return;
+    }
     
     std::unique_ptr<Grid_functor_ca> ca_ftor; 
     
@@ -202,6 +208,13 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "set cbrange [%lf:%lf]\n", g_zmin, g_zmax);
     fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
     fprintf(gpf, "set ylab \"row (%s)\"\n",  lpmm_mode ? "mm" : "pixels");
+    fprintf(gpf, "set xtics out nomirror\n");
+    fprintf(gpf, "set xtics scale 0.3\n");
+    fprintf(gpf, "set ytics out nomirror\n");
+    fprintf(gpf, "set ytics scale 0.3\n");
+    if (!lpmm_mode) {
+        fprintf(gpf, "set ytics rotate by 45\n");
+    }
     fprintf(gpf, "set pm3d map impl\n");
     fprintf(gpf, "set hidden3d\n");
     fprintf(gpf, "set cntrlabel onecolor\n");
@@ -210,7 +223,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "set cntrparam bspline\n");
     fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         width_in_pixels, 
-        (int)lrint(width_in_pixels*2*grid_fine[0].rows/double(grid_fine[0].cols)), 
+        (int)lrint(width_in_pixels*2.3*grid_fine[0].rows/double(grid_fine[0].cols)), 
         #ifdef _WIN32
         "Verdana",
         #else
