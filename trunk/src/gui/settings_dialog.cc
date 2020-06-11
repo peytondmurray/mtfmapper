@@ -87,6 +87,10 @@ const QString setting_surface_max_value = "surface_max_value";
 const QString setting_surface_max_value_default = "0";
 const QString setting_surface_max_flag = "surface_max_flag";
 const Qt::CheckState setting_surface_max_flag_default = Qt::Unchecked;
+const QString setting_ca_active = "setting_ca";
+const Qt::CheckState setting_ca_active_default = Qt::Unchecked;
+const QString setting_ca_type = "setting_ca_type";
+const int setting_ca_type_default = 0;
 #ifdef _WIN32
 static QString setting_gnuplot_default = "gnuplot.exe";
 static QString setting_exiv_default = "exiv2.exe";
@@ -178,6 +182,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
     cb_lensprofile_fixed = new QCheckBox("Lens profile fixed scale", this);
     cb_surface_max = new QCheckBox("3D plot z-axis max value", this);
+    cb_ca_active   = new QCheckBox("Chromatic Aberration", this);
     
     box_colour = new QComboBox;
     box_colour->addItem("none");
@@ -188,6 +193,10 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     box_esf_model = new QComboBox;
     box_esf_model->addItem("kernel");
     box_esf_model->addItem("loess");
+    
+    box_ca_type = new QComboBox;
+    box_ca_type->addItem("direct (pixels)");
+    box_ca_type->addItem("radial distance %");
     
     rb_lens_pw_quad  = new QRadioButton("piecewise-quadratic");
     rb_lens_quad  = new QRadioButton("quadratic");
@@ -258,9 +267,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     cb_surface_max->setCheckState(
         (Qt::CheckState)settings.value(setting_surface_max_flag, setting_surface_max_flag_default).toInt()
     );
+    cb_ca_active->setCheckState(
+        (Qt::CheckState)settings.value(setting_ca_active, setting_ca_active_default).toInt()
+    );
     
     box_colour->setCurrentIndex(settings.value(setting_bayer, 0).toInt());
     box_esf_model->setCurrentIndex(settings.value(setting_esf_model, 0).toInt());
+    box_ca_type->setCurrentIndex(settings.value(setting_ca_type, setting_ca_type_default).toInt());
     
     rb_lens_pw_quad->setChecked(false);
     rb_lens_quad->setChecked(false);
@@ -306,6 +319,7 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     vo_layout->addWidget(cb_grid);
     vo_layout->addWidget(cb_lensprofile);
     vo_layout->addWidget(cb_orientation);
+    vo_layout->addWidget(cb_ca_active);
     voGroupBox->setLayout(vo_layout);
     
     QGroupBox* v2GroupBox = new QGroupBox(tr("Flags"), this);
@@ -325,6 +339,13 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     rb_layout->addWidget(esf_model_label, 1, 0);
     rb_layout->addWidget(box_esf_model, 1, 1);
     bayer_GroupBox->setLayout(rb_layout);
+    
+    QGroupBox* ca_GroupBox = new QGroupBox(tr("Chromatic aberration"), this);
+    QGridLayout* ca_layout = new QGridLayout;
+    ca_type_label = new QLabel("CA display type", this);
+    ca_layout->addWidget(ca_type_label, 0, 0);
+    ca_layout->addWidget(box_ca_type, 1, 0);
+    ca_GroupBox->setLayout(ca_layout);
 
     QGroupBox* v3GroupBox = new QGroupBox(tr("Helpers"), this);
     QGridLayout *helper_layout = new QGridLayout;
@@ -420,16 +441,16 @@ Settings_dialog::Settings_dialog(QWidget *parent ATTRIBUTE_UNUSED)
     
     advanced->setLayout(adv_layout);
 
-    
     QGridLayout* vlayout = new QGridLayout;
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(v2GroupBox, 1, 0, 1, 2);
     vlayout->addWidget(bayer_GroupBox, 2, 0, 1, 2);
+    vlayout->addWidget(ca_GroupBox, 3, 0, 1, 2);
     vlayout->addWidget(v3GroupBox, 0, 3, 1, 2);
     vlayout->addWidget(lens, 1, 3, 1, 2);
-    vlayout->addWidget(advanced, 2, 3, 3, 2);
-    vlayout->addWidget(accept_button, 4, 0);
-    vlayout->addWidget(cancel_button, 4, 1);
+    vlayout->addWidget(advanced, 2, 3, 4, 2);
+    vlayout->addWidget(accept_button, 5, 0);
+    vlayout->addWidget(cancel_button, 5, 1);
     
     connect(accept_button, SIGNAL(clicked()), this, SLOT( save_and_close() ));
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
@@ -475,6 +496,10 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
         args = args + QString(" --chart-orientation");
     }
     
+    if (cb_ca_active->checkState()) {
+        args = args + QString(" --ca");
+    }
+    
     if (cb_autocrop->checkState()) {
         args = args + QString(" --autocrop");
     }
@@ -493,6 +518,10 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
     switch(box_esf_model->currentIndex()) {
     case 0: args = args + QString(" --esf-model kernel"); break;
     case 1: args = args + QString(" --esf-model loess"); break;
+    }
+    
+    if (box_ca_type->currentIndex() == 1) {
+        args = args + QString(" --ca-fraction");
     }
     
     if (rb_lens_pw_quad->isChecked()) {
@@ -572,6 +601,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_grid, cb_grid->checkState());
     settings.setValue(setting_lensprofile, cb_lensprofile->checkState());
     settings.setValue(setting_orientation, cb_orientation->checkState());
+    settings.setValue(setting_ca_active, cb_ca_active->checkState());
     settings.setValue(setting_autocrop, cb_autocrop->checkState());
     settings.setValue(setting_gnuplot_scaled, cb_gnuplot_scaled->checkState());
     settings.setValue(setting_lensprofile_fixed, cb_lensprofile_fixed->checkState());
@@ -587,6 +617,7 @@ void Settings_dialog::save_and_close() {
     settings.setValue(setting_arguments, arguments_line->text());
     settings.setValue(setting_bayer, box_colour->currentIndex());
     settings.setValue(setting_esf_model, box_esf_model->currentIndex());
+    settings.setValue(setting_ca_type, box_ca_type->currentIndex());
     settings.setValue(setting_surface_max_value, surface_max_value->text());
     
     if (rb_lens_pw_quad->isChecked()) {

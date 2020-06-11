@@ -214,6 +214,15 @@ void Worker_thread::run(void) {
                 emit send_child_item(QString("chart orientation"), co_file);
                 emit send_delete_item(co_file);
             }
+            QString ca_file = QString("%1/ca_image.png").arg(tempdir);
+            if (QFile().exists(ca_file)) {
+                emit send_child_item(QString("chromatic aberration"), ca_file);
+                emit send_delete_item(ca_file);
+                emit send_delete_item(tempdir + QString("/ca_grid.gnuplot"));
+                emit send_delete_item(tempdir + QString("/ca_grid.txt"));
+                emit send_delete_item(tempdir + QString("/chromatic_aberration.txt"));
+            }
+            
             emit send_close_item();
         }
         delete [] buffer;

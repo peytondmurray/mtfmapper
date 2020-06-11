@@ -208,7 +208,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "set contour surface\n");
     fprintf(gpf, "set cntrparam order 8\n");
     fprintf(gpf, "set cntrparam bspline\n");
-    fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'\n",
+    fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         width_in_pixels, 
         (int)lrint(width_in_pixels*2*grid_fine[0].rows/double(grid_fine[0].cols)), 
         #ifdef _WIN32
@@ -226,16 +226,25 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     } else {
         fprintf(gpf, "set multiplot\n");
     }
+    
     fprintf(gpf, "set size 1,0.5\n");
     fprintf(gpf, "set origin 0.0,0.5\n");
-    fprintf(gpf, "set title \"Red vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
+    if (!fraction_mode) {
+        fprintf(gpf, "set title \"Red vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
+    } else {
+        fprintf(gpf, "set title \"Red vs Green (%% of radial distance)\"\n");
+    }
     fprintf(gpf, "set yrange [%lf:0] reverse\n", (img_dims.height-1)/pixel_size);
     fprintf(gpf, "splot [0:%lf] \"%s\" i 2 notitle w l lc rgb \"#77303030\"\n", 
         (img_dims.width-1)/pixel_size,
         (wdir+fname).c_str()
     );
     fprintf(gpf, "set origin 0.0,0.0\n");
-    fprintf(gpf, "set title \"Blue vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
+    if (!fraction_mode) {
+        fprintf(gpf, "set title \"Blue vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
+    } else {
+        fprintf(gpf, "set title \"Blue vs Green (%% of radial distance)\"\n");
+    }
     fprintf(gpf, "set yrange [%lf:0] reverse\n", (img_dims.height-1)/pixel_size);
     fprintf(gpf, "splot [0:%lf] \"%s\" i 3 notitle w l lc rgb \"#77303030\"\n", 
         (img_dims.width-1)/pixel_size,
@@ -243,6 +252,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     );
     
     fprintf(gpf, "unset multiplot\n");
+    
     
     fclose(gpf);
     

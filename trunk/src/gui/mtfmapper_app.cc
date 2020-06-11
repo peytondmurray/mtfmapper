@@ -86,6 +86,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_lensprofile->setChecked(true);
     tb_img_orientation = new QCheckBox("Chart orientation");
     tb_img_orientation->setChecked(true);
+    tb_img_ca = new QCheckBox("Chromatic aberration");
+    tb_img_ca->setChecked(true);
     
     img_viewer = new GL_image_viewer(this);
     img_panel = new GL_image_panel(img_viewer);
@@ -342,6 +344,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
             ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
             ft_gridbox->addWidget(tb_img_lensprofile, 1, 0);
             ft_gridbox->addWidget(tb_img_orientation, 1, 1);
+            ft_gridbox->addWidget(tb_img_ca, 1, 2);
         }
         v4GroupBox->setLayout(ft_gridbox);
 
@@ -357,6 +360,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
     tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
     tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
     tb_img_orientation->setCheckState(settings->cb_orientation->checkState());
+    tb_img_ca->setCheckState(settings->cb_ca_active->checkState());
 
     if (open_dialog->exec()) {
         // write state back to settings menu
@@ -365,6 +369,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
         settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
         settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
         settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
+        settings->cb_ca_active->setCheckState(tb_img_ca->checkState());
         settings->set_gnuplot_img_width(int(img_viewer->size().height()*1.3));
         settings->send_argument_string(focus);
 
@@ -600,7 +605,7 @@ void mtfmapper_app::save_action(bool subset) {
                     if (QFile::exists(dest_fname)) {
                         overwrite_count++;
                     }
-                    vector<QString> raw_names = {"edge_mtf_values.txt", "edge_sfr_values.txt", "raw_esf_values.txt", "raw_psf_values.txt"};
+                    vector<QString> raw_names = {"edge_mtf_values.txt", "edge_sfr_values.txt", "raw_esf_values.txt", "raw_psf_values.txt", "chromatic_aberration.txt"};
                     if (j == 0) {
                         for (QString name: raw_names) {
                             QString raw_fname = QFileInfo(src_fname).path() + "/" + name;
