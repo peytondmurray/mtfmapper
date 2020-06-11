@@ -89,11 +89,14 @@ class Settings_dialog : public QDialog
     QCheckBox*  cb_lpmm;
     QCheckBox*  cb_gnuplot_scaled;
     QCheckBox*  cb_lensprofile_fixed;
+    QCheckBox*  cb_ca_active;
     
     QComboBox* box_colour; // Bayer channel, actually
     QComboBox* box_esf_model;
+    QComboBox* box_ca_type;
     QLabel* bayer_label;
     QLabel* esf_model_label;
+    QLabel* ca_type_label;
     
     QRadioButton* rb_lens_pw_quad;
     QRadioButton* rb_lens_quad;
