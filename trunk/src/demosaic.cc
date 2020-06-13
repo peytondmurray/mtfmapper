@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include "include/demosaic.h"
 #include <opencv2/imgcodecs/imgcodecs.hpp>
+#include "include/threadpool.h"
 #include <string>
 using std::string;
 #include <vector>
@@ -117,48 +118,60 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
     } else {
         logger.debug("ROI mode, not performing G1/G2 Bayer subset matching\n");
     }
-    
-    // bilnear interpolation to get rid op R and B channels?
-    for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
-        for (int col=4; col < cvimg.cols-4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == tss1 || subset == tss2) {
-            
-                double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-3) + 3*cvimg.at<uint16_t>(row, col-1) - 
-                                    3*cvimg.at<uint16_t>(row, col+1) - cvimg.at<uint16_t>(row, col+3)));
-                double vgrad = fabs(double(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
-                                    3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col)));
-                                    
-                if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/max(hgrad, vgrad) < 0.1) {
-                    cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1) + 
-                        cvimg.at<uint16_t>(row, col+1)) / 4;
-                } else {
-                    double l = sqrt(hgrad*hgrad + vgrad*vgrad);
-                    if (hgrad > vgrad) {
-                        l = hgrad / l;
-                        if (l > 0.92388) { // more horizontal than not
-                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
-                        } else { // in between, blend it
-                            cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) +
-                                (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) ) / 6.0;
+
+    ThreadPool& tp = ThreadPool::instance();
+    vector<std::future<void>> futures;
+    size_t block_size = cvimg.rows / tp.size();
+    for (size_t block = 0; block < tp.size(); block++) {
+        futures.emplace_back(
+            tp.enqueue([&, block] {
+                size_t start_row = std::min(4 + block*block_size, size_t(cvimg.rows - 1 - 4));
+                size_t end_row = std::min(4 + (block + 1) * block_size, size_t(cvimg.rows - 4));
+                uint16_t* cv_base = (uint16_t*)cvimg.data;
+                for (size_t row = start_row; row < end_row; row++) {
+                    for (int col = 4; col < cvimg.cols - 4; col++) {
+                        int subset = ((row & 1) << 1) | (col & 1);
+                        uint64_t cidx = row * cvimg.cols + col;
+                        uint16_t* cvp = cv_base + cidx;
+                        if (subset == tss1 || subset == tss2) {
+
+                            double hgrad = fabs(double(int32_t(cvp[-3]) + 3 * int32_t(cvp[-1]) - 3 * int32_t(cvp[1]) - int32_t(cvp[3])));
+                            double vgrad = fabs(double(int32_t(cvp[-3 * cvimg.cols]) + 3 * int32_t(cvp[-cvimg.cols]) - 3 * int32_t(cvp[cvimg.cols]) - int32_t(cvp[3 * cvimg.cols])));
+
+                            if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad) / max(hgrad, vgrad) < 0.1) {
+                                *cvp = (int32_t(cvp[-cvimg.cols]) + int32_t(cvp[cvimg.cols]) + int32_t(cvp[-1]) + int32_t(cvp[1])) / 4;
+                            }
+                            else {
+                                double l = (hgrad * hgrad + vgrad * vgrad);
+                                if (hgrad > vgrad) {
+                                    l = hgrad * hgrad / l;
+                                    if (l > 0.92388 * 0.92388) { // more horizontal than not
+                                        *cvp = (int32_t(cvp[-cvimg.cols]) + int32_t(cvp[cvimg.cols])) / 2;
+                                    }
+                                    else { // in between, blend it
+                                        *cvp = (2 * (int32_t(cvp[-cvimg.cols]) + int32_t(cvp[cvimg.cols])) + (int32_t(cvp[-1]) + int32_t(cvp[1]))) / 6.0;
+                                    }
+                                }
+                                else {
+                                    l = vgrad * vgrad / l;
+                                    if (l > 0.92388 * 0.92388) {
+                                        *cvp = (int32_t(cvp[-1]) + int32_t(cvp[1])) / 2;
+                                    }
+                                    else {
+                                        *cvp = (2 * (int32_t(cvp[-1]) + int32_t(cvp[1])) + (int32_t(cvp[-cvimg.cols]) + int32_t(cvp[cvimg.cols]))) / 6.0;
+                                    }
+                                }
+                            }
                         }
-                    } else {
-                        l = vgrad / l;
-                        if (l > 0.92388) {
-                            cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
-                        } else {
-                            cvimg.at<uint16_t>(row, col) = (2*(cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) +
-                                (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) ) / 6.0;
-                        }    
                     }
                 }
-            }
-        }
+            })
+        );
     }
+    for (size_t i = 0; i < futures.size(); i++) {
+        futures[i].wait();
+    }
+    
     
     // since the relative row/column offsets are hardcoded, just swap the subsets
     if (swap_diag) {
@@ -243,55 +256,85 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
     }
     
     // interpolate the other channel (Red if we want blue, or Blue if we want red)
-    for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
-        for (int col=4; col < cvimg.cols-4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            if (subset == first_subset) { // TODO: really should optimize access pattern
-                double d1grad = fabs(double(cvimg.at<uint16_t>(row-1, col-1) - cvimg.at<uint16_t>(row+1, col+1)));
-                double d2grad = fabs(double(cvimg.at<uint16_t>(row-1, col+1) - cvimg.at<uint16_t>(row+1, col-1)));
-                
-                if (max(d1grad, d2grad) < 1 || fabs(d1grad - d2grad)/max(d1grad, d2grad) < 0.001) {
-                    cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col-1) + 
-                        cvimg.at<uint16_t>(row+1, col+1) + 
-                        cvimg.at<uint16_t>(row-1, col+1) + 
-                        cvimg.at<uint16_t>(row+1, col-1)) / 4;
-                } else {
-                    if (d1grad > d2grad) {
-                        cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col+1) + cvimg.at<uint16_t>(row+1, col-1)) / 2;
-                    } else {
-                        cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col-1) + cvimg.at<uint16_t>(row+1, col+1)) / 2;
+    ThreadPool& tp = ThreadPool::instance();
+    vector<std::future<void>> futures;
+    size_t block_size = cvimg.rows / tp.size();
+    for (size_t block = 0; block < tp.size(); block++) {
+        futures.emplace_back(
+            tp.enqueue([&, block] {
+            size_t start_row = std::min(4 + block * block_size, size_t(cvimg.rows - 1 - 4));
+            size_t end_row = std::min(4 + (block + 1) * block_size, size_t(cvimg.rows - 4));
+            for (size_t row = start_row; row < end_row; row++) {
+                for (int col = 4; col < cvimg.cols - 4; col++) {
+                    int subset = ((row & 1) << 1) | (col & 1);
+                    if (subset == first_subset) { // TODO: really should optimize access pattern
+                        double d1grad = fabs(double((int32_t)cvimg.at<uint16_t>(row - 1, col - 1) - (int32_t)cvimg.at<uint16_t>(row + 1, col + 1)));
+                        double d2grad = fabs(double((int32_t)cvimg.at<uint16_t>(row - 1, col + 1) - (int32_t)cvimg.at<uint16_t>(row + 1, col - 1)));
+
+                        if (max(d1grad, d2grad) < 1 || fabs(d1grad - d2grad) / max(d1grad, d2grad) < 0.001) {
+                            cvimg.at<uint16_t>(row, col) =
+                                ((int32_t)cvimg.at<uint16_t>(row - 1, col - 1) +
+                                (int32_t)cvimg.at<uint16_t>(row + 1, col + 1) +
+                                    (int32_t)cvimg.at<uint16_t>(row - 1, col + 1) +
+                                    (int32_t)cvimg.at<uint16_t>(row + 1, col - 1)) / 4;
+                        }
+                        else {
+                            if (d1grad > d2grad) {
+                                cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row - 1, col + 1) + (int32_t)cvimg.at<uint16_t>(row + 1, col - 1)) / 2;
+                            }
+                            else {
+                                cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row - 1, col - 1) + (int32_t)cvimg.at<uint16_t>(row + 1, col + 1)) / 2;
+                            }
+                        }
                     }
                 }
             }
-        }
+        })
+        );
+    }
+    for (size_t i = 0; i < futures.size(); i++) {
+        futures[i].wait();
     }
     
     // interpolate the two green channels
-    for (size_t row=4; row < (size_t)cvimg.rows-4; row++) {
-        for (int col=4; col < cvimg.cols-4; col++) {
-            int subset = ((row & 1) << 1) | (col & 1);
-            
-            if (subset == h_ss || subset == v_ss) {
-            
-                double hgrad = fabs(double(cvimg.at<uint16_t>(row, col-1) - cvimg.at<uint16_t>(row, col+1)));
-                double vgrad = fabs(double(cvimg.at<uint16_t>(row-1, col) - cvimg.at<uint16_t>(row+1, col)));
-                
-                if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/max(hgrad, vgrad) < 0.001) {
-                    cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1) + 
-                        cvimg.at<uint16_t>(row, col+1)) / 4;
-                } else {
-                    if (hgrad > vgrad) {
-                        cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col)) / 2;
-                    } else {
-                        cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1)) / 2;
+    futures.clear();
+    for (size_t block = 0; block < tp.size(); block++) {
+        futures.emplace_back(
+            tp.enqueue([&, block] {
+                size_t start_row = std::min(4 + block * block_size, size_t(cvimg.rows - 1 - 4));
+                size_t end_row = std::min(4 + (block + 1) * block_size, size_t(cvimg.rows - 4));
+                for (size_t row = start_row; row < end_row; row++) {
+                    for (int col = 4; col < cvimg.cols - 4; col++) {
+                        int subset = ((row & 1) << 1) | (col & 1);
+
+                        if (subset == h_ss || subset == v_ss) {
+
+                            double hgrad = fabs(double((int32_t)cvimg.at<uint16_t>(row, col - 1) - (int32_t)cvimg.at<uint16_t>(row, col + 1)));
+                            double vgrad = fabs(double((int32_t)cvimg.at<uint16_t>(row - 1, col) - (int32_t)cvimg.at<uint16_t>(row + 1, col)));
+
+                            if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad) / max(hgrad, vgrad) < 0.001) {
+                                cvimg.at<uint16_t>(row, col) =
+                                    ((int32_t)cvimg.at<uint16_t>(row - 1, col) +
+                                    (int32_t)cvimg.at<uint16_t>(row + 1, col) +
+                                        (int32_t)cvimg.at<uint16_t>(row, col - 1) +
+                                        (int32_t)cvimg.at<uint16_t>(row, col + 1)) / 4;
+                            }
+                            else {
+                                if (hgrad > vgrad) {
+                                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row - 1, col) + (int32_t)cvimg.at<uint16_t>(row + 1, col)) / 2;
+                                }
+                                else {
+                                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row, col - 1) + (int32_t)cvimg.at<uint16_t>(row, col + 1)) / 2;
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        }
+            })
+        );
+    }
+    for (size_t i = 0; i < futures.size(); i++) {
+        futures[i].wait();
     }
     
     // on the first pass, interpolate the green channels
@@ -301,10 +344,10 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             
             if (subset == h_ss || subset == v_ss) {
                 if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col + (col > 0 ? -1 : 1) ) + 
-                        cvimg.at<uint16_t>(row, col+1) )/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row, col + (col > 0 ? -1 : 1) ) +
+                        (int32_t)cvimg.at<uint16_t>(row, col+1) )/2;
                 } else {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row-1, col) + (int32_t)cvimg.at<uint16_t>(row+1, col))/2;
                 }
             }
         }
@@ -313,10 +356,10 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             
             if (subset == h_ss || subset == v_ss) {
                 if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row, col-1) + 
-                        cvimg.at<uint16_t>(row, col + (col < size_t(cvimg.cols - 1) ? 1 : -1)) )/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row, col-1) +
+                        (int32_t)cvimg.at<uint16_t>(row, col + (col < size_t(cvimg.cols - 1) ? 1 : -1)) )/2;
                 } else {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row-1, col) + cvimg.at<uint16_t>(row+1, col))/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row-1, col) + (int32_t)cvimg.at<uint16_t>(row+1, col))/2;
                 }
             }
         }
@@ -328,10 +371,10 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             
             if (subset == h_ss || subset == v_ss) {
                 if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col+1))/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row, col-1) + (int32_t)cvimg.at<uint16_t>(row, col+1))/2;
                 } else {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row + (row > 0 ? -1 : 1), col) + 
-                        cvimg.at<uint16_t>(row+1, col) )/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row + (row > 0 ? -1 : 1), col) +
+                        (int32_t)cvimg.at<uint16_t>(row+1, col) )/2;
                 }
             }
         }
@@ -340,10 +383,10 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             
             if (subset == h_ss || subset == v_ss) {
                 if (subset == h_ss) {
-                    cvimg.at<uint16_t>(row, col) = (cvimg.at<uint16_t>(row, col-1) + cvimg.at<uint16_t>(row, col + 1))/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row, col-1) + (int32_t)cvimg.at<uint16_t>(row, col + 1))/2;
                 } else {
-                    cvimg.at<uint16_t>(row, col) = ( cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row + (row < size_t(cvimg.rows-1) ? 1 : -1), col) )/2;
+                    cvimg.at<uint16_t>(row, col) = ((int32_t)cvimg.at<uint16_t>(row-1, col) +
+                        (int32_t)cvimg.at<uint16_t>(row + (row < size_t(cvimg.rows-1) ? 1 : -1), col) )/2;
                 }
             }
         }
@@ -355,9 +398,9 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset == first_subset) {
                 cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col+1)) / 3;
+                        ((int32_t)cvimg.at<uint16_t>(row-1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row+1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row, col+1)) / 3;
                 
             }
         }
@@ -365,9 +408,9 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset == first_subset) {
                 cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                        ((int32_t)cvimg.at<uint16_t>(row-1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row+1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row, col-1)) / 3;
                 
             }
         }
@@ -377,9 +420,9 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset == first_subset) {
                 cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row, col+1) + 
-                        cvimg.at<uint16_t>(row+1, col) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                        ((int32_t)cvimg.at<uint16_t>(row, col+1) +
+                         (int32_t)cvimg.at<uint16_t>(row+1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row, col-1)) / 3;
                 
             }
         }
@@ -388,9 +431,9 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
             int subset = ((row & 1) << 1) | (col & 1);
             if (subset == first_subset) {
                 cvimg.at<uint16_t>(row, col) = 
-                        (cvimg.at<uint16_t>(row-1, col) + 
-                        cvimg.at<uint16_t>(row, col+1) + 
-                        cvimg.at<uint16_t>(row, col-1)) / 3;
+                        ((int32_t)cvimg.at<uint16_t>(row-1, col) +
+                         (int32_t)cvimg.at<uint16_t>(row, col+1) +
+                         (int32_t)cvimg.at<uint16_t>(row, col-1)) / 3;
                 
             }
         }
