@@ -44,7 +44,7 @@ class Esf_sampler_quad : public Esf_sampler {
         Bayer::cfa_mask_t cfa_mask = Bayer::DEFAULT);
         
   protected:
-    vector<double> quad_tangency(const Point2d& p, const std::array<double, 3>& qp);
+    void quad_tangency(const Point2d& p, const std::array<double, 3>& qp, vector<double>& roots);
 };
 
 #endif

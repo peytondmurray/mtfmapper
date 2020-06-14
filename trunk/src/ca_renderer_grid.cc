@@ -161,12 +161,16 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
                     y*img_dims.height/grid_coarse[k].rows/pixel_size, 
                     grid_coarse[k].at<float>(y,x)
                 );
+                zmax[k] = std::max(zmax[k], (double)grid_coarse[k].at<float>(y, x));
+                zmin[k] = std::min(zmin[k], (double)grid_coarse[k].at<float>(y, x));
             }
             fprintf(file, "\n");
         }
         fprintf(file, "\n\n");
     }
-    
+
+#if 0
+    // we no longer use the fine grid, but rather let gnuplot interpolate on its own
     for (size_t k=0; k < 2; k++) {
         fprintf(file, "#fine %s grid\n", k == 0 ? "red" : "blue");
         for (int y=0; y < grid_fine[k].rows; y++) {
@@ -183,6 +187,8 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
         }
         fprintf(file, "\n\n");
     }
+#endif 0
+
     fclose(file);
     
     // ensure zero is included in the range for each of R/B
@@ -215,12 +221,15 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     if (!lpmm_mode) {
         fprintf(gpf, "set ytics rotate by 45\n");
     }
-    fprintf(gpf, "set pm3d map impl\n");
-    fprintf(gpf, "set hidden3d\n");
+    fprintf(gpf, "set pm3d map impl interpolate 3,3\n");
     fprintf(gpf, "set cntrlabel onecolor\n");
     fprintf(gpf, "set contour surface\n");
     fprintf(gpf, "set cntrparam order 8\n");
     fprintf(gpf, "set cntrparam bspline\n");
+    fprintf(gpf, "set hidden3d\n"); // we need this hidden3d option to hide the cell boundary lines
+    fprintf(gpf, "set autoscale xfix\n");
+    fprintf(gpf, "set autoscale yfix\n");
+    fprintf(gpf, "\n");
     fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         width_in_pixels, 
         (int)lrint(width_in_pixels*2.3*grid_fine[0].rows/double(grid_fine[0].cols)), 
@@ -242,28 +251,20 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     
     fprintf(gpf, "set size 1,0.5\n");
     fprintf(gpf, "set origin 0.0,0.5\n");
+    fprintf(gpf, "set yrange reverse\n");
     if (!fraction_mode) {
         fprintf(gpf, "set title \"Red vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
     } else {
         fprintf(gpf, "set title \"Red vs Green (%% of radial distance)\"\n");
     }
-    fprintf(gpf, "set yrange [%lf:0] reverse\n", (img_dims.height-1)/pixel_size);
-    fprintf(gpf, "splot [0:%lf] \"%s\" i 2 notitle w l lc rgb \"#77303030\"\n", 
-        (img_dims.width-1)/pixel_size,
-        (wdir+fname).c_str()
-    );
+    fprintf(gpf, "splot \"%s\" i 0 notitle w l lc rgb \"#77303030\"\n", (wdir+fname).c_str());
     fprintf(gpf, "set origin 0.0,0.0\n");
     if (!fraction_mode) {
         fprintf(gpf, "set title \"Blue vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
     } else {
         fprintf(gpf, "set title \"Blue vs Green (%% of radial distance)\"\n");
     }
-    fprintf(gpf, "set yrange [%lf:0] reverse\n", (img_dims.height-1)/pixel_size);
-    fprintf(gpf, "splot [0:%lf] \"%s\" i 3 notitle w l lc rgb \"#77303030\"\n", 
-        (img_dims.width-1)/pixel_size,
-        (wdir+fname).c_str()
-    );
-    
+    fprintf(gpf, "splot \"%s\" i 1 notitle w l lc rgb \"#77303030\"\n",  (wdir+fname).c_str());
     fprintf(gpf, "unset multiplot\n");
     
     

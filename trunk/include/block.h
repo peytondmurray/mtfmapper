@@ -40,15 +40,13 @@ class Block {
 	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
-        sfr(4, vector<double>(32,0)), esf(4, vector<double>(2,0)), 
-        centroid(0,0), area(0.0), valid(true), 
+        sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(4, cv::Point3d(0,0,1)), snr(4), scansets(4), 
         chromatic_aberration(4), edge_model(4) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
-        quality(4, 0.0), sfr(4, vector<double>(32,0)), 
-        esf(4, vector<double>(2, 0)), centroid(0,0), area(0.0), valid(true), 
+        quality(4, 0.0), sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(in_rect.line_deviation), snr(4), scansets(4), 
         chromatic_aberration(4), edge_model(4) {
     
@@ -112,23 +110,23 @@ class Block {
     }
 
     void set_sfr(size_t edge_number, const vector<double>& in_sfr) {
-        sfr[edge_number] = in_sfr;
+        sfr[edge_number] = std::shared_ptr<vector<double>>(new vector<double>(in_sfr));
     }
     
     const vector<double>& get_sfr(size_t edge_number) const {
-        return sfr[edge_number];
+        return *sfr[edge_number];
     }
     
     void set_esf(size_t edge_number, const vector<double>& in_esf) {
-        esf[edge_number] = in_esf;
+        esf[edge_number] = std::shared_ptr<vector<double>>(new vector<double>(in_esf));
     }
 
     const vector<double>& get_esf(size_t edge_number) const {
-        return esf[edge_number];
+        return *esf[edge_number];
     }
     
     const vector<Point2d>& get_ridge(size_t edge_number) const {
-        return edge_model[edge_number].ridge;
+        return edge_model[edge_number]->ridge;
     }
 
     void set_normal(size_t edge_number, const Point2d& rgrad) {
@@ -215,12 +213,12 @@ class Block {
     
     void set_scanset(size_t edge_number, const map<int, scanline>& scanset) {
         assert(edge_number < 4);
-        scansets[edge_number] = scanset;
+        scansets[edge_number] = std::shared_ptr<map<int, scanline>>(new map<int, scanline>(scanset));
     }
     
     const map<int, scanline>& get_scanset(size_t edge_number) const {
         assert(edge_number < 4);
-        return scansets[edge_number];
+        return *scansets[edge_number];
     }
     
     void set_ca(size_t edge_number, Point2d ca) {
@@ -233,30 +231,30 @@ class Block {
         return chromatic_aberration[edge_number];
     }
     
-    void set_edge_model(size_t edge_number, const Edge_model& em) {
+    void set_edge_model(size_t edge_number,  const std::shared_ptr<Edge_model>& em) {
         assert(edge_number < 4);
         edge_model[edge_number] = em;
     }
     
     Edge_model& get_edge_model(size_t edge_number) {
         assert(edge_number < 4);
-        return edge_model[edge_number];
+        return *edge_model[edge_number];
     }
     
     Mrectangle rect;
     vector<double> mtf50;
     vector<double> quality;
-    vector< vector<double> > sfr;
-    vector< vector<double> > esf;
+    vector<std::shared_ptr<vector<double>>> sfr;
+    vector<std::shared_ptr<vector<double>>> esf;
     map<edge_position, size_t> edge_lut;
     Point2d centroid;
     double area;
     bool valid;
     vector<cv::Point3d> line_deviation;
     vector<Snr> snr;
-    vector< map<int, scanline> > scansets; 
+    vector<std::shared_ptr<map<int, scanline>>> scansets; 
     vector<Point2d> chromatic_aberration;
-    vector<Edge_model> edge_model;
+    vector<std::shared_ptr<Edge_model>> edge_model;
 };
 
 #endif

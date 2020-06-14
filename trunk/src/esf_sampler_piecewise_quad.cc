@@ -188,7 +188,9 @@ void Esf_sampler_piecewise_quad::sample(Edge_model& edge_model, vector<Ordered_p
         qpp = piecewise_quadfit(local_pts);
     }
     std::array<double, 3> qp;
-        
+
+    vector<double> roots;
+    roots.reserve(3);
     for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
         int y = it->first;
         if (y < border_width || y > geom_img.rows-1-border_width) continue;
@@ -217,7 +219,8 @@ void Esf_sampler_piecewise_quad::sample(Edge_model& edge_model, vector<Ordered_p
             
             // (par, perp) is in the local coordinate frame of the parabola qp
             // so find the closest point on qp
-            vector<double> roots = quad_tangency(Point2d(par, perp), qp);
+            roots.clear();
+            quad_tangency(Point2d(par, perp), qp, roots);
             perp = 1e20;
             for (auto r: roots) {
                 Point2d on_qp(r, r*r*qp[0] + r*qp[1] + qp[2]);

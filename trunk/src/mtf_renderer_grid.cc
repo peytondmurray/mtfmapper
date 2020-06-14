@@ -31,7 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class Grid_functor_mtf : public Grid_functor {
   public:
     virtual double value(const Block& block, size_t edge) const {
-        return block.get_mtf50_value(edge);
+        return  block.get_quality(edge) > very_poor_quality ? block.get_mtf50_value(edge) : nodata();
     }
     
     virtual bool in_range(double val) const {
@@ -130,6 +130,8 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
                 y*img.rows/grid_mer_coarse.rows/pixel_size, 
                 grid_mer_coarse.at<float>(y,x)*pixel_size
             );
+            zmax = std::max(zmax, (double)grid_mer_coarse.at<float>(y, x) * pixel_size);
+            zmin = std::min(zmin, (double)grid_mer_coarse.at<float>(y, x) * pixel_size);
         }
         fprintf(file, "\n");
     }
@@ -142,11 +144,15 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
                 y*img.rows/grid_sag_coarse.rows/pixel_size, 
                 grid_sag_coarse.at<float>(y,x)*pixel_size
             );
+            zmax = std::max(zmax, (double)grid_sag_coarse.at<float>(y, x) * pixel_size);
+            zmin = std::min(zmin, (double)grid_sag_coarse.at<float>(y, x) * pixel_size);
         }
         fprintf(file, "\n");
     }
     fprintf(file, "\n\n");
     
+#if 0
+    // we no longer use the fine grid, but rather let gnuplot interpolate by itself
     fprintf(file, "#fine meridional grid\n");
     for (int y=0; y < grid_mer_fine.rows; y++) {
         for (int x=0; x < grid_mer_fine.cols; x++) {
@@ -175,6 +181,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
         }
         fprintf(file, "\n");
     }
+#endif
     
     fclose(file);
     
@@ -212,12 +219,14 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     if (!lpmm_mode) {
         fprintf(gpf, "set ytics rotate by 45\n");
     }
-    fprintf(gpf, "set pm3d map impl\n");
+    fprintf(gpf, "set pm3d map impl interpolate 3,3\n");
     fprintf(gpf, "set hidden3d\n");
     fprintf(gpf, "set cntrlabel onecolor\n");
     fprintf(gpf, "set contour surface\n");
     fprintf(gpf, "set cntrparam order 8\n");
     fprintf(gpf, "set cntrparam bspline\n");
+    fprintf(gpf, "set autoscale xfix\n");
+    fprintf(gpf, "set autoscale yfix\n");
     fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         width_in_pixels, 
         (int)lrint(width_in_pixels*2.3*grid_mer_fine.rows/double(grid_mer_fine.cols)), 
@@ -239,26 +248,22 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "set size 1,0.5\n");
     fprintf(gpf, "set origin 0.0,0.5\n");
     fprintf(gpf, "set title \"Meridional MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
-    fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-    fprintf(gpf, "splot [0:%lf] \"%s\" i 2 notitle w l lc rgb \"#77303030\"\n", 
-        (img.cols-1)/pixel_size,
-        (wdir+fname).c_str()
-    );
+    fprintf(gpf, "set yrange reverse\n");
+    fprintf(gpf, "splot \"%s\" i 0 notitle w l lc rgb \"#77303030\"\n", (wdir+fname).c_str());
     fprintf(gpf, "set origin 0.0,0.0\n");
     fprintf(gpf, "set title \"Sagittal MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
-    fprintf(gpf, "splot [0:%lf] \"%s\" i 3 notitle w l lc rgb \"#77303030\"\n", 
-        (img.cols-1)/pixel_size,
-        (wdir+fname).c_str()
-    );
+    fprintf(gpf, "splot \"%s\" i 1 notitle w l lc rgb \"#77303030\"\n", (wdir+fname).c_str());
     fprintf(gpf, "unset multiplot\n");
     fprintf(gpf, "reset\n");
     fprintf(gpf, "%s\n", diverging_palette.c_str());
     fprintf(gpf, "set cbrange [%lf:%lf]\n", zmin, zmax);
-    fprintf(gpf, "set yrange [%lf:0] reverse\n", (img.rows-1)/pixel_size);
+    fprintf(gpf, "set zrange [%lf:%lf]\n", zmin, zmax);
+    fprintf(gpf, "set yrange reverse\n");
     fprintf(gpf, "unset label 11\n");
-    fprintf(gpf, "set pm3d hidden3d 1 corners2color median\n");
-    fprintf(gpf, "set style line 1 lc rgb \"black\" lw 0.75\n");
+    fprintf(gpf, "set autoscale xfix\n");
+    fprintf(gpf, "set autoscale yfix\n");
+    fprintf(gpf, "set pm3d hidden3d 8 corners2color median\n");
     fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
         (int)lrint(width_in_pixels*2*grid_mer_fine.rows/double(grid_mer_fine.cols)),
         height_in_pixels_3d,
@@ -283,19 +288,11 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     fprintf(gpf, "set title \"Meridional MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set size 1,0.5\n");   
     fprintf(gpf, "set origin 0.0,0.5\n");
-    fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 0 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-            zmin, zmax,
-            (wdir+fname).c_str(),
-            linewidth
-    );
+    fprintf(gpf, "splot \"%s\" i 0 w pm3d lc rgb \"black\" lw %lg notitle\n",  (wdir+fname).c_str(), linewidth);
     fprintf(gpf, "set view 25, 350\n");
     fprintf(gpf, "set title \"Sagittal MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "lp/mm" : "c/p");
     fprintf(gpf, "set origin 0.0,0.0\n");
-    fprintf(gpf, "splot [][][%lf:%lf] \"%s\" i 1 w pm3d lc rgb \"black\" lw %lf notitle\n", 
-            zmin, zmax,
-            (wdir+fname).c_str(),
-            linewidth
-    );
+    fprintf(gpf, "splot \"%s\" i 1 w pm3d lc rgb \"black\" lw %lg notitle\n", (wdir+fname).c_str(), linewidth);
     fprintf(gpf, "unset multiplot\n");
     
     fclose(gpf);

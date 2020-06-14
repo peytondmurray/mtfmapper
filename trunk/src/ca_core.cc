@@ -195,22 +195,24 @@ void Ca_core::calculate_ca(Block& block) {
     Point2d img_centre(mtf_core.img.cols/2, mtf_core.img.rows/2);
     
     for (size_t k=0; k < 4; k++) {
-    
-        double green_centroid = estimate_centroid(green_lsf[k]);
-        double red_ca = estimate_centroid(red_lsf[k]) - green_centroid;
-        double blue_ca = estimate_centroid(blue_lsf[k]) - green_centroid;
-        
-        // choose the correct sign for CA shift, depending on edge orientation
+
         Point2d dir = block.get_edge_centroid(k) - img_centre;
-        dir = dir * (1.0/norm(dir));
+        dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
-        
-        if (fabs(delta) > angle_threshold && delta < 0) {
-            red_ca *= -1;
-            blue_ca *= -1;
+    
+        if (fabs(delta) > angle_threshold) { // only process CA on tangential edges
+            double green_centroid = estimate_centroid(green_lsf[k]);
+            double red_ca = estimate_centroid(red_lsf[k]) - green_centroid;
+            double blue_ca = estimate_centroid(blue_lsf[k]) - green_centroid;
+
+            // choose the correct sign for CA shift, depending on edge orientation
+            if (fabs(delta) > angle_threshold && delta < 0) {
+                red_ca *= -1;
+                blue_ca *= -1;
+            }
+
+            block.set_ca(k, Point2d(red_ca, blue_ca));
         }
-        
-        block.set_ca(k, Point2d(red_ca, blue_ca));
     }
 }
 
