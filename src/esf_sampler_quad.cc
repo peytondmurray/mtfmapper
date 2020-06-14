@@ -28,7 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/esf_sampler_quad.h"
 
-vector<double> Esf_sampler_quad::quad_tangency(const Point2d& p, const std::array<double, 3>& qp) {
+void Esf_sampler_quad::quad_tangency(const Point2d& p, const std::array<double, 3>& qp, vector<double>& roots) {
     const double& a = qp[0];
     const double& b = qp[1];
     const double& c = qp[2];
@@ -46,7 +46,6 @@ vector<double> Esf_sampler_quad::quad_tangency(const Point2d& p, const std::arra
     double Q = (pa*pa - 3*pb)/9.0;
     double R = (2*pa*pa*pa - 9*pa*pb + 27*pc)/54.0;
     
-    vector<double> roots;
     if (R*R < Q*Q*Q) { // three real roots
         double theta = acos(R/sqrt(Q*Q*Q));
         roots.push_back(-2*sqrt(Q)*cos(theta/3.0) - pa/3.0);
@@ -57,7 +56,6 @@ vector<double> Esf_sampler_quad::quad_tangency(const Point2d& p, const std::arra
         double B = A == 0 ? 0 : Q/A;
         roots.push_back(A+B - pa/3.0);
     }
-    return roots;
 }
 
 void Esf_sampler_quad::sample(Edge_model& edge_model, vector<Ordered_point>& local_ordered, 
@@ -71,7 +69,8 @@ void Esf_sampler_quad::sample(Edge_model& edge_model, vector<Ordered_point>& loc
     double min_along_edge = 1e50;
     
     const std::array<double, 3>& qp = edge_model.quad_coeffs();
-        
+    vector<double> roots;
+    roots.reserve(3);
     for (map<int, scanline>::const_iterator it=scanset.begin(); it != scanset.end(); ++it) {
         int y = it->first;
         if (y < border_width || y > geom_img.rows-1-border_width) continue;
@@ -90,7 +89,8 @@ void Esf_sampler_quad::sample(Edge_model& edge_model, vector<Ordered_point>& loc
             
             // (par, perp) is in the local coordinate frame of the parabola qp
             // so find the closest point on qp
-            vector<double> roots = quad_tangency(Point2d(par, perp), qp);
+            roots.clear();
+            quad_tangency(Point2d(par, perp), qp, roots);
             perp = 1e20;
             for (auto r: roots) {
                 Point2d on_qp(r, r*r*qp[0] + r*qp[1] + qp[2]);

@@ -126,19 +126,21 @@ class Mtf_core {
                        Snr& snr, bool allow_peak_shift = false);
                        
     vector<Block>& get_blocks(void) {
-        // make a copy into an STL container if necessary
         if (detected_blocks.size() == 0) {
-            for (map<int,Block>::const_iterator it=shared_blocks_map.begin();
-                 it != shared_blocks_map.end(); ++it) {
-                
+            // make a copy into an STL container if necessary
+            detected_blocks.reserve(shared_blocks_map.size());
+
+            for (map<int, Block>::const_iterator it = shared_blocks_map.begin();
+                it != shared_blocks_map.end(); ++it) {
+
                 bool allzero = true;
-                for (int k=0; k < 4 && allzero; k++) {
+                for (int k = 0; k < 4 && allzero; k++) {
                     if (fabs(it->second.get_mtf50_value(k)) > 1e-6) {
                         allzero = false;
                     }
                 }
-                
-                if (it->second.valid && !allzero) { 
+
+                if (it->second.valid && !allzero) {
                     detected_blocks.push_back(it->second);
                 }
             }

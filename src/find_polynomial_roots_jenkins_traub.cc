@@ -43,6 +43,8 @@
 #include <limits>
 #include <vector>
 
+#include "include/common_types.h"
+
 //#include "theia/math/polynomial.h"
 //#include "theia/math/util.h"
 

@@ -42,6 +42,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <mutex>
 #include <thread>
 #include <array>
+#include <memory>
 
 #include <random>
 
@@ -164,21 +165,35 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     
     vector<Edge_record> edge_record(4);
     vector< map<int, scanline> > scansets(4); 
-    vector<Edge_model> edge_model(4);
+    vector<std::shared_ptr<Edge_model>> edge_model(4);
     bool reduce_success = true;
     bool small_target = false;
     for (size_t k=0; k < 4; k++) {
         // now construct buffer around centroid, aligned with direction, of width max_dot
         Mrectangle nr(rrect, k, (undistort ? 4 : 1)*max_dot+0.5);
         
+        double max_edge_len = 0;
+        double min_perp_dist = 9;
+        double par_dist_bias = 0;
+        for (int kk = 0; kk < 4; kk++) {
+            double el = cv::norm(nr.corners[kk] - nr.corners[(kk + 1) % 4]);
+            max_edge_len = std::max(max_edge_len, el);
+            min_perp_dist = std::min(min_perp_dist, el);
+            double par_dist = fabs((nr.corners[kk] - rrect.centroids[k]).dot(rrect.edges[k]))/cv::norm(rrect.edges[k]);
+            par_dist_bias = std::max(par_dist_bias, par_dist);
+        }
+
         for (int kk=0; kk < 4; kk++) {
             cv::line(od_img, nr.corners[kk], nr.corners[(kk+1)%4], cv::Scalar(0, 255, 128));
         }
         
-        edge_model[k] = Edge_model(rrect.centroids[k], rrect.edges[k], rrect.quad_coeffs[k]);
-        
+        edge_model[k] = std::shared_ptr<Edge_model>(new Edge_model(rrect.centroids[k], rrect.edges[k], rrect.quad_coeffs[k]));
+        Edge_model* emk = edge_model[k].get();
+
         double perp_threshold = nr.length >= 45 ? 12.0 : 8.0;
         small_target |= nr.length < 45;
+
+        emk->hint_point_set_size((int)ceil(par_dist_bias), (int)ceil(max_edge_len+2), (int)ceil(2 * std::max(perp_threshold, min_perp_dist) + 4));
         
         for (double y=nr.tl.y; y < nr.br.y; y += 1.0) {
             for (double x=nr.tl.x; x < nr.br.x; x += 1.0) {
@@ -194,7 +209,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                     }
                     
                     if (iy >= 0 && iy < img.rows && ix >= 0  && ix < img.cols) {
-                        edge_model[k].add_point(x, y, g.grad_magnitude(ix, iy), perp_threshold);
+                        emk->add_point(x, y, g.grad_magnitude(ix, iy), perp_threshold);
                     }
                     
                     map<int, scanline>::iterator it = scansets[k].find(iy);
@@ -212,7 +227,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             }
         }
         
-        edge_model[k].estimate_ridge();
+        edge_model[k]->estimate_ridge();
         reduce_success &= edge_record[k].reduce();
     }
     
@@ -386,14 +401,14 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             edge_record[k].angle = ea;
         }
         
-        edge_model[k].update_location(
+        edge_model[k]->update_location(
             edge_record[k].centroid,
             Point2d(-sin(ea), cos(ea))
         );
         
         double mtf50 = 0.01;
         if (!ridges_only) {
-            mtf50 = compute_mtf(edge_model[k], scansets[k], quality, sfr, esf, snr);
+            mtf50 = compute_mtf(*edge_model[k], scansets[k], quality, sfr, esf, snr);
         }
         
         allzero &= fabs(mtf50) < 1e-6;
@@ -1064,7 +1079,8 @@ void Mtf_core::process_image_as_roi(void) {
     scanset.clear();
     er.clear();
     
-    Edge_model em(cent, Point2d(-normal.y, normal.x));
+    std::shared_ptr<Edge_model> em(new Edge_model(cent, Point2d(-normal.y, normal.x)));
+    Edge_model* em_p = em.get();
 
     for (int row=0; row < img.rows; row++) {
         for (int col=0; col < img.cols; col++) {
@@ -1076,7 +1092,7 @@ void Mtf_core::process_image_as_roi(void) {
                 int idx = row*img.cols + col;
                 if (!binary_search(skiplist.begin(), skiplist.end(), idx)) {
                     er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
-                    em.add_point(col, row, g.grad_magnitude(col, row), 12);
+                    em_p->add_point(col, row, g.grad_magnitude(col, row), 12);
                 }
             }
             
@@ -1088,7 +1104,7 @@ void Mtf_core::process_image_as_roi(void) {
         } 
     }
     er.reduce();
-    em.estimate_ridge();
+    em->estimate_ridge();
     
     if (snap_to) {
     
@@ -1118,7 +1134,7 @@ void Mtf_core::process_image_as_roi(void) {
         er.angle/M_PI*180, cent.x, cent.y, er.centroid.x, er.centroid.y
     );
     
-    em.update_location(
+    em->update_location(
         er.centroid,
         Point2d(-sin(er.angle), cos(er.angle))
     );
@@ -1128,7 +1144,7 @@ void Mtf_core::process_image_as_roi(void) {
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
     Snr snr;
-    double mtf50 = compute_mtf(em, scanset, quality, sfr, esf, snr, true);
+    double mtf50 = compute_mtf(*em, scanset, quality, sfr, esf, snr, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 
@@ -1142,7 +1158,7 @@ void Mtf_core::process_image_as_roi(void) {
         block.set_sfr(0, sfr);
         block.set_esf(0, esf);
         block.set_snr(0, snr);
-        block.set_line_deviation(0, em.line_deviation());
+        block.set_line_deviation(0, em->line_deviation());
         block.set_scanset(0, scanset);
         block.set_edge_model(0, em);
         

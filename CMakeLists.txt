@@ -18,7 +18,7 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 project(mtfmapper CXX C)
 set(mtfmapper_VERSION_MAJOR 0)
 set(mtfmapper_VERSION_MINOR 7)
-set(mtfmapper_VERSION_SUB 26) #increment on release
+set(mtfmapper_VERSION_SUB 27)  #increment on release
 set(genrectangle_VERSION_MAJOR 2)
 set(genrectangle_VERSION_MINOR 0)
 
@@ -40,7 +40,7 @@ if(CMAKE_CXX_COMPILER MATCHES "icpc")
 endif(CMAKE_CXX_COMPILER MATCHES "icpc")
 
 if (MSVC)
-    add_definitions(/arch:SSE2)
+    add_definitions(/Oi /Ot) # on x64, default is SSE2
 endif(MSVC)
 
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)

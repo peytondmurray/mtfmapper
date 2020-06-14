@@ -66,37 +66,47 @@ class Edge_model {
         coeff[1] = coeffs[1];
         coeff[2] = coeffs[2];
     }
+
+    void hint_point_set_size(int par_dist_bias, int max_edge_len, int est_roi_width) {
+        par_bias = par_dist_bias;
+        int est_par_length = std::max(max_edge_len, 2 * std::abs(par_bias) + 2);
+
+        points.resize(est_par_length);
+        for (auto& v : points) {
+            v.reserve(est_roi_width);
+        }
+    }
     
     void add_point(double x, double y, double weight, double distance_threshold=100) {
         Point2d delta = Point2d(x, y) - centroid;
         double perp = delta.ddot(normal);
         double par = delta.ddot(direction);
-        
+
         double pred_perp = coeff[0]*par*par + coeff[1]*par + coeff[2];
         if (fabs(perp - pred_perp) < distance_threshold) {
-            int ipar = rint(par);
-            points.emplace(make_pair(ipar, cv::Point3d(x, y, weight)));
+            int ipar = rint(par) + par_bias;
+            if (ipar >= 0 && ipar < (int)points.size()) {
+                points[ipar].push_back(cv::Point3d(x, y, weight));
+            }
         }
     }
     
     void estimate_ridge(void) {
         if (points.size() < 9) {
             logger.debug("too few points in estimate_ridge\n");
+            release_points();
             return;
         }
     
-        double min_par = points.begin()->first;
-        double max_par = points.rbegin()->first;
-        
         vector<cv::Point3d> samples;
-        for (int ipar=int(min_par); ipar < int(max_par); ipar++) {
-            auto range = points.equal_range(ipar);
-            if (points.count(ipar) > 12) {
+        samples.reserve(points.size());
+        for (int ipar=0; ipar < points.size(); ipar++) {
+            if (points[ipar].size() > 12) {
                 cv::Point3d sample(0, 0, 0);
-                for (auto it=range.first; it != range.second; it++) {
-                    double w = it->second.z*it->second.z*it->second.z*it->second.z;
-                    sample.x += it->second.x * w;
-                    sample.y += it->second.y * w;
+                for (const auto& p : points[ipar]) {
+                    double w = p.z*p.z*p.z*p.z;
+                    sample.x += p.x * w;
+                    sample.y += p.y * w;
                     sample.z += w;
                 }
                 samples.push_back(sample);
@@ -105,6 +115,7 @@ class Edge_model {
         
         if (samples.size() < 9) {
             logger.debug("too few points in estimate_ridge\n");
+            release_points();
             return;
         }
         
@@ -114,7 +125,7 @@ class Edge_model {
         // we have little choice but to clean up the edges of the ridge after the fact
         
         vector<Point2d> est_ridge;
-        
+        est_ridge.reserve(samples.size());
         for (int i=0; i < (int)samples.size(); i++) {
             cv::Point3d sum(0, 0, 0);
             for (int d=-2; d <= 2; d++) {
@@ -157,9 +168,13 @@ class Edge_model {
             upper_idx--;
         }
         
+        ridge.reserve(upper_idx - lower_idx + 2);
         for (size_t i=lower_idx; i <= upper_idx; i++) {
             ridge.push_back(est_ridge[i]);
         }
+
+        release_points();
+        return;
     }
     
     void update_location(const Point2d& new_centroid, const Point2d& new_direction) {
@@ -219,10 +234,14 @@ class Edge_model {
     bool quad_fit_valid(void) const {
         return !coeffs_invalidated;
     }
-    
+   
     vector<Point2d> ridge;
 
   private:
+
+    void release_points(void) {
+        points.clear();
+    }
   
     inline double pnorm(const Point2d& dir) const {
         return fabs(normal.ddot(dir));
@@ -310,7 +329,9 @@ class Edge_model {
     std::array<double, 3> coeff; // least squares quadratic fit
     bool coeffs_invalidated = false;
     
-    multimap<int, cv::Point3d > points;
+    int par_bias = 0;
+    size_t est_par_length = 1;
+    vector<vector<cv::Point3d>> points;
 };
 
 #endif
