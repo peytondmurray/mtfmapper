@@ -121,8 +121,9 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
 
     ThreadPool& tp = ThreadPool::instance();
     vector<std::future<void>> futures;
-    size_t block_size = cvimg.rows / tp.size();
-    for (size_t block = 0; block < tp.size(); block++) {
+    size_t n_blocks = std::max(1, int(cvimg.rows < 50 ? 1 : tp.size()));
+    size_t block_size = cvimg.rows / n_blocks;
+    for (size_t block = 0; block < n_blocks; block++) {
         futures.emplace_back(
             tp.enqueue([&, block] {
                 size_t start_row = std::min(4 + block*block_size, size_t(cvimg.rows - 1 - 4));
@@ -258,8 +259,9 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
     // interpolate the other channel (Red if we want blue, or Blue if we want red)
     ThreadPool& tp = ThreadPool::instance();
     vector<std::future<void>> futures;
-    size_t block_size = cvimg.rows / tp.size();
-    for (size_t block = 0; block < tp.size(); block++) {
+    size_t n_blocks = std::max(1, int(cvimg.rows < 50 ? 1 : tp.size()));
+    size_t block_size = cvimg.rows / n_blocks;
+    for (size_t block = 0; block < n_blocks; block++) {
         futures.emplace_back(
             tp.enqueue([&, block] {
             size_t start_row = std::min(4 + block * block_size, size_t(cvimg.rows - 1 - 4));
@@ -298,7 +300,7 @@ void simple_demosaic_redblue(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::bayer_t bay
     
     // interpolate the two green channels
     futures.clear();
-    for (size_t block = 0; block < tp.size(); block++) {
+    for (size_t block = 0; block < n_blocks; block++) {
         futures.emplace_back(
             tp.enqueue([&, block] {
                 size_t start_row = std::min(4 + block * block_size, size_t(cvimg.rows - 1 - 4));
