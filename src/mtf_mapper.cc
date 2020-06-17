@@ -128,6 +128,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_monotonic_filter("", "monotonic-esf-filter", "Force the application of a monontonic ESF noise filter (use at own risk!)", cmd, false);
     TCLAP::SwitchArg tc_ca("", "ca", "Estimate chromatic aberration", cmd, false);
     TCLAP::SwitchArg tc_ca_fraction("", "ca-fraction", "Chromatic aberration image generated in units of radial distance fraction", cmd, false);
+    TCLAP::SwitchArg tc_jpeg("", "jpeg", "Annotated image saved in JPEG format to gain speed", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -605,7 +606,7 @@ int main(int argc, char** argv) {
         
         // now render the computed MTF values
         if (tc_annotate.getValue()){
-            Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated.png"), lpmm_mode, pixel_size);
+            Mtf_renderer_annotate annotate(cvimg, wdir + string("annotated"), lpmm_mode, pixel_size, tc_jpeg.getValue());
             annotate.render(mtf_core.get_blocks());
         }
         

@@ -589,7 +589,11 @@ void mtfmapper_app::save_action(bool subset) {
                 QStandardItem* current_child = current_dataset_item->child(j);
                 QString dest_fname = save_path + "/" + prefix;
                 QString src_fname = dataset_files.at(idx++);
-                dest_fname += "_" + current_child->text() + ".png";
+                if (src_fname.endsWith(".jpg")) {
+                    dest_fname += "_" + current_child->text() + ".jpg";
+                } else {
+                    dest_fname += "_" + current_child->text() + ".png";
+                }
                 dest_fname.replace(' ', '_');
                 bool copy_allowed = false;
                 if (subset) {

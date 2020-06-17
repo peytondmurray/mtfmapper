@@ -581,6 +581,8 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
     if (!focus_mode) {
         args = args + QString(" -q");
     }
+
+    args = args + QString(" --jpeg");
     
     args = args + QString(" %1").arg(arguments_line->text());
     

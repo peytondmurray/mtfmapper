@@ -157,8 +157,14 @@ void Mtf_renderer_annotate::render(const vector<Block>& blocks) {
                 }
             }
         }
-    }    
-    imwrite(ofname, out_img);
+    }
+    if (jpeg_output) {
+        vector<int> parms = {cv::IMWRITE_JPEG_QUALITY, 98};
+        imwrite(ofname + ".jpg", out_img, parms);
+    } else {
+        imwrite(ofname + ".png", out_img);
+    }
+    
 }
 
 void Mtf_renderer_annotate::write_number(cv::Mat& img, int px, int py, double val, double quality, double font_scale) {
