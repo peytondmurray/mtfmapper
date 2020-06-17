@@ -168,6 +168,11 @@ void Worker_thread::run(void) {
                 emit send_child_item(QString("annotated"), an_file);
                 emit send_delete_item(an_file);
             }
+            QString an_file_jpeg = QString("%1/annotated.jpg").arg(tempdir);
+            if (QFile().exists(an_file_jpeg)) {
+                emit send_child_item(QString("annotated"), an_file_jpeg);
+                emit send_delete_item(an_file_jpeg);
+            }
             QString pr_file = QString("%1/profile_image.png").arg(tempdir);
             if (QFile().exists(pr_file)) {
                 emit send_child_item(QString("profile"), pr_file);
