@@ -204,6 +204,13 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     
     double g_zmax = std::max(zmax[0], zmax[1]);
     double g_zmin = std::min(zmin[0], zmin[1]);
+
+    if (g_zmax < 0.1 && g_zmin < 0 && g_zmin > -0.1) {
+        // We are probably dealing with a synthetic grayscale image, so there is no real CA
+        // Bump the limits a bit to produce a more pleasing plot
+        g_zmax = 0.1;
+        g_zmin = -0.1;
+    }
     
     const int width_in_pixels = int(gnuplot_width*600.0/1024);
     int fontsize = std::max(long(10), lrint(10.0*gnuplot_width/1024.0));
