@@ -196,6 +196,11 @@ void Ca_core::calculate_ca(Block& block) {
     
     for (size_t k=0; k < 4; k++) {
 
+        // skip edges that are likely to be truncated, or have really bad MTF values for some other reason
+        if (block.get_mtf50_value(k) >= 1.0) {
+            continue;
+        }
+
         Point2d dir = block.get_edge_centroid(k) - img_centre;
         dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
