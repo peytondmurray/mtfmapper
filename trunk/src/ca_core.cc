@@ -198,6 +198,7 @@ void Ca_core::calculate_ca(Block& block) {
 
         // skip edges that are likely to be truncated, or have really bad MTF values for some other reason
         if (block.get_mtf50_value(k) >= 1.0) {
+            block.set_ca(k, Point2d(Block::ca_nodata, Block::ca_nodata));
             continue;
         }
 

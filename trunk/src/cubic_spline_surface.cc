@@ -101,13 +101,31 @@ Eigen::MatrixXd Cubic_spline_surface::spline_fit(const vector<Eigen::Vector3d>& 
     }
     double occ_fraction = occ_fr_count / (kmax_x * kmax_y);
     
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
     cv::Mat first_val = occ_val.clone();
     cv::Mat occ_dist(knots_y.size(), knots_x.size(), CV_32FC1, cv::Scalar::all(0.0));
     
     for (int i=0; i < std::max(occ_val.rows, occ_val.cols); i++) {
-        cv::Mat dilated;
-        dilate(occ_val, dilated, element);
+        // hard-coded dilation with 3-pixel cross, but skipping pixels with zero counts
+        cv::Mat dilated = cv::Mat(occ_val.rows, occ_val.cols, CV_32FC1, cv::Scalar::all(0.0));
+        for (int r=0; r < occ_val.rows; r++) {
+            for (int c=0; c < occ_val.cols; c++) {
+                
+                float local_max = -1e10;
+                int delta[5][2] = { {0, 0}, {-1, 0}, {1, 0}, {0, 1}, {0, -1} };
+                for (int d=0; d < 5; d++) {
+                    int dr = r + delta[d][0];
+                    int dc = c + delta[d][1];
+                    
+                    if (dr >= 0 && dc >= 0 && dr < occ_val.rows && dc < occ_val.cols && occ_count.at<float>(dr, dc) > 0) {
+                        local_max = std::max(occ_val.at<float>(dr, dc), local_max);
+                    }
+                }
+                if (local_max > -1e10) {
+                    dilated.at<float>(r, c) = local_max;
+                }
+            }
+        }
+        
         for (int r=0; r < occ_val.rows; r++) {
             for (int c=0; c < occ_val.cols; c++) {
                 if (occ_count.at<float>(r, c) == 0 && occ_val.at<float>(r, c) != dilated.at<float>(r, c)) {

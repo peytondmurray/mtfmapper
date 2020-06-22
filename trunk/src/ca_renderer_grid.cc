@@ -65,11 +65,11 @@ class Grid_functor_ca : public Grid_functor {
     }
 
     virtual double smoothing_factor(void) const {
-        return sparse_mode ? 1e-1 : 1e-3;
+        return sparse_mode ? 1e-1 : 1e-2;
     }
 
     virtual int pruning_threshold(void) const {
-        return sparse_mode ? 5 : 5;
+        return sparse_mode ? 2 : 1;
     }
 
   protected:
@@ -267,7 +267,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     
     fprintf(gpf, "set size 1,0.5\n");
     fprintf(gpf, "set origin 0.0,0.5\n");
-    fprintf(gpf, "set yrange reverse\n");
+    fprintf(gpf, "set yrange [*:*] reverse\n");
     if (!fraction_mode) {
         fprintf(gpf, "set title \"Red vs Green (shift in %s)\"\n", lpmm_mode ? "micron" : "pixels");
     } else {
