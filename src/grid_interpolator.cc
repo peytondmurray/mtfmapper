@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 
 void interpolate_grid(const Grid_functor& ftor, Edge_type target_edge_type, cv::Mat& grid_coarse, cv::Mat& grid_fine,
-    cv::Size img_dims, const vector<Block>& blocks, double upper, bool sparse_chart) {
+    cv::Size img_dims, const vector<Block>& blocks, double upper, double smoothing_factor, int pruning_threshold) {
     
     grid_fine = ftor.nodata();
     
@@ -107,9 +107,9 @@ void interpolate_grid(const Grid_functor& ftor, Edge_type target_edge_type, cv::
     
     Cubic_spline_surface csurf(grid_coarse.cols, grid_coarse.rows);
     Eigen::MatrixXd cg = csurf.spline_fit(samples, 
-        sparse_chart ? 1e-1 : 1e-3, 
+        smoothing_factor,
         Eigen::Vector2d(grid_fine.cols, grid_fine.rows),
-        sparse_chart ? 2 : 1
+        pruning_threshold
     ); 
     
     for (int r=0; r < grid_coarse.rows; r++) {

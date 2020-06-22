@@ -40,7 +40,7 @@ if(CMAKE_CXX_COMPILER MATCHES "icpc")
 endif(CMAKE_CXX_COMPILER MATCHES "icpc")
 
 if (MSVC)
-    add_definitions(/Oi /Ot) # on x64, default is SSE2
+    add_definitions(/Oi /Ot /W1) # on x64, default is SSE2, tune for speed, and lower warning levels
 endif(MSVC)
 
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_helpers)
