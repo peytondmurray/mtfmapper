@@ -33,8 +33,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Grid_functor_ca : public Grid_functor {
   public:
-    Grid_functor_ca(bool red_ca, double scale_factor = 1.0) 
-    : red_ca(red_ca), scale_factor(scale_factor) {}
+    Grid_functor_ca(bool red_ca, double scale_factor = 1.0, bool sparse_mode = false) 
+    : red_ca(red_ca), scale_factor(scale_factor), sparse_mode(sparse_mode) {}
     
     void set_red_ca(bool val) {
         red_ca = val;
@@ -63,16 +63,25 @@ class Grid_functor_ca : public Grid_functor {
     double scale(double x) {
         return x*scale_factor;
     }
-    
-  private:
+
+    virtual double smoothing_factor(void) const {
+        return sparse_mode ? 1e-1 : 1e-3;
+    }
+
+    virtual int pruning_threshold(void) const {
+        return sparse_mode ? 5 : 5;
+    }
+
+  protected:
     bool red_ca = true;
     double scale_factor = 1.0;
+    bool sparse_mode = false;
 };
 
 class Grid_functor_ca_radial : public Grid_functor_ca {
   public:
-    Grid_functor_ca_radial(bool red_ca, cv::Size img_dims) 
-    : Grid_functor_ca(red_ca, 1.0), 
+    Grid_functor_ca_radial(bool red_ca, cv::Size img_dims, bool sparse_mode) 
+    : Grid_functor_ca(red_ca, 1.0, sparse_mode), 
       centre(img_dims.width/2.0, img_dims.height/2.0) {}
       
     virtual double value(const Block& block, size_t edge) const {
@@ -139,14 +148,14 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
     std::unique_ptr<Grid_functor_ca> ca_ftor; 
     
     if (fraction_mode) {
-        ca_ftor = std::unique_ptr<Grid_functor_ca>(new Grid_functor_ca_radial(true, img_dims));
+        ca_ftor = std::unique_ptr<Grid_functor_ca>(new Grid_functor_ca_radial(true, img_dims, sparse_mode));
     } else {
-        ca_ftor = std::unique_ptr<Grid_functor_ca>(new Grid_functor_ca(true, lpmm_mode ? 1000.0/pixel_size : 1));
+        ca_ftor = std::unique_ptr<Grid_functor_ca>(new Grid_functor_ca(true, lpmm_mode ? 1000.0/pixel_size : 1, sparse_mode));
     }
     
-    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[0], grid_fine[0], img_dims, blocks, ca_ftor->scale(-200), sparse_mode);
+    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[0], grid_fine[0], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
     ca_ftor->set_red_ca(false);
-    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[1], grid_fine[1], img_dims, blocks, ca_ftor->scale(-200), sparse_mode);
+    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[1], grid_fine[1], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
     
     vector<double> zmax(2, -1e50);
     vector<double> zmin(2,  1e50);

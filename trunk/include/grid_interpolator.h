@@ -51,9 +51,17 @@ class Grid_functor {
     virtual double nodata(void) const {
         return 0;
     }
+
+    virtual double smoothing_factor(void) const {
+        return 1e-3;
+    }
+
+    virtual int pruning_threshold(void) const {
+        return 1;
+    }
 };
 
 void interpolate_grid(const Grid_functor& ftor, Edge_type target_edge_type, cv::Mat& grid_coarse, cv::Mat& grid_fine, 
-    cv::Size img_dims, const vector<Block>& blocks, double upper, bool sparse_chart = false);
+    cv::Size img_dims, const vector<Block>& blocks, double upper, double smoothing_factor = 1e-3, int pruning_threshold = 1);
 
 #endif

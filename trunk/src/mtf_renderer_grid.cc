@@ -30,6 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Grid_functor_mtf : public Grid_functor {
   public:
+    Grid_functor_mtf(bool sparse_mode = false) : sparse_mode(sparse_mode) {}
+
     virtual double value(const Block& block, size_t edge) const {
         return  block.get_quality(edge) > very_poor_quality ? block.get_mtf50_value(edge) : nodata();
     }
@@ -45,6 +47,17 @@ class Grid_functor_mtf : public Grid_functor {
     virtual double nodata(void) const {
         return 2.0;
     }
+
+    virtual double smoothing_factor(void) const {
+        return sparse_mode ? 1e-1 : 1e-3;
+    }
+
+    virtual int pruning_threshold(void) const {
+        return sparse_mode ? 2 : 1;
+    }
+
+  private:
+    bool sparse_mode = false;
 };
 
 Mtf_renderer_grid::Mtf_renderer_grid(
@@ -109,10 +122,10 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     cv::Mat grid_sag_fine(grid_y_fine, grid_x_fine, CV_32FC1, 0.0);
     
     #if 1
-    Grid_functor_mtf mtf_ftor;
+    Grid_functor_mtf mtf_ftor(sparse_chart);
     cv::Size img_dims(img.cols, img.rows);
-    interpolate_grid(mtf_ftor, MERIDIONAL, grid_mer_coarse, grid_mer_fine, img_dims, blocks, m_upper, sparse_chart);
-    interpolate_grid(mtf_ftor, SAGITTAL, grid_sag_coarse, grid_sag_fine, img_dims, blocks, m_upper, sparse_chart);
+    interpolate_grid(mtf_ftor, MERIDIONAL, grid_mer_coarse, grid_mer_fine, img_dims, blocks, m_upper, mtf_ftor.smoothing_factor(), mtf_ftor.pruning_threshold());
+    interpolate_grid(mtf_ftor, SAGITTAL, grid_sag_coarse, grid_sag_fine, img_dims, blocks, m_upper, mtf_ftor.smoothing_factor(), mtf_ftor.pruning_threshold());
     #else
     // TODO: we leave this code here for now, but it should be deleted once the grid interpolator is fully debugged
     extract_mtf_grid(MERIDIONAL, grid_mer_coarse, grid_mer_fine, blocks, m_upper);
