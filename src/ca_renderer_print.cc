@@ -51,6 +51,7 @@ void Ca_renderer_print::render(const vector<Block>& blocks) {
             double delta = dir.dot(blocks[i].get_normal(k));
             
             if (blocks[i].get_sfr(k)[0] == 0) continue;
+            if (blocks[i].get_ca(k).x == Block::ca_nodata || blocks[i].get_ca(k).y == Block::ca_nodata) continue;
 
             if (fabs(delta) >= cos(45.0/180*M_PI) || blocks.size() == 1) {
                 fprintf(fout, "%ld %lf %lf %lf %lf %lf %lf\n", 

@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/rectangle.h"
 #include "include/snr.h"
 #include "include/edge_model.h"
+#include <memory>
 
 #include <map>
 using std::map;
@@ -255,6 +256,7 @@ class Block {
     vector<std::shared_ptr<map<int, scanline>>> scansets; 
     vector<Point2d> chromatic_aberration;
     vector<std::shared_ptr<Edge_model>> edge_model;
+    static constexpr double ca_nodata = -1e10;
 };
 
 #endif
