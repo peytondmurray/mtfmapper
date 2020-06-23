@@ -40,10 +40,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
     Mtf_renderer_profile(
         const std::string& img_filename,
         const std::string& wdir, const std::string& prof_fname, 
-        const std::string& peak_fname, const std::string& gnuplot_binary,
+        const std::string& gnuplot_binary,
         const cv::Mat& img, int gnuplot_width, bool lpmm_mode=false, double pixel_size=1.0, 
         int mtf_contrast=50) 
-      :  wdir(wdir), prname(prof_fname), pfname(peak_fname), 
+      :  wdir(wdir), prname(prof_fname),
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          gnuplot_failure(false), gnuplot_warning(true),
@@ -168,8 +168,8 @@ class Mtf_renderer_profile : public Mtf_renderer {
                 med_filt_mtf[i++]*pixel_size
             );
         }
-        fclose(prfile);
-
+        fprintf(prfile, "\n\n");
+        
         centroid.x -= blocks[largest_block].get_centroid().x;
         centroid.y -= blocks[largest_block].get_centroid().y;
         
@@ -220,34 +220,21 @@ class Mtf_renderer_profile : public Mtf_renderer {
             lpmm_mode ? "lp/mm" : "c/p"
         );
         
-        FILE* pffile = fopen((wdir+pfname).c_str(), "wt");
         double peak_mtf50 = blocks[largest_block].get_mtf50_value(peak_idx);
         bool peak_quality_good = true;
         if (!blocks[largest_block].get_quality(peak_idx)) {
             peak_mtf50 = max_med_filt;
             peak_quality_good = false;
         }
-        fprintf(pffile, "%lf %lf %lf\n", 
+        fprintf(prfile, "%lf %lf %lf\n", 
             transpose ? 
                  blocks[largest_block].get_edge_centroid(peak_idx).x/pixel_size :
                  blocks[largest_block].get_edge_centroid(peak_idx).y/pixel_size , 
             peak_mtf50*pixel_size,
             peak_mtf50*3*pixel_size
         );
-        fclose(pffile);
+        fclose(prfile);
 
-        // TODO: sort out the mess (basename, etc)
-        string img_name_clean;
-        for (size_t i = 0; i < img_filename.length(); i++) {
-            if (img_name_clean.length() > 0 && img_name_clean[img_name_clean.length() - 1] == '\\' &&
-                img_filename[i] == '\\') {
-                // skip
-            }
-            else {
-                img_name_clean.push_back(img_filename[i]);
-            }
-        }
-		       
         FILE* gpf = fopen( (wdir + string("profile.gnuplot")).c_str(), "wt");
         fprintf(gpf, "set xlab \"column (%s)\"\n", lpmm_mode ? "mm" : "pixels");
         fprintf(gpf, "set ylab \"MTF%2d (%s)\"\n", mtf_contrast, lpmm_mode ? "line pairs per mm" : "cycles/pixel");
@@ -256,16 +243,25 @@ class Mtf_renderer_profile : public Mtf_renderer {
         int title_fontsize = lrint(14.0*gnuplot_width/1024.0);
         int linewidth = lrint(3*gnuplot_width/1024.0);
         double pointsize = 0.5*gnuplot_width/1024.0;
-        fprintf(gpf, "set term png size %d, %d font 'Arial,%d'\n", gnuplot_width, int(gnuplot_width*ar), fontsize);
+        fprintf(gpf, "set term pngcairo dashed transparent enhanced size %d, %d font '%s,%d'  background rgb \"white\"\n",
+            gnuplot_width,
+            int(gnuplot_width* ar),
+            #ifdef _WIN32
+            "Verdana",
+            #else 
+            "Arial",
+            #endif
+            fontsize
+        );
         if (img_filename.length() > 0) {
-            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_name_clean.c_str(), title_fontsize);
+            fprintf(gpf, "set title \"%s\" font \",%d\"\n", img_filename.c_str(), title_fontsize);
         }
         fprintf(gpf, "set output \"%sprofile_image.png\"\n", wdir.c_str());
-        fprintf(gpf, "plot [][0:%lf]\"%s\" u 1:2 t \"MTF%2d (%s) raw\" w p ps %lf, \"%s\" u 1:3 t \"MTF%2d (%s) smoothed\" w l lw %d, \"%s\" u 1:2 t \"Expected focus point\" w i lc %d lw %d\n", 
+        fprintf(gpf, "plot [][0:%lf] \"%s\" i 0 u 1:3 t \"MTF%2d (%s) smoothed\" w l lw %d lc rgb \"#0020af20\", \"%s\" i 0 u 1:2 t \"MTF%2d (%s) raw\" w p ps %lf lc rgb \"#70ff2020\",  \"%s\" i 1 u 1:2 t \"Expected focus point\" w i lc %d lw %d\n",
             effective_max*pixel_size,
-            (wdir+prname).c_str(), mtf_contrast, lpmm_mode ? "lp/mm" : "c/p", pointsize,
             (wdir+prname).c_str(), mtf_contrast, lpmm_mode ? "lp/mm" : "c/p", linewidth,
-            (wdir+pfname).c_str(), peak_quality_good ? 3 : 1, linewidth
+            (wdir+prname).c_str(), mtf_contrast, lpmm_mode ? "lp/mm" : "c/p", pointsize,
+            (wdir+prname).c_str(), peak_quality_good ? 3 : 1, linewidth
         );
         
         fclose(gpf);
@@ -408,7 +404,6 @@ class Mtf_renderer_profile : public Mtf_renderer {
     
     std::string wdir;
     std::string prname;
-    std::string pfname;
     std::string gnuplot_binary;
     const cv::Mat& img;
     bool    lpmm_mode;
