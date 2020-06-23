@@ -69,7 +69,7 @@ class Grid_functor_ca : public Grid_functor {
     }
 
     virtual int pruning_threshold(void) const {
-        return sparse_mode ? 2 : 1;
+        return sparse_mode ? 3 : 2;
     }
 
   protected:

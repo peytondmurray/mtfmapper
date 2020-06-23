@@ -622,7 +622,6 @@ int main(int argc, char** argv) {
                     img_filename,
                     wdir, 
                     string("profile.txt"),
-                    string("profile_peak.txt"),
                     tc_gnuplot.getValue(),
                     cvimg,
                     gnuplot_width,
