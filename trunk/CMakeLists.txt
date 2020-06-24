@@ -169,6 +169,7 @@ set(CPACK_PACKAGE_DESCRIPTION "Measure slanted-edge SFR, lens testing, camera ca
 set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico") 
 set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/mtf_mapper_gui.ico")
 set(CPACK_NSIS_MODIFY_PATH ON)
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
 if (UNIX)
     set(CPACK_GENERATOR "DEB")
