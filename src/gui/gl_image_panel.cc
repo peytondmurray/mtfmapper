@@ -281,7 +281,15 @@ void GL_image_panel::load_image(const QString& fname) {
     if (image_cache.find(fname.toStdString()) != image_cache.end()) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
-        cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR);
+        cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
+
+        if (cvimg.depth() != CV_8U) {
+            logger.debug("Input image %s was not 8-bit, so we will convert it with scaling\n", fname.toStdString().c_str());
+            cv::Mat dst;
+            // This may not be the most pretty conversion, but at least it will make raw files visible ...
+            cv::normalize(cvimg, dst, 0, 255, cv::NORM_MINMAX, CV_8U);
+            cvimg = dst;
+        }
         
         // manual conversion, cvtColor seems a bit slow
         uint8_t* sptr = cvimg.data;
