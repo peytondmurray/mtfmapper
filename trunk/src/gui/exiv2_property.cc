@@ -85,7 +85,7 @@ QString Exiv2_property::extract_property(QString propname) {
     evp.setProgram(exiv2_binary);
     evp.setStandardOutputFile(tfname);
     evp.setArguments(
-        QStringList() << ifname << "-g" << propname << "-pt"
+        QStringList() << "-g" << propname << "-pt" << ifname
     );
     evp.start();
     evp.waitForFinished(-1);
