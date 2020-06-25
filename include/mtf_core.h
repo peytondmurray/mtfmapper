@@ -220,6 +220,10 @@ class Mtf_core {
         return cfa_pattern;
     }
     
+    bool is_single_roi(void) const {
+        return single_roi_mode;
+    }
+    
     const Component_labeller& cl;
     const Gradient&           g;
     const cv::Mat&            img;
@@ -263,6 +267,7 @@ class Mtf_core {
     
     void process_with_sliding_window(Mrectangle& rrect);
     bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
+    bool single_roi_mode = false;
 };
 
 #endif
