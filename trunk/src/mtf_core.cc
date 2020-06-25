@@ -465,7 +465,7 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     return rect.valid;
 }
 
-bool Mtf_core::homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const {
+bool Mtf_core::homogenous(const Point2d& /*cent*/, int label, const Mrectangle& rrect) const {
     bool fail = false;
     for (size_t k=0; k < 4 && !fail; k++) {
         const Point2d& ec = rrect.centroids[k];
@@ -534,7 +534,7 @@ double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& s
     int success = esf_model->build_esf(ordered, fft_out_buffer.data(), FFT_SIZE,  max_dot, esf, snr, allow_peak_shift); // bin_fit computes the ESF derivative as part of the fitting procedure
     if (success < 0) {
         quality = poor_quality;
-        logger.debug("failed edge\n");
+        logger.debug("failed edge at (%.1lf, %.1lf)\n", edge_model.get_centroid().x, edge_model.get_centroid().y);
         return 1.0;
     }
     afft.realfft(fft_out_buffer.data());
@@ -1081,6 +1081,9 @@ void Mtf_core::process_image_as_roi(void) {
     
     std::shared_ptr<Edge_model> em(new Edge_model(cent, Point2d(-normal.y, normal.x)));
     Edge_model* em_p = em.get();
+    
+    double diag_len = sqrt(img.rows*img.rows + img.cols*img.cols);
+    em->hint_point_set_size((int)ceil(diag_len+2), (int)ceil(2*diag_len+4), (int)ceil(2*max_dot + 4));
 
     for (int row=0; row < img.rows; row++) {
         for (int col=0; col < img.cols; col++) {
