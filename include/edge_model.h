@@ -75,6 +75,7 @@ class Edge_model {
         for (auto& v : points) {
             v.reserve(est_roi_width);
         }
+        points_hinted = true;        
     }
     
     void add_point(double x, double y, double weight, double distance_threshold=100) {
@@ -92,15 +93,20 @@ class Edge_model {
     }
     
     void estimate_ridge(void) {
+        if (!points_hinted) {
+            logger.error("did you forget to call hint_point_set_size() before adding points?\n");
+            return;
+        }
+        
         if (points.size() < 9) {
-            logger.debug("too few points in estimate_ridge\n");
+            logger.debug("too few points in estimate_ridge (only %ld points!)\n", points.size());
             release_points();
             return;
         }
     
         vector<cv::Point3d> samples;
         samples.reserve(points.size());
-        for (int ipar=0; ipar < points.size(); ipar++) {
+        for (int ipar=0; ipar < (int)points.size(); ipar++) {
             if (points[ipar].size() > 12) {
                 cv::Point3d sample(0, 0, 0);
                 for (const auto& p : points[ipar]) {
@@ -331,6 +337,7 @@ class Edge_model {
     
     int par_bias = 0;
     size_t est_par_length = 1;
+    bool points_hinted = false;
     vector<vector<cv::Point3d>> points;
 };
 

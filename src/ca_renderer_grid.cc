@@ -178,7 +178,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
         fprintf(file, "\n\n");
     }
 
-#if 0
+    #if 0
     // we no longer use the fine grid, but rather let gnuplot interpolate on its own
     for (size_t k=0; k < 2; k++) {
         fprintf(file, "#fine %s grid\n", k == 0 ? "red" : "blue");
@@ -196,7 +196,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
         }
         fprintf(file, "\n\n");
     }
-#endif 0
+    #endif
 
     fclose(file);
     
