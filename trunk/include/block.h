@@ -38,18 +38,18 @@ using std::map;
 
 class Block {
   public:
-	typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
+    typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
 
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(4, cv::Point3d(0,0,1)), snr(4), scansets(4), 
-        chromatic_aberration(4), edge_model(4) {
+        chromatic_aberration(4), edge_model(4), valid_edge(4, false) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(in_rect.line_deviation), snr(4), scansets(4), 
-        chromatic_aberration(4), edge_model(4) {
+        chromatic_aberration(4), edge_model(4), valid_edge(4, false) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -242,6 +242,16 @@ class Block {
         return *edge_model[edge_number];
     }
     
+    bool get_edge_valid(size_t edge_number) const {
+        assert(edge_number < 4);
+        return valid_edge[edge_number];
+    }
+    
+    void set_edge_valid(size_t edge_number) {
+        assert(edge_number < 4);
+        valid_edge[edge_number] = true;
+    }
+    
     Mrectangle rect;
     vector<double> mtf50;
     vector<double> quality;
@@ -257,6 +267,7 @@ class Block {
     vector<Point2d> chromatic_aberration;
     vector<std::shared_ptr<Edge_model>> edge_model;
     static constexpr double ca_nodata = -1e10;
+    vector<bool> valid_edge;
 };
 
 #endif

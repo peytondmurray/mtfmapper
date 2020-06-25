@@ -197,7 +197,7 @@ void Ca_core::calculate_ca(Block& block) {
     for (size_t k=0; k < 4; k++) {
 
         // skip edges that are likely to be truncated, or have really bad MTF values for some other reason
-        if (block.get_mtf50_value(k) >= 1.0) {
+        if (!block.get_edge_valid(k) || block.get_mtf50_value(k) >= 1.0) {
             block.set_ca(k, Point2d(Block::ca_nodata, Block::ca_nodata));
             continue;
         }
@@ -206,7 +206,7 @@ void Ca_core::calculate_ca(Block& block) {
         dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
     
-        if (fabs(delta) > angle_threshold) { // only process CA on tangential edges
+        if (fabs(delta) > angle_threshold || mtf_core.is_single_roi()) { // only process CA on tangential edges
             double green_centroid = estimate_centroid(green_lsf[k]);
             double red_ca = estimate_centroid(red_lsf[k]) - green_centroid;
             double blue_ca = estimate_centroid(blue_lsf[k]) - green_centroid;
@@ -228,7 +228,18 @@ void Ca_core::extract_rgb_lsf_bayer(Block& block, const cv::Mat& img, const cv::
     vector<Ordered_point> ordered;
     double edge_length = 0;
     
+    const double angle_threshold = cos(45.0/180.0*M_PI);
+    Point2d img_centre(mtf_core.img.cols/2, mtf_core.img.rows/2);
+    
     for (size_t k=0; k < 4; k++) {
+        Point2d dir = block.get_edge_centroid(k) - img_centre;
+        dir = dir * (1.0 / norm(dir));
+        double delta = dir.dot(block.get_normal(k));
+    
+        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !mtf_core.is_single_roi())) { // only process CA on tangential edges
+            continue;
+        }
+    
         ordered.clear();
         mtf_core.get_esf_sampler()->sample(block.get_edge_model(k), ordered, block.get_scanset(k), 
             edge_length, img, bayer_img, Bayer::to_cfa_mask(Bayer::GREEN, mtf_core.get_cfa_pattern())
@@ -256,7 +267,18 @@ void Ca_core::extract_rgb_lsf(Block& block, const cv::Mat& img, const vector<cv:
     vector<Ordered_point> ordered;
     double edge_length = 0;
     
+    const double angle_threshold = cos(45.0/180.0*M_PI);
+    Point2d img_centre(mtf_core.img.cols/2, mtf_core.img.rows/2);
+    
     for (size_t k=0; k < 4; k++) {
+        Point2d dir = block.get_edge_centroid(k) - img_centre;
+        dir = dir * (1.0 / norm(dir));
+        double delta = dir.dot(block.get_normal(k));
+    
+        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !mtf_core.is_single_roi())) { // only process CA on tangential edges
+            continue;
+        }
+    
         ordered.clear();
         mtf_core.get_esf_sampler()->sample(block.get_edge_model(k), ordered, block.get_scanset(k), 
             edge_length, img, channels[1], Bayer::ALL
