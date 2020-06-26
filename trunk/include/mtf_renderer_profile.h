@@ -131,25 +131,27 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // apply additional smoothing
         // try various LOESS filter sizes until the sign changes in the slope
         // drops below 5% (which seems to provide relatively oscillation-free curves)
-        for (size_t w2=5; w2 < max(ordered.size()/10, size_t(6)); w2+=3) {
-            for (size_t i=0; i < ordered.size() - 1; i++) {
-                Point2d sol;
-                
-                size_t start = max(0, int(i) - int(w2));
-                size_t end   = min(ordered.size() - 1, i + w2);
-                loess_core(ordered, start, end, ordered[i].first, sol);
-                    
-                med_filt_mtf[i] = ordered[i].first * sol.y + sol.x;
-            }
-            double frac_sign_change = 0;
-            for (size_t i=3; i < ordered.size()-2; i++) {
-                if ( (med_filt_mtf[i] - med_filt_mtf[i-2]) * (med_filt_mtf[i+2] - med_filt_mtf[i]) < 0) {
-                    frac_sign_change += 1.0;
+        if (ordered.size() > 5) {
+            for (size_t w2 = 5; w2 < max(ordered.size() / 10, size_t(6)); w2 += 3) {
+                for (size_t i = 0; i < ordered.size() - 1; i++) {
+                    Point2d sol;
+
+                    size_t start = max(0, int(i) - int(w2));
+                    size_t end = min(ordered.size() - 1, i + w2);
+                    loess_core(ordered, start, end, ordered[i].first, sol);
+
+                    med_filt_mtf[i] = ordered[i].first * sol.y + sol.x;
                 }
-            }
-            frac_sign_change /= ordered.size();
-            if (frac_sign_change < 0.05) {  // less than 5% of sequential slopes experience sign changes
-                break;
+                double frac_sign_change = 0;
+                for (size_t i = 3; i < ordered.size() - 2; i++) {
+                    if ((med_filt_mtf[i] - med_filt_mtf[i - 2]) * (med_filt_mtf[i + 2] - med_filt_mtf[i]) < 0) {
+                        frac_sign_change += 1.0;
+                    }
+                }
+                frac_sign_change /= ordered.size();
+                if (frac_sign_change < 0.05) {  // less than 5% of sequential slopes experience sign changes
+                    break;
+                }
             }
         }
 
@@ -302,6 +304,10 @@ class Mtf_renderer_profile : public Mtf_renderer {
         int minval = data.begin()->first;
         int maxval = data.rbegin()->first;
         int span = maxval - minval;
+
+        if (span == 0) { // all the samples are in a perfectly straight line, so we have to take the transpose
+            return true;
+        }
 
         int nbins = 60;
 
