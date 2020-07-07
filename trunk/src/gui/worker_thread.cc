@@ -227,6 +227,10 @@ void Worker_thread::run(void) {
                 emit send_delete_item(tempdir + QString("/ca_grid.txt"));
                 emit send_delete_item(tempdir + QString("/chromatic_aberration.txt"));
             }
+            QString fids_file = QString("%1/fiducial_correspondence.txt").arg(tempdir);
+            if (QFile().exists(fids_file)) {
+                emit send_delete_item(fids_file);
+            }
             
             emit send_close_item();
         }

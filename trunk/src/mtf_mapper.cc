@@ -596,7 +596,7 @@ int main(int argc, char** argv) {
         
         Distance_scale distance_scale;
         if (tc_mf_profile.getValue() || tc_focus.getValue() || tc_chart_orientation.getValue()) {
-            distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue());
+            distance_scale.construct(mtf_core, true, &img_dimension_correction, tc_focal.getValue(), wdir + string("fiducial_correspondence.txt"));
         }
         
         // release most of the resources we no longer need

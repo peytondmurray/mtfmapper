@@ -609,7 +609,8 @@ void mtfmapper_app::save_action(bool subset) {
                     if (QFile::exists(dest_fname)) {
                         overwrite_count++;
                     }
-                    vector<QString> raw_names = {"edge_mtf_values.txt", "edge_sfr_values.txt", "raw_esf_values.txt", "raw_psf_values.txt", "chromatic_aberration.txt"};
+                    vector<QString> raw_names = {"edge_mtf_values.txt", "edge_sfr_values.txt", "raw_esf_values.txt", "raw_psf_values.txt", 
+                        "chromatic_aberration.txt", "fiducial_correspondence.txt"};
                     if (j == 0) {
                         for (QString name: raw_names) {
                             QString raw_fname = QFileInfo(src_fname).path() + "/" + name;

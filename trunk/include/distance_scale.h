@@ -70,7 +70,7 @@ class Distance_scale {
     : chart_scale(1.0), largest_block_index(-1), focal_length(10000), fiducials_found(false) {
     }
     
-    void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL, double user_focal_ratio=-1) {
+    void construct(Mtf_core& mtf_core, bool pose_based=false, cv::Rect* dimension_correction = NULL, double user_focal_ratio=-1, string correspondence_file="") {
         user_provided_focal_ratio = user_focal_ratio;
         int zcount = 0;
         
@@ -476,6 +476,23 @@ class Distance_scale {
                     inlier_world_points[k]   = ba_world_points[inliers[k]];
                 }
                 fiducial_code_set = min_fid_coding;
+                
+                if (correspondence_file.length() > 1) {
+                    FILE* corr_fout = fopen(correspondence_file.c_str(), "wt");
+                    fprintf(corr_fout, "# MTF Mapper fiducial positions, output format version 2\n");
+                    fprintf(corr_fout, "# column 1: fiducial x location (image space, pixels)\n");
+                    fprintf(corr_fout, "# column 2: fiducial y location (image space, pixels)\n");
+                    fprintf(corr_fout, "# column 3: fiducial x location (chart space, mm)\n");
+                    fprintf(corr_fout, "# column 4: fiducial y location (chart space, mm)\n");
+                    for (size_t k=0; k < inlier_feature_points.size(); k++) {
+                        fprintf(corr_fout, "%.3lf %.3lf %.3lf %.3lf\n",
+                            inlier_feature_points[k][0]*img_scale + prin.x, 
+                            inlier_feature_points[k][1]*img_scale + prin.y,
+                            inlier_world_points[k][0], inlier_world_points[k][1]
+                        );
+                    }
+                    fclose(corr_fout);
+                }
                 
                 Bundle_adjuster ba(
                     inlier_feature_points, inlier_world_points, 
