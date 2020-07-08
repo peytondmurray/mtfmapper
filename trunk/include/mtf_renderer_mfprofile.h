@@ -146,12 +146,12 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         draw_curve(merged, pf.ridge_p05, cv::Scalar(100, 100, 200), 1);
         draw_curve(merged, pf.ridge_p95, cv::Scalar(100, 100, 200), 1);
         
-        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+        rectangle(merged, Point2d(0, initial_rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), cv::FILLED);
         
         int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[1024];
         sprintf(tbuffer, "Focus peak at depth %.1lf mm [%.1lf,%.1lf] relative to chart origin", pf.focus_peak, pf.focus_peak_p05, pf.focus_peak_p95);
-        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, CV_AA);
+        cv::putText(merged, tbuffer, Point2d(50, initial_rows + (merged.rows-initial_rows)/2), font, 1, cv::Scalar::all(0), 1, cv::LINE_AA);
         
         
         imwrite(wdir + prname, merged);
@@ -173,9 +173,9 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
                 iy >= 0 && iy < image.rows && i > 0) {
                 
                 if (points) {
-                    cv::line(image, Point2d(ix, iy), Point2d(ix, iy), col, width, CV_AA);
+                    cv::line(image, Point2d(ix, iy), Point2d(ix, iy), col, width, cv::LINE_AA);
                 } else {
-                    cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), col, width, CV_AA);
+                    cv::line(image, Point2d(prevx, prevy), Point2d(ix, iy), col, width, cv::LINE_AA);
                 }
             }
             

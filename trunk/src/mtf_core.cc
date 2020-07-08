@@ -115,11 +115,11 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                 
                 cv::putText(od_img, buffer, to, 
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-                    CV_RGB(20, 20, 20), 2.5, CV_AA
+                    CV_RGB(20, 20, 20), 2.5, cv::LINE_AA
                 );
                 cv::putText(od_img, buffer, to, 
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-                    CV_RGB(0, 255, 255), 1, CV_AA
+                    CV_RGB(0, 255, 255), 1, cv::LINE_AA
                 );
             }
         } 
