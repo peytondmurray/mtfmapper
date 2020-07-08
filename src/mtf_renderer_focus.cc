@@ -88,7 +88,7 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
         const std::pair<Point2d, Point2d>& ec = sliding[k];
         const std::pair<Point2d, Point2d>& en = sliding[k+1];
         Point2d cent = 0.5*(en.first + ec.first + ec.second);
-        //cv::line(merged, cent - transverse, cent + transverse, edge_col, 2, CV_AA);
+        //cv::line(merged, cent - transverse, cent + transverse, edge_col, 2, cv::LINE_AA);
         img_cents.push_back(cent);
     }
     double min_ic_dist = 1e50;
@@ -118,8 +118,8 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
             const double cross_w = 0.5*min_ic_dist - std::max(0.1*min_ic_dist, 2.0);
             const double cross_l = min_ic_dist;
             if (min_dist > 1.01*min_ic_dist) {
-                cv::line(merged, cent - cross_l*transverse - cross_w*longitudinal, cent + cross_l*transverse + cross_w*longitudinal, edge_col, 2, CV_AA);
-                cv::line(merged, cent - cross_l*transverse + cross_w*longitudinal, cent + cross_l*transverse - cross_w*longitudinal, edge_col, 2, CV_AA);
+                cv::line(merged, cent - cross_l*transverse - cross_w*longitudinal, cent + cross_l*transverse + cross_w*longitudinal, edge_col, 2, cv::LINE_AA);
+                cv::line(merged, cent - cross_l*transverse + cross_w*longitudinal, cent + cross_l*transverse - cross_w*longitudinal, edge_col, 2, cv::LINE_AA);
             }
         }
     } else {
@@ -276,10 +276,10 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
                 
                 Point2d current(rot_x, rot_y);
                 if (theta > 0) {
-                    cv::line(merged, prev, current, ellipse_col, 1, CV_AA);
+                    cv::line(merged, prev, current, ellipse_col, 1, cv::LINE_AA);
                     
                     if (fid_idx >= 0) {
-                        cv::line(merged, prev + fid_offset, current + fid_offset, vec_col, 1, CV_AA);
+                        cv::line(merged, prev + fid_offset, current + fid_offset, vec_col, 1, cv::LINE_AA);
                     }
                 }
                 
@@ -294,7 +294,7 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
             Point2d backproj_pt = distance_scale.world_to_image(p3d.x, p3d.y, p3d.z);
             
             if (cv::norm(p2d - backproj_pt) >= error_tolerance) { 
-                cv::line(merged, p2d, backproj_pt, vec_col, 1, CV_AA);
+                cv::line(merged, p2d, backproj_pt, vec_col, 1, cv::LINE_AA);
             }
         }
     }
@@ -382,19 +382,19 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
     cv::Size tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
     Point2d textpos = distance_scale.world_to_image(peak_wx, -20*psf);
     textpos -= Point2d(tsize.width/2.0, 0);
-    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
-    cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, cv::LINE_AA);
     double prev_line_height = tsize.height;
     
     sprintf(tbuffer, "%.1lf mm", focus_peak);
     tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
     textpos = distance_scale.world_to_image(peak_wx, -20*psf);
     textpos -= Point2d(tsize.width/2.0, -prev_line_height*1.5);
-    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, CV_AA);
-    cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, CV_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, cv::LINE_AA);
     
     // blank out the text region (again)
-    rectangle(merged, Point2d(0, img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), CV_FILLED);
+    rectangle(merged, Point2d(0, img.rows), Point2d(merged.cols, merged.rows), cv::Scalar::all(255), cv::FILLED);
     
     cv::Scalar red(30, 30, 200);
     cv::Scalar yellow(40, 187, 255);

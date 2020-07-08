@@ -193,7 +193,7 @@ void Mtf_renderer_annotate::write_number(cv::Mat& img, int px, int py, double va
     
     cv::putText(img, buffer, to, 
         cv::FONT_HERSHEY_SIMPLEX, font_scale, 
-        CV_RGB(20, 20, 20), 2*font_thickness_scale + 0.5, CV_AA
+        CV_RGB(20, 20, 20), 2*font_thickness_scale + 0.5, cv::LINE_AA
     );
     
     cv::Scalar col = CV_RGB(0, 255, 255);
@@ -206,7 +206,7 @@ void Mtf_renderer_annotate::write_number(cv::Mat& img, int px, int py, double va
     
     cv::putText(img, buffer, to, 
         cv::FONT_HERSHEY_SIMPLEX, font_scale, 
-        col, font_thickness_scale > 1 ? font_thickness_scale + 0.5 : font_thickness_scale, CV_AA
+        col, font_thickness_scale > 1 ? font_thickness_scale + 0.5 : font_thickness_scale, cv::LINE_AA
     );
     
 }

@@ -107,7 +107,7 @@ class Mtf_core {
         
         cv::Mat temp;
         in_img.convertTo(temp, CV_8U, 256.0/16384.0);
-        cv::cvtColor(temp, od_img, CV_GRAY2RGB);
+        cv::cvtColor(temp, od_img, cv::COLOR_GRAY2RGB);
     }
     
     ~Mtf_core(void) {
