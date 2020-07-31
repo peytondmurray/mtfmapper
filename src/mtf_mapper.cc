@@ -581,17 +581,19 @@ int main(int argc, char** argv) {
             Ca_core_tbb_adaptor ca_adaptor(chromatic);
             
             size_t num_blocks = mtf_core.get_blocks().size();
-            #ifdef MDEBUG
-            if (tc_single.getValue()) {
-                ca_adaptor(Stride_range(size_t(0), num_blocks - 1, 1));
-            } else {
+            if (num_blocks >= 1) {
+                #ifdef MDEBUG
+                if (tc_single.getValue()) {
+                    ca_adaptor(Stride_range(size_t(0), num_blocks - 1, 1));
+                } else {
+                    logger.info("Parallel CA calculation with %ld blocks\n", num_blocks);
+                    Stride_range::parallel_for(ca_adaptor, ThreadPool::instance(), num_blocks);
+                }
+                #else
                 logger.info("Parallel CA calculation with %ld blocks\n", num_blocks);
                 Stride_range::parallel_for(ca_adaptor, ThreadPool::instance(), num_blocks);
+                #endif
             }
-            #else
-            logger.info("Parallel CA calculation with %ld blocks\n", num_blocks);
-            Stride_range::parallel_for(ca_adaptor, ThreadPool::instance(), num_blocks);
-            #endif
         }
         
         Distance_scale distance_scale;
