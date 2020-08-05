@@ -38,12 +38,13 @@ class Mtf_renderer_edges : public Mtf_renderer {
     Mtf_renderer_edges(const std::string& fname, 
       const std::string& sfrname,
       const std::string& devname,
+      const std::string& serialname,
       Output_version::type output_version,
       double mtf_contrast,
       bool lpmm_mode=false, double pixel_size=1.0) 
-      :  ofname(fname), sfrname(sfrname), devname(devname),
+      :  ofname(fname), sfrname(sfrname), devname(devname), serialname(serialname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         output_version(output_version) {
+         output_version(output_version), mtf_contrast(mtf_contrast) {
       
     }
     
@@ -59,6 +60,23 @@ class Mtf_renderer_edges : public Mtf_renderer {
         FILE* fout = fopen(ofname.c_str(), "wt");
         FILE* sfrout = fopen(sfrname.c_str(), "wt");
         FILE* devout = fopen(devname.c_str(), "wt");
+        
+        FILE* serout = NULL;
+        if (output_version >= Output_version::V2) {
+            serout = fopen(serialname.c_str(), "wt");
+            size_t valid_count = 0;
+            for (size_t i=0; i < blocks.size(); i++) {
+                for (size_t k=0; k < 4; k++) {
+                    valid_count += blocks[i].get_edge_valid(k);
+                }
+            }
+            // header: number_of_edges pixel_size(micron) MTF-XX
+            fprintf(serout, "%ld %lf %lf\n",
+                valid_count, 
+                fabs(pixel_size - 1) < 1e-6 ? 1000.0 : 1000.0/pixel_size, 
+                mtf_contrast
+            );
+        }
         
         if (output_version >= Output_version::V2) {
             fprintf(sfrout, "# MTF Mapper SFR, output format version %d \n", int(output_version));
@@ -220,10 +238,18 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 cv::Point3d deviation = blocks[i].get_line_deviation(l);
                 fprintf(devout, "%d %lf %lf %.8lf %lf %lf\n", int(i), ec.x, ec.y, deviation.x, deviation.y, deviation.z);
             }
+            
+            if (output_version >= Output_version::V2) {
+                fprintf(serout, "%s", blocks[i].serialize().c_str());
+            }
         }    
         fclose(fout);
         fclose(sfrout);
         fclose(devout);
+        
+        if (output_version >= Output_version::V2) {
+            fclose(serout);
+        }
     }
     
   private:
@@ -239,6 +265,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     string ofname;
     string sfrname;
     string devname;
+    string serialname;
     bool filter;
     double angle;
     bool    lpmm_mode;
