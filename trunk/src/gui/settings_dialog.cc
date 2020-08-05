@@ -478,6 +478,7 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
     
     if (cb_annotation->checkState()) {
         args = args + QString(" -a");
+        args = args + QString(" -v 2");
     }
     
     if (cb_profile->checkState()) {

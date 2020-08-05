@@ -32,13 +32,15 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <vector>
 using std::vector;
 
+#include "include/edge_info.h"
+
 class Sfr_entry {
   public:
 
-    Sfr_entry(void) : px(-1), py(-1), sfr(64, 0.0) {
+    Sfr_entry(void) : px(-1), py(-1) {
     }
     
-    Sfr_entry(const double px, const double py, const vector<double>& sfr) : px(px), py(py), sfr(sfr) {
+    Sfr_entry(const double px, const double py, const Edge_info& info) : px(px), py(py), info(info) {
     }
     
     double distance(const double nx, const double ny) {
@@ -46,14 +48,12 @@ class Sfr_entry {
     }
     
     void clear(void) {
-        for (size_t i=0; i < sfr.size(); i++) {
-            sfr[i] = 0.0;
-        }
+        // do nothing
     }
     
     double px;
     double py;
-    vector<double> sfr;
+    Edge_info info;
 };
 
 #endif

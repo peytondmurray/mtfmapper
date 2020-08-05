@@ -425,20 +425,26 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
             img_viewer->set_clickable(true);
             sfr_list.clear();
             
-            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/edge_sfr_values.txt");
+            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/serialized_edges.txt");
             // go and fetch the corresponding "edge_sfr" entries
             std::ifstream ifile(sfr_source.toLocal8Bit().data());
             string line;
-            while (!ifile.fail()) {
+            
+            // read header
+            size_t edge_count = 0;
+            double pixel_size = 0;
+            double mtf_contrast = 0;
+            std::getline(ifile, line);
+            sscanf(line.c_str(), "%ld %lf %lf", &edge_count, &pixel_size, &mtf_contrast);
+            
+            size_t edges_processed = 0;
+            while (!ifile.fail() && edges_processed < edge_count) {
                 std::getline(ifile, line);
-                std::istringstream is(line);
-                vector<double> values;
-                std::copy(std::istream_iterator<double>(is), std::istream_iterator<double>(), std::back_inserter(values));
-                if (values.size() > 6 && values[5] > 0.0) {
-                    vector<double> sfr;
-                    std::copy(values.begin() + 5, values.end(), std::back_inserter(sfr));
-                    sfr_list.push_back(Sfr_entry(values[1], values[2], sfr));
-                }
+                Edge_info b = Edge_info::deserialize(line);
+                b.set_mtf_contrast(mtf_contrast);
+                b.set_pixel_pitch(pixel_size);
+                sfr_list.push_back(Sfr_entry(b.centroid.x, b.centroid.y, b));
+                edges_processed++;
             }
         } else {
             img_viewer->set_clickable(false);
@@ -712,7 +718,7 @@ void mtfmapper_app::check_if_helpers_exist(void) {
     }
 }
 
-bool mtfmapper_app::edge_selected(int px, int py, bool ctrl_down, bool shift_down) {
+bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift_down) {
     bool found = false;
     if (sfr_list.size() > 0) {
         

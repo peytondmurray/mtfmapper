@@ -34,54 +34,28 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "config.h"
 #include <locale.h>
 
-static double multiple(double x) {
-    double rval = 0;
-    while (rval < (x+5e-4)) {
-        rval += 0.2;
-    }
-    return rval;
-}
-
-
 Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0), repainting(0) {
-
-    series.push_back(new QLineSeries());
-    
-    update_lp_mm_mode();
-    
-    double maxval = 0;
-    for (size_t i=0; i < entry.sfr.size(); i++) {
-        maxval = std::max(entry.sfr[i], maxval);
-    }
-    populate_series(entry, series[0]);
-    entry_size = entry.sfr.size();
     
     chart = new QChart();
     chart->legend()->hide();
-    chart->addSeries(series[0]);
+    
     chart->setAnimationOptions(QChart::NoAnimation);
     
-    logger.info("sfr entry size: %ld\n", entry.sfr.size());
+    logger.info("sfr entry size: %ld\n", (*entry.info.sfr).size());
 
     x_axis = new QValueAxis();
-    x_axis->setRange(0, entry.sfr.size() > 64 ? 2.0 : 1.0);
-    x_axis->setTickCount(11);
-    x_axis->setTitleText("Frequency (c/p)");
-    x_axis->setLabelFormat("%3.1f");
     chart->addAxis(x_axis, Qt::AlignBottom);
     
-    double roundup_max = multiple(maxval);
     y_axis = new QValueAxis();
-    y_axis->setRange(0, roundup_max);
-    y_axis->setTickCount(roundup_max*5 + 1);
-    y_axis->setTitleText("Contrast");
     chart->addAxis(y_axis, Qt::AlignLeft);
     
-    series.back()->attachAxis(x_axis);
-    series.back()->attachAxis(y_axis);
+    entries.push_back(entry);
+    update_lp_mm_mode();
+    view.update(entries, series, *chart, *x_axis, *y_axis);
     
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
+    
     
     label_layout = new QGridLayout();
     
@@ -147,8 +121,23 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     logo->setIndent(blended_pixmap.size().width());
     logo->setMinimumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
     logo->setMaximumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
-    label_layout->addWidget(logo, 0, 4, 3, 1);
+    label_layout->addWidget(logo, 0, 5, 3, 1);
     
+    box_view = new QComboBox;
+    box_view->addItem("SFR");
+    box_view->addItem("ESF");
+    box_view->addItem("LSF");
+    
+    QLabel* view_label = new QLabel("Plot type:");
+    QVBoxLayout* view_layout = new QVBoxLayout;
+    
+    view_layout->addWidget(view_label);
+    view_layout->addWidget(box_view);
+    QString view_tooltip("Hold down <ctrl> to display the ESF,\n or <alt> to display the LSF");
+    box_view->setToolTip(view_tooltip);
+    view_label->setToolTip(view_tooltip);
+    
+    label_layout->addLayout(view_layout, 0, 4, 3, 1);
     
     QGroupBox* gbox = new QGroupBox("");
     gbox->setLayout(label_layout);
@@ -177,10 +166,11 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart->resize(650, 350);
     setMinimumHeight(400);
     setMinimumWidth(750);
-    setWindowTitle("SFR / MTF curve");
+    setWindowTitle(view.title().c_str());
     
     connect(save_img_button, SIGNAL(clicked()), this, SLOT(save_image()));
     connect(save_data_button, SIGNAL(clicked()), this, SLOT(save_data()));
+    connect(box_view, SIGNAL(currentIndexChanged(int)), this, SLOT(plot_type_changed(int)));
 
     show();
 }
@@ -195,6 +185,7 @@ void Sfr_dialog::clear(void) {
     for (auto m: mtf50_text) {
         m->setText("");
     }
+    // TODO: Not sure why we have to forcibly delete all the entries; maybe we can just flag them
     for (auto e: entries) {
         e.clear();
     }
@@ -211,39 +202,38 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     repainting.testAndSetAcquire(0, 1);
     QDialog::paintEvent(event);
     
-    QSettings settings("mtfmapper", "mtfmapper");
-    double mtf_contrast_target = settings.value("mtf_contrast").toFloat();
-    update_lp_mm_mode();
-
-    x_axis->setRange(0, entry_size > 64 ? 2.0 * freq_scale : 1.0 * freq_scale);
-    if (lp_mm_mode) {
-        x_axis->setTitleText("Frequency (lp/mm)");
-    } else {
-        x_axis->setTitleText("Frequency (c/p)");
+    bool changed = update_lp_mm_mode();
+    
+    Qt::KeyboardModifiers current_modifier = QGuiApplication::queryKeyboardModifiers();
+    if (current_modifier != last_modifier) {
+        // update
+        if (current_modifier & Qt::ControlModifier && !(current_modifier & Qt::AltModifier)) {
+            view.push_view();
+            view.set_view(Entry_view::VIEW_ESF);
+        } else {
+            if (current_modifier & Qt::AltModifier && !(current_modifier & Qt::ControlModifier)) {
+                view.push_view();
+                view.set_view(Entry_view::VIEW_LSF);
+            } else {
+                view.pop_view();
+            }
+        }
+        box_view->setCurrentIndex((int)view.get_view());
+        changed = true;
     }
     
+    if (changed) {
+        view.update(entries, series, *chart, *x_axis, *y_axis);
+    }
+    
+    last_modifier = current_modifier;
+
     vector<double> contrast_list;
-    vector<double> mtf50_list;
     if (series.size() > 0) {
 
         for (size_t si=0; si < series.size(); si++) {
         
             QVector<QPointF> pts = series[si]->pointsVector();
-
-            double prev_val  = pts[0].y();
-            double mtf50 = 0;
-            
-            bool done = false;
-            for (int i=0; i < pts.size() && !done; i++) {
-                double mag = pts[i].y();
-                if (prev_val > mtf_contrast_target*0.01 && mag <= mtf_contrast_target*0.01) {
-                    mtf50 = pts[i].x();
-                    done = true;
-                }
-                prev_val = mag;
-            }
-            mtf50_list.push_back(mtf50);
-            
             double contrast = pts[0].y();
             for (int i = 0; i < pts.size() && pts[i].x() < cursor_domain_value; i++) {
                 contrast = pts[i].y();
@@ -255,45 +245,37 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
 
         QFontMetrics fm(QWidget::fontMetrics());
         int th = fm.height();
-        char mtf50_str[200];
         int text_end = chart->size().width() - 2*fm.width("m");
         
         // add mtf50 tags in reverse
-        for (int mi=mtf50_list.size()-1; mi >= 0; mi--) {
-            if (mtf50_list[mi] < 1.0*freq_scale) {
-                sprintf(mtf50_str, "MTF%02d=%.3lf", int(mtf_contrast_target), mtf50_list[mi]);
-            } else {
-                sprintf(mtf50_str, "MTF%02d=N/A", int(mtf_contrast_target));
-            }
+        for (int mi=series.size()-1; mi >= 0; mi--) {
             
-            int tw = fm.width(mtf50_str) + 2*fm.width("m");
+            //string mtf50_str = view.mtf_xx(entries[mi].info.mtf_contrast, entries[mi].info.mtf50, entries[mi].info.pixel_pitch);
+            string mtf50_str = view.mtf_xx(entries[mi]);
+            int tw = fm.width(mtf50_str.c_str()) + 2*fm.width("m");
             
             mtf50_text[mi]->setBrush(series[mi]->pen().color());
             mtf50_text[mi]->setPen(QPen(series[mi]->pen().color()));
             mtf50_text[mi]->setPos(text_end - tw, th);
-            mtf50_text[mi]->setText(mtf50_str);
+            mtf50_text[mi]->setText(mtf50_str.c_str());
             text_end -= tw;
         }
     }
     
     QPointF tpos(cursor_domain_value, y_axis->max() - 0.001);
-    QPointF bpos(cursor_domain_value, 0.001);
+    QPointF bpos(cursor_domain_value, y_axis->min() + 0.001);
     tpos = chart->mapToPosition(tpos);
     bpos = chart->mapToPosition(bpos);
-    tpos.rx() = std::max(tpos.x()-1, chart->mapToPosition(QPointF(0, 0)).x());
-    bpos.rx() = std::min(bpos.x()+1, chart->mapToPosition(QPointF(x_axis->max(), 0)).x());
+    tpos.rx() = std::max(tpos.x()-1, chart->mapToPosition(QPointF(x_axis->min(), 0)).x());
+    bpos.rx() = tpos.rx() + 2;
     
     mtf50_rect->setRect(tpos.x(), tpos.y(), bpos.x() - tpos.x(), bpos.y() - tpos.y());
     
-    char mtf_str[200];
-    sprintf(mtf_str, "frequency: %5.3lf ", cursor_domain_value); 
-    cursor_label[0]->setText(mtf_str);
+    cursor_label[0]->setText(view.x_format(cursor_domain_value).c_str());
     cursor_label[0]->show();
     
-    char contrast_str[200];
     for (size_t mi=0; mi < contrast_list.size(); mi++) {
-        sprintf(contrast_str, "contrast: %5.3lf ", contrast_list[mi]);
-        cursor_label[mi+1]->setText(contrast_str);
+        cursor_label[mi+1]->setText(view.y_format(contrast_list[mi]).c_str());
         
         QPalette palette = cursor_label[mi+1]->palette();
         palette.setColor(cursor_label[mi+1]->foregroundRole(), series[mi]->pen().color());
@@ -306,29 +288,13 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
 }
 
 void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
-    if (series.size() == 0) {
-        series.push_back(new QLineSeries());
+    if (entries.size() < 3) {
+        entries.push_back(entry);
     } else {
-        if (chart->series().contains(series.back())) {
-            chart->removeSeries(series.back());
-        }
-        series.back() = new QLineSeries();
+        entries.back() = entry;
     }
+    view.update(entries, series, *chart, *x_axis, *y_axis);
     
-    double maxval = y_axis->max() - 6e-4;
-    for (size_t i=0; i < entry.sfr.size(); i++) {
-        maxval = std::max(entry.sfr[i], maxval);
-    }
-    entry_size = entry.sfr.size();
-    double roundup_max = multiple(maxval);
-    y_axis->setRange(0, roundup_max);
-    y_axis->setTickCount(roundup_max*5 + 1);
-        
-    populate_series(entry, series.back());
-    
-    chart->addSeries(series.back());
-    series.back()->attachAxis(x_axis);
-    series.back()->attachAxis(y_axis);
     update();
     show();
     raise();
@@ -336,49 +302,13 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
 }
 
 void Sfr_dialog::add_entry(const Sfr_entry& entry) {
-    if (series.size() < 3) {
-        series.push_back(new QLineSeries());
-    } 
     replace_entry(entry);
-}
-
-void Sfr_dialog::populate_series(const Sfr_entry& entry, QLineSeries* s) {
-    for (size_t i=0; i < entry.sfr.size(); i++) {
-        double coef[4] = {0,0,0,0};
-        
-        for (int si = int(i) - 1, ri = 0; si <= int(i) + 2; si++, ri++) {
-            int ei = si < 0 ? 0 : si;
-            double eiv = 0;
-            if (ei > (int)entry.sfr.size() - 1) {
-                eiv = (entry.sfr[entry.sfr.size() - 1] - entry.sfr[entry.sfr.size() - 2]) * (ei - (entry.sfr.size() - 1)) + entry.sfr[entry.sfr.size() - 1]; // extend last point linearly
-            } else {
-                eiv = entry.sfr[ei];
-            }
-
-            for (int c = 0; c < 4; c++) {
-                coef[c] += eiv * sfr_cubic_weights[c][ri];
-            }
-        }
-        // now we can evaluate points at position x in [0,1) using the fitted polynomial
-        for (int xi=0; xi < 20; xi++) {
-            double dx = xi*(1.0/(20.0*64.0));
-            double iy = coef[0] + coef[1]*dx + coef[2]*dx*dx + coef[3]*dx*dx*dx;
-            s->append(freq_scale*(i*(1.0/64.0) + dx), iy);
-        }
-    }
 }
 
 void Sfr_dialog::notify_mouse_position(double value, bool click) { // we still need this to update the bottom label, but we could merge this in the chart?
     lock_cursor ^= click;
     if (!lock_cursor) {
-        cursor_domain_value = std::min(x_axis->max(), std::max(0.0, value));
-        
-        QPointF top(cursor_domain_value, 1);
-        QPointF bottom(cursor_domain_value, 0);
-        
-        top = chart->mapToPosition(top);
-        bottom = chart->mapToPosition(bottom);
-        
+        cursor_domain_value = std::min(x_axis->max(), std::max(x_axis->min(), value));
         update();
     }
 }
@@ -451,20 +381,33 @@ void Sfr_dialog::save_data(void) {
     }
 }
 
-void Sfr_dialog::update_lp_mm_mode(void) {
+bool Sfr_dialog::update_lp_mm_mode(void) {
     QSettings settings("mtfmapper", "mtfmapper");
-    lp_mm_mode = (Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked;
-    freq_scale = lp_mm_mode ? 1000.0/settings.value("setting_pixelsize").toFloat() : 1.0;
     
-    if (freq_scale != prev_freq_scale && series.size() > 0) { // someone changed the settings while the SFR window was open
-        for (size_t si=0; si < series.size(); si++) {
-            QVector<QPointF> pts(series[si]->pointsVector());
-            for (int pi=0; pi < pts.size(); pi++) {
-                pts[pi] = QPointF(pts[pi].x()*freq_scale / prev_freq_scale, pts[pi].y());
-            }
-            series[si]->replace(pts);
-        }
-        cursor_domain_value *= freq_scale / prev_freq_scale;
-        prev_freq_scale = freq_scale;
+    bool changed = false;
+    changed |= view.set_lp_mm_mode((Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked);
+    changed |= view.set_default_pixel_pitch(settings.value("setting_pixelsize").toFloat());
+    
+    return changed;
+}
+
+
+void Sfr_dialog::plot_type_changed(int index) {
+    
+    switch(index) {
+    case 0: view.set_view(Entry_view::VIEW_SFR); break;
+    case 1: view.set_view(Entry_view::VIEW_ESF); break;
+    case 2: view.set_view(Entry_view::VIEW_LSF); break;
     }
+    
+    view.update(entries, series, *chart, *x_axis, *y_axis);
+    setWindowTitle(view.title().c_str());
+}
+
+void Sfr_dialog::keyPressEvent(QKeyEvent* /*event*/) {
+    update();
+}
+
+void Sfr_dialog::keyReleaseEvent(QKeyEvent* /*event*/) {
+    update();
 }

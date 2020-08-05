@@ -152,6 +152,9 @@ void Worker_thread::run(void) {
                 emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
+                if (QFile().exists(tempdir + QString("/serialized_edges.txt"))) {
+                    emit send_delete_item(tempdir + QString("/serialized_edges.txt"));
+                }
             }
             
             if (e_output_requested) {
@@ -225,6 +228,8 @@ void Worker_thread::run(void) {
                 emit send_delete_item(ca_file);
                 emit send_delete_item(tempdir + QString("/ca_grid.gnuplot"));
                 emit send_delete_item(tempdir + QString("/ca_grid.txt"));
+            }
+            if (QFile().exists(tempdir + QString("/chromatic_aberration.txt"))) {
                 emit send_delete_item(tempdir + QString("/chromatic_aberration.txt"));
             }
             QString fids_file = QString("%1/fiducial_correspondence.txt").arg(tempdir);

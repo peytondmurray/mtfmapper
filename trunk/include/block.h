@@ -36,6 +36,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <map>
 using std::map;
 
+#include "include/edge_info.h"
+
 class Block {
   public:
     typedef enum {TOP, LEFT, RIGHT, BOTTOM} edge_position;    
@@ -250,6 +252,30 @@ class Block {
     void set_edge_valid(size_t edge_number) {
         assert(edge_number < 4);
         valid_edge[edge_number] = true;
+    }
+    
+    string serialize(void) const {
+        vector<Point2d> edge_centroids(4);
+        vector<double> edge_angle(4);
+        vector<Point2d> edge_snr(4);
+        
+        for (size_t k=0; k < 4; k++) {
+            edge_centroids[k] = rect.get_centroid(k);
+            edge_angle[k] = rect.thetas[k];
+            edge_snr[k] = cv::Point2d(snr[k].mean_cnr(), snr[k].oversampling());
+        }
+        
+        return Edge_info::serialize(
+            edge_centroids,
+            edge_angle,
+            mtf50,
+            quality,
+            sfr,
+            esf,
+            edge_snr,
+            chromatic_aberration,
+            valid_edge
+        );
     }
     
     Mrectangle rect;
