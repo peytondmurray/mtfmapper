@@ -689,7 +689,7 @@ int main(int argc, char** argv) {
                 wdir + string("edge_mtf_values.txt"), 
                 wdir + string("edge_sfr_values.txt"),
                 wdir + string("edge_line_deviation.txt"),
-                wdir + string("serialized_edges.txt"),
+                wdir + string("serialized_edges.bin"),
                 Output_version::type(tc_output_version.getValue()),
                 mtf_core.get_mtf_contrast(),
                 lpmm_mode, pixel_size

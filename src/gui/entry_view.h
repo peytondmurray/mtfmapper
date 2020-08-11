@@ -34,6 +34,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <string>
 using std::string;
 
+#include <map>
+using std::map;
+
 class Plot_details {
   public:
     Plot_details(string title, string xlabel, string ylabel)
@@ -57,9 +60,9 @@ class Entry_view {
     : lp_mm_mode(lp_mm_mode), default_pixel_pitch(1000.0), view(VIEW_SFR), previous_view(VIEW_SFR) {
         plot_details = { 
           {"SFR / MTF curve", "Frequency (c/p)", "Contrast"},
-          {"SFR / MTF curve", "Frequency (lp/mm)", "Contrast"},
           {"ESF profile", "Distance (pixels)", "Intensity"},
-          {"LSF profile ", "Distance (pixels)", "Intensity"}
+          {"LSF profile ", "Distance (pixels)", "Intensity"},
+          {"SFR / MTF curve", "Frequency (lp/mm)", "Contrast"}
         };
     }
     
@@ -80,54 +83,83 @@ class Entry_view {
     }
     
     const string& title(void) const {
-        return plot_details[view].title;
+        return plot_details_indexed().title;
     }
     
     const string& xlabel(void) const {
-        return plot_details[view].xlabel;
+        return plot_details_indexed().xlabel;
     }
     
     const string& ylabel(void) const {
-        return plot_details[view].ylabel;
+        return plot_details_indexed().ylabel;
     }
     
-    const string mtf_xx(const Sfr_entry& entry) const {
+    const string mtf_xx(const Edge_info& info) const {
         char buffer[200];
         if (lp_mm_mode) {
-            sprintf(buffer, "MTF%2d=%.2lf lp/mm", (int)rint(100*entry.info.mtf_contrast), entry.info.mtf50*frequency_scale(entry));
+            sprintf(buffer, "MTF%2d=%.2lf lp/mm", (int)rint(100*info.mtf_contrast), info.mtf50*frequency_scale(info));
         } else {
-            sprintf(buffer, "MTF%2d=%.3lf c/p", (int)rint(100*entry.info.mtf_contrast), entry.info.mtf50);
+            sprintf(buffer, "MTF%2d=%.3lf c/p", (int)rint(100*info.mtf_contrast), info.mtf50);
         }
         return string(buffer);
     }
     
-    
-    string x_format(double val) const {
+    map<string, string> format(const Edge_info& info, double x_value, double y_value) {
+        map<string, string> fmt;
         char buffer[200];
+        
         switch(view) {
         case VIEW_SFR: 
+            sprintf(buffer, "%5.3lf ", y_value); 
+            fmt["y_value"] = string(buffer);
+            fmt["y_label"] = "Contrast";
+            
             if (lp_mm_mode) {
-                sprintf(buffer, "frequency: %5.1lf ", val);
+                sprintf(buffer, "%5.1lf", x_value);
             } else {
-                sprintf(buffer, "frequency: %5.3lf ", val); 
+                sprintf(buffer, "%5.3lf", x_value); 
             }
+            fmt["x_label"] = "Frequency";
+            fmt["x_value"] = string(buffer);
+            
             break;
         case VIEW_ESF: 
-        case VIEW_LSF: sprintf(buffer, "distance: %5.1lf ", val); break;
+        case VIEW_LSF: 
+            sprintf(buffer, "%5.0lf", y_value); 
+            fmt["y_value"] = string(buffer);
+            fmt["y_label"] = "Intensity";
+            
+            sprintf(buffer, "%5.1lf", x_value);
+            fmt["x_label"] = "Distance";
+            fmt["x_value"] = string(buffer);
+            
+            break;
         }
         
-        return string(buffer);
-    }
-    
-    string y_format(double val) const {
-        char buffer[200];
-        switch(view) {
-        case VIEW_SFR: sprintf(buffer, "contrast: %5.3lf ", val); break;
-        case VIEW_ESF: 
-        case VIEW_LSF: sprintf(buffer, "intensity: %5.0lf ", val); break;
-        }
+        sprintf(buffer, "%6.2f", info.snr.x);
+        fmt["cnr"] = string(buffer);
         
-        return string(buffer);
+        if (fabs(info.chromatic_aberration.x - Edge_info::nodata) < 1e-6) {
+            sprintf(buffer, "N/A");
+        } else {
+            sprintf(buffer, "%5.2f", info.chromatic_aberration.x * pixel_to_micron(info));
+        }
+        fmt["r_ca"] = string(buffer);
+        
+        if (fabs(info.chromatic_aberration.y - Edge_info::nodata) < 1e-6) {
+            sprintf(buffer, "N/A");
+        } else {
+            sprintf(buffer, "%5.2f", info.chromatic_aberration.y * pixel_to_micron(info));
+        }
+        fmt["b_ca"] = string(buffer);
+        
+        sprintf(buffer, "%5.2f", angle_reduce(info.angle));
+        fmt["angle"] = string(buffer);
+        
+        sprintf(buffer, "%3.2f", info.snr.y);
+        fmt["ox"] = string(buffer);
+        
+        return fmt;
     }
     
     void update(const vector<Sfr_entry>& entries, vector<QLineSeries*>& series,
@@ -154,6 +186,10 @@ class Entry_view {
         bool changed = lp_mm_mode != new_lp_mm_mode;
         lp_mm_mode = new_lp_mm_mode;
         return changed;
+    }
+    
+    bool get_lp_mm_mode(void) const {
+        return lp_mm_mode;
     }
     
     bool set_default_pixel_pitch(double new_pixel_pitch) {
@@ -238,7 +274,7 @@ class Entry_view {
                     }
                 }
                 // now we can evaluate points at position x in [0,1) using the fitted polynomial
-                double freq_scale = frequency_scale(entry);
+                double freq_scale = frequency_scale(entry.info);
                 for (int xi=0; xi < 20; xi++) {
                     double dx = xi*(1.0/(20.0*64.0));
                     double iy = coef[0] + coef[1]*dx + coef[2]*dx*dx + coef[3]*dx*dx*dx;
@@ -296,16 +332,43 @@ class Entry_view {
         return rval;
     }
     
-    double frequency_scale(const Sfr_entry& entry) const {
+    double frequency_scale(const Edge_info& info) const {
         double freq_scale = 1.0;
         if (lp_mm_mode) {
-            if (fabs(entry.info.pixel_pitch - 1000.0) < 1e-6) {
+            if (fabs(info.pixel_pitch - 1000.0) < 1e-6) {
                 freq_scale = 1000.0/default_pixel_pitch;
             } else {
-                freq_scale = 1000.0/entry.info.pixel_pitch;
+                freq_scale = 1000.0/info.pixel_pitch;
             }
         }
         return freq_scale;
+    }
+    
+    double pixel_to_micron(const Edge_info& info) const {
+        double p2m = 1.0;
+        if (lp_mm_mode) {
+            if (fabs(info.pixel_pitch - 1000.0) < 1e-6) {
+                p2m = default_pixel_pitch;
+            } else {
+                p2m = info.pixel_pitch;
+            }
+        }
+        return p2m;
+    }
+    
+    double angle_reduce(double x) {
+        double quad1 = fabs(fmod(x, M_PI/2.0));
+        if (quad1 > M_PI/4.0) {
+            quad1 = M_PI/2.0 - quad1;
+        }
+        quad1 = quad1 / M_PI * 180;
+        return quad1;
+    }
+    
+    const Plot_details& plot_details_indexed(void) const {
+        int index = (int)view;
+        index += view == VIEW_SFR && lp_mm_mode ? 3 : 0;
+        return plot_details[index];
     }
     
     bool lp_mm_mode;

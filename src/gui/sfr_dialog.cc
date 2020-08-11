@@ -34,15 +34,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "config.h"
 #include <locale.h>
 
-Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) : cursor_domain_value(0), repainting(0) {
+Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) 
+: cursor_domain_value(0), repainting(0) {
     
     chart = new QChart();
     chart->legend()->hide();
     
     chart->setAnimationOptions(QChart::NoAnimation);
     
-    logger.info("sfr entry size: %ld\n", (*entry.info.sfr).size());
-
     x_axis = new QValueAxis();
     chart->addAxis(x_axis, Qt::AlignBottom);
     
@@ -50,20 +49,20 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart->addAxis(y_axis, Qt::AlignLeft);
     
     entries.push_back(entry);
+    lp_mm_cb = new QCheckBox(this);
     update_lp_mm_mode();
+    lp_mm_cb->setCheckState(view.get_lp_mm_mode() ? Qt::Checked : Qt::Unchecked);
     view.update(entries, series, *chart, *x_axis, *y_axis);
     
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
-    
-    
-    label_layout = new QGridLayout();
     
     mtfmapper_logo = new QIcon;
     mtfmapper_logo->addFile(":/Icons/AppIcon256");
     
     QFontMetrics fm(QWidget::fontMetrics());
     int double_height = fm.height()*2 + 8;
+    int em_width = fm.width("m");
     
     QString button_style(
         "QPushButton:flat{ background-color: rgba(0, 0, 0, 7%); border: 1px solid rgba(0,0,0,20%); border-radius: 2px; } "
@@ -77,24 +76,68 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     save_img_button->setMaximumHeight(double_height);
     save_img_button->setFlat(true);
     save_img_button->setStyleSheet(button_style);
-    label_layout->addWidget(save_img_button, 0, 0, 3, 1);
     
+    QFont fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    fixed_font.setStyleHint(QFont::TypeWriter);
+    vector<string> column_names = {"contrast", "CNR", "red-CA", "blue-CA", "\u03b8", "OSF"};
+    vector<int> col_width = {7, 5, 5, 5, 5, 5};
     
-    for (int i=0; i < 4; i++) {
-        cursor_label.push_back(new QLabel(this));
-        cursor_label.back()->setAlignment(i == 0 ? Qt::AlignRight : Qt::AlignLeft);
-        cursor_label.back()->setStyleSheet("font-weight: bold;");
+    vector<QVBoxLayout*> table_col_layouts;
+    QHBoxLayout* table_row_layouts = new QHBoxLayout;
+    
+    table_labels.resize(4);
+    for (size_t r=0; r < table_labels.size(); r++) {
+        table_labels[r].resize(column_names.size());
+        for (size_t c=0; c < table_labels[r].size(); c++) {
+            table_labels[r][c] = new QLabel(this);
+            table_labels[r][c]->setAlignment(Qt::AlignCenter);
+            if (r > 0) {
+                table_labels[r][c]->setFont(fixed_font); // so that the decimal point lines up down the columns
+            }
+            
+            if (r == 0) {
+                table_col_layouts.push_back(new QVBoxLayout());
+                table_col_layouts.back()->setStretch(0, 0);
+            }
+            table_col_layouts[c]->addWidget(table_labels[r][c]);
+            
+            table_labels[r][c]->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            table_labels[r][c]->setFixedWidth(col_width[c]*em_width);
+        }
     }
-    label_layout->addWidget(cursor_label[0], 0, 2);
-    label_layout->addWidget(cursor_label[1], 0, 3);
-    label_layout->addWidget(cursor_label[2], 1, 3);
-    label_layout->addWidget(cursor_label[3], 2, 3);
-    cursor_label[2]->setMinimumHeight(0);
-    cursor_label[3]->setMinimumHeight(0);
-    cursor_label[2]->hide();
-    cursor_label[3]->hide();
-    label_layout->rowMinimumHeight(0);
-    label_layout->setVerticalSpacing(1);
+    for (size_t c=0; c < table_labels[0].size(); c++) {
+        table_labels[0][c]->setStyleSheet("font-weight: bold;");
+        table_labels[0][c]->setText(column_names[c].c_str());
+        table_labels[0][c]->setAlignment(Qt::AlignCenter);
+    }
+    
+    x_label = new QLabel(this);
+    x_label->setText("Frequency");
+    x_label->setStyleSheet("font-weight: bold;");
+    x_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    x_label->setAlignment(Qt::AlignCenter);
+    x_label->setFixedWidth(7*em_width);
+    x_label_value = new QLabel(this);
+    x_label_value->setText("");
+    x_label_value->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    x_label_value->setFixedWidth(7*em_width);
+    x_label_value->setAlignment(Qt::AlignCenter);
+    
+    QVBoxLayout* first_col = new QVBoxLayout;
+    first_col->addWidget(x_label);
+    first_col->addWidget(x_label_value);
+    first_col->setStretch(0, 0);
+    first_col->setSpacing(1);
+    first_col->addStretch();
+    
+    table_row_layouts->addLayout(first_col);
+    for (size_t c=0; c < table_labels[0].size(); c++) {
+        table_row_layouts->addLayout(table_col_layouts[c]);
+        table_col_layouts[c]->setStretch(0, 0);
+        table_col_layouts[c]->setSpacing(1);
+        table_col_layouts[c]->addStretch();
+    }
+    table_row_layouts->addStretch();
     
     save_data_button = new QPushButton("Save\ndata", this);
     save_data_button->setMinimumWidth(fm.width(save_data_button->text()));
@@ -103,7 +146,6 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     save_data_button->setMaximumHeight(double_height);
     save_data_button->setFlat(true);
     save_data_button->setStyleSheet(button_style);
-    label_layout->addWidget(save_data_button, 0, 1, 3, 1);
     
     // generate an alpha-blended version of the logo
     QPixmap logo_pixmap(mtfmapper_logo->pixmap(50));
@@ -121,31 +163,64 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     logo->setIndent(blended_pixmap.size().width());
     logo->setMinimumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
     logo->setMaximumSize(QSize(blended_pixmap.size().width()*2, blended_pixmap.size().height()));
-    label_layout->addWidget(logo, 0, 5, 3, 1);
     
-    box_view = new QComboBox;
+    QHBoxLayout* button_layout = new QHBoxLayout;
+    button_layout->addWidget(save_img_button);
+    button_layout->addWidget(save_data_button);
+    
+    QVBoxLayout* button_logo_layout = new QVBoxLayout;
+    button_logo_layout->addWidget(logo);
+    button_logo_layout->addLayout(button_layout);
+    
+    box_view = new QComboBox(this);
     box_view->addItem("SFR");
-    box_view->addItem("ESF");
-    box_view->addItem("LSF");
+    box_view->addItem("ESF <ctrl>");
+    box_view->addItem("LSF <alt>");
+    box_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
-    QLabel* view_label = new QLabel("Plot type:");
-    QVBoxLayout* view_layout = new QVBoxLayout;
+    QLabel* view_label = new QLabel("Plot type:", this);
+    view_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
-    view_layout->addWidget(view_label);
-    view_layout->addWidget(box_view);
     QString view_tooltip("Hold down <ctrl> to display the ESF,\n or <alt> to display the LSF");
     box_view->setToolTip(view_tooltip);
     view_label->setToolTip(view_tooltip);
     
-    label_layout->addLayout(view_layout, 0, 4, 3, 1);
+    QLabel* lp_mm_label = new QLabel("lp/mm units", this);
+    
+    
+    QSettings settings("mtfmapper", "mtfmapper");
+    view.set_lp_mm_mode((Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked);
+    
+    QHBoxLayout* view_layout = new QHBoxLayout;
+    view_layout->addWidget(view_label);
+    view_layout->addWidget(box_view);
+    view_layout->addSpacing(50);
+    view_layout->addWidget(lp_mm_cb);
+    view_layout->addWidget(lp_mm_label);
+    view_layout->addStretch();
+    
+    auto vl_margins = view_layout->contentsMargins();
+    view_layout->setContentsMargins(vl_margins.left(), vl_margins.top(), vl_margins.right(), vl_margins.bottom() + 10);
+    
+    QVBoxLayout* vmain_layout = new QVBoxLayout;
+    vmain_layout->addLayout(view_layout);
+    vmain_layout->addLayout(table_row_layouts);
+    
+    QHBoxLayout* main_layout = new QHBoxLayout;
+    main_layout->addLayout(vmain_layout);
+    main_layout->addLayout(button_logo_layout);
     
     QGroupBox* gbox = new QGroupBox("");
-    gbox->setLayout(label_layout);
+    gbox->setLayout(main_layout);
     
+    auto gb_margins = gbox->contentsMargins();
+    gbox->setContentsMargins(gb_margins.left(), 4, gb_margins.right(), gb_margins.bottom());
     
     QVBoxLayout* hlayout = new QVBoxLayout;
     hlayout->addWidget(chart_view);
     hlayout->addWidget(gbox);
+    hlayout->setStretchFactor(chart_view, 1.0);
+    hlayout->setStretchFactor(gbox, 0.0);
     setLayout(hlayout);
     
     for (int i=0; i < 3; i++) {
@@ -171,6 +246,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     connect(save_img_button, SIGNAL(clicked()), this, SLOT(save_image()));
     connect(save_data_button, SIGNAL(clicked()), this, SLOT(save_data()));
     connect(box_view, SIGNAL(currentIndexChanged(int)), this, SLOT(plot_type_changed(int)));
+    connect(lp_mm_cb, SIGNAL(clicked()), this, SLOT(lp_mm_toggled()));
 
     show();
 }
@@ -178,9 +254,10 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
 void Sfr_dialog::clear(void) {
     chart->removeAllSeries();
     series.clear();
-    for (auto l: cursor_label) {
-        l->setText("");
-        l->hide();
+    for (size_t i=1; i < table_labels.size(); i++) {
+        for (auto ll: table_labels[i]) {
+            ll->setText("");
+        }
     }
     for (auto m: mtf50_text) {
         m->setText("");
@@ -189,6 +266,7 @@ void Sfr_dialog::clear(void) {
     for (auto e: entries) {
         e.clear();
     }
+    entries.clear();
     y_axis->setMax(0.1);
 }
 
@@ -202,7 +280,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     repainting.testAndSetAcquire(0, 1);
     QDialog::paintEvent(event);
     
-    bool changed = update_lp_mm_mode();
+    bool changed = false;
     
     Qt::KeyboardModifiers current_modifier = QGuiApplication::queryKeyboardModifiers();
     if (current_modifier != last_modifier) {
@@ -250,8 +328,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         // add mtf50 tags in reverse
         for (int mi=series.size()-1; mi >= 0; mi--) {
             
-            //string mtf50_str = view.mtf_xx(entries[mi].info.mtf_contrast, entries[mi].info.mtf50, entries[mi].info.pixel_pitch);
-            string mtf50_str = view.mtf_xx(entries[mi]);
+            string mtf50_str = view.mtf_xx(entries[mi].info);
             int tw = fm.width(mtf50_str.c_str()) + 2*fm.width("m");
             
             mtf50_text[mi]->setBrush(series[mi]->pen().color());
@@ -271,16 +348,28 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     
     mtf50_rect->setRect(tpos.x(), tpos.y(), bpos.x() - tpos.x(), bpos.y() - tpos.y());
     
-    cursor_label[0]->setText(view.x_format(cursor_domain_value).c_str());
-    cursor_label[0]->show();
-    
     for (size_t mi=0; mi < contrast_list.size(); mi++) {
-        cursor_label[mi+1]->setText(view.y_format(contrast_list[mi]).c_str());
+        auto fmt = view.format(entries[mi].info, cursor_domain_value, contrast_list[mi]);
+        table_labels[mi+1][0]->setText(fmt["y_value"].c_str());
+        table_labels[mi+1][1]->setText(fmt["cnr"].c_str());
+        table_labels[mi+1][2]->setText(fmt["r_ca"].c_str());
+        table_labels[mi+1][3]->setText(fmt["b_ca"].c_str());
+        table_labels[mi+1][4]->setText(fmt["angle"].c_str());
+        table_labels[mi+1][5]->setText(fmt["ox"].c_str());
         
-        QPalette palette = cursor_label[mi+1]->palette();
-        palette.setColor(cursor_label[mi+1]->foregroundRole(), series[mi]->pen().color());
-        cursor_label[mi+1]->setPalette(palette);
-        cursor_label[mi+1]->show();
+        if (mi == 0) {
+            table_labels[0][0]->setText(fmt["y_label"].c_str());
+            x_label->setText(fmt["x_label"].c_str());
+            x_label_value->setText(fmt["x_value"].c_str());
+        }
+        
+        for (size_t col=0; col < table_labels[0].size(); col++) {
+            QPalette palette = table_labels[mi+1][col]->palette();
+            palette.setColor(table_labels[mi+1][col]->foregroundRole(), series[mi]->pen().color());
+            table_labels[mi+1][col]->setPalette(palette);
+            table_labels[mi+1][col]->show();
+        }
+        
     }
     
     chart->update(); // this causes some lag, but it elliminates exposed cruft. a better solution would be nice
@@ -384,13 +473,21 @@ void Sfr_dialog::save_data(void) {
 bool Sfr_dialog::update_lp_mm_mode(void) {
     QSettings settings("mtfmapper", "mtfmapper");
     
-    bool changed = false;
-    changed |= view.set_lp_mm_mode((Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked);
-    changed |= view.set_default_pixel_pitch(settings.value("setting_pixelsize").toFloat());
+    view.set_lp_mm_mode((Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked);
+    view.set_default_pixel_pitch(settings.value("setting_pixelsize").toFloat());
+    lp_mm_cb->setCheckState(view.get_lp_mm_mode() ? Qt::Checked : Qt::Unchecked);
     
-    return changed;
+    view.update(entries, series, *chart, *x_axis, *y_axis);
+    update();
+    
+    return true;
 }
 
+void Sfr_dialog::lp_mm_toggled(void) {
+    view.set_lp_mm_mode(lp_mm_cb->checkState() == Qt::Checked);
+    view.update(entries, series, *chart, *x_axis, *y_axis);
+    update();
+}
 
 void Sfr_dialog::plot_type_changed(int index) {
     

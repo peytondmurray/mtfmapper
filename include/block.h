@@ -45,13 +45,15 @@ class Block {
     Block(void) : rect(Mrectangle()), mtf50(4,0.0), quality(4, 0.0), 
         sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(4, cv::Point3d(0,0,1)), snr(4), scansets(4), 
-        chromatic_aberration(4), edge_model(4), valid_edge(4, false) {
+        chromatic_aberration(4, cv::Point2d(Edge_info::nodata, Edge_info::nodata)), 
+        edge_model(4), valid_edge(4, false) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(in_rect.line_deviation), snr(4), scansets(4), 
-        chromatic_aberration(4), edge_model(4), valid_edge(4, false) {
+        chromatic_aberration(4, cv::Point2d(Edge_info::nodata, Edge_info::nodata)),
+        edge_model(4), valid_edge(4, false) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -254,7 +256,7 @@ class Block {
         valid_edge[edge_number] = true;
     }
     
-    string serialize(void) const {
+    bool serialize(FILE* fout) const {
         vector<Point2d> edge_centroids(4);
         vector<double> edge_angle(4);
         vector<Point2d> edge_snr(4);
@@ -266,6 +268,7 @@ class Block {
         }
         
         return Edge_info::serialize(
+            fout,
             edge_centroids,
             edge_angle,
             mtf50,
@@ -292,7 +295,6 @@ class Block {
     vector<std::shared_ptr<map<int, scanline>>> scansets; 
     vector<Point2d> chromatic_aberration;
     vector<std::shared_ptr<Edge_model>> edge_model;
-    static constexpr double ca_nodata = -1e10;
     vector<bool> valid_edge;
 };
 
