@@ -152,8 +152,8 @@ void Worker_thread::run(void) {
                 emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
                 emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
-                if (QFile().exists(tempdir + QString("/serialized_edges.txt"))) {
-                    emit send_delete_item(tempdir + QString("/serialized_edges.txt"));
+                if (QFile().exists(tempdir + QString("/serialized_edges.bin"))) {
+                    emit send_delete_item(tempdir + QString("/serialized_edges.bin"));
                 }
             }
             

@@ -28,18 +28,58 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef EDGE_INFO_H
 #define EDGE_INFO_H
 
+#include <cstring>
 #include <string>
 using std::string;
 
 #include <opencv2/core/core.hpp>
+
+#include "include/logger.h"
 
 class Edge_info {
   public:
     Edge_info(void) {
     }
     
+    static bool serialize_header(FILE* fout, size_t valid_count, double pixel_size, double mtf_contrast) {
+        vector<char> buffer(sizeof(size_t) + 2*sizeof(double));
+        
+        char* obuf = buffer.data();
+        write_size_t(&obuf, valid_count);
+        write_double(&obuf, pixel_size);
+        write_double(&obuf, mtf_contrast);
+        
+        size_t nwritten = fwrite(buffer.data(), 1, buffer.size(), fout);
+        
+        if (nwritten != buffer.size()) {
+            logger.error("Could not write header to edge info serialization file, tried %ld bytes, only wrote %ld\n", buffer.size(), nwritten);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    static bool deserialize_header(FILE* fin, size_t& valid_count, double& pixel_size, double& mtf_contrast) {
+        vector<char> buffer(sizeof(size_t) + 2*sizeof(double));
+        
+        size_t nread = fread(buffer.data(), 1, buffer.size(), fin);
+        
+        if (nread != buffer.size()) {
+            logger.error("Could not read header from edge info serialization file, tried %ld bytes, only wrote %ld\n", buffer.size(), nread);
+            return false;
+        }
+        
+        char* ibuf = buffer.data();
+        valid_count = read_size_t(&ibuf);
+        pixel_size = read_double(&ibuf);
+        mtf_contrast = read_double(&ibuf);
+        
+        return true;
+    }
+    
     // serialize multiple edges into a string
-    static string serialize(
+    static bool serialize(
+        FILE* fout,
         const vector<cv::Point2d>& in_centroid,
         const vector<double>& in_angle,
         const vector<double>& in_mtf50,
@@ -51,74 +91,113 @@ class Edge_info {
         const vector<bool> valid_edge
     ) {
         // there is no need to keep data grouped by block at this point, so each record is independent
-        string s = "";
         vector<char> buffer(20*1024);
         for (size_t k=0; k < in_centroid.size(); k++) {
             if (!valid_edge[k]) continue;
             
             char* buf = buffer.data();
             
-            buf += sprintf(buf, "%.3lf %.3lf %lf %lf %.2lf %.3lf %.3lf %.3lf ", 
-                in_centroid[k].x, in_centroid[k].y, 
-                in_angle[k], // TODO: could be relative angle ...
-                in_mtf50[k], // MTF-XX, in c/p
-                in_snr[k].x, // mean CNR
-                in_snr[k].y,  // oversampling factor
-                in_chromatic_aberration[k].x, in_chromatic_aberration[k].y // CA red-green, blue-green
-            );
+            write_double(&buf, in_centroid[k].x);
+            write_double(&buf, in_centroid[k].y);
+            write_double(&buf, in_angle[k]); // whole angle, not relative
+            write_double(&buf, in_mtf50[k]); // MTF-XX, in c/p
+            write_double(&buf, in_snr[k].x); // mean CNR
+            write_double(&buf, in_snr[k].y); // oversampling factor
+            write_double(&buf, in_chromatic_aberration[k].x); // CA red-green
+            write_double(&buf, in_chromatic_aberration[k].y); // CA blue-green
             
-            buf += sprintf(buf, "%d ", (int)in_sfr[k]->size());
+            write_size_t(&buf, in_sfr[k]->size());
             for (size_t j=0; j < in_sfr[k]->size(); j++) {
-                buf += sprintf(buf, "%lf ", (*in_sfr[k])[j]);
+                write_float(&buf, (float)(*in_sfr[k])[j]);
             }
             
-            buf += sprintf(buf, "%d ", (int)in_esf[k]->size());
+            write_size_t(&buf, in_esf[k]->size());
             for (size_t j=0; j < in_esf[k]->size(); j++) {
-                buf += sprintf(buf, "%.3lf ", (*in_esf[k])[j]);
+                write_float(&buf, (float)(*in_esf[k])[j]);
             }
             
-            buf += sprintf(buf, "\n");
-            
-            s += string(buffer.data());
+            size_t size_in_bytes = buf - buffer.data();
+            size_t nwritten = fwrite(buffer.data(), 1, size_in_bytes, fout);
+            if (nwritten != size_in_bytes) {
+                logger.error("Could not write to edge info serialization file, tried %ld bytes, only wrote %ld\n", buffer.size(), size_in_bytes);
+                return false;
+            }
         }
-        return s;
+        return true;
     }
     
     // deserialize a single edge from string s
-    static Edge_info deserialize(string s) {
+    static Edge_info deserialize(FILE* fin, bool& valid) {
         Edge_info b;
+        valid = false;
         
-        // TODO: we expect s to contain only one row (one entry). Some checking would be good
+        vector<char> buffer(20*1024);
         
-        char* s_buf = const_cast<char*>(s.data());
-        FILE* fin = fmemopen(s_buf, s.length(), "r");
+        char* ibuf = buffer.data();
         
-        int nread = 0;
+        size_t nread = fread(ibuf, 1, 8*sizeof(double), fin);
+        if (nread != 8*sizeof(double)) {
+            logger.error("Could not read from edge info serialization file, tried %ld bytes, only read %ld\n", 8*sizeof(double), nread);
+            return b;
+        }
         
-        nread += fscanf(fin, "%lf %lf", &b.centroid.x, &b.centroid.y);
-        nread += fscanf(fin, "%lf", &b.angle);
-        nread += fscanf(fin, "%lf", &b.mtf50);
-        nread += fscanf(fin, "%lf %lf", &b.snr.x, &b.snr.y);
-        nread += fscanf(fin, "%lf %lf", &b.chromatic_aberration.x, &b.chromatic_aberration.y);
+        b.centroid.x = read_double(&ibuf);
+        b.centroid.y = read_double(&ibuf);
+        b.angle = read_double(&ibuf);
+        b.mtf50 = read_double(&ibuf);
+        b.snr.x = read_double(&ibuf);
+        b.snr.y = read_double(&ibuf);
+        b.chromatic_aberration.x = read_double(&ibuf);
+        b.chromatic_aberration.y = read_double(&ibuf);
         
-        int nsfr = 0;
-        nread += fscanf(fin, "%d", &nsfr);
+        
+        nread = fread(ibuf, 1, sizeof(size_t), fin);
+        if (nread != sizeof(size_t)) {
+            logger.error("Could not read from edge info serialization file, SFR size read failed");
+            return b;
+        }
+        
+        size_t nsfr = read_size_t(&ibuf);
+        if (nsfr > 128) {
+            logger.error("Unexpected SFR length in edge deserialization, aborting\n");
+            return b;
+        }
+        
+        nread = fread(ibuf, 1, sizeof(float)*nsfr, fin);
+        if (nread != sizeof(float)*nsfr) {
+            logger.error("Could not read from edge info serialization file, SFR read failed");
+            return b;
+        }
         
         b.sfr = std::shared_ptr<vector<double>>(new vector<double>(nsfr, 0.0));
-        for (int j=0; j < nsfr; j++) {
-            nread += fscanf(fin, "%lf", &(*b.sfr)[j]);
+        for (size_t j=0; j < nsfr; j++) {
+            (*b.sfr)[j] = read_float(&ibuf);
         }
         
-        int nesf = 0;
-        nread += fscanf(fin, "%d", &nesf);
+        nread = fread(ibuf, 1, sizeof(size_t), fin);
+        if (nread != sizeof(size_t)) {
+            logger.error("Could not read from edge info serialization file, ESF size read failed");
+            return b;
+        }
+        
+        size_t nesf = read_size_t(&ibuf);
+        if (nsfr > 256) {
+            logger.error("Unexpected ESF length in edge deserialization, aborting\n");
+            return b;
+        }
+        
+        nread = fread(ibuf, 1, sizeof(float)*nesf, fin);
+        if (nread != sizeof(float)*nesf) {
+            logger.error("Could not read from edge info serialization file, ESF read failed");
+            return b;
+        }
         
         b.esf = std::shared_ptr<vector<double>>(new vector<double>(nesf, 0.0));
-        for (int j=0; j < nesf; j++) {
-            nread += fscanf(fin, "%lf", &(*b.esf)[j]);
+        for (size_t j=0; j < nesf; j++) {
+            (*b.esf)[j] = read_float(&ibuf);
         }
         
-        fclose(fin);
-        
+        valid = true;
         return b;
     }
     
@@ -141,7 +220,45 @@ class Edge_info {
     double pixel_pitch = 1.0;
     double mtf_contrast = 0.5;
     
+    static constexpr double nodata = -1073741824;
+    
   private:
+    void static write_size_t(char** buffer, size_t val) {
+        memcpy(*buffer, (char*)&val, sizeof(size_t));
+        *buffer += sizeof(size_t);
+    }
+    
+    void static write_double(char** buffer, double val) {
+        memcpy(*buffer, (char*)&val, sizeof(double));
+        *buffer += sizeof(size_t);
+    }
+    
+    void static write_float(char** buffer, float val) {
+        memcpy(*buffer, (char*)&val, sizeof(float));
+        *buffer += sizeof(float);
+    }
+    
+    size_t static read_size_t(char** buffer) {
+        size_t val = 0;
+        memcpy((char*)&val, *buffer, sizeof(size_t));
+        *buffer += sizeof(size_t);
+        return val;
+    }
+    
+    double static read_double(char** buffer) {
+        double val = 0;
+        memcpy((char*)&val, *buffer, sizeof(double));
+        *buffer += sizeof(size_t);
+        return val;
+    }
+    
+    float static read_float(char** buffer) {
+        float val = 0;
+        memcpy((char*)&val, *buffer, sizeof(float));
+        *buffer += sizeof(float);
+        return val;
+    }
+    
 };
 
 #endif

@@ -63,19 +63,23 @@ class Mtf_renderer_edges : public Mtf_renderer {
         
         FILE* serout = NULL;
         if (output_version >= Output_version::V2) {
-            serout = fopen(serialname.c_str(), "wt");
-            size_t valid_count = 0;
-            for (size_t i=0; i < blocks.size(); i++) {
-                for (size_t k=0; k < 4; k++) {
-                    valid_count += blocks[i].get_edge_valid(k);
+            serout = fopen(serialname.c_str(), "wb");
+            
+            if (serout) {
+                size_t valid_count = 0;
+                for (size_t i=0; i < blocks.size(); i++) {
+                    for (size_t k=0; k < 4; k++) {
+                        valid_count += blocks[i].get_edge_valid(k);
+                    }
                 }
+                
+                Edge_info::serialize_header(
+                    serout, 
+                    valid_count,
+                    fabs(pixel_size - 1) < 1e-6 ? 1000.0 : 1000.0/pixel_size, 
+                    mtf_contrast
+                );
             }
-            // header: number_of_edges pixel_size(micron) MTF-XX
-            fprintf(serout, "%ld %lf %lf\n",
-                valid_count, 
-                fabs(pixel_size - 1) < 1e-6 ? 1000.0 : 1000.0/pixel_size, 
-                mtf_contrast
-            );
         }
         
         if (output_version >= Output_version::V2) {
@@ -240,14 +244,14 @@ class Mtf_renderer_edges : public Mtf_renderer {
             }
             
             if (output_version >= Output_version::V2) {
-                fprintf(serout, "%s", blocks[i].serialize().c_str());
+                bool success = blocks[i].serialize(serout);
             }
         }    
         fclose(fout);
         fclose(sfrout);
         fclose(devout);
         
-        if (output_version >= Output_version::V2) {
+        if (output_version >= Output_version::V2 && serout) {
             fclose(serout);
         }
     }

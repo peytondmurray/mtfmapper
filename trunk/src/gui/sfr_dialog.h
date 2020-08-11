@@ -59,7 +59,6 @@ class Sfr_dialog : public QDialog {
     void reject(void);
 
   private:
-    bool update_lp_mm_mode(void);
   
     vector<Sfr_entry> entries;
     QChart* chart;
@@ -69,7 +68,9 @@ class Sfr_dialog : public QDialog {
     vector<QLineSeries*> series; 
     vector<QGraphicsSimpleTextItem*> mtf50_text;
     double cursor_domain_value;
-    vector<QLabel*> cursor_label;
+    vector<vector<QLabel*>> table_labels;
+    QLabel* x_label;
+    QLabel* x_label_value;
     QGraphicsRectItem* mtf50_rect;
     QGridLayout* label_layout;
     QPushButton* save_img_button;
@@ -80,11 +81,14 @@ class Sfr_dialog : public QDialog {
     Entry_view view;
     QComboBox* box_view;
     Qt::KeyboardModifiers last_modifier;
+    QCheckBox* lp_mm_cb;
     
   public slots:
+    bool update_lp_mm_mode(void);
     void save_image(void);
     void save_data(void);
     void plot_type_changed(int index);
+    void lp_mm_toggled(void);
 };
 
 

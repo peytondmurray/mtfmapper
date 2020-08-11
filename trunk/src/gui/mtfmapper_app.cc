@@ -425,26 +425,35 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
             img_viewer->set_clickable(true);
             sfr_list.clear();
             
-            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/serialized_edges.txt");
+            QString sfr_source = QFileInfo(dataset_files.at(count_before)).dir().path() + QString("/serialized_edges.bin");
             // go and fetch the corresponding "edge_sfr" entries
-            std::ifstream ifile(sfr_source.toLocal8Bit().data());
-            string line;
-            
-            // read header
-            size_t edge_count = 0;
-            double pixel_size = 0;
-            double mtf_contrast = 0;
-            std::getline(ifile, line);
-            sscanf(line.c_str(), "%ld %lf %lf", &edge_count, &pixel_size, &mtf_contrast);
-            
-            size_t edges_processed = 0;
-            while (!ifile.fail() && edges_processed < edge_count) {
-                std::getline(ifile, line);
-                Edge_info b = Edge_info::deserialize(line);
-                b.set_mtf_contrast(mtf_contrast);
-                b.set_pixel_pitch(pixel_size);
-                sfr_list.push_back(Sfr_entry(b.centroid.x, b.centroid.y, b));
-                edges_processed++;
+            FILE* fin = fopen(sfr_source.toLocal8Bit().constData(), "rb");
+            if (!fin) {
+                logger.error("Could not open serialized edge info file [%s], SFR profiles not available\n", sfr_source.toLocal8Bit().constData());
+                logger.flush();
+            } else {
+                // read header
+                size_t edge_count = 0;
+                double pixel_size = 0;
+                double mtf_contrast = 0;
+                bool success = Edge_info::deserialize_header(fin, edge_count, pixel_size, mtf_contrast);
+                
+                if (!success) {
+                    logger.error("Could not read serialized edge info header.\n");
+                    logger.flush();
+                } else {
+                    size_t edges_processed = 0;
+                    while (success && edges_processed < edge_count) {
+                        Edge_info b = Edge_info::deserialize(fin, success);
+                        if (success) {
+                            b.set_mtf_contrast(mtf_contrast);
+                            b.set_pixel_pitch(pixel_size);
+                            sfr_list.push_back(Sfr_entry(b.centroid.x, b.centroid.y, b));
+                            edges_processed++;
+                        }
+                    }
+                }
+                fclose(fin);
             }
         } else {
             img_viewer->set_clickable(false);
@@ -737,6 +746,7 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
             if (!sfr_dialog) {
                 sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
                 connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_dots()));
+                connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
             } else {
                 if (shift_down) {
                     sfr_dialog->add_entry(sfr_list[close_idx]);
