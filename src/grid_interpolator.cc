@@ -72,7 +72,7 @@ void interpolate_grid(const Grid_functor& ftor, Edge_type target_edge_type, cv::
                 int ly = lrint(cent.y*(grid_fine.rows-1)/img_dims.height); 
                 int lx = lrint(cent.x*(grid_fine.cols-1)/img_dims.width);
 
-                if ((grid_fine.at<float>(ly, ly) == ftor.nodata() || fabs(val) > fabs(grid_fine.at<float>(ly,lx))) 
+                if ((fabs(grid_fine.at<float>(ly, ly) - ftor.nodata()) < 1e-6 || fabs(val) > fabs(grid_fine.at<float>(ly,lx))) 
                     && edge_type == target_edge_type) { // max composite
                     grid_fine.at<float>(ly,lx) = val;
                 }
