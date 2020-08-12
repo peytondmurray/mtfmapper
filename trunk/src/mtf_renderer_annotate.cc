@@ -140,9 +140,8 @@ void Mtf_renderer_annotate::render(const vector<Block>& blocks) {
                     double font_scale = initial_font_scale;
                     if (edge_lengths[k] < quantile_edge_length * 0.9 || edge_lengths[k] < 50) {
                         char buffer[30];
-                        double val = blocks[i].get_quality(k);
                         double freq_scale = lpmm_mode ? pixel_size : 1.0;
-                        if (val < 1.0*freq_scale) {
+                        if (val < 1.0) {
                             if (lpmm_mode) {
                                 sprintf(buffer, "%.1lf", val*freq_scale);
                             } else {
@@ -172,7 +171,7 @@ void Mtf_renderer_annotate::write_number(cv::Mat& img, int px, int py, double va
     
     double freq_scale = lpmm_mode ? pixel_size : 1.0;
     
-    if (val < 1.0*freq_scale) {
+    if (val < 1.0) {
         if (lpmm_mode) {
             sprintf(buffer, "%.1lf", val*freq_scale);
         } else {
