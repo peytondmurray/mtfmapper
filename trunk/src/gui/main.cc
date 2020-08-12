@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     string logname = (QDir::tempPath() + QDir::separator()).toStdString() + "mtfmapperlog.txt";
     logger.redirect(logname);
-    logger.enable_level(Logger::DEBUG);
+    logger.enable_level(Logger::LOGGER_DEBUG);
     qInstallMessageHandler(message_output);
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
 

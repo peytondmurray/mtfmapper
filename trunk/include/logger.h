@@ -34,7 +34,7 @@ using std::string;
 
 class Logger {
   public: 
-      typedef enum {NONE=0, INFO=1, DEBUG=2, ERROR=4} log_level_t;
+      typedef enum {LOGGER_NONE=0, LOGGER_INFO=1, LOGGER_DEBUG=2, LOGGER_ERROR=4} log_level_t;
       Logger(void) : destination(stdout) {}
 
       void redirect(const string& fname, bool append=false) {
@@ -64,26 +64,26 @@ class Logger {
       }
 
       template <class... T> void info(T... t) {
-          if (log_level & INFO) {
+          if (log_level & LOGGER_INFO) {
               fprintf(destination, t...);
           }
       }
 
       template <class... T> void debug(T... t) {
-          if (log_level & DEBUG) {
+          if (log_level & LOGGER_DEBUG) {
               fprintf(destination, t...);
           }
       }
 
       template <class... T> void error(T... t) {
-          if (log_level & ERROR) {
+          if (log_level & LOGGER_ERROR) {
               fprintf(destination, t...);
               fflush(destination);
           }
       }
   private:
       FILE* destination;
-      int log_level = INFO | ERROR;
+      int log_level = LOGGER_INFO | LOGGER_ERROR;
 };
 
 extern Logger logger;
