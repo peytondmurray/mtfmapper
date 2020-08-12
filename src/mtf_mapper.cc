@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
         logger.redirect(tc_logfile.getValue(), tc_log_append.getValue());
     }
     if (tc_debug.getValue()) {
-        logger.enable_level(Logger::DEBUG);
+        logger.enable_level(Logger::LOGGER_DEBUG);
     }
 
     bool lpmm_mode = false;
