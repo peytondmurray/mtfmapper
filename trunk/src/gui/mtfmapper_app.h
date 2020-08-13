@@ -79,6 +79,7 @@ class mtfmapper_app : public QMainWindow
     void view_image(const QString& fname);
     void display_exif_properties(int index);
     void clear_temp_files(void);
+    void check_and_purge_stale_temp_files(void);
     void check_if_helpers_exist(void);
     void save_action(bool subset = false);
     void open_action(bool roi = false, bool focus = false, bool imatest = false);
@@ -177,7 +178,7 @@ class mtfmapper_app : public QMainWindow
     void save_button_pressed(void);
     void save_subset_button_pressed(void);
     
-    void mtfmapper_call_failed(void);
+    void mtfmapper_call_failed(Worker_thread::failure_t failure);
 
     void enable_file_open(void);
     

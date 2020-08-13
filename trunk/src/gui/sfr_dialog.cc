@@ -79,8 +79,19 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     
     QFont fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     fixed_font.setStyleHint(QFont::TypeWriter);
-    vector<string> column_names = {"contrast", "CNR", "red-CA", "blue-CA", "\u03b8", "OSF"};
-    vector<int> col_width = {7, 5, 5, 5, 5, 5};
+    QFont default_font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+    default_font.setBold(true);
+    QFontMetrics default_fm(default_font);
+    vector<string> column_names = {" contrast ", " CNR ", " red-CA ", " blue-CA ", " angle ", " OSF "};
+    vector<string> column_tooltips = {
+        "",
+        "CNR = Contrast-to-Noise Ratio\nUnits: unitless ratio\nHigher is better, > 30 is Ok, > 100 is excellent",
+        "red-CA = Lateral Chromatic Aberration, shift between red channel and green channel\nUnits: pixels in c/p mode, micron in lp/mm mode\nSmaller magnitude is better",
+        "blue-CA = Lateral Chromatic Aberration, shift between blue channel and green channel\nUnits: pixels in c/p mode, micron in lp/mm mode\nSmaller magnitude is better",
+        "angle = Relative edge orientation angle (modulo 45 degrees)\nUnits: degrees\nValues < 1, close to 26.565, and > 44 are undesirable",
+        "OSF = Over-Sampling Factor, measures how reliable a measurement is\nUnits: unitless factor\nValues <= 4 are undesirable"
+    };
+    int min_col_width = default_fm.boundingRect(column_names[3].c_str()).width(); // use "blue-CA" as the minimum
     
     vector<QVBoxLayout*> table_col_layouts;
     QHBoxLayout* table_row_layouts = new QHBoxLayout;
@@ -102,7 +113,10 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
             table_col_layouts[c]->addWidget(table_labels[r][c]);
             
             table_labels[r][c]->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            table_labels[r][c]->setFixedWidth(col_width[c]*em_width);
+            table_labels[r][c]->setFixedWidth(std::max(default_fm.boundingRect(column_names[c].c_str()).width(), min_col_width));
+            if (c >= 1) {
+                table_labels[r][c]->setToolTip(column_tooltips[c].c_str());
+            }
         }
     }
     for (size_t c=0; c < table_labels[0].size(); c++) {
@@ -116,7 +130,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     x_label->setStyleSheet("font-weight: bold;");
     x_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     x_label->setAlignment(Qt::AlignCenter);
-    x_label->setFixedWidth(7*em_width);
+    x_label->setFixedWidth(default_fm.boundingRect(QString(" ") + x_label->text() + QString(" ")).width());
     x_label_value = new QLabel(this);
     x_label_value->setText("");
     x_label_value->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -347,6 +361,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     bpos.rx() = tpos.rx() + 2;
     
     mtf50_rect->setRect(tpos.x(), tpos.y(), bpos.x() - tpos.x(), bpos.y() - tpos.y());
+
     
     for (size_t mi=0; mi < contrast_list.size(); mi++) {
         auto fmt = view.format(entries[mi].info, cursor_domain_value, contrast_list[mi]);
@@ -366,10 +381,15 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         for (size_t col=0; col < table_labels[0].size(); col++) {
             QPalette palette = table_labels[mi+1][col]->palette();
             palette.setColor(table_labels[mi+1][col]->foregroundRole(), series[mi]->pen().color());
+            palette.setColor(table_labels[mi+1][col]->backgroundRole(), this->palette().color(QPalette::Window));
             table_labels[mi+1][col]->setPalette(palette);
+            table_labels[mi+1][col]->setAutoFillBackground(false);
             table_labels[mi+1][col]->show();
         }
-        
+
+        set_label_background(table_labels[mi+1][1], fmt["cnr_col"]);
+        set_label_background(table_labels[mi+1][4], fmt["angle_col"]);
+        set_label_background(table_labels[mi+1][5], fmt["ox_col"]);
     }
     
     chart->update(); // this causes some lag, but it elliminates exposed cruft. a better solution would be nice
@@ -507,4 +527,21 @@ void Sfr_dialog::keyPressEvent(QKeyEvent* /*event*/) {
 
 void Sfr_dialog::keyReleaseEvent(QKeyEvent* /*event*/) {
     update();
+}
+
+void Sfr_dialog::set_label_background(QLabel* label, const string& condition) {
+    QColor bg_red(255, 128, 128, 32);
+    QColor bg_yellow(255, 255, 128, 48);
+
+    if (condition != "none") {
+        label->setAutoFillBackground(true);
+        //label->setBackgroundRole(QPalette::Window);
+        QPalette pal = label->palette();
+        pal.setColor(
+            //QPalette::Window,
+            label->backgroundRole(),
+            condition == "red" ? bg_red : bg_yellow
+        );
+        label->setPalette(pal);
+    }
 }

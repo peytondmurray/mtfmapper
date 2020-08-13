@@ -33,6 +33,7 @@ Logger logger;
 #include <QFileInfo>
 #include <QSurfaceFormat>
 
+#include "worker_thread.h"
 #include "mtfmapper_app.h"
 
 void message_output(QtMsgType type, const QMessageLogContext& /*context*/, const QString &msg) {
@@ -86,6 +87,8 @@ int main(int argc, char *argv[]) {
     appIcon.addFile(":/Icons/AppIcon128");
     appIcon.addFile(":/Icons/AppIcon256");
     app.setWindowIcon(appIcon);
+
+    qRegisterMetaType<Worker_thread::failure_t>("Worker_thread::failure_t");
 
     dialog.show();
     return app.exec();

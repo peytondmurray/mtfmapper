@@ -136,7 +136,18 @@ class Entry_view {
             break;
         }
         
-        sprintf(buffer, "%6.2f", info.snr.x);
+        fmt["cnr_col"] = "none";
+        if (info.snr.x < 30) {
+            fmt["cnr_col"] = "yellow";
+            if (info.snr.x < 20) {
+                fmt["cnr_col"] = "red";
+            }
+        } 
+        if (info.snr.x < 1000) {
+            sprintf(buffer, "%6.2f", info.snr.x);
+        } else {
+            sprintf(buffer, "%6.0f", info.snr.x);
+        }
         fmt["cnr"] = string(buffer);
         
         if (fabs(info.chromatic_aberration.x - Edge_info::nodata) < 1e-6) {
@@ -153,9 +164,21 @@ class Entry_view {
         }
         fmt["b_ca"] = string(buffer);
         
-        sprintf(buffer, "%5.2f", angle_reduce(info.angle));
+        double angle = angle_reduce(info.angle);
+        fmt["angle_col"] = "none";
+        if (angle < 1 || angle > 44 || fabs(angle - 26.565) < 1) {
+            fmt["angle_col"] = "yellow";
+        }
+        sprintf(buffer, "%5.2f", angle);
         fmt["angle"] = string(buffer);
         
+        fmt["ox_col"] = "none";
+        if (info.snr.y < 8) {
+            fmt["ox_col"] = "yellow";
+            if (info.snr.y <= 4) {
+                fmt["ox_col"] = "red";
+            }
+        }
         sprintf(buffer, "%3.2f", info.snr.y);
         fmt["ox"] = string(buffer);
         
@@ -227,7 +250,7 @@ class Entry_view {
             
             double roundup_max = multiple(max_y);
             y_axis.setRange(0, roundup_max);
-            y_axis.setTickCount(roundup_max*5 + 1);
+            y_axis.setTickCount(std::min(8, int(roundup_max*5 + 1)));
             y_axis.setLabelFormat("%3.1f");
         } else {
             x_axis.setTickCount(17);

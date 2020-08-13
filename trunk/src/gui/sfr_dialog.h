@@ -59,6 +59,7 @@ class Sfr_dialog : public QDialog {
     void reject(void);
 
   private:
+    void set_label_background(QLabel* label, const string& condition);
   
     vector<Sfr_entry> entries;
     QChart* chart;

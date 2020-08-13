@@ -218,7 +218,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(save_subset_button, SIGNAL(clicked()), this, SLOT(save_subset_button_pressed()));
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
-    connect(&processor, SIGNAL(mtfmapper_call_failed()), this, SLOT(mtfmapper_call_failed()));
+    connect(&processor, SIGNAL(mtfmapper_call_failed(Worker_thread::failure_t)), this, SLOT(mtfmapper_call_failed(Worker_thread::failure_t)));
 
     // rather a lot of code, but extract the icon and store it in a QImage
     mtfmapper_logo = new QIcon;
@@ -241,11 +241,19 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     settings->send_argument_string(false);
     check_if_helpers_exist();
+    check_and_purge_stale_temp_files();
 }
 
 mtfmapper_app::~mtfmapper_app(void) {
-    // clean up all the old folders
+    // first, attempt to just remove the files we created, and know of, since
+    // this is safer than deleting the temp directories recursively
     clear_temp_files();
+
+    // now check if anything was left over in the temp directories, and
+    // offer to remove them, which may potentially remove user-created files
+    // but we do warn them first ...
+    check_and_purge_stale_temp_files();
+
     delete icon_image;
     delete mtfmapper_logo;
 }
@@ -261,6 +269,59 @@ void mtfmapper_app::clear_temp_files(void) {
             
     }
     clear_button->setEnabled(false);
+}
+
+void mtfmapper_app::check_and_purge_stale_temp_files(void) {
+    // check for, and list, any remaining non-empty temp dirs
+    QDir tempdir = QDir::temp();
+    tempdir.setNameFilters(QStringList() << "mtfmappertemp_*");
+    QStringList dirlist = tempdir.entryList(QDir::Dirs);
+    if (dirlist.size() > 0) {
+        QListWidget* subset_list = new QListWidget();
+        for (int i = 0; i < dirlist.size(); i++) {
+            subset_list->addItem(dirlist[i]);
+        }
+        QDialog* subset_mb = new QDialog(this);
+        subset_mb->setWindowTitle("Delete stale temp directories");
+        QGridLayout* od_gridbox = new QGridLayout();
+        QPlainTextEdit* description = new QPlainTextEdit;
+        description->appendPlainText("A previous run of MTF Mapper appears to have left behind some stale temporary files and directories.\n");
+        description->appendPlainText(QString("The directories are located under\n%1\n\nThe following directories and all their contents, will be deleted:").arg(QDir::toNativeSeparators(tempdir.absolutePath())));
+        description->setReadOnly(true);
+        description->setFrameStyle(QFrame::NoFrame);
+        QColor current_bg_colour = palette().color(QPalette::Window);
+        description->setStyleSheet(QString("QPlainTextEdit[readOnly=\"true\"] { background-color: %0 }").arg(current_bg_colour.name(QColor::HexRgb)));
+        QFontMetrics d_fm(description->font());
+        int row_height = d_fm.lineSpacing();
+        description->setFixedHeight(row_height * 11);
+        od_gridbox->addWidget(description, 0, 0, 1, 2);
+        int rowheight = subset_list->model()->rowCount() * subset_list->sizeHintForRow(0);
+        rowheight = std::min(std::max(rowheight, row_height * (dirlist.size() + 1)), row_height * 10);
+        subset_list->setMaximumHeight(rowheight + subset_list->frameWidth() * 2);
+        subset_list->setMinimumHeight(rowheight + subset_list->frameWidth() * 2);
+        subset_list->setSelectionMode(QAbstractItemView::NoSelection);
+        od_gridbox->addWidget(subset_list, 1, 0, 1, 2);
+        QPushButton* deletebutton = new QPushButton("Delete", subset_mb);
+        QPushButton* cancelbutton = new QPushButton("Cancel", subset_mb);
+        od_gridbox->addWidget(deletebutton, 2, 0);
+        od_gridbox->addWidget(cancelbutton, 2, 1);
+        subset_mb->setLayout(od_gridbox);
+        subset_mb->setModal(true);
+
+        bool cancelled = false;
+        connect(cancelbutton, &QPushButton::clicked, [&cancelled, &subset_mb]() { cancelled = true;  subset_mb->close(); });
+        connect(deletebutton, &QPushButton::clicked, subset_mb, &QDialog::close);
+        subset_mb->exec();
+        if (!cancelled) {
+            QDir starting_dir(tempdir);
+            logger.info("The following stale temp direcoties will be removed:\n");
+            for (int i = 0; i < dirlist.size(); i++) {
+                QDir del_dir(starting_dir.absolutePath() + QDir::separator() + dirlist[i]);
+                logger.info("\t%s\n", del_dir.absolutePath().toLocal8Bit().constData());
+                del_dir.removeRecursively();
+            }
+        }
+    }
 }
 
 void mtfmapper_app::create_actions(void) {
@@ -787,37 +848,69 @@ void mtfmapper_app::settings_saved(void) {
     }
 }
 
-void mtfmapper_app::mtfmapper_call_failed(void) {
-    if (settings->peek_argument_line().trimmed().length() > 0) {
-        QMessageBox call_failed;
-        call_failed.setIcon(QMessageBox::Critical);
-        call_failed.setWindowTitle("MTF Mapper call failed");
-        call_failed.setText(
-            "MTF Mapper call failed.\n\n"
-            "It is likely that this error has been caused by an invalid option in the Preferences/Arguments field.\n\n"
-            "Reset Arguments field in the Preferences dialogue?"
-        );
-        call_failed.setStandardButtons(QMessageBox::Reset | QMessageBox::Ignore);
-        int ret = call_failed.exec();
-        switch (ret) {
-        case QMessageBox::Reset:
-            settings->reset_argument_line();
-            break;
-        case QMessageBox::Ignore:
-        default:
-            break;
+void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure) {
+    logger.error("receiving mtfmapper call failed signal, failure code = %d\n", failure);
+    if (failure == Worker_thread::failure_t::UNSPECIFIED) {
+        if (settings->peek_argument_line().trimmed().length() > 0) {
+            QMessageBox call_failed;
+            call_failed.setIcon(QMessageBox::Critical);
+            call_failed.setWindowTitle("MTF Mapper call failed");
+            call_failed.setText(
+                "MTF Mapper call failed.\n\n"
+                "It is likely that this error has been caused by an invalid option in the Preferences/Arguments field.\n\n"
+                "Reset Arguments field in the Preferences dialogue?"
+            );
+            call_failed.setStandardButtons(QMessageBox::Reset | QMessageBox::Ignore);
+            int ret = call_failed.exec();
+            switch (ret) {
+            case QMessageBox::Reset:
+                settings->reset_argument_line();
+                break;
+            case QMessageBox::Ignore:
+            default:
+                break;
+            }
+        }
+        else {
+            QString logname = QDir::tempPath() + QDir::separator() + QString("mtfmapperlog.txt");
+            logger.flush();
+            QMessageBox call_failed;
+            call_failed.setIcon(QMessageBox::Critical);
+            call_failed.setWindowTitle("MTF Mapper call failed");
+            call_failed.setText(
+                "MTF Mapper call failed.\n\n"
+                "Please contact fvdbergh@gmail.com for assistance.\n"
+                "Attach the file '" + logname + "' if possible.\n"
+            );
+            call_failed.setStandardButtons(QMessageBox::Ok);
+            call_failed.exec();
         }
     } else {
-        QString logname = QDir::tempPath() + QDir::separator() + QString("mtfmapperlog.txt");
-        logger.flush();
+        logger.error("call failed is specified (%d), so where is the box?\n", failure);
         QMessageBox call_failed;
         call_failed.setIcon(QMessageBox::Critical);
         call_failed.setWindowTitle("MTF Mapper call failed");
-        call_failed.setText(
-            "MTF Mapper call failed.\n\n"
-            "Please contact fvdbergh@gmail.com for assistance.\n"
-            "Attach the file '" + logname + "' if possible.\n"
-        );
+        switch (failure) {
+        case Worker_thread::failure_t::IMAGE_OPEN_FAILURE:
+            call_failed.setText(
+                "MTF Mapper call failed, indicating that the input image could not be opened.\n\n"
+                "Maybe that was not a valid image file.\n"
+            );
+            break;
+        case Worker_thread::failure_t::NO_TARGETS_FOUND:
+            call_failed.setText(
+                "MTF Mapper call failed, indicating that no valid target objects were found.\n\n"
+                "Maybe the input image did not contain valid targets?\n"
+                "Otherwise you could try lowering the Threshold value in the Preferences dialog.\n"
+            );
+            break;
+        default:
+            call_failed.setText(
+                "MTF Mapper call failed.\n\n"
+                "No further information available at this time.\n"
+            );
+            break;
+        }
         call_failed.setStandardButtons(QMessageBox::Ok);
         call_failed.exec();
     }

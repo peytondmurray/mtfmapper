@@ -407,8 +407,9 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         );
         
         double mtf50 = 0.01;
+        double edge_length = 0;
         if (!ridges_only) {
-            mtf50 = compute_mtf(*edge_model[k], scansets[k], quality, sfr, esf, snr);
+            mtf50 = compute_mtf(*edge_model[k], scansets[k], quality, edge_length, sfr, esf, snr);
         }
         
         allzero &= fabs(mtf50) < 1e-6;
@@ -427,6 +428,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
             shared_blocks_map[label].set_scanset(k, scansets[k]);
             shared_blocks_map[label].set_edge_model(k, edge_model[k]);
             shared_blocks_map[label].set_edge_valid(k);
+            shared_blocks_map[label].set_edge_length(k, edge_length);
         }
     }
     if (allzero) {
@@ -496,14 +498,14 @@ static double angle_reduce(double x) {
 }
 
 double Mtf_core::compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset,
-    double& quality,  
+    double& quality,  double& edge_length,
     vector<double>& sfr, vector<double>& esf, 
     Snr& snr, bool allow_peak_shift) {
     
     quality = 1.0; // assume this is a good edge
     
     vector<Ordered_point> ordered;
-    double edge_length = 0;
+    edge_length = 0;
     
     thread_local vector<double> fft_out_buffer(FFT_SIZE*2);
     thread_local vector<double> magnitude(NYQUIST_FREQ*4);
@@ -980,11 +982,12 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             color[2] = 0;
             
             double quality = 0;
+            double edge_length = 0;
             vector <double> sfr(mtf_width, 0);
             vector <double> esf(FFT_SIZE/2, 0);
             Snr snr;
             Edge_model edge_model(edge_record.centroid, Point2d(-sin(edge_record.angle), cos(edge_record.angle)));
-            double mtf50 = compute_mtf(edge_model, scanset, quality, sfr, esf, snr);
+            double mtf50 = compute_mtf(edge_model, scanset, quality, edge_length, sfr, esf, snr);
             // TODO: there is no way to store the snr object of a non-block data point
             
             if (mtf50 < 1.0 && quality > very_poor_quality) {
@@ -1146,11 +1149,11 @@ void Mtf_core::process_image_as_roi(void) {
     );
     
     double quality;
-    
+    double edge_length = 0;
     vector <double> sfr(mtf_width, 0);
     vector <double> esf(FFT_SIZE/2, 0);
     Snr snr;
-    double mtf50 = compute_mtf(*em, scanset, quality, sfr, esf, snr, true);
+    double mtf50 = compute_mtf(*em, scanset, quality, edge_length, sfr, esf, snr, true);
     
     // add a block with the correct properties ....
     if (mtf50 <= 1.2) { 

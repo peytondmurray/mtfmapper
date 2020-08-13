@@ -228,17 +228,17 @@ int main(int argc, char** argv) {
 
     if (!cvimg.data) {
         logger.error("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
-        return -2;
+        return 2;
     }
     
     struct STAT sb;
     if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {
         logger.error("Fatal error: specified output directory <%s> does not exist\n", tc_wdir.getValue().c_str());
-        return -3;
+        return 3;
     } else {
         if (!S_ISDIR(sb.st_mode)) {
             logger.error("Fatal error: speficied output directory <%s> is not a directory\n", tc_wdir.getValue().c_str());
-            return -3;
+            return 3;
         }
     }
     
@@ -288,17 +288,17 @@ int main(int argc, char** argv) {
     
     if (tc_equiangular.isSet() && !tc_pixelsize.isSet()) {
         logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --equiangular option. Aborting.");
-        return -1;
+        return 1;
     }
     
     if (tc_stereographic.isSet() && !tc_pixelsize.isSet()) {
         logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --stereographic option. Aborting.");
-        return -1;
+        return 1;
     }
     
     if (tc_stereographic.isSet() && tc_equiangular.isSet()) {
         logger.error("Fatal error: You may only specify one of --stereographic and --equiangular. Aborting\n");
-        return -1;
+        return 1;
     }
     
     int gnuplot_width = std::max(1024, tc_gpwidth.getValue());
@@ -401,7 +401,7 @@ int main(int argc, char** argv) {
         if (!tc_distort_opt.getValue()) {
             logger.error("Error: Deferred ESF sampler cannot be used if no undistortion model is specified."
                 "See '--optimize-distortion, --equiangular, or --stereographic' options\n");
-            return -1;
+            return 1;
         }
     }
     
@@ -448,7 +448,7 @@ int main(int argc, char** argv) {
 
         if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
             logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
-            return 0;
+            return 4;
         }
         
         // now we can destroy the thresholded image
@@ -548,7 +548,7 @@ int main(int argc, char** argv) {
         
         if (mtf_core.get_blocks().size() == 0 && !(tc_focus.getValue() || tc_mf_profile.getValue())) {
             logger.error("Error: No suitable target objects found.\n");
-            return 0;
+            return 4;
         }
         
         if (tc_distort_opt.getValue() && !distortion_applied) { 
