@@ -46,14 +46,14 @@ class Block {
         sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(4, cv::Point3d(0,0,1)), snr(4), scansets(4), 
         chromatic_aberration(4, cv::Point2d(Edge_info::nodata, Edge_info::nodata)), 
-        edge_model(4), valid_edge(4, false) {
+        edge_model(4), valid_edge(4, false), edge_length(4, 0.0) {
     }
 
     Block(const Mrectangle& in_rect) : rect(in_rect), mtf50(4,0.0), 
         quality(4, 0.0), sfr(4), esf(4), centroid(0,0), area(0.0), valid(true), 
         line_deviation(in_rect.line_deviation), snr(4), scansets(4), 
         chromatic_aberration(4, cv::Point2d(Edge_info::nodata, Edge_info::nodata)),
-        edge_model(4), valid_edge(4, false) {
+        edge_model(4), valid_edge(4, false), edge_length(4, 0.0) {
     
         size_t top_edge_idx = 0;
         size_t bot_edge_idx = 0;
@@ -255,7 +255,17 @@ class Block {
         assert(edge_number < 4);
         valid_edge[edge_number] = true;
     }
-    
+
+    double get_edge_length(size_t edge_number) const {
+        assert(edge_number < 4);
+        return edge_length[edge_number];
+    }
+
+    void set_edge_length(size_t edge_number, double length) {
+        assert(edge_number < 4);
+        edge_length[edge_number] = length;
+    }
+
     bool serialize(FILE* fout) const {
         vector<Point2d> edge_centroids(4);
         vector<double> edge_angle(4);
@@ -277,7 +287,8 @@ class Block {
             esf,
             edge_snr,
             chromatic_aberration,
-            valid_edge
+            valid_edge,
+            edge_length
         );
     }
     
@@ -296,6 +307,7 @@ class Block {
     vector<Point2d> chromatic_aberration;
     vector<std::shared_ptr<Edge_model>> edge_model;
     vector<bool> valid_edge;
+    vector<double> edge_length;
 };
 
 #endif

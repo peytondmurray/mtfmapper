@@ -96,6 +96,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
             fprintf(sfrout, "# column 10: bright side SNR\n");
             fprintf(sfrout, "# column 11: contrast\n");
             fprintf(sfrout, "# column 12: effective oversampling factor (maximum is 8x, below 4x is considered poor)\n");
+            fprintf(sfrout, "# column 13: effective edge length (a value below 25 pixels is considered poor)\n");
             
             fprintf(fout, "# MTF Mapper MTF summary, output format version %d \n", int(output_version));
             fprintf(fout, "# column  1: block_id\n");
@@ -106,6 +107,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
             fprintf(fout, "# column  6: nearby corner y (pixels)\n");
             fprintf(fout, "# column  7: mean CNR (50%% weight to each of dark and bright sides)\n");
             fprintf(fout, "# column  8: effective oversampling factor (maximum is 8x, below 4x is considered poor)\n");
+            fprintf(fout, "# column  9: effective edge length (a value below 25 pixels is considered poor)\n");
             
             fprintf(devout, "# MTF Mapper line deviation, output format version %d \n", int(output_version));
             fprintf(devout, "# column  1: block_id\n");
@@ -183,6 +185,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 Point2d ec = blocks[i].get_edge_centroid(l);
                 Point2d cr = blocks[i].get_corner(j);
                 const Snr& snr = blocks[i].get_snr(l);
+                double edge_length = blocks[i].get_edge_length(l);
                 
                 // in later output format versions, skip the empty rows
                 if (output_version >= Output_version::V2 &&
@@ -200,11 +203,12 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 }
                 
                 if (output_version >= Output_version::V2) {
-                    fprintf(fout, "%d %lf %lf %lf %lf %lf %.3lf %.1lf\n",
+                    fprintf(fout, "%d %lf %lf %lf %lf %lf %.3lf %.1lf %.1lf\n",
                         int(i),
                         ec.x, ec.y,
                         lpmm_mode ? val*pixel_size : val,
-                        cr.x, cr.y, snr.mean_cnr(), snr.oversampling()
+                        cr.x, cr.y, snr.mean_cnr(), snr.oversampling(),
+                        edge_length
                     );
                 }
                 
@@ -226,10 +230,10 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 fprintf(sfrout, "%lf ", acos(fabs(delta))/M_PI*180.0);
                 
                 if (output_version >= Output_version::V2) {
-                    fprintf(sfrout, "%.3lf %.3lf %.3lf %.3lf %.3lf %.1lf %.1lf ",
+                    fprintf(sfrout, "%.3lf %.3lf %.3lf %.3lf %.3lf %.1lf %.1lf %.1lf ",
                         snr.mean_cnr(), snr.dark_cnr(), snr.bright_cnr(),
                         snr.dark_snr(), snr.bright_snr(), snr.contrast(),
-                        snr.oversampling()
+                        snr.oversampling(), edge_length
                     );
                 }
                 

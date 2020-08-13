@@ -121,7 +121,7 @@ class Mtf_core {
     void search_borders(const Point2d& cent, int label);
     bool extract_rectangle(const Point2d& cent, int label, Mrectangle& rect);
     double compute_mtf(Edge_model& edge_model, const map<int, scanline>& scanset, 
-                       double& poor, 
+                       double& poor, double& edge_length,
                        vector<double>& sfr, vector<double>& esf, 
                        Snr& snr, bool allow_peak_shift = false);
                        
