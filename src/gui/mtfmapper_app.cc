@@ -416,21 +416,21 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
     open_dialog->setFileMode(QFileDialog::FileMode::ExistingFiles);
     
     // use the state from the settings menu as a starting point
-    tb_img_annotated->setCheckState(settings->cb_annotation->checkState());
-    tb_img_profile->setCheckState(settings->cb_profile->checkState());
-    tb_img_gridimg->setCheckState(settings->cb_grid->checkState());
-    tb_img_lensprofile->setCheckState(settings->cb_lensprofile->checkState());
-    tb_img_orientation->setCheckState(settings->cb_orientation->checkState());
-    tb_img_ca->setCheckState(settings->cb_ca_active->checkState());
+    tb_img_annotated->setCheckState(settings->io->cb_annotation->checkState());
+    tb_img_profile->setCheckState(settings->io->cb_profile->checkState());
+    tb_img_gridimg->setCheckState(settings->io->cb_grid->checkState());
+    tb_img_lensprofile->setCheckState(settings->io->cb_lensprofile->checkState());
+    tb_img_orientation->setCheckState(settings->io->cb_orientation->checkState());
+    tb_img_ca->setCheckState(settings->io->cb_ca_active->checkState());
 
     if (open_dialog->exec()) {
         // write state back to settings menu
-        settings->cb_annotation->setCheckState(tb_img_annotated->checkState());
-        settings->cb_profile->setCheckState(tb_img_profile->checkState());
-        settings->cb_grid->setCheckState(tb_img_gridimg->checkState());
-        settings->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
-        settings->cb_orientation->setCheckState(tb_img_orientation->checkState());
-        settings->cb_ca_active->setCheckState(tb_img_ca->checkState());
+        settings->io->cb_annotation->setCheckState(tb_img_annotated->checkState());
+        settings->io->cb_profile->setCheckState(tb_img_profile->checkState());
+        settings->io->cb_grid->setCheckState(tb_img_gridimg->checkState());
+        settings->io->cb_lensprofile->setCheckState(tb_img_lensprofile->checkState());
+        settings->io->cb_orientation->setCheckState(tb_img_orientation->checkState());
+        settings->io->cb_ca_active->setCheckState(tb_img_ca->checkState());
         settings->set_gnuplot_img_width(int(img_viewer->size().height()*1.3));
         settings->send_argument_string(focus);
 
@@ -453,9 +453,9 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
             processor.set_focus_mode(focus);
             processor.set_imatest_mode(imatest);
             processor.set_files(input_files);
-            processor.set_gnuplot_binary(settings->get_gnuplot_binary());
-            processor.set_dcraw_binary(settings->get_dcraw_binary());
-            processor.set_exiv2_binary(settings->get_exiv2_binary());
+            processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
+            processor.set_dcraw_binary(settings->helpers->get_dcraw_binary());
+            processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
             processor.start();
         }
     }
@@ -751,7 +751,7 @@ void mtfmapper_app::display_exif_properties(int index) {
 
 void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 
-    Exiv2_property* props = new Exiv2_property(settings->get_exiv2_binary(), s, tempdir + "/exifinfo.txt");
+    Exiv2_property* props = new Exiv2_property(settings->helpers->get_exiv2_binary(), s, tempdir + "/exifinfo.txt");
     exif_properties.push_back(props);
 
     // actually, we could delete it right away ...
@@ -759,9 +759,9 @@ void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 }
 
 void mtfmapper_app::check_if_helpers_exist(void) {
-    bool gnuplot_exists = QFile::exists(settings->get_gnuplot_binary());
-    bool exiv_exists = QFile::exists(settings->get_exiv2_binary());
-    bool dcraw_exists = QFile::exists(settings->get_dcraw_binary());
+    bool gnuplot_exists = QFile::exists(settings->helpers->get_gnuplot_binary());
+    bool exiv_exists = QFile::exists(settings->helpers->get_exiv2_binary());
+    bool dcraw_exists = QFile::exists(settings->helpers->get_dcraw_binary());
 
     if (!gnuplot_exists) {
         QMessageBox::warning(

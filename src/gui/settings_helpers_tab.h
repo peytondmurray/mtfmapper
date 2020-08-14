@@ -1,5 +1,5 @@
 /*
-Copyright 2011 Frans van den Bergh. All rights reserved.
+Copyright 2020 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,51 +25,51 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef SETTINGS_DIALOG_H
-#define SETTINGS_DIALOG_H
+#ifndef SETTINGS_HELPERS_TAB_H
+#define SETTINGS_HELPERS_TAB_H
 
 #include <QtWidgets>
-#include <QSettings>
 
+class Settings_helpers_tab : public QWidget {
+    Q_OBJECT
 
-#include "settings_io_tab.h"
-#include "settings_helpers_tab.h"
-#include "settings_distortion_tab.h"
-
-class Settings_dialog : public QDialog 
-{
-  Q_OBJECT
-  
   public:
-    Settings_dialog(QWidget *parent);
-    void send_argument_string(bool focus_mode);
-    void check_mtf_lower(void);
-    QString peek_argument_line(void) const;
-    void reset_argument_line(void);
-    
-    QSettings   settings;
-    
-    QPushButton* accept_button;
-    QPushButton* cancel_button;
-    
-    QTabWidget* tab_widget;
+    Settings_helpers_tab(QWidget* parent = nullptr);
 
-    Settings_helpers_tab* helpers;
-    Settings_distortion_tab* distortion;
-    Settings_io_tab* io;
-    
-    int gnuplot_img_width;
-    
-  signals:
-    void argument_string(QString s);  
-    void set_cache_size(int);
-    void settings_saved(void);
-    
+    QString get_gnuplot_binary(void) const;
+    QString get_exiv2_binary(void) const;
+    QString get_dcraw_binary(void) const;
+    void check_gnuplot_binary(void);
+    void check_exiv2_binary(void);
+    void check_dcraw_binary(void);
+
+
+    QLabel* gnuplot_label;
+    QLineEdit* gnuplot_line;
+    QPushButton* gnuplot_button;
+
+    QLabel* exiv_label;
+    QLineEdit* exiv_line;
+    QPushButton* exiv_button;
+
+    QLabel* dcraw_label;
+    QLineEdit* dcraw_line;
+    QPushButton* dcraw_button;
+
+    static const QString setting_gnuplot;
+    static const QString setting_exiv;
+    static const QString setting_dcraw;
+    static QString setting_gnuplot_default;
+    static QString setting_exiv_default;
+    static QString setting_dcraw_default;
+
+  private:
+
   public slots:
-    void open();
-    void save_and_close();
-    void set_gnuplot_img_width(int w);
-    void lpmm_toggled();
+    void browse_for_gnuplot();
+    void browse_for_exiv();
+    void browse_for_dcraw();
+
 };
 
 #endif

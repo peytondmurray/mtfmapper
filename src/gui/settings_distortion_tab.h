@@ -1,5 +1,5 @@
 /*
-Copyright 2011 Frans van den Bergh. All rights reserved.
+Copyright 2020 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,51 +25,43 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef SETTINGS_DIALOG_H
-#define SETTINGS_DIALOG_H
+#ifndef SETTINGS_DISTORTION_TAB_H
+#define SETTINGS_DISTORTION_TAB_H
 
 #include <QtWidgets>
-#include <QSettings>
 
+class Settings_distortion_tab : public QWidget {
+    Q_OBJECT
 
-#include "settings_io_tab.h"
-#include "settings_helpers_tab.h"
-#include "settings_distortion_tab.h"
-
-class Settings_dialog : public QDialog 
-{
-  Q_OBJECT
-  
   public:
-    Settings_dialog(QWidget *parent);
-    void send_argument_string(bool focus_mode);
-    void check_mtf_lower(void);
-    QString peek_argument_line(void) const;
-    void reset_argument_line(void);
-    
-    QSettings   settings;
-    
-    QPushButton* accept_button;
-    QPushButton* cancel_button;
-    
-    QTabWidget* tab_widget;
+    Settings_distortion_tab(QCheckBox* parent_lp_mm, QWidget* parent = nullptr);
 
-    Settings_helpers_tab* helpers;
-    Settings_distortion_tab* distortion;
-    Settings_io_tab* io;
-    
-    int gnuplot_img_width;
-    
-  signals:
-    void argument_string(QString s);  
-    void set_cache_size(int);
-    void settings_saved(void);
-    
+    QLabel* ea_f_label;
+    QLineEdit* ea_f_line;
+    QLabel* sg_f_label;
+    QLineEdit* sg_f_line;
+
+    QRadioButton* rb_lens_pw_quad;
+    QRadioButton* rb_lens_quad;
+    QRadioButton* rb_lens_none;
+    QRadioButton* rb_lens_radial;
+    QRadioButton* rb_lens_equiangular;
+    QRadioButton* rb_lens_stereo;
+
+    QCheckBox* parent_lp_mm;
+
+    static const QString setting_ea_f;
+    static const QString setting_ea_f_default;
+    static const QString setting_sg_f;
+    static const QString setting_sg_f_default;
+    static const QString setting_lens;
+
+  private:
+
   public slots:
-    void open();
-    void save_and_close();
-    void set_gnuplot_img_width(int w);
-    void lpmm_toggled();
+    void equiangular_toggled();
+    void stereographic_toggled();
+
 };
 
 #endif
