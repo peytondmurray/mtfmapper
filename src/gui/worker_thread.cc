@@ -55,7 +55,7 @@ void Worker_thread::set_files(const QStringList& files) {
 
 void Worker_thread::run(void) {
     bool any_failed = false;
-    failure_t failure = UNSPECIFIED;
+    vector<std::pair<failure_t, QString>> failures;
     abort = false;
     output_files.clear();
     QString arguments = update_arguments(settings_arguments);
@@ -133,12 +133,14 @@ void Worker_thread::run(void) {
         int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
         if (!rval) {
             any_failed = true;
+            failure_t failure = UNSPECIFIED;
             switch (mmp.exitCode()) {
-            case 2: failure = IMAGE_OPEN_FAILURE; break;
+            case 2: failure= IMAGE_OPEN_FAILURE; break;
             case 4: failure = NO_TARGETS_FOUND; break;
+            case 5: failure = UNSUPPORTED_IMAGE_ENCODING; break;
             default: failure = UNSPECIFIED; break;
             }
-            logger.error("Error. mtf mapper call failed, exit code=%d, failure code=%d\n", mmp.exitCode(), failure);
+            failures.push_back(std::pair<failure_t, QString>(failure, input_file));
         } else {
             emit send_delete_item(tempdir + "/log.txt");
         }
@@ -255,8 +257,9 @@ void Worker_thread::run(void) {
     emit send_all_done();
     
     if (any_failed) {
-        logger.error("emitting failure signal, code=%d\n", failure);
-        emit mtfmapper_call_failed(failure);
+        for (const auto& failure : failures) {
+            emit mtfmapper_call_failed(failure.first, failure.second);
+        }
     }
 }
 

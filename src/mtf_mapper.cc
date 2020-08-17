@@ -230,6 +230,11 @@ int main(int argc, char** argv) {
         logger.error("Fatal error: could not open input file <%s>.\nFile is missing, or not where you said it would be, or you do not have read permission.\n", tc_in_name.getValue().c_str());
         return 2;
     }
+
+    if (!(cvimg.depth() == CV_8U || cvimg.depth() == CV_16U)) {
+        logger.error("Fatal error: Invalid image type. Only 8-bit unsigned and 16-bit unsigned integer images supported.\n");
+        return 5;
+    }
     
     struct STAT sb;
     if (STAT(tc_wdir.getValue().c_str(), &sb) != 0) {

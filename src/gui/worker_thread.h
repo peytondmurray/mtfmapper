@@ -44,7 +44,8 @@ class Worker_thread : public QThread
     typedef enum {
         UNSPECIFIED=0,
         IMAGE_OPEN_FAILURE=1,
-        NO_TARGETS_FOUND=2
+        NO_TARGETS_FOUND=2,
+        UNSUPPORTED_IMAGE_ENCODING=3
     } failure_t;
 
     Worker_thread(QWidget *parent);
@@ -89,7 +90,7 @@ class Worker_thread : public QThread
     
     void send_progress_indicator(int p);
     void send_all_done(void);
-    void mtfmapper_call_failed(Worker_thread::failure_t failure);
+    void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
     
   public slots:
     void receive_arg_string(QString s);

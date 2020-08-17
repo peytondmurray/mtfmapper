@@ -218,7 +218,29 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(save_subset_button, SIGNAL(clicked()), this, SLOT(save_subset_button_pressed()));
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
-    connect(&processor, SIGNAL(mtfmapper_call_failed(Worker_thread::failure_t)), this, SLOT(mtfmapper_call_failed(Worker_thread::failure_t)));
+    connect(&processor, SIGNAL(mtfmapper_call_failed(Worker_thread::failure_t, const QString&)), this, SLOT(mtfmapper_call_failed(Worker_thread::failure_t, const QString&)));
+
+    zoom_scroll_tt = QString(
+        "Use <ctrl>+scroll-wheel to zoom in/out, or\n"
+        "Use right-click & drag mouse up/down to zoom in/out (touchpad-friendly), or\n"
+        "Use <plus>/<minus> ('+'/'-') keys to zoom in/out; note that you may have to left-click \n"
+        "in the 'Current output' window once before using the +/- keys.\n\n"
+        "Use left-click & drag to pan around the image when zoomed in, or\n"
+        "Use the mouse wheel to scroll vertically, or <shift>+scroll-wheel to scroll horizontally.\n"
+    );
+
+    img_viewer->setToolTip(zoom_scroll_tt);
+
+    annotated_tt = QString(
+        "Plot the SFR/ESF/LSF curves of an edge by left-clicking on the numbers over an edge (usually\n"
+        "cyan in colour, but they could be yellow or red). Note that you will only see these numbers on\n"
+        "edges that were processed successfully.\n\n"
+        "You can plot the curves of up to three edges concurrently by holding down <shift> while\n"
+        "left-clicking on the cyan numbers; a regular left-click without <shift> will revert to plotting\n"
+        "only a single edge.\n\n"
+        "Note that you can left-click followed by <shift>-left-click on edges belonging to different\n"
+        "annotated output images, allowing you to compare the curves across different settings / cameras."
+    );
 
     // rather a lot of code, but extract the icon and store it in a QImage
     mtfmapper_logo = new QIcon;
@@ -235,6 +257,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     QPainter painter(icon_image);
     qgs.render(&painter);
     img_panel->set_default_image(icon_image);
+    
     
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
@@ -483,6 +506,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
         if (dataset_contents.itemFromIndex(index)->text().compare(QString("annotated")) == 0) {
+            img_viewer->setToolTip(zoom_scroll_tt + "\n\n" + annotated_tt);
             img_viewer->set_clickable(true);
             sfr_list.clear();
             
@@ -517,6 +541,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                 fclose(fin);
             }
         } else {
+            img_viewer->setToolTip(zoom_scroll_tt);
             img_viewer->set_clickable(false);
             sfr_list.clear();
         }
@@ -848,8 +873,7 @@ void mtfmapper_app::settings_saved(void) {
     }
 }
 
-void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure) {
-    logger.error("receiving mtfmapper call failed signal, failure code = %d\n", failure);
+void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file) {
     if (failure == Worker_thread::failure_t::UNSPECIFIED) {
         if (settings->peek_argument_line().trimmed().length() > 0) {
             QMessageBox call_failed;
@@ -886,22 +910,33 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure) {
             call_failed.exec();
         }
     } else {
-        logger.error("call failed is specified (%d), so where is the box?\n", failure);
         QMessageBox call_failed;
         call_failed.setIcon(QMessageBox::Critical);
         call_failed.setWindowTitle("MTF Mapper call failed");
         switch (failure) {
         case Worker_thread::failure_t::IMAGE_OPEN_FAILURE:
             call_failed.setText(
-                "MTF Mapper call failed, indicating that the input image could not be opened.\n\n"
-                "Maybe that was not a valid image file.\n"
+                QString(
+                    "MTF Mapper call failed, indicating that the input image [%1] could not be opened.\n\n"
+                    "Maybe that was not a valid image file.\n"
+                ).arg(input_file)
+            );
+            break;
+        case Worker_thread::failure_t::UNSUPPORTED_IMAGE_ENCODING:
+            call_failed.setText(
+                QString(
+                    "MTF Mapper call failed, indicating that the input image [%1] could not be opened.\n\n"
+                    "Only 8-bit unsigned and 16-bit unsigned image encodings are supported.\n"
+                ).arg(input_file)
             );
             break;
         case Worker_thread::failure_t::NO_TARGETS_FOUND:
             call_failed.setText(
-                "MTF Mapper call failed, indicating that no valid target objects were found.\n\n"
-                "Maybe the input image did not contain valid targets?\n"
-                "Otherwise you could try lowering the Threshold value in the Preferences dialog.\n"
+                QString(
+                    "MTF Mapper call failed, indicating that no valid target objects were found.\n\n"
+                    "Maybe the input image [%1] did not contain valid targets?\n"
+                    "Otherwise you could try lowering the Threshold value in the Preferences dialog.\n"
+                ).arg(input_file)
             );
             break;
         default:

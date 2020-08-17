@@ -154,6 +154,9 @@ class mtfmapper_app : public QMainWindow
     Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;
 
+    QString zoom_scroll_tt;
+    QString annotated_tt;
+
   public slots:
     void open_auto();
     void open_roi();
@@ -178,7 +181,7 @@ class mtfmapper_app : public QMainWindow
     void save_button_pressed(void);
     void save_subset_button_pressed(void);
     
-    void mtfmapper_call_failed(Worker_thread::failure_t failure);
+    void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
 
     void enable_file_open(void);
     
