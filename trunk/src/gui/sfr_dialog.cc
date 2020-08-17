@@ -82,14 +82,15 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     QFont default_font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
     default_font.setBold(true);
     QFontMetrics default_fm(default_font);
-    vector<string> column_names = {" contrast ", " CNR ", " red-CA ", " blue-CA ", " angle ", " OSF "};
+    vector<string> column_names = {" contrast ", " CNR ", " red-CA ", " blue-CA ", " angle ", " OSF ", " length "};
     vector<string> column_tooltips = {
         "",
         "CNR = Contrast-to-Noise Ratio\nUnits: unitless ratio\nHigher is better, > 30 is Ok, > 100 is excellent",
         "red-CA = Lateral Chromatic Aberration, shift between red channel and green channel\nUnits: pixels in c/p mode, micron in lp/mm mode\nSmaller magnitude is better",
         "blue-CA = Lateral Chromatic Aberration, shift between blue channel and green channel\nUnits: pixels in c/p mode, micron in lp/mm mode\nSmaller magnitude is better",
         "angle = Relative edge orientation angle (modulo 45 degrees)\nUnits: degrees\nValues < 1, close to 26.565, and > 44 are undesirable",
-        "OSF = Over-Sampling Factor, measures how reliable a measurement is\nUnits: unitless factor\nValues <= 4 are undesirable"
+        "OSF = Over-Sampling Factor, measures how reliable a measurement is\nUnits: unitless factor\nValues <= 4 are undesirable",
+        "length = Edge length, excluding trimmed zones near corners\nUnits: pixels\nValues <= 25 are undesirable, about 100 to 400 is considered exellent, > 400 is of questionable value"
     };
     int min_col_width = default_fm.boundingRect(column_names[3].c_str()).width(); // use "blue-CA" as the minimum
     
@@ -271,6 +272,7 @@ void Sfr_dialog::clear(void) {
     for (size_t i=1; i < table_labels.size(); i++) {
         for (auto ll: table_labels[i]) {
             ll->setText("");
+            set_label_background(ll, "none");
         }
     }
     for (auto m: mtf50_text) {
@@ -371,6 +373,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         table_labels[mi+1][3]->setText(fmt["b_ca"].c_str());
         table_labels[mi+1][4]->setText(fmt["angle"].c_str());
         table_labels[mi+1][5]->setText(fmt["ox"].c_str());
+        table_labels[mi+1][6]->setText(fmt["length"].c_str());
         
         if (mi == 0) {
             table_labels[0][0]->setText(fmt["y_label"].c_str());
@@ -390,6 +393,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         set_label_background(table_labels[mi+1][1], fmt["cnr_col"]);
         set_label_background(table_labels[mi+1][4], fmt["angle_col"]);
         set_label_background(table_labels[mi+1][5], fmt["ox_col"]);
+        set_label_background(table_labels[mi+1][6], fmt["length_col"]);
     }
     
     chart->update(); // this causes some lag, but it elliminates exposed cruft. a better solution would be nice
