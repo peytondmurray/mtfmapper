@@ -40,7 +40,7 @@ using std::map;
 
 class Undistort { 
   public:
-    Undistort(const cv::Rect& r) : centre(r.width/2, r.height/2), offset(r.x, r.y), radmap(0), max_val(1,1) {};
+    Undistort(const cv::Rect& r) : centre(r.width / 2, r.height / 2), offset(r.x, r.y), radmap(0), max_val(1, 1), last_padding(0, 0) {};
     
     cv::Point2i transform_pixel(int col, int row) {
         cv::Point2d tp = transform_point(double(col), double(row));
@@ -73,6 +73,8 @@ class Undistort {
     void set_allow_crop(bool crop) {
         allow_crop = crop;
     }
+
+    void apply_padding(vector<cv::Mat>& images);
     
     cv::Point2d centre;
     cv::Point2d offset;
@@ -87,6 +89,8 @@ class Undistort {
     void build_radmap(void); // called from derived class constructor once parameters are known
     cv::Mat unmap_base(const cv::Mat& src, cv::Mat& rawimg, int pad_left, int pad_top);
     void estimate_padding(const cv::Mat& src, int& pad_left, int& pad_top);
+
+    cv::Point2i last_padding;
 };
     
 #endif

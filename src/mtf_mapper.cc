@@ -575,6 +575,11 @@ int main(int argc, char** argv) {
             if (in_num_channels == 3) {
                 logger.info("Using original RGB input image to estimate CA\n");
                 vector<cv::Mat> channels = display_profile.to_linear_rgb(rgb_img);
+
+                if (undistort) {
+                    undistort->apply_padding(channels);
+                }
+
                 chromatic.set_rgb_channels(channels);
             }
             

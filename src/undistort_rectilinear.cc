@@ -103,11 +103,11 @@ cv::Point2d Undistort_rectilinear::slow_transform_point(double col, double row) 
         bool s = lagsolve(ru, coeffs[0], coeffs[1], rd); // not the fastest method, but it should be robust
         
         if (s) {
-          px = px*rd/ru + centre.x - offset.x;
-          py = py*rd/ru + centre.y - offset.y;
+            px = px*rd/ru + centre.x - offset.x;
+            py = py*rd/ru + centre.y - offset.y;
         } else {
-          px = col;
-          py = row;
+            px = col;
+            py = row;
         }
     }
     
@@ -119,6 +119,11 @@ cv::Point2d Undistort_rectilinear::inverse_transform_point(double col, double ro
     double py = (row + offset.y - centre.y);
 
     double rd = sqrt((px)*(px) + (py)*(py)) / radius_norm; 
+
+    if (rd == 0) {
+        return cv::Point2d(centre.x - offset.x, centre.y - offset.y);
+    }
+
     double r2 = rd*rd;
     double ru = 1 + (coeffs[0] + coeffs[1]*r2)*r2;
     

@@ -88,6 +88,7 @@ cv::Mat Undistort::unmap_base(const cv::Mat& in_src, cv::Mat& rawimg, int pad_le
         logger.debug("Padding distorted/Bayer image\n");
         cv::Mat rcopy = rawimg.clone();
         copyMakeBorder(rcopy, rawimg, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+        last_padding = cv::Point2i(pad_left, pad_top);
     }
     
     build_radmap();
@@ -179,5 +180,14 @@ void Undistort::estimate_padding(const cv::Mat& src, int& pad_left, int& pad_top
         pad_top = std::max(-(centre.y - rad - src_w), 0.0);
         Point2d fwd = slow_transform_point(0, -pad_top);
         pad_left = fwd.x + src_w;
+    }
+}
+
+void Undistort::apply_padding(vector<cv::Mat>& images) {
+    if (last_padding.x > 0 || last_padding.y > 0) {
+        for (size_t i = 0; i < images.size(); i++) {
+            cv::Mat rcopy = images[i].clone();
+            copyMakeBorder(rcopy, images[i], last_padding.y, last_padding.y , last_padding.x, last_padding.x, cv::BORDER_CONSTANT, cv::Scalar::all(0));
+        }
     }
 }
