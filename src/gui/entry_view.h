@@ -182,6 +182,13 @@ class Entry_view {
         sprintf(buffer, "%3.2f", info.snr.y);
         fmt["ox"] = string(buffer);
         
+        fmt["length_col"] = "none";
+        if (info.edge_length <= 25 || info.edge_length > 400) {
+            fmt["length_col"] = "yellow";
+        }
+        sprintf(buffer, "%.0lf", info.edge_length);
+        fmt["length"] = string(buffer);
+
         return fmt;
     }
     
