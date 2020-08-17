@@ -33,6 +33,11 @@ cv::Point2d Undistort_equiangular::slow_transform_point(double col, double row) 
     double py = (row + offset.y - centre.y)*pitch;
 
     double rd = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
+
+    if (rd == 0) {
+        return cv::Point2d(centre.x - offset.x, centre.y - offset.y);
+    }
+
     double theta = atan(rd/f);
     double ru = theta*f;
     
@@ -47,6 +52,11 @@ cv::Point2d Undistort_equiangular::inverse_transform_point(double col, double ro
     double py = (row + offset.y - centre.y)*pitch;
 
     double ru = sqrt((px)*(px) + (py)*(py)); // radial distance in mm
+
+    if (ru == 0) {
+        return cv::Point2d(centre.x - offset.x, centre.y - offset.y);
+    }
+
     double theta = ru/f;
     double rd = tan(theta)*f;
     
