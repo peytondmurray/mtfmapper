@@ -93,12 +93,26 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     int adv_width = fm.width("Threshold: ");
     int surf_max_reasonable_width = fm.width("999.50");
 
+    QString threshold_tt(
+        "Relative intensity threshold used when automatically identifying dark targets on the\n"
+        "lighter test chart background.\n"
+        "If you find that MTF Mapper is not detecting all of your trapezoids then you should \n"
+        "try to lower this threshold, maybe try 0.4, 0.3, 0.1. This is often necessary when your\n"
+        "test chart does not fill the image, or if you have a broad dark border around the test\n"
+        "chart, or if the contrast between the dark targets and the chart background is low.\n\n"
+        "The default value of 0.55 was chosen to minimise the number of potential objects that\n"
+        "have to be tested to see if they are trapezoids; a lower value might help to find\n"
+        "missed trapezoids, but it could slow processing down because more objects have to be\n"
+        "screened. So leaving this value at 0.1 is not recommended for general use."
+    );
     QDoubleValidator* dv_thresh = new Nonempty_DoubleValidator(0.001, 1.0, 3, 0.55, this);
     threshold_label = new QLabel(tr("Threshold:"), this);
     threshold_label->setMinimumWidth(adv_width);
+    threshold_label->setToolTip(threshold_tt);
     threshold_line = new QLineEdit(this);
     threshold_line->setValidator(dv_thresh);
     threshold_line->setMaximumWidth(reasonable_width);
+    threshold_line->setToolTip(threshold_tt);
 
     QString pixsize_tt(
         "Pixel pitch (or size), in microns. Note that this value is only used when the \n"
@@ -155,12 +169,44 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     lp3_line->setMaximumWidth(fm.width("50000"));
 
     cb_linear_gamma = new QCheckBox("Linear gamma (8 bit)", this);
+    cb_linear_gamma->setToolTip(
+        "Force MTF Mapper to treat the input image as if it has a linear intensity encoding.\n"
+        "MTF Mapper will use the ICC profile TRC to linearize the input image if one is present.\n"
+        "For example, untagged 8-bit images (meaning no ICC profile) are assumed to be encoded in\n"
+        "the sRGB TRC, roughly gamma=2.2, and linearized accordingly. If you know that your 8-bit\n"
+        "image is in fact linear, such as when using a raw image from a machine vision camera, \n"
+        "then you should enable this option.\n\n"
+        "In contrast, untagged 16-bit images are assumed to have a linear intensity encoding.\n\n"
+        "Enabling this option will override any ICC profile, regardless of whether the image is \n"
+        "8-bit ot 16-bit."
+    );
+
     cb_annotation = new QCheckBox("Annotation", this);
+    cb_annotation->setToolTip(
+        "Produce an output image that is annotated with the MTF50 value of each edge.\n"
+        "Once you are viewing the annotated image in the MTF Mapper GUI, you can left-click\n"
+        "on the text annotations (usually cyan in colour) to view the SFR curve, or the ESF \n"
+        "and LSF plots.\n"
+        "You can <shift>-left-click on up to three edges to compare their SFR/ESF/LSF plots.\n"
+        "Note that when using <shift>-left-click to compare edges, you may select the edges\n"
+        "from any of the annotated images you have produced in the current session.\n\n"
+        "This output type should work with practically any test chart containing isolated \n"
+        "black trapezoidal shapes on a white background.\n"
+        "It also works with the File/Open single edge image method of opening images."
+    );
+
     cb_profile = new QCheckBox("Profile", this);
     cb_grid = new QCheckBox("Grid", this);
     cb_lensprofile = new QCheckBox("Lens profile", this);
     cb_orientation = new QCheckBox("Chart orientation", this);
+
     cb_autocrop = new QCheckBox("Autocrop", this);
+    cb_autocrop->setToolTip(
+        "Try to automatically remove any black background around the test chart.\n"
+        "Mostly useful when the image circle is much smaller than sensor.\n"
+        "It may even work when the chart is framed to fill only part of the \n"
+        "image, but no guarantees."
+    );
     cb_lpmm = new QCheckBox("Line pairs/mm units", this);
     cb_lpmm->setToolTip(
         "When enabled, the output units used in the following are affected: \n"
@@ -171,10 +217,31 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
         "\n*Note that the lp/mm unit choice is baked into the outputs at the time when \n"
         "you processed the file via the File/Open menu, except for the SFR plot which is dynamic."
     );
+
     cb_gnuplot_scaled = new QCheckBox("Scale plots to window", this);
+    cb_gnuplot_scaled->setToolTip("Output plot images are scaled to match the main window size.\nUseful on very high resolution displays.");
+
     cb_lensprofile_fixed = new QCheckBox("Lens profile fixed scale", this);
+    cb_lensprofile_fixed->setToolTip(
+        "The x-axis scale of the lens profile plot is fixed to the image size.\n"
+        "Otherwise the x-axis will scale according to the fraction of the image filled by the chart."
+    );
+
     cb_surface_max = new QCheckBox("3D plot z-axis max value", this);
+    cb_surface_max->setToolTip(
+        "Specify a fixed upper limit to the z-axis (height) of the 3D surface \n"
+        "plots (generated by 'Grid' output option).\n"
+        "Useful when generating a stack of plots at different lens apertures, for example."
+    );
+
     cb_ca_active = new QCheckBox("Chromatic Aberration", this);
+    cb_ca_active->setToolTip(
+        "Measure lateral Chromatic Aberration. This requires a colour input image to make sense.\n"
+        "Works with both raw Bayer mosaiced images (but you have to select a 'Bayer channel' other \n"
+        "than 'none' in the 'ESF construction' panel), or you can calculate lateral CA from RGB images (RGB per pixel).\n"
+        "If you provide a raw camera image and leave the 'Bayer channel' setting to 'none', then dcraw will be used to \n"
+        "demosaic the image first, which means you are including the demosaicing approximations in your CA measurement."
+    );
 
     box_colour = new QComboBox;
     box_colour->addItem("none");
@@ -294,27 +361,23 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
 
     QGroupBox* bayer_GroupBox = new QGroupBox(tr("ESF construction"), this);
     QGridLayout* rb_layout = new QGridLayout;
-    bayer_label = new QLabel("Bayer channel", this);
+    bayer_label = new QLabel("Bayer channel:", this);
     rb_layout->addWidget(bayer_label, 0, 0);
     rb_layout->addWidget(box_colour, 0, 1);
-    esf_model_label = new QLabel("ESF model", this);
+    esf_model_label = new QLabel("ESF model:", this);
     rb_layout->addWidget(esf_model_label, 1, 0);
     rb_layout->addWidget(box_esf_model, 1, 1);
     bayer_GroupBox->setLayout(rb_layout);
 
     QGroupBox* ca_GroupBox = new QGroupBox(tr("Chromatic aberration"), this);
     QGridLayout* ca_layout = new QGridLayout;
-    ca_type_label = new QLabel("CA display type", this);
+    ca_type_label = new QLabel("CA display type:", this);
     ca_layout->addWidget(ca_type_label, 0, 0);
-    ca_layout->addWidget(box_ca_type, 1, 0);
+    ca_layout->addWidget(box_ca_type, 0, 1);
     ca_GroupBox->setLayout(ca_layout);
 
     QGroupBox* advanced = new QGroupBox(tr("Advanced"), this);
     QVBoxLayout* adv_layout = new QVBoxLayout;
-
-    
-
-    
 
     QHBoxLayout* r3_layout = new QHBoxLayout;
     r3_layout->addWidget(contrast_label);
@@ -375,8 +438,8 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     vlayout->addWidget(voGroupBox, 0, 0, 1, 2);
     vlayout->addWidget(inflags_gb, 1, 0, 1, 2);
     vlayout->addWidget(bayer_GroupBox, 2, 0, 1, 2);
-    vlayout->addWidget(ca_GroupBox, 3, 0, 1, 2);
-    vlayout->addWidget(advanced, 0, 3, 3, 2);
+    vlayout->addWidget(ca_GroupBox, 2, 3, 1, 2);
+    vlayout->addWidget(advanced, 0, 3, 2, 2);
 
     connect(cb_lpmm, SIGNAL(clicked()), this, SLOT(lpmm_toggled()));
     lpmm_toggled(); // to ensure the correct enabled/disabled appearance is used
