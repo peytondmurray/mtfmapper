@@ -35,6 +35,7 @@ using std::string;
 #include <opencv2/core/core.hpp>
 
 #include "include/logger.h"
+#include <memory>
 
 class Edge_info {
   public:
