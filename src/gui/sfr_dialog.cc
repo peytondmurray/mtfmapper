@@ -228,9 +228,6 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     QGroupBox* gbox = new QGroupBox("");
     gbox->setLayout(main_layout);
     
-    auto gb_margins = gbox->contentsMargins();
-    gbox->setContentsMargins(gb_margins.left(), 4, gb_margins.right(), gb_margins.bottom());
-    
     QVBoxLayout* hlayout = new QVBoxLayout;
     hlayout->addWidget(chart_view);
     hlayout->addWidget(gbox);
