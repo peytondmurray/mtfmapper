@@ -33,9 +33,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "config.h"
 #if mtfmapper_ZLIB_FOUND == 1
-    #ifdef _WIN32
-        #define ZLIB_WINAPI
-    #endif
     #include <zlib.h>
 #endif
 
