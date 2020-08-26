@@ -43,10 +43,10 @@ class Edge_info {
     }
     
     static bool serialize_header(FILE* fout, size_t valid_count, double pixel_size, double mtf_contrast) {
-        vector<char> buffer(sizeof(size_t) + 2*sizeof(double));
+        vector<char> buffer(sizeof(uint32_t) + 2*sizeof(double));
         
         char* obuf = buffer.data();
-        write_size_t(&obuf, valid_count);
+        write_uint32(&obuf, valid_count);
         write_double(&obuf, pixel_size);
         write_double(&obuf, mtf_contrast);
         
@@ -61,7 +61,7 @@ class Edge_info {
     }
     
     static bool deserialize_header(FILE* fin, size_t& valid_count, double& pixel_size, double& mtf_contrast) {
-        vector<char> buffer(sizeof(size_t) + 2*sizeof(double));
+        vector<char> buffer(sizeof(uint32_t) + 2*sizeof(double));
         
         size_t nread = fread(buffer.data(), 1, buffer.size(), fin);
         
@@ -71,10 +71,10 @@ class Edge_info {
         }
         
         char* ibuf = buffer.data();
-        valid_count = read_size_t(&ibuf);
+        valid_count = read_uint32(&ibuf);
         pixel_size = read_double(&ibuf);
         mtf_contrast = read_double(&ibuf);
-        
+
         return true;
     }
     
@@ -109,12 +109,12 @@ class Edge_info {
             write_double(&buf, in_chromatic_aberration[k].y); // CA blue-green
             write_double(&buf, in_edge_length[k]); // edge length, in pixels
 
-            write_size_t(&buf, in_sfr[k]->size());
+            write_uint32(&buf, in_sfr[k]->size());
             for (size_t j=0; j < in_sfr[k]->size(); j++) {
                 write_float(&buf, (float)(*in_sfr[k])[j]);
             }
             
-            write_size_t(&buf, in_esf[k]->size());
+            write_uint32(&buf, in_esf[k]->size());
             for (size_t j=0; j < in_esf[k]->size(); j++) {
                 write_float(&buf, (float)(*in_esf[k])[j]);
             }
@@ -154,15 +154,15 @@ class Edge_info {
         b.chromatic_aberration.y = read_double(&ibuf);
         b.edge_length = read_double(&ibuf);
 
-        nread = fread(ibuf, 1, sizeof(size_t), fin);
-        if (nread != sizeof(size_t)) {
+        nread = fread(ibuf, 1, sizeof(uint32_t), fin);
+        if (nread != sizeof(uint32_t)) {
             logger.error("Could not read from edge info serialization file, SFR size read failed");
             return b;
         }
         
-        size_t nsfr = read_size_t(&ibuf);
+        size_t nsfr = read_uint32(&ibuf);
         if (nsfr > 128) {
-            logger.error("Unexpected SFR length in edge deserialization, aborting\n");
+            logger.error("Unexpected SFR length (%ld) in edge deserialization, aborting\n", nsfr);
             return b;
         }
         
@@ -177,13 +177,13 @@ class Edge_info {
             (*b.sfr)[j] = read_float(&ibuf);
         }
         
-        nread = fread(ibuf, 1, sizeof(size_t), fin);
-        if (nread != sizeof(size_t)) {
+        nread = fread(ibuf, 1, sizeof(uint32_t), fin);
+        if (nread != sizeof(uint32_t)) {
             logger.error("Could not read from edge info serialization file, ESF size read failed");
             return b;
         }
         
-        size_t nesf = read_size_t(&ibuf);
+        size_t nesf = read_uint32(&ibuf);
         if (nsfr > 256) {
             logger.error("Unexpected ESF length in edge deserialization, aborting\n");
             return b;
@@ -227,14 +227,14 @@ class Edge_info {
     static constexpr double nodata = -1073741824;
     
   private:
-    void static write_size_t(char** buffer, size_t val) {
-        memcpy(*buffer, (char*)&val, sizeof(size_t));
-        *buffer += sizeof(size_t);
+    void static write_uint32(char** buffer, uint32_t val) {
+        memcpy(*buffer, (char*)&val, sizeof(uint32_t));
+        *buffer += sizeof(uint32_t);
     }
     
     void static write_double(char** buffer, double val) {
         memcpy(*buffer, (char*)&val, sizeof(double));
-        *buffer += sizeof(size_t);
+        *buffer += sizeof(double);
     }
     
     void static write_float(char** buffer, float val) {
@@ -242,17 +242,17 @@ class Edge_info {
         *buffer += sizeof(float);
     }
     
-    size_t static read_size_t(char** buffer) {
-        size_t val = 0;
-        memcpy((char*)&val, *buffer, sizeof(size_t));
-        *buffer += sizeof(size_t);
+    uint32_t static read_uint32(char** buffer) {
+        uint32_t val = 0;
+        memcpy((char*)&val, *buffer, sizeof(uint32_t));
+        *buffer += sizeof(uint32_t);
         return val;
     }
     
     double static read_double(char** buffer) {
         double val = 0;
         memcpy((char*)&val, *buffer, sizeof(double));
-        *buffer += sizeof(size_t);
+        *buffer += sizeof(double);
         return val;
     }
     
