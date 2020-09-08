@@ -1159,6 +1159,7 @@ void Mtf_core::process_image_as_roi(void) {
     if (mtf50 <= 1.2) { 
         Mrectangle rect;
         rect.centroids[0] = er.centroid;
+        rect.thetas[0] = er.angle;
         Block block(rect);
         block.centroid = er.centroid; // just in case
         block.set_mtf50_value(0, mtf50, quality);
@@ -1171,6 +1172,7 @@ void Mtf_core::process_image_as_roi(void) {
         block.set_scanset(0, scanset);
         block.set_edge_model(0, em);
         block.set_edge_valid(0);
+        block.set_edge_length(0, edge_length);
         
         for (int k=1; k < 4; k++) {
             block.set_mtf50_value(k, 1.0, 0.0);
