@@ -89,9 +89,9 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     arguments_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QFontMetrics fm(QApplication::font());
-    int reasonable_width = fm.width("1048576000");
-    int adv_width = fm.width("Threshold: ");
-    int surf_max_reasonable_width = fm.width("999.50");
+    int reasonable_width = fm.horizontalAdvance("1048576000");
+    int adv_width = fm.horizontalAdvance("Threshold: ");
+    int surf_max_reasonable_width = fm.horizontalAdvance("999.50");
 
     QString threshold_tt(
         "Relative intensity threshold used when automatically identifying dark targets on the\n"
@@ -160,13 +160,13 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     lpmm_label = new QLabel(tr("Lensprofile lp/mm:"), this);
     lp1_line = new QLineEdit(this);
     lp1_line->setValidator(dv_lpmm);
-    lp1_line->setMaximumWidth(fm.width("50000"));
+    lp1_line->setMaximumWidth(fm.horizontalAdvance("50000"));
     lp2_line = new QLineEdit(this);
     lp2_line->setValidator(dv_lpmm);
-    lp2_line->setMaximumWidth(fm.width("50000"));
+    lp2_line->setMaximumWidth(fm.horizontalAdvance("50000"));
     lp3_line = new QLineEdit(this);
     lp3_line->setValidator(dv_lpmm);
-    lp3_line->setMaximumWidth(fm.width("50000"));
+    lp3_line->setMaximumWidth(fm.horizontalAdvance("50000"));
 
     cb_linear_gamma = new QCheckBox("Linear gamma (8 bit)", this);
     cb_linear_gamma->setToolTip(
@@ -412,7 +412,7 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     adv_layout->addLayout(r7_layout);
 
     surface_max_units = new QLabel(cb_lpmm->checkState() == Qt::Unchecked ? "c/p" : "lp/mm", this);
-    surface_max_units->setFixedWidth(fm.width("lp/mm"));
+    surface_max_units->setFixedWidth(fm.horizontalAdvance("lp/mm"));
     QHBoxLayout* r8_layout = new QHBoxLayout;
     r8_layout->addWidget(cb_surface_max);
     r8_layout->addWidget(surface_max_value);

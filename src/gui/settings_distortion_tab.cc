@@ -43,7 +43,7 @@ Settings_distortion_tab::Settings_distortion_tab(QCheckBox* parent_lp_mm, QWidge
     QSettings settings("mtfmapper", "mtfmapper");
 
     QFontMetrics fm(QApplication::font());
-    int reasonable_width = fm.width("1048576000");
+    int reasonable_width = fm.horizontalAdvance("1048576000");
 
     rb_lens_pw_quad = new QRadioButton("piecewise-quadratic");
     rb_lens_quad = new QRadioButton("quadratic");
