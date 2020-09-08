@@ -27,7 +27,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
 #include "settings_distortion_tab.h"
-#include "settings_distortion_tab.moc"
 
 #include "common.h"
 #include "nonempty_validator.h"

@@ -27,7 +27,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 
 #include "settings_helpers_tab.h"
-#include "settings_helpers_tab.moc"
 
 #include "common.h"
 

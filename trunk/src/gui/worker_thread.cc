@@ -27,7 +27,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include "include/logger.h"
 #include "worker_thread.h"
-#include "worker_thread.moc"
+
 #include <string>
 #include <iostream>
 #include <sstream>

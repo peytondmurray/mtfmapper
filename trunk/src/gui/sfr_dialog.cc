@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include <QtWidgets> 
 #include "sfr_dialog.h"
-#include "sfr_dialog.moc"
 
 #include "common.h"
 #include "config.h"
