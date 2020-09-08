@@ -428,7 +428,7 @@ int Ellipse_detector::_matrix_to_ellipse(Matrix3d& C) {
     return 0;
 }
 
-bool Ellipse_detector::gradient_check(const Component_labeller& cl, const Gradient& gradient, const Pointlist& raw_points) {
+bool Ellipse_detector::gradient_check([[maybe_unused]] const Component_labeller& cl, const Gradient& gradient, const Pointlist& raw_points) {
     
     // gradient just on ellipse perimeter must be perpendicular to ellipse tangent
     double cosa = cos(-angle);

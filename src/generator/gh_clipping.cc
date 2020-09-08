@@ -674,7 +674,7 @@ static double compute_area(const vector<cv::Vec2d>& points) {
     return 0.5 * fabs(A);
 }
 
-double gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys, bool area_only) {
+double gh_phase_three(vector<gh_vertex>& verts, int vs, [[maybe_unused]] int first_isect_index, vector<Polygon_geom>& polys, bool area_only) {
     double combined_area = 0;
 
     bool done = false;

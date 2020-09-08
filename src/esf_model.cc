@@ -106,7 +106,7 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
             
             if (fabs(mid) <= double(sample_histo_size) / 16.0) {
                 int hist_idx = (ordered[i].first + double(sample_histo_size)/16.0) * 8;
-                if (hist_idx >= 0 && hist_idx < sample_histo_size) {
+                if (hist_idx >= 0 && hist_idx < (int)sample_histo_size) {
                     sample_histo[hist_idx]++;
                 }
             }

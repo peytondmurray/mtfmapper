@@ -120,6 +120,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
         
         vector<int> corder(4);
         vector<int> eorder(4);
+        bool serialization_errors = false;
         for (size_t i=0; i < blocks.size(); i++) {
         
             vector<Ordered_point> corners(4);
@@ -249,6 +250,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
             
             if (output_version >= Output_version::V2) {
                 bool success = blocks[i].serialize(serout);
+                serialization_errors |= !success;
             }
         }    
         fclose(fout);
@@ -257,6 +259,10 @@ class Mtf_renderer_edges : public Mtf_renderer {
         
         if (output_version >= Output_version::V2 && serout) {
             fclose(serout);
+        }
+        
+        if (serialization_errors) {
+            logger.error("One or more errors during edge serialization\n");
         }
     }
     

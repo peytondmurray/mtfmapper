@@ -473,7 +473,7 @@ inline void hv_cross(cv::Mat& cvimg, int row0, int col0, int centre_val, double&
     botsum += (I1 + I4 - I2 - I3)*(I1 + I4 - I2 - I3);
 }
 
-void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
+void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, [[maybe_unused]] int target_subset) {
     logger.debug("Bayer subset specified, performing geometric demosaic\n");
     rawimg = cvimg.clone();
     
@@ -544,14 +544,12 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                 double vgrad = fabs(double(cvimg.at<uint16_t>(row-3, col) + 3*cvimg.at<uint16_t>(row-1, col) - 
                                     3*cvimg.at<uint16_t>(row+1, col) - cvimg.at<uint16_t>(row+3, col)));
                                     
-                bool gi_flat = false;
                 if (max(hgrad, vgrad) < 1 || fabs(hgrad - vgrad)/max(hgrad, vgrad) < 0.001) {
                     gi_estimate = 
                         (cvimg.at<uint16_t>(row-1, col) + 
                         cvimg.at<uint16_t>(row+1, col) + 
                         cvimg.at<uint16_t>(row, col-1) + 
                         cvimg.at<uint16_t>(row, col+1)) / 4;
-                    gi_flat = true;
                 } else {
                     double l = sqrt(hgrad*hgrad + vgrad*vgrad);
                     if (hgrad > vgrad) {
@@ -644,8 +642,6 @@ void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, int target_subset) {
                 ndiff = max(ndiff, fabs(double(cvimg.at<uint16_t>(row, col+1)) - double(cvimg.at<uint16_t>(row-1, col))));
                 ndiff = max(ndiff, fabs(double(cvimg.at<uint16_t>(row, col+1)) - double(cvimg.at<uint16_t>(row+1, col))));
                 ndiff = max(ndiff, fabs(double(cvimg.at<uint16_t>(row-1, col)) - double(cvimg.at<uint16_t>(row+1, col))));
-                
-                double norm_botsum = sqrt(botsum/double(4*0.25 + 4 + 1));
                 
                 double a1 = 0.25;
                 double a2 = 0.25;

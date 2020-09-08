@@ -130,7 +130,7 @@ class Svg_page_focus : public Svg_page {
     }
     
     
-    void perspective_rectangle(double cx, double cy, double width, double height, double angle, bool print_centroid=false) {
+    void perspective_rectangle(double cx, double cy, double width, double height, double angle, [[maybe_unused]] bool print_centroid=false) {
         fprintf(fout, "  <polygon points=\"");
         for (int i=0; i < 4; i++) {
             double theta = 2*M_PI*i/double(4) + M_PI/4.0; 
