@@ -27,8 +27,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include <QtWidgets> 
 #include "settings_dialog.h"
-#include "settings_dialog.moc"
-
 
 #include "common.h"
 

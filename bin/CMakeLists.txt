@@ -34,7 +34,7 @@ find_package(Qt5Widgets)
 get_target_property(q5name Qt5::Widgets LOCATION)
 
 IF (EXISTS ${q5name})
-  file(GLOB qt_SRCS ${PROJECT_SOURCE_DIR}/src/gui/*${cpp_ext})
+  file(GLOB qt_SRCS ${PROJECT_SOURCE_DIR}/src/gui/*${cpp_ext} ${PROJECT_SOURCE_DIR}/src/gui/*.h)
   QT5_ADD_RESOURCES(UI_RESOURCES_RCC ${PROJECT_SOURCE_DIR}/src/gui/mtfm.qrc)
   if (MSVC)
       add_executable(mtf_mapper_gui WIN32 ${qt_SRCS} ${UI_RESOURCES_RCC} ${PROJECT_SOURCE_DIR}/src/gui/icons.rc)

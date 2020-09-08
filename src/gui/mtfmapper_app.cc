@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include <QtWidgets>
 #include "mtfmapper_app.h"
-#include "mtfmapper_app.moc"
 
 #include "worker_thread.h"
 #include "common.h"
