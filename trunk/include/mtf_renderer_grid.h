@@ -111,8 +111,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
 
   private:
 
-    void extract_mtf_grid(Edge_type target_edge_type, cv::Mat& grid_coarse, cv::Mat& grid_fine, const vector<Block>& blocks, double upper);
-    
     inline double predict(const  vector< Eigen::VectorXd >& solutions, int irow, int icol, int width, double row, double col) const {
         const Eigen::VectorXd& sol = solutions[irow*width + icol];
         double pred = sol[0] + sol[1]*row + sol[2]*col +

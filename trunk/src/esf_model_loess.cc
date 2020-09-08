@@ -73,7 +73,6 @@ static void local_moving_average_smoother(vector<double>& smoothed, double* samp
     }
     
     const int bhw = width;
-    const int bhw_min = 1;
     left_trans = std::max(left_trans, fft_left + bhw);
     for (int idx=std::max(fft_left, bhw + 1); idx < left_trans; idx++) {
         sampled[idx] = (smoothed[idx+bhw] - smoothed[idx-bhw-1])/double(2*bhw+1);
@@ -141,10 +140,6 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     double contrast = snr.contrast();
     
     if (rval < 0) return rval;
-    
-    constexpr double bwidth = 1.0;
-    int left_trans = std::max(fft_size/2 - bwidth*twidth, fft_left + 2.0);
-    int right_trans = std::min(fft_size/2 + bwidth*twidth, fft_right - 3.0);
     
     fill(weights.begin(), weights.end(), 0.0);
     fill(mean.begin(), mean.end(), 0.0);
@@ -311,7 +306,7 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     
     if (apply_monotonic_filter) {
         vector<double> pre_pava(fft_size);
-        for (size_t i=0; i < fft_size; i++) {
+        for (size_t i=0; i < (size_t)fft_size; i++) {
             pre_pava[i] = sampled[i];
         }
         

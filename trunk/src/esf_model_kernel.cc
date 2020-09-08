@@ -71,9 +71,6 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
         max_distance_from_edge, mean, weights, fft_left, fft_right, twidth, snr
     );
     
-    double cnr = snr.mean_cnr();
-    double contrast = snr.contrast();
-    
     if (rval < 0) return rval;
     
     constexpr double bwidth = 1.85;
@@ -181,7 +178,7 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
     
     if (apply_monotonic_filter) {
         vector<double> pre_pava(fft_size);
-        for (size_t i=0; i < fft_size; i++) {
+        for (size_t i=0; i < (size_t)fft_size; i++) {
             pre_pava[i] = sampled[i];
         }
         

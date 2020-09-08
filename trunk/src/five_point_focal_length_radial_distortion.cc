@@ -153,7 +153,7 @@ void SetupAndSolveSylvesterMatrix(const Matrix<double, 8, 3>& n,
   VectorXd roots;
   //CHECK(FindPolynomialRoots(coeffs, &roots, NULL))
   //    << "Quartic could not be solved for p5pfr.";
-  bool result = FindPolynomialRootsJenkinsTraub(coeffs, &roots, NULL);
+  [[maybe_unused]] bool result = FindPolynomialRootsJenkinsTraub(coeffs, &roots, NULL);
 
   // Solve for y1 by substituting y2 solutions back into Eq 10, 11.
   for (int i = 0; i < 4; i++) {

@@ -117,7 +117,7 @@ VectorXd MultiplyPolynomials(const VectorXd& poly1, const VectorXd& poly2) {
   return multiplied_poly;
 }
 
-void DividePolynomial(const VectorXd& polynomial,
+[[maybe_unused]] void DividePolynomial(const VectorXd& polynomial,
                       const VectorXd& divisor,
                       VectorXd* quotient,
                       VectorXd* remainder) {
@@ -161,7 +161,7 @@ VectorXd AddPolynomials(const VectorXd& poly1, const VectorXd& poly2) {
   }
 }
 
-void FindLinearPolynomialRoots(const VectorXd& polynomial,
+[[maybe_unused]] void FindLinearPolynomialRoots(const VectorXd& polynomial,
                                VectorXd* real,
                                VectorXd* imaginary) {
   //CHECK_EQ(polynomial.size(), 2);
@@ -817,7 +817,7 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
   return ApplyQuadraticShiftToKPolynomial(root, kMaxQuadraticShiftIterations);
 }
 
-bool JenkinsTraubSolver::HasQuadraticSequenceConverged(
+[[maybe_unused]] bool JenkinsTraubSolver::HasQuadraticSequenceConverged(
     const VectorXd& quotient, const std::complex<double>& root) {
   const double z = std::sqrt(std::abs(sigma_(2)));
   const double t = -root.real() * b_;
@@ -834,7 +834,7 @@ bool JenkinsTraubSolver::HasQuadraticSequenceConverged(
   return std::abs(a_ - b_ * root) < e;
 }
 
-bool JenkinsTraubSolver::HasLinearSequenceConverged(const VectorXd& quotient,
+[[maybe_unused]] bool JenkinsTraubSolver::HasLinearSequenceConverged(const VectorXd& quotient,
                                                     const double root,
                                                     const double p_at_root) {
   double e = std::abs(quotient(0)) * mult_eps / (sum_eps + mult_eps);

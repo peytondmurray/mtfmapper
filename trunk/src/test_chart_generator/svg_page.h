@@ -131,7 +131,7 @@ class Svg_page {
         fprintf(fout, "  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" style=\"%s\"/>", int(tlx), int(tly), int(width), int(height), style.c_str());
     }
     
-    virtual iPoint project(double x, double y, bool silent=false) {
+    virtual iPoint project(double x, double y, [[maybe_unused]] bool silent=false) {
         
         x = floor(x*width);
         y = floor(y*height);

@@ -143,7 +143,7 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
     }
       
   protected:
-    virtual double mtf_modifier(double f) const {
+    virtual double mtf_modifier([[maybe_unused]] double f) const {
         return 1.0;
     }
   
@@ -167,7 +167,7 @@ class Render_polygon_is_wavefront_base : public Render_polygon_is {
             double& ex = pos_x[sidx];
             double& ey = pos_y[sidx];
             
-            double sample_prob = wave.rairy2d(ex, ey, sampler);
+            [[maybe_unused]] double sample_prob = wave.rairy2d(ex, ey, sampler);
             double rad = sqrt(ex*ex + ey*ey);
             
             rad /= (lambda/pitch)*aperture;

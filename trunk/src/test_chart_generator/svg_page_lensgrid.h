@@ -266,7 +266,6 @@ class Svg_page_lensgrid : public Svg_page {
     }
     
     vector<Point2f> coded_sector_circles(double swidth) {
-        const double hshift = 20 * fiducial_scale;
         vector<Point2f> centers;
         
         for (int i=0; i < n_fiducials; i++) { // defined in "include/fiducial_positions.h"
