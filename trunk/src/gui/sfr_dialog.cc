@@ -62,7 +62,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     
     QFontMetrics fm(QWidget::fontMetrics());
     int double_height = fm.height()*2 + 8;
-    int em_width = fm.width("m");
+    int em_width = fm.horizontalAdvance("m");
     
     QString button_style(
         "QPushButton:flat{ background-color: rgba(0, 0, 0, 7%); border: 1px solid rgba(0,0,0,20%); border-radius: 2px; } "
@@ -70,8 +70,8 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     );
     
     save_img_button = new QPushButton("Save\nimage", this);
-    save_img_button->setMinimumWidth(fm.width(save_img_button->text()));
-    save_img_button->setMaximumWidth(fm.width(save_img_button->text()));
+    save_img_button->setMinimumWidth(fm.horizontalAdvance(save_img_button->text()));
+    save_img_button->setMaximumWidth(fm.horizontalAdvance(save_img_button->text()));
     save_img_button->setMinimumHeight(double_height);
     save_img_button->setMaximumHeight(double_height);
     save_img_button->setFlat(true);
@@ -155,8 +155,8 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     table_row_layouts->addStretch();
     
     save_data_button = new QPushButton("Save\ndata", this);
-    save_data_button->setMinimumWidth(fm.width(save_data_button->text()));
-    save_data_button->setMaximumWidth(fm.width(save_data_button->text()));
+    save_data_button->setMinimumWidth(fm.horizontalAdvance(save_data_button->text()));
+    save_data_button->setMaximumWidth(fm.horizontalAdvance(save_data_button->text()));
     save_data_button->setMinimumHeight(double_height);
     save_data_button->setMaximumHeight(double_height);
     save_data_button->setFlat(true);
@@ -336,13 +336,13 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
 
         QFontMetrics fm(QWidget::fontMetrics());
         int th = fm.height();
-        int text_end = chart->size().width() - 2*fm.width("m");
+        int text_end = chart->size().width() - 2*fm.horizontalAdvance("m");
         
         // add mtf50 tags in reverse
         for (int mi=series.size()-1; mi >= 0; mi--) {
             
             string mtf50_str = view.mtf_xx(entries[mi].info);
-            int tw = fm.width(mtf50_str.c_str()) + 2*fm.width("m");
+            int tw = fm.horizontalAdvance(mtf50_str.c_str()) + 2*fm.horizontalAdvance("m");
             
             mtf50_text[mi]->setBrush(series[mi]->pen().color());
             mtf50_text[mi]->setPen(QPen(series[mi]->pen().color()));
