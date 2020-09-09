@@ -54,8 +54,8 @@ void Ca_renderer_print::render(const vector<Block>& blocks) {
             if (fabs(blocks[i].get_ca(k).x - Edge_info::nodata) < 1e-6 || fabs(blocks[i].get_ca(k).y - Edge_info::nodata) < 1e-6) continue;
 
             if (fabs(delta) >= cos(45.0/180*M_PI) || blocks.size() == 1) {
-                fprintf(fout, "%ld %lf %lf %lf %lf %lf %lf\n", 
-                    i,
+                fprintf(fout, "%d %lf %lf %lf %lf %lf %lf\n", 
+                    int(i),
                     blocks[i].get_edge_centroid(k).x, blocks[i].get_edge_centroid(k).y,
                     blocks[i].get_ca(k).x, blocks[i].get_ca(k).y,
                     100*blocks[i].get_ca(k).x / centre_dist, 100*blocks[i].get_ca(k).y / centre_dist

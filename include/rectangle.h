@@ -141,7 +141,7 @@ class Mrectangle {
         vector< pair<double, int> > orient(4);
         for (size_t i=0; i < 4; i++) {
             Point2d dv = new_corners[i] - ecent;
-            orient[i] = make_pair(-atan2(dv.y, dv.x), i);
+            orient[i] = make_pair(-atan2(dv.y, dv.x), int(i));
         }
         sort(orient.begin(), orient.end());
         
@@ -245,7 +245,7 @@ class Mrectangle {
         vector< pair<double, int> > orient(4);
         for (size_t i=0; i < 4; i++) {
             Point2d dv = isections[i].intersection - ccent;
-            orient[i] = make_pair(-atan2(dv.y, dv.x), i);
+            orient[i] = make_pair(-atan2(dv.y, dv.x), int(i));
         }
         sort(orient.begin(), orient.end());
         
@@ -637,7 +637,7 @@ class Mrectangle {
                 vector< pair<double, int> > orient(4);
                 for (size_t i=0; i < 4; i++) {
                     Point2d dv = isections[i].intersection - ccent;
-                    orient[i] = make_pair(-atan2(dv.y, dv.x), i);
+                    orient[i] = make_pair(-atan2(dv.y, dv.x), int(i));
                 }
                 sort(orient.begin(), orient.end());
                 
