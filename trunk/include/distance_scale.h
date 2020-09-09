@@ -594,7 +594,7 @@ class Distance_scale {
             if (blocks.size() > 0) {
                 // find largest block
                 for (size_t i=0; i < blocks.size(); i++) {
-                    by_size.push_back(make_pair(blocks[i].get_area(), i));
+                    by_size.push_back(make_pair(blocks[i].get_area(), int(i)));
                 }
                 sort(by_size.begin(), by_size.end());
                 

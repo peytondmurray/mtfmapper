@@ -352,7 +352,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         for (size_t l=k+1; l < 4; l++) {
             double rel_sim = edge_record[k].relative_orientation(edge_record[l]);
             if (rel_sim > 0.80902) { // = cos(M_PI/5.0) ~ 36 degrees
-                pairs.push_back( make_pair(1-rel_sim, make_pair(k, l)) );
+                pairs.push_back( make_pair(1-rel_sim, make_pair(int(k), int(l))) );
             }
         }
     }

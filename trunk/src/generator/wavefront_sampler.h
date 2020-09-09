@@ -458,7 +458,7 @@ class Wavefront_sampler {
         p = std::abs(cp)*std::abs(cp);
         
         if (ic_sum > 0) {
-            printf("failed to converge (%ld) with r=%.8lf\n", ic_sum, r);
+            printf("failed to converge (%d) with r=%.8lf\n", int(ic_sum), r);
         }
         
 		return p;

@@ -143,13 +143,13 @@ endif(HTML_HELP_DIR)
 
 
 # Time to require c++11 features
-set_property(TARGET mtfmapper_bin PROPERTY CXX_STANDARD 11)
+set_property(TARGET mtfmapper_bin PROPERTY CXX_STANDARD 17)
 set_property(TARGET mtfmapper_bin PROPERTY CXX_STANDARD_REQUIRED ON)
 
-set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD 11)
+set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD 17)
 set_property(TARGET generate_rectangle PROPERTY CXX_STANDARD_REQUIRED ON)
 
-set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 11)
+set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD 17)
 set_property(TARGET generate_test_chart PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # custom install to make a whole windows installer, not necessary if building on Linux
