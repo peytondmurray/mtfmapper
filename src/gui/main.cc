@@ -34,6 +34,7 @@ Logger logger;
 #include <QSurfaceFormat>
 
 #include "worker_thread.h"
+#include "processing_command.h"
 #include "mtfmapper_app.h"
 
 void message_output(QtMsgType type, const QMessageLogContext& /*context*/, const QString &msg) {
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]) {
     logger.enable_level(Logger::LOGGER_DEBUG);
     qInstallMessageHandler(message_output);
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
-
+    
     QApplication app(argc, argv);
     
     QSurfaceFormat fmt;
@@ -89,6 +90,7 @@ int main(int argc, char *argv[]) {
     app.setWindowIcon(appIcon);
 
     qRegisterMetaType<Worker_thread::failure_t>("Worker_thread::failure_t");
+    qRegisterMetaType<Processing_command>("Processing_command");
 
     dialog.show();
     return app.exec();

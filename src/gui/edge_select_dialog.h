@@ -25,55 +25,41 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GL_IMAGE_VIEWER_H
-#define GL_IMAGE_VIEWER_H
+#ifndef EDGE_SELECT_DIALOG_H
+#define EDGE_SELECT_DIALOG_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QAbstractScrollArea>
+#include <QDialog>
+
+#include "gl_image_viewer.h"
+#include "gl_image_panel_edges.h"
 #include "gl_viewer_functor.h"
-#include "gl_image_panel.h"
 
-class GL_image_viewer : public QAbstractScrollArea {
-    Q_OBJECT
-    
+
+class QPushButton;
+class QTextEdit;
+
+class Edge_select_dialog : public QDialog {
+  Q_OBJECT
+  
   public:
-    explicit GL_image_viewer(QWidget* parent, GL_viewer_functor* callback);
-    
-    bool viewportEvent(QEvent* e);
-    void scrollContentsBy(int dx, int dy);
-    void wheelEvent(QWheelEvent* e);
-    
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void keyPressEvent(QKeyEvent* event);
-    
-    void set_GL_widget(GL_image_panel* w);
-    void load_image(const QString& fname);
-    void load_image(QImage* qimg);
-    void set_clickable(bool b);
-    
+    Edge_select_dialog(QWidget* parent);
+    void load_image(QString img_name);
+    GL_image_viewer* get_viewer(void) { return img_viewer; }
+    GL_image_panel* get_panel(void) { return img_panel; }
+
   private:
-    void zoom_action(double direction, int zx, int zy);
-    
-    GL_viewer_functor* callback;
-    GL_image_panel* widget;
-    
-    bool panning = false;
-    QPoint pan;
-    QPoint click;
-    
-    bool zooming = false;
-    QPoint zoom_pos;
-    QPoint zoom_pos_temp;
-    
-    QPoint last_mouse_pos;
-    
-    bool must_update_bars = true;
-    bool is_clickable = false;
+    GL_image_viewer*  img_viewer;
+    GL_image_panel*   img_panel;
+    QPushButton*      dismiss_button;
+    QPushButton*      proceed_button;
+    std::unique_ptr<GL_viewer_functor> edge_functor;
+    QWidget* parent = nullptr;
+    QImage* icon_image;
     
   public slots:
-    void clear_overlay();
+    void open();
+    
 };
 
 #endif
+

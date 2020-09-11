@@ -54,7 +54,6 @@ void Worker_thread::set_files(const QStringList& files) {
 }
 
 void Worker_thread::run(void) {
-    bool any_failed = false;
     vector<std::pair<failure_t, QString>> failures;
     abort = false;
     output_files.clear();
@@ -63,7 +62,6 @@ void Worker_thread::run(void) {
         emit send_progress_indicator(i+1);
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
         QDir().mkdir(tempdir);
-        char* buffer = new char[4096];
 
         QString input_file(input_files.at(i));
 
@@ -114,152 +112,34 @@ void Worker_thread::run(void) {
             Exiv2_property props(exiv2_binary, input_files.at(i), tempdir + "/exifinfo.txt");
             mma << "--focal-ratio" << props.get_focal_ratio();
         }
+
+        mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
+            << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts);
         
-        bool q_output_requested = arguments.contains("-q");
-        bool e_output_requested = arguments.contains("-e") || arguments.contains("--esf ");
-
-        QProcess mmp(this);
-        mmp.setProgram(QCoreApplication::applicationDirPath() + "/mtf_mapper");
-        mmp.setArguments(
-            mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
-                << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts)
+        Processing_command pc(
+            QCoreApplication::applicationDirPath() + "/mtf_mapper",
+            mma,
+            input_file,
+            tempdir,
+            input_files.at(i)
         );
-        logger.debug("arguments to mtf mapper:\n");
-        for (int kk = 0; kk < mmp.arguments().size(); kk++) {
-            logger.debug("[%d]=%s\n", kk, mmp.arguments().at(kk).toLocal8Bit().constData());
-        }
-        mmp.start();
-        mmp.waitForFinished(-1);
-        int rval = mmp.exitStatus() == QProcess::NormalExit && mmp.exitCode() == 0;
-        if (!rval) {
-            any_failed = true;
-            failure_t failure = UNSPECIFIED;
-            switch (mmp.exitCode()) {
-            case 2: failure= IMAGE_OPEN_FAILURE; break;
-            case 4: failure = NO_TARGETS_FOUND; break;
-            case 5: failure = UNSUPPORTED_IMAGE_ENCODING; break;
-            default: failure = UNSPECIFIED; break;
-            }
-            failures.push_back(std::pair<failure_t, QString>(failure, input_file));
+        
+        if (force_manual_roi_mode) {
+            send_processing_command(pc);
         } else {
-            emit send_delete_item(tempdir + "/log.txt");
+            process_command(pc, failures);
         }
-                
-        if (rval) {
-
-            // this call must come from within the worker thread, since we
-            // may have to perform a raw conversion in the worker thread
-            // which would cause the display image filename (root of each data set object)
-            // to differ from the file containing the exif info
-            
-            emit send_exif_filename(input_files.at(i), tempdir);
-            QString fname(QFileInfo(input_file).completeBaseName());
-            emit send_parent_item(fname, input_file);
-            
-            if (q_output_requested) {
-                emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
-                emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
-                if (QFile().exists(tempdir + QString("/serialized_edges.bin"))) {
-                    emit send_delete_item(tempdir + QString("/serialized_edges.bin"));
-                }
-            }
-            
-            if (e_output_requested) {
-                if (QFile().exists(tempdir + QString("/raw_esf_values.txt"))) {
-                    emit send_delete_item(tempdir + QString("/raw_esf_values.txt"));
-                }
-                if (QFile().exists(tempdir + QString("/raw_psf_values.txt"))) {
-                    emit send_delete_item(tempdir + QString("/raw_psf_values.txt"));
-                }
-            }
-            
-            QString an_file = QString("%1/annotated.png").arg(tempdir);
-            if (QFile().exists(an_file)) {
-                emit send_child_item(QString("annotated"), an_file);
-                emit send_delete_item(an_file);
-            }
-            QString an_file_jpeg = QString("%1/annotated.jpg").arg(tempdir);
-            if (QFile().exists(an_file_jpeg)) {
-                emit send_child_item(QString("annotated"), an_file_jpeg);
-                emit send_delete_item(an_file_jpeg);
-            }
-            QString pr_file = QString("%1/profile_image.png").arg(tempdir);
-            if (QFile().exists(pr_file)) {
-                emit send_child_item(QString("profile"), pr_file);
-                emit send_delete_item(pr_file);
-                emit send_delete_item(tempdir + QString("/profile.gnuplot"));
-                emit send_delete_item(tempdir + QString("/profile.txt"));
-                emit send_delete_item(tempdir + QString("/profile_peak.txt"));
-            }
-            QString gi_file = QString("%1/grid_image.png").arg(tempdir);
-            if (QFile().exists(gi_file)) {
-                emit send_child_item(QString("grid2d"), gi_file);
-                emit send_delete_item(gi_file);
-                emit send_delete_item(tempdir + QString("/grid.gnuplot"));
-                emit send_delete_item(tempdir + QString("/grid.txt"));
-            }
-            QString gs_file = QString("%1/grid_surface.png").arg(tempdir);
-            if (QFile().exists(gs_file)) {
-                emit send_child_item(QString("grid3d"), gs_file);
-                emit send_delete_item(gs_file);
-            }
-            QString fp_file = QString("%1/focus_peak.png").arg(tempdir);
-            if (QFile().exists(fp_file)) {
-                emit send_child_item(QString("focus"), fp_file);
-                emit send_delete_item(fp_file);
-                emit send_delete_item(tempdir + QString("/profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/profile_points.txt"));
-                // we might as well try to delete all the bayer-channel specific outputs, whether they are generated, or not
-                emit send_delete_item(tempdir + QString("/green_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/green_profile_points.txt"));
-                emit send_delete_item(tempdir + QString("/blue_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/blue_profile_points.txt"));
-                emit send_delete_item(tempdir + QString("/red_profile_curve.txt"));
-                emit send_delete_item(tempdir + QString("/red_profile_points.txt"));
-            }
-            QString lp_file = QString("%1/lensprofile.png").arg(tempdir);
-            if (QFile().exists(lp_file)) {
-                emit send_child_item(QString("lensprofile"), lp_file);
-                emit send_delete_item(lp_file);
-                emit send_delete_item(tempdir + QString("/lensprofile.txt"));
-                emit send_delete_item(tempdir + QString("/lensprofile.gnuplot"));
-            }
-            QString co_file = QString("%1/chart_orientation.png").arg(tempdir);
-            if (QFile().exists(co_file)) {
-                emit send_child_item(QString("chart orientation"), co_file);
-                emit send_delete_item(co_file);
-            }
-            QString ca_file = QString("%1/ca_image.png").arg(tempdir);
-            if (QFile().exists(ca_file)) {
-                emit send_child_item(QString("chromatic aberration"), ca_file);
-                emit send_delete_item(ca_file);
-                emit send_delete_item(tempdir + QString("/ca_grid.gnuplot"));
-                emit send_delete_item(tempdir + QString("/ca_grid.txt"));
-            }
-            if (QFile().exists(tempdir + QString("/chromatic_aberration.txt"))) {
-                emit send_delete_item(tempdir + QString("/chromatic_aberration.txt"));
-            }
-            QString fids_file = QString("%1/fiducial_correspondence.txt").arg(tempdir);
-            if (QFile().exists(fids_file)) {
-                emit send_delete_item(fids_file);
-            }
-            
-            emit send_close_item();
-        }
-        delete [] buffer;
     }
     // turn off the transient modifiers
     set_single_roi_mode(false); 
     set_focus_mode(false);
     set_imatest_mode(false);
+    set_manual_roi_mode(false);
     emit send_progress_indicator(input_files.size()+1);
     emit send_all_done();
     
-    if (any_failed) {
-        for (const auto& failure : failures) {
-            emit mtfmapper_call_failed(failure.first, failure.second);
-        }
+    for (const auto& failure : failures) {
+        emit mtfmapper_call_failed(failure.first, failure.second);
     }
 }
 
@@ -318,4 +198,135 @@ QString Worker_thread::update_arguments(QString& s) {
         }
     }
     return arguments;
+}
+
+void Worker_thread::process_command(const Processing_command& command, vector<std::pair<failure_t, QString>>& failures) {
+    
+    QProcess process(this);
+    process.setProgram(command.program);
+    process.setArguments(command.arguments);
+    const QString& tempdir = command.tmp_dirname;
+    
+    bool q_output_requested = process.arguments().contains("-q");
+    bool e_output_requested = process.arguments().contains("-e") || process.arguments().contains("--esf");
+
+    logger.debug("arguments to mtf mapper:\n");
+    for (int kk = 0; kk < command.arguments.size(); kk++) {
+        logger.debug("[%d]=%s\n", kk, command.arguments.at(kk).toLocal8Bit().constData());
+    }
+    process.start();
+    process.waitForFinished(-1);
+    int rval = process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
+    if (!rval) {
+        failure_t failure = UNSPECIFIED;
+        switch (process.exitCode()) {
+        case 2: failure = IMAGE_OPEN_FAILURE; break;
+        case 4: failure = NO_TARGETS_FOUND; break;
+        case 5: failure = UNSUPPORTED_IMAGE_ENCODING; break;
+        default: failure = UNSPECIFIED; break;
+        }
+        failures.push_back(std::pair<failure_t, QString>(failure, command.img_filename));
+    } else {
+        emit send_delete_item(tempdir + "/log.txt");
+
+        // this call must come from within the worker thread, since we
+        // may have to perform a raw conversion in the worker thread
+        // which would cause the display image filename (root of each data set object)
+        // to differ from the file containing the exif info
+        
+        emit send_exif_filename(command.exif_filename, tempdir);
+        QString fname(QFileInfo(command.img_filename).completeBaseName());
+        emit send_parent_item(fname, command.img_filename);
+        
+        if (q_output_requested) {
+            emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
+            emit send_delete_item(tempdir + QString("/edge_mtf_values.txt"));
+            emit send_delete_item(tempdir + QString("/edge_line_deviation.txt"));
+            if (QFile().exists(tempdir + QString("/serialized_edges.bin"))) {
+                emit send_delete_item(tempdir + QString("/serialized_edges.bin"));
+            }
+        }
+        
+        if (e_output_requested) {
+            if (QFile().exists(tempdir + QString("/raw_esf_values.txt"))) {
+                emit send_delete_item(tempdir + QString("/raw_esf_values.txt"));
+            }
+            if (QFile().exists(tempdir + QString("/raw_psf_values.txt"))) {
+                emit send_delete_item(tempdir + QString("/raw_psf_values.txt"));
+            }
+        }
+        
+        QString an_file = QString("%1/annotated.png").arg(tempdir);
+        if (QFile().exists(an_file)) {
+            emit send_child_item(QString("annotated"), an_file);
+            emit send_delete_item(an_file);
+        }
+        QString an_file_jpeg = QString("%1/annotated.jpg").arg(tempdir);
+        if (QFile().exists(an_file_jpeg)) {
+            emit send_child_item(QString("annotated"), an_file_jpeg);
+            emit send_delete_item(an_file_jpeg);
+        }
+        QString pr_file = QString("%1/profile_image.png").arg(tempdir);
+        if (QFile().exists(pr_file)) {
+            emit send_child_item(QString("profile"), pr_file);
+            emit send_delete_item(pr_file);
+            emit send_delete_item(tempdir + QString("/profile.gnuplot"));
+            emit send_delete_item(tempdir + QString("/profile.txt"));
+            emit send_delete_item(tempdir + QString("/profile_peak.txt"));
+        }
+        QString gi_file = QString("%1/grid_image.png").arg(tempdir);
+        if (QFile().exists(gi_file)) {
+            emit send_child_item(QString("grid2d"), gi_file);
+            emit send_delete_item(gi_file);
+            emit send_delete_item(tempdir + QString("/grid.gnuplot"));
+            emit send_delete_item(tempdir + QString("/grid.txt"));
+        }
+        QString gs_file = QString("%1/grid_surface.png").arg(tempdir);
+        if (QFile().exists(gs_file)) {
+            emit send_child_item(QString("grid3d"), gs_file);
+            emit send_delete_item(gs_file);
+        }
+        QString fp_file = QString("%1/focus_peak.png").arg(tempdir);
+        if (QFile().exists(fp_file)) {
+            emit send_child_item(QString("focus"), fp_file);
+            emit send_delete_item(fp_file);
+            emit send_delete_item(tempdir + QString("/profile_curve.txt"));
+            emit send_delete_item(tempdir + QString("/profile_points.txt"));
+            // we might as well try to delete all the bayer-channel specific outputs, whether they are generated, or not
+            emit send_delete_item(tempdir + QString("/green_profile_curve.txt"));
+            emit send_delete_item(tempdir + QString("/green_profile_points.txt"));
+            emit send_delete_item(tempdir + QString("/blue_profile_curve.txt"));
+            emit send_delete_item(tempdir + QString("/blue_profile_points.txt"));
+            emit send_delete_item(tempdir + QString("/red_profile_curve.txt"));
+            emit send_delete_item(tempdir + QString("/red_profile_points.txt"));
+        }
+        QString lp_file = QString("%1/lensprofile.png").arg(tempdir);
+        if (QFile().exists(lp_file)) {
+            emit send_child_item(QString("lensprofile"), lp_file);
+            emit send_delete_item(lp_file);
+            emit send_delete_item(tempdir + QString("/lensprofile.txt"));
+            emit send_delete_item(tempdir + QString("/lensprofile.gnuplot"));
+        }
+        QString co_file = QString("%1/chart_orientation.png").arg(tempdir);
+        if (QFile().exists(co_file)) {
+            emit send_child_item(QString("chart orientation"), co_file);
+            emit send_delete_item(co_file);
+        }
+        QString ca_file = QString("%1/ca_image.png").arg(tempdir);
+        if (QFile().exists(ca_file)) {
+            emit send_child_item(QString("chromatic aberration"), ca_file);
+            emit send_delete_item(ca_file);
+            emit send_delete_item(tempdir + QString("/ca_grid.gnuplot"));
+            emit send_delete_item(tempdir + QString("/ca_grid.txt"));
+        }
+        if (QFile().exists(tempdir + QString("/chromatic_aberration.txt"))) {
+            emit send_delete_item(tempdir + QString("/chromatic_aberration.txt"));
+        }
+        QString fids_file = QString("%1/fiducial_correspondence.txt").arg(tempdir);
+        if (QFile().exists(fids_file)) {
+            emit send_delete_item(fids_file);
+        }
+        
+        emit send_close_item();
+    }
 }

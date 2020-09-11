@@ -37,12 +37,17 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "settings_dialog.h"
 #include "worker_thread.h"
 #include "gl_image_viewer.h"
+#include "gl_image_panel_dots.h"
 #include "exiv2_property.h"
 #include "about_dialog.h"
 #include "help_dialog.h"
+#include "processing_command.h"
 
 #include "sfr_entry.h"
 #include "sfr_dialog.h"
+
+#include "gl_viewer_functor.h"
+#include "edge_select_dialog.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -70,6 +75,9 @@ class mtfmapper_app : public QMainWindow
   public:
     mtfmapper_app(QWidget *parent = 0);
     virtual ~mtfmapper_app(void);
+    GL_image_panel* get_GL_panel(void) const { return img_panel; }
+    
+    
     
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -82,13 +90,14 @@ class mtfmapper_app : public QMainWindow
     void check_and_purge_stale_temp_files(void);
     void check_if_helpers_exist(void);
     void save_action(bool subset = false);
-    void open_action(bool roi = false, bool focus = false, bool imatest = false);
+    void open_action(bool roi = false, bool focus = false, bool imatest = false, bool manual_roi = false);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
     QMenu*          help_menu;
     QAction*        open_act;
     QAction*        open_roi_act;
+    QAction*        open_manual_roi_act;
     QAction*        open_focus_act;
     QAction*        open_imatest_act;
     QAction*        exit_act;
@@ -151,15 +160,21 @@ class mtfmapper_app : public QMainWindow
     QIcon* mtfmapper_logo;
     QImage* icon_image;
     
+    std::unique_ptr<GL_viewer_functor> annotated_functor;
+    
     Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;
 
     QString zoom_scroll_tt;
     QString annotated_tt;
+    
+    Edge_select_dialog* edge_select_dialog;
+    vector<Processing_command> manual_roi_commands;
 
   public slots:
     void open_auto();
     void open_roi();
+    void open_manual_roi();
     void open_focus();
     void open_imatest_chart();
     void dataset_selected(const QModelIndex&);
@@ -169,11 +184,12 @@ class mtfmapper_app : public QMainWindow
     void close_item(void);
     void item_for_deletion(QString s);
     void populate_exif_info_from_file(QString s, QString tempdir);
+    void add_manual_roi_file(const Processing_command& command);
   
     bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     
 
-    void hide_abort_button(void);
+    void processor_completed(void);
     void enable_clear_button(void);
     void clear_button_pressed(void);
     void enable_save_button(void);

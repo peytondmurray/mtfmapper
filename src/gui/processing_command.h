@@ -1,5 +1,5 @@
 /*
-Copyright 2011 Frans van den Bergh. All rights reserved.
+Copyright 2020 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,55 +25,28 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GL_IMAGE_VIEWER_H
-#define GL_IMAGE_VIEWER_H
+#ifndef PROCESSING_COMMAND_H
+#define PROCESSING_COMMAND_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QAbstractScrollArea>
-#include "gl_viewer_functor.h"
-#include "gl_image_panel.h"
+#include <QString>
+#include <QStringList>
 
-class GL_image_viewer : public QAbstractScrollArea {
-    Q_OBJECT
-    
+class Processing_command {
   public:
-    explicit GL_image_viewer(QWidget* parent, GL_viewer_functor* callback);
+    Processing_command(void) {}
     
-    bool viewportEvent(QEvent* e);
-    void scrollContentsBy(int dx, int dy);
-    void wheelEvent(QWheelEvent* e);
+    Processing_command(const QString& program, const QStringList& arguments,
+        const QString& img_filename, const QString& tmp_dirname,
+        const QString& exif_filename) 
+        : program(program), arguments(arguments), img_filename(img_filename),
+          tmp_dirname(tmp_dirname), exif_filename(exif_filename) {
+    }
     
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void keyPressEvent(QKeyEvent* event);
-    
-    void set_GL_widget(GL_image_panel* w);
-    void load_image(const QString& fname);
-    void load_image(QImage* qimg);
-    void set_clickable(bool b);
-    
-  private:
-    void zoom_action(double direction, int zx, int zy);
-    
-    GL_viewer_functor* callback;
-    GL_image_panel* widget;
-    
-    bool panning = false;
-    QPoint pan;
-    QPoint click;
-    
-    bool zooming = false;
-    QPoint zoom_pos;
-    QPoint zoom_pos_temp;
-    
-    QPoint last_mouse_pos;
-    
-    bool must_update_bars = true;
-    bool is_clickable = false;
-    
-  public slots:
-    void clear_overlay();
+    QString program;
+    QStringList arguments;
+    QString img_filename;
+    QString tmp_dirname;
+    QString exif_filename;
 };
 
 #endif

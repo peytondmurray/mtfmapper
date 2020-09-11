@@ -28,6 +28,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include <QtWidgets>
 #include "mtfmapper_app.h"
+#include "gl_viewer_functor_annotated.h"
 
 #include "worker_thread.h"
 #include "common.h"
@@ -41,7 +42,7 @@ using std::endl;
 using std::string; 
  
 mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
-  : processor(this), sfr_dialog(nullptr)
+  : processor(this), sfr_dialog(nullptr) 
 {
 
     img_comment_label = new QLabel("Comment: ");
@@ -71,8 +72,6 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     focus_distance_value->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     focus_distance_value->setStyleSheet("QLabel { color : SteelBlue; }");
 
-    
-    //img_frame = new Img_frame(this);
     img_frame = new QFrame(this);
     
     tb_img_annotated = new QCheckBox("Annotated image");
@@ -88,8 +87,10 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_ca = new QCheckBox("Chromatic aberration");
     tb_img_ca->setChecked(true);
     
-    img_viewer = new GL_image_viewer(this);
-    img_panel = new GL_image_panel(img_viewer);
+    annotated_functor = std::unique_ptr<GL_viewer_functor>(new GL_viewer_functor_annotated(this));
+    
+    img_viewer = new GL_image_viewer(this, annotated_functor.get());
+    img_panel = new GL_image_panel_dots(img_viewer);
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);
     
@@ -174,6 +175,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     file_menu = new QMenu(tr("&File"), this);
     file_menu->addAction(open_act);
+    //file_menu->addAction(open_manual_roi_act); // TODO: enable this once this feature is complete
     file_menu->addAction(open_roi_act);
     file_menu->addAction(open_focus_act);
     file_menu->addAction(open_imatest_act);
@@ -204,7 +206,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(settings, SIGNAL(set_cache_size(int)), this, SLOT(set_cache_size(int)));
     connect(settings, SIGNAL(settings_saved()), this, SLOT(settings_saved()));
 
-    connect(&processor, SIGNAL(send_all_done()), this, SLOT(hide_abort_button()));
+    connect(&processor, SIGNAL(send_all_done()), this, SLOT(processor_completed()));
     connect(abort_button, SIGNAL(clicked()), &processor, SLOT(receive_abort()));
     
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_clear_button()));
@@ -218,6 +220,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
 
     connect(&processor, SIGNAL(send_all_done()), this, SLOT(enable_file_open()));
     connect(&processor, SIGNAL(mtfmapper_call_failed(Worker_thread::failure_t, const QString&)), this, SLOT(mtfmapper_call_failed(Worker_thread::failure_t, const QString&)));
+    connect(&processor, SIGNAL(send_processing_command(const Processing_command&)), this, SLOT(add_manual_roi_file(const Processing_command&)));
 
     zoom_scroll_tt = QString(
         "Use <ctrl>+scroll-wheel to zoom in/out, or\n"
@@ -257,9 +260,10 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     qgs.render(&painter);
     img_panel->set_default_image(icon_image);
     
-    
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
+    
+    edge_select_dialog = new Edge_select_dialog(this);
     
     settings->send_argument_string(false);
     check_if_helpers_exist();
@@ -355,6 +359,10 @@ void mtfmapper_app::create_actions(void) {
     open_roi_act->setShortcut(tr("Ctrl+E"));
     connect(open_roi_act, SIGNAL(triggered()), this, SLOT(open_roi()));
     
+    open_manual_roi_act = new QAction(tr("Open with &manual edge selection ..."), this);
+    open_manual_roi_act->setShortcut(tr("Ctrl+M"));
+    connect(open_manual_roi_act, SIGNAL(triggered()), this, SLOT(open_manual_roi()));
+    
     open_focus_act = new QAction(tr("Open &Focus Position image(s)..."), this);
     open_focus_act->setShortcut(tr("Ctrl+F"));
     connect(open_focus_act, SIGNAL(triggered()), this, SLOT(open_focus()));
@@ -405,6 +413,10 @@ void mtfmapper_app::open_roi() {
     open_action(true, false);
 }
 
+void mtfmapper_app::open_manual_roi() {
+    open_action(false, false, false, true);
+}
+
 void mtfmapper_app::open_focus() {
     open_action(false, true);
 }
@@ -413,7 +425,7 @@ void mtfmapper_app::open_imatest_chart() {
     open_action(false, false, true);
 }
  
-void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
+void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_roi) {
 
     QFileDialog* open_dialog = new QFileDialog(this, tr("Select input files"), QString(), QString());
     open_dialog->setOption(QFileDialog::DontUseNativeDialog);
@@ -474,6 +486,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest) {
             processor.set_single_roi_mode(roi);
             processor.set_focus_mode(focus);
             processor.set_imatest_mode(imatest);
+            processor.set_manual_roi_mode(manual_roi);
             processor.set_files(input_files);
             processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
             processor.set_dcraw_binary(settings->helpers->get_dcraw_binary());
@@ -574,8 +587,29 @@ void mtfmapper_app::item_for_deletion(QString s) {
 }
 
 
-void mtfmapper_app::hide_abort_button(void) {
+void mtfmapper_app::processor_completed(void) {
     abort_button->hide();
+    printf("Manual ROI list has %d entries\n", (int)manual_roi_commands.size());
+    
+    for (auto& command: manual_roi_commands) {
+        edge_select_dialog->show(); // NB: we must show the dialog before we call load_image
+        edge_select_dialog->load_image(command.img_filename);
+        vector<std::pair<Worker_thread::failure_t, QString>> failures;
+        
+        if (edge_select_dialog->exec()) {
+            printf("edge selected\n");
+            // TODO: this does actually work, but because we are not using a separate thread, the GUI locks up for a moment
+            // on large images. We really should put the "process" in a separate thread somehow
+            processor.process_command(command, failures);
+            for (auto& f: failures) {
+                mtfmapper_call_failed(f.first, f.second);
+            }
+        } else {
+            printf("es dismissed\n");
+            // TODO: at minimum we want to delete the exif output file, possibly the raw conversion
+        }
+    }
+    manual_roi_commands.clear();
 }
 
 void mtfmapper_app::enable_clear_button(void) {
@@ -830,7 +864,7 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
             found = true;
             if (!sfr_dialog) {
                 sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
-                connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_dots()));
+                connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
                 connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
             } else {
                 if (shift_down) {
@@ -838,7 +872,7 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
                 } else {
                     delete sfr_dialog;
                     sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
-                    connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_dots()));
+                    connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
                 }
             }
             
@@ -950,3 +984,6 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, cons
     }
 }
 
+void mtfmapper_app::add_manual_roi_file(const Processing_command& command) {
+    manual_roi_commands.push_back(command);
+}

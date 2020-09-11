@@ -30,8 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
-GL_image_viewer::GL_image_viewer(mtfmapper_app* parent)
-: QAbstractScrollArea(parent), parent_app(parent) {
+GL_image_viewer::GL_image_viewer(QWidget* parent, GL_viewer_functor* callback)
+: QAbstractScrollArea(parent), callback(callback) {
 
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -156,12 +156,9 @@ void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
         if (is_clickable && d < 10) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
             
             QPoint img_coords = widget->locate(click);
-            bool valid = parent_app->edge_selected(img_coords.x(), img_coords.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier));
             
-            if (valid) {
-                widget->click_marker(img_coords, event->modifiers() == Qt::ShiftModifier);
-                widget->update();
-            }
+            callback->release(img_coords.x(), img_coords.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier));
+            
         } 
         panning = false;
         setCursor(Qt::ArrowCursor);
@@ -172,6 +169,8 @@ void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
 }
 
 void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
+    
+    
     if (panning) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() - (event->x() - pan.x()));
         verticalScrollBar()->setValue(verticalScrollBar()->value() - (event->y() - pan.y()));
@@ -186,6 +185,10 @@ void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
             zoom_pos_temp = event->pos();
             zoom_action(dist, zoom_pos.x(), zoom_pos.y());
         }
+        
+    } else {
+       QPoint img_coords = widget->locate(event->pos());
+       callback->move(img_coords.x(), img_coords.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier)); 
     }
     event->ignore();
 }
@@ -221,7 +224,7 @@ void GL_image_viewer::set_clickable(bool b) {
     is_clickable = b;
 }
 
-void GL_image_viewer::clear_dots(void) {
-    widget->clear_dots();
+void GL_image_viewer::clear_overlay(void) {
+    widget->clear_overlay();
     widget->update();
 }
