@@ -34,6 +34,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <cmath>
 
+int GL_image_panel::program_counter = 0;
+
 GL_image_panel::GL_image_panel(QWidget *parent)
     : QOpenGLWidget(parent),
       program(0) {
@@ -60,20 +62,18 @@ QSize GL_image_panel::sizeHint() const {
 }
 
 void GL_image_panel::initializeGL() {
-
     initializeOpenGLFunctions();
     logger.debug("initializeGL: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
     
     load_image(*default_image);
-    make_dots();
 
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_MULTISAMPLE);
 
-    #define PROGRAM_VERTEX_ATTRIBUTE 0
-    #define PROGRAM_TEXCOORD_ATTRIBUTE 1
+//    #define prog_vert_att 0
+//    #define prog_texcoord_att 1
     
     // shader program for main texture image
     QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
@@ -105,54 +105,15 @@ void GL_image_panel::initializeGL() {
     program = new QOpenGLShaderProgram;
     program->addShader(vshader);
     program->addShader(fshader);
-    program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
-    program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
+    program->bindAttributeLocation("vertex", prog_vert_att);
+    program->bindAttributeLocation("texCoord", prog_texcoord_att);
     program->link();
 
     program->bind();
     program->setUniformValue("texture", 0);
     
-    // shader program for click-dots
-    QOpenGLShader *dots_vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
-    const char *dots_vsrc =
-        "#version 120\n"
-        "attribute highp vec4 vertex;\n"
-        "attribute mediump vec4 texCoord;\n"
-        "varying mediump vec4 texc;\n"
-        "uniform mediump mat4 projectionMatrix;\n"
-        "uniform mediump mat4 modelMatrix;\n"
-        "uniform mediump mat4 viewMatrix;\n"
-        "void main(void)\n"
-        "{\n"
-        "    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vertex;\n"
-        "    texc = texCoord;\n"
-        "}\n";
-    dots_vshader->compileSourceCode(dots_vsrc);
-    
-    QOpenGLShader *dots_fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
-    const char *dots_fsrc =
-        "#version 120\n"
-        "uniform vec4 dcolour;\n"
-        "uniform sampler2D texture;\n"
-        "varying mediump vec4 texc;\n"
-        "void main(void)\n"
-        "{\n"
-        "    vec2 uv = texc.st - vec2(0.5, 0.5);\n"
-        "    float dist = sqrt(dot(uv, uv));\n"
-        "    float t = smoothstep(0.3, 0.5, dist);\n"
-        "    gl_FragColor = vec4(dcolour.xyz, 1 - t);\n"
-        "}\n";
-    dots_fshader->compileSourceCode(dots_fsrc);
-    
-    dots_program = new QOpenGLShaderProgram;
-    dots_program->addShader(dots_vshader);
-    dots_program->addShader(dots_fshader);
-    dots_program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
-    dots_program->bindAttributeLocation("texCoord", PROGRAM_TEXCOORD_ATTRIBUTE);
-    dots_program->link();
-
-    dots_program->bind();
-    dots_program->setUniformValue("texture", 0);
+    // call any initialization code in derived classes
+    initialize_overlay();
 }
 
 void GL_image_panel::paintGL() {
@@ -169,7 +130,7 @@ void GL_image_panel::paintGL() {
     view.translate(-vp.centre.x + int(w/2), -vp.centre.y + int(h/2));
     view.scale(scale_factor);
     
-    QMatrix4x4 projection;
+    projection = QMatrix4x4();
     projection.ortho(0, w, h, 0, -1, 1);
     
     program->bind();
@@ -177,10 +138,10 @@ void GL_image_panel::paintGL() {
     program->setUniformValue("projectionMatrix", projection);
     
     vbo.bind();
-    program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
-    program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
-    program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
-    program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
+    program->enableAttributeArray(prog_vert_att);
+    program->enableAttributeArray(prog_texcoord_att);
+    program->setAttributeBuffer(prog_vert_att, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
+    program->setAttributeBuffer(prog_texcoord_att, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
 
     
     for (int i = 0; i < (int)textures.size(); i++) {
@@ -188,71 +149,12 @@ void GL_image_panel::paintGL() {
         glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
     }
     
-    QMatrix4x4 model;
-    
-    
-    dots_program->bind();
-    dots_program->setUniformValue("viewMatrix", view);
-    dots_program->setUniformValue("projectionMatrix", projection);
-    
-    dots_vbo.bind();
-    dots_program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
-    dots_program->enableAttributeArray(PROGRAM_TEXCOORD_ATTRIBUTE);
-    dots_program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
-    dots_program->setAttributeBuffer(PROGRAM_TEXCOORD_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
-    
-    constexpr double colours[3][3] = {
-        {0.129, 0.627, 0.875},
-        {0.604, 0.792, 0.329},
-        {0.965, 0.651, 0.149}
-    };
-    
-    if (dot_list[current_fname].size() > 0) {
-        for (const auto& s: dot_list[current_fname]) {
-            if (s.dot_no >= 1 && s.dot_no <= 3) {
-                int j = s.dot_no - 1;
-                draw_dot(s.p.x(), s.p.y(), colours[j][0], colours[j][1], colours[j][2]);    
-            }
-        }
-    }
-}
-
-void GL_image_panel::draw_dot(double x, double y, double r, double g, double b) {
-    double lsf = 1.0;
-    if (scale_factor < 1) {
-        lsf = 0.5/scale_factor + 0.75;
-    }
-    if (scale_factor == 1.0) {
-        lsf = 1.25;
-    }
-  
-    QMatrix4x4 model = QMatrix4x4();
-    model = QMatrix4x4();
-    model.translate(x, y, 0.1);
-    model.scale(1.2*lsf);
-    dots_program->setUniformValue("modelMatrix", model);
-    dots_program->setUniformValue("dcolour", 1, 1, 1, 1.0);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    
-    model = QMatrix4x4();
-    model.translate(x, y, 0.2);
-    model.scale(1.05*lsf);
-    dots_program->setUniformValue("modelMatrix", model);
-    dots_program->setUniformValue("dcolour", 0, 0, 0, 1.0);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    
-    
-    model = QMatrix4x4();
-    model.translate(x, y, 0.3);
-    model.scale(lsf);
-    dots_program->setUniformValue("modelMatrix", model);
-    dots_program->setUniformValue("dcolour", r, g, b, 1.0);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    // call any paint code in derived classes
+    paint_overlay();
 }
 
 
-void GL_image_panel::resizeGL(int /*width*/, int /*height*/) {
-    
+void GL_image_panel::resizeGL([[maybe_unused]] int width, [[maybe_unused]] int height) {
     double w = size().width();
     double h = size().height();
     if (imgsize.width() > w || imgsize.height() > h) {
@@ -273,16 +175,16 @@ static int next_pow2(uint32_t x) {
 }
 
 void GL_image_panel::load_image(const QString& fname) {
-    if (fname.toStdString().compare(current_fname) == 0) {
+    if (cache_enabled && fname.toStdString().compare(current_fname) == 0) {
         return;
     }
     
     cv::Mat cvimg;
-    if (image_cache.find(fname.toStdString()) != image_cache.end()) {
+    if (cache_enabled && image_cache.find(fname.toStdString()) != image_cache.end()) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
         cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
-
+        
         if (cvimg.depth() != CV_8U) {
             logger.debug("Input image %s was not 8-bit, so we will convert it with scaling\n", fname.toStdString().c_str());
             cv::Mat dst;
@@ -299,8 +201,10 @@ void GL_image_panel::load_image(const QString& fname) {
             sptr += 3;
         }
         
-        image_cache[fname.toStdString()] = Cache_entry(cvimg);
-        image_cache_size += image_cache[fname.toStdString()].size();
+        if (cache_enabled) {
+            image_cache[fname.toStdString()] = Cache_entry(cvimg);
+            image_cache_size += image_cache[fname.toStdString()].size();
+        }
         
         trim_cache();
     }
@@ -318,16 +222,25 @@ void GL_image_panel::load_image(QImage& qimg) {
 }
 
 void GL_image_panel::load_image(cv::Mat cvimg) {
+    // Some other GLWidget could have the current context, so it is vital that
+    // we switch the context before we attempt to change resources like textures
+    makeCurrent();
+    
     bool keep_zoom = false;
 
+    vbo.release();
     vbo.destroy();
     for (int i=0; i < (int)textures.size(); i++) {
+        textures[i]->release();
+        textures[i]->destroy();
         delete textures[i];
     }
     textures.clear();
     
-    int hw_texw = 0;
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hw_texw);
+    static GLsizei hw_texw = 0;
+    if (hw_texw == 0) { // we only really have to call this once 
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hw_texw);
+    }
     
     int texw = std::min(hw_texw, 2048); // we do not want the last block to become too large
     
@@ -419,42 +332,10 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     reset_scroll_range();
     
     vbo.create();
+    vbo.setUsagePattern(QOpenGLBuffer::DynamicDraw);
     vbo.bind();
     vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
-}
-
-void GL_image_panel::make_dots(void) {
-    QVector<GLfloat> vd;
-    
-    const double rad = 10;
-    vd.append(-rad);
-    vd.append(-rad);
-    vd.append(0.1);
-    vd.append(0);
-    vd.append(0);
-    
-    vd.append(rad);
-    vd.append(-rad);
-    vd.append(0.1);
-    vd.append(1);
-    vd.append(0);
-    
-    vd.append(rad);
-    vd.append(rad);
-    vd.append(0.1);
-    vd.append(1);
-    vd.append(1);
-    
-    vd.append(-rad);
-    vd.append(rad);
-    vd.append(0.1);
-    vd.append(0);
-    vd.append(1);
-    
-
-    dots_vbo.create();
-    dots_vbo.bind();
-    dots_vbo.allocate(vd.constData(), vd.count() * sizeof(GLfloat));
+    update();
 }
 
 void GL_image_panel::move(int nx, int ny) {
@@ -514,42 +395,9 @@ QPoint GL_image_panel::locate(QPoint pos) {
     double ix = p.x() + iw/2;
     double iy = p.y() + ih/2;
     
-    dot_pos = QPoint(ix, iy);
+    located_pos = QPoint(ix, iy);
     
-    return dot_pos;
-}
-
-
-void GL_image_panel::click_marker(QPoint pos, bool add) {
-    
-    int ix = pos.x() - imgsize.width()/2;
-    int iy = pos.y() - imgsize.height()/2;
-    
-    int dot_no = 0;
-    for (auto it=dot_list.begin(); it != dot_list.end(); it++) {
-        dot_no += it->second.size();
-    }
-    
-    if (add) {
-        if (dot_no < 3) {
-            dot_list[current_fname].push_back(Sfr_marker(ix, iy, dot_no + 1));
-        } else {
-            // just rebuild the whole list, skipping the one we are replacing
-            std::map<std::string, vector<Sfr_marker> > new_cache;
-            for (const auto& f: dot_list) {
-                for (const auto& s: f.second) {
-                    if (s.dot_no != dot_no) {
-                        new_cache[f.first].push_back(s);
-                    }
-                }
-            }
-            dot_list = new_cache;
-            dot_list[current_fname].push_back(Sfr_marker(ix, iy, dot_no));
-        }
-    } else {
-        dot_list.clear();
-        dot_list[current_fname].push_back(Sfr_marker(ix, iy, 1));
-    }
+    return located_pos;
 }
 
 // A bit of a hack, but this is required to ensure that small images remain

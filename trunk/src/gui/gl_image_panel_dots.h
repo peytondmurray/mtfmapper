@@ -1,5 +1,5 @@
 /*
-Copyright 2011 Frans van den Bergh. All rights reserved.
+Copyright 2020 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,55 +25,28 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GL_IMAGE_VIEWER_H
-#define GL_IMAGE_VIEWER_H
+#ifndef GL_IMAGE_PANEL_DOTS_H
+#define GL_IMAGE_PANEL_DOTS_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QAbstractScrollArea>
-#include "gl_viewer_functor.h"
 #include "gl_image_panel.h"
 
-class GL_image_viewer : public QAbstractScrollArea {
-    Q_OBJECT
-    
+class GL_image_panel_dots : public GL_image_panel {
   public:
-    explicit GL_image_viewer(QWidget* parent, GL_viewer_functor* callback);
+    explicit GL_image_panel_dots(QWidget *parent = 0);
     
-    bool viewportEvent(QEvent* e);
-    void scrollContentsBy(int dx, int dy);
-    void wheelEvent(QWheelEvent* e);
-    
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void keyPressEvent(QKeyEvent* event);
-    
-    void set_GL_widget(GL_image_panel* w);
-    void load_image(const QString& fname);
-    void load_image(QImage* qimg);
-    void set_clickable(bool b);
+    virtual void click_marker(QPoint pos, bool add=false);
+    virtual void clear_overlay(void) { dot_list.clear(); }
+    virtual void initialize_overlay(void) override;
+    virtual void paint_overlay(void);
     
   private:
-    void zoom_action(double direction, int zx, int zy);
+    void make_dots();
+    void draw_dot(double x, double y, double r, double g, double b);
     
-    GL_viewer_functor* callback;
-    GL_image_panel* widget;
-    
-    bool panning = false;
-    QPoint pan;
-    QPoint click;
-    
-    bool zooming = false;
-    QPoint zoom_pos;
-    QPoint zoom_pos_temp;
-    
-    QPoint last_mouse_pos;
-    
-    bool must_update_bars = true;
-    bool is_clickable = false;
-    
-  public slots:
-    void clear_overlay();
+    QOpenGLShaderProgram* dots_program;
+    QOpenGLBuffer dots_vbo;
+    std::map<std::string, vector<Sfr_marker> > dot_list;
 };
 
 #endif
+

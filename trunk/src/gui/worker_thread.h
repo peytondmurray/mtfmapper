@@ -28,6 +28,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef WORKER_THREAD_H
 #define WORKER_THREAD_H
 
+#include "processing_command.h"
+
+#include <vector>
+using std::vector;
+
 #include <QThread>
 #include <QStringList>
 #include <QStandardItemModel>
@@ -54,6 +59,9 @@ class Worker_thread : public QThread
     const QStandardItemModel& get_output_files(void) {
         return output_files;
     }
+    
+    void process_command(const Processing_command& command, 
+        vector<std::pair<failure_t, QString>>& failures);
 
     void set_gnuplot_binary(const QString& s) {
         gnuplot_binary = s;
@@ -79,6 +87,10 @@ class Worker_thread : public QThread
         force_imatest_mode = v;
     }
     
+    void set_manual_roi_mode(bool v) {
+        force_manual_roi_mode = v;
+    }
+    
     QString update_arguments(QString& s);
     
   signals:
@@ -91,6 +103,8 @@ class Worker_thread : public QThread
     void send_progress_indicator(int p);
     void send_all_done(void);
     void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
+    
+    void send_processing_command(const Processing_command& command);
     
   public slots:
     void receive_arg_string(QString s);
@@ -107,6 +121,7 @@ class Worker_thread : public QThread
     bool force_roi_mode = false;
     bool force_focus_mode = false;
     bool force_imatest_mode = false;
+    bool force_manual_roi_mode = false;
     
     int tempdir_number;
 

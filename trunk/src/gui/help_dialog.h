@@ -44,7 +44,7 @@ class Help_dialog : public QDialog
     Help_dialog(QWidget *parent);
 
   private:
-	QTextBrowser *body;
+    QTextBrowser* body;
     QPushButton* dismiss_button;
     QString      body_text;
     

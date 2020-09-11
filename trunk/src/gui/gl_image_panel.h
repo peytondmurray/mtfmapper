@@ -25,8 +25,8 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GLWIDGET_H
-#define GLWIDGET_H
+#ifndef GL_IMAGE_PANEL_H
+#define GL_IMAGE_PANEL_H
 
 #include <vector>
 using std::vector;
@@ -67,52 +67,57 @@ public:
     
     void move(int nx, int ny);
     QPoint zoom(int step, int x, int y);
-    
     QPoint locate(QPoint pos);
-    void click_marker(QPoint pos, bool add=false);
     void load_image(const QString& fname);
     void load_image(QImage& qimg);
     void set_cache_size(uint64_t size);
-    void clear_dots(void) { dot_list.clear(); }
+    void set_cache_state(bool s) { cache_enabled = s; }
+    
+    virtual void click_marker(QPoint pos, bool add=false) = 0;
+    virtual void clear_overlay(void) = 0;
+    virtual void initialize_overlay(void) = 0;
+    virtual void paint_overlay(void) = 0;
+    
     void set_default_image(QImage* qimg) { default_image = qimg; }
     Image_viewport get_viewport(void) { return vp; }
+    
+    static int program_counter;
 
 protected:
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int width, int height) override;
-
-private:
-    void make_dots();
-    void draw_dot(double x, double y, double r, double g, double b);
     void load_image(cv::Mat cvimg);
     void reset_scroll_range(void);
     void trim_cache(void);
-
-    QColor clearColor;
-    QPoint lastPos;
+    
+    QMatrix4x4 view;
+    QMatrix4x4 projection;
+    std::string current_fname;
+    
+    QSize imgsize = QSize(0,0);
+    double scale_factor = 1.0;
+    
+    QPoint located_pos;
+    
+    
+    static constexpr int prog_vert_att = 0;
+    static constexpr int prog_texcoord_att = 1;
+    
+private:
     vector<QOpenGLTexture*> textures;
     QOpenGLShaderProgram* program;
     QOpenGLBuffer vbo;
     
-    QOpenGLShaderProgram* dots_program;
-    QOpenGLBuffer dots_vbo;
-    
     std::map<std::string, Cache_entry> image_cache;
     uint64_t image_cache_size = 0;
     uint64_t max_image_cache_size = uint64_t(1) << 30;
-    std::map<std::string, vector<Sfr_marker> > dot_list;
+    bool cache_enabled = true;
     
-    QSize imgsize = QSize(0,0);
     
-    QMatrix4x4 view;
-    
-    double scale_factor = 1.0;
     Image_viewport vp;
     
-    QImage* default_image;
-    QPoint dot_pos;
-    std::string current_fname;
+    QImage* default_image = nullptr;
 };
 
 #endif

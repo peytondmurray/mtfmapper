@@ -1,5 +1,5 @@
 /*
-Copyright 2011 Frans van den Bergh. All rights reserved.
+Copyright 2020 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,55 +25,37 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef GL_IMAGE_VIEWER_H
-#define GL_IMAGE_VIEWER_H
+#ifndef GL_VIEWER_FUNCTOR_ANNOTATED_H
+#define GL_VIEWER_FUNCTOR_ANNOTATED_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QAbstractScrollArea>
 #include "gl_viewer_functor.h"
-#include "gl_image_panel.h"
+#include "mtfmapper_app.h"
 
-class GL_image_viewer : public QAbstractScrollArea {
-    Q_OBJECT
-    
+class GL_viewer_functor_annotated : public GL_viewer_functor {
   public:
-    explicit GL_image_viewer(QWidget* parent, GL_viewer_functor* callback);
     
-    bool viewportEvent(QEvent* e);
-    void scrollContentsBy(int dx, int dy);
-    void wheelEvent(QWheelEvent* e);
+    GL_viewer_functor_annotated(mtfmapper_app* app)
+    : app(app) {}
     
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void keyPressEvent(QKeyEvent* event);
+    bool release(int px, int py, bool ctrl_down, bool shift_down) override {
     
-    void set_GL_widget(GL_image_panel* w);
-    void load_image(const QString& fname);
-    void load_image(QImage* qimg);
-    void set_clickable(bool b);
+        bool valid = app->edge_selected(px, py, ctrl_down, shift_down);
+            
+        if (valid) {
+            app->get_GL_panel()->click_marker(QPoint(px, py), shift_down);
+            app->get_GL_panel()->update();
+        }
+        
+        return valid;
+    }
     
-  private:
-    void zoom_action(double direction, int zx, int zy);
+    bool move([[maybe_unused]] int px, [[maybe_unused]] int py, 
+        [[maybe_unused]] bool ctrl_down, [[maybe_unused]] bool shift_down) override {
+        
+        return false;
+    }
     
-    GL_viewer_functor* callback;
-    GL_image_panel* widget;
-    
-    bool panning = false;
-    QPoint pan;
-    QPoint click;
-    
-    bool zooming = false;
-    QPoint zoom_pos;
-    QPoint zoom_pos_temp;
-    
-    QPoint last_mouse_pos;
-    
-    bool must_update_bars = true;
-    bool is_clickable = false;
-    
-  public slots:
-    void clear_overlay();
+    mtfmapper_app* app;
 };
 
 #endif
