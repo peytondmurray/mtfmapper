@@ -72,9 +72,6 @@ void GL_image_panel::initializeGL() {
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_MULTISAMPLE);
 
-//    #define prog_vert_att 0
-//    #define prog_texcoord_att 1
-    
     // shader program for main texture image
     QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
     const char *vsrc =
