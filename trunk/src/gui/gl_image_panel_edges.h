@@ -46,8 +46,11 @@ class GL_image_panel_edges : public GL_image_panel {
     void draw_dot(double x, double y, double r, double g, double b);
     void draw_line(QPointF start, QPointF end, double r, double g, double b);
     void draw_roi(QPointF start, QPointF end, double r, double g, double b);
+    void draw_box(QPointF start, QPointF end, float box_width, double r, double g, double b, double t = 1.0);
     
-    QOpenGLShaderProgram* obj_program; // should be good for any transformed objects
+    QOpenGLShaderProgram* line_program;
+    QOpenGLShaderProgram* box_program;
+    QOpenGLShaderProgram* dots_program;
     
     QOpenGLShaderProgram* edges_program;
     QOpenGLBuffer edges_vbo;
