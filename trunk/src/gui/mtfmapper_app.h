@@ -46,7 +46,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "sfr_entry.h"
 #include "sfr_dialog.h"
 
-#include "gl_viewer_functor.h"
 #include "edge_select_dialog.h"
 
 #include <opencv2/opencv.hpp>
@@ -75,8 +74,6 @@ class mtfmapper_app : public QMainWindow
   public:
     mtfmapper_app(QWidget *parent = 0);
     virtual ~mtfmapper_app(void);
-    GL_image_panel* get_GL_panel(void) const { return img_panel; }
-    
     
     
   protected:
@@ -159,8 +156,6 @@ class mtfmapper_app : public QMainWindow
 
     QIcon* mtfmapper_logo;
     QImage* icon_image;
-    
-    std::unique_ptr<GL_viewer_functor> annotated_functor;
     
     Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;

@@ -32,10 +32,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QMouseEvent>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 
+#include "mtfmapper_app.h"
+
 #include <cmath>
 
-GL_image_panel_dots::GL_image_panel_dots(QWidget *parent)
-    : GL_image_panel(parent) {
+GL_image_panel_dots::GL_image_panel_dots(QWidget *parent, mtfmapper_app* app)
+    : GL_image_panel(parent), app(app) {
       
     logger.debug("GL_image_panel_dots ctor: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
 }
@@ -215,3 +217,37 @@ void GL_image_panel_dots::click_marker(QPoint pos, bool add) {
     }
 }
 
+void GL_image_panel_dots::mousePressEvent(QMouseEvent* event) { 
+    click = event->pos();
+    event->ignore();
+}
+
+static double sqr(double x) {
+    return x*x;
+}
+
+void GL_image_panel_dots::mouseReleaseEvent(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton) {
+        double d = sqrt( sqr(event->pos().x() - click.x()) + sqr(event->pos().y() - click.y()) );
+        
+        if (d < 10) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
+            
+            QPoint img_coords = locate(click);
+            
+            bool shift_down = event->modifiers().testFlag(Qt::ShiftModifier);
+            bool ctrl_down = event->modifiers().testFlag(Qt::ControlModifier);
+            
+            bool valid = app->edge_selected(img_coords.x(), img_coords.y(), ctrl_down, shift_down);
+                
+            if (valid) {
+                click_marker(img_coords, shift_down);
+                update();
+            }
+        } 
+    }
+    event->ignore();
+}
+
+void GL_image_panel_dots::mouseMoveEvent(QMouseEvent* event) {
+    event->ignore();
+}

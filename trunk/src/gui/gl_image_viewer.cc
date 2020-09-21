@@ -30,8 +30,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
-GL_image_viewer::GL_image_viewer(QWidget* parent, GL_viewer_functor* callback)
-: QAbstractScrollArea(parent), callback(callback) {
+GL_image_viewer::GL_image_viewer(QWidget* parent)
+: QAbstractScrollArea(parent) {
 
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -122,11 +122,16 @@ void GL_image_viewer::keyPressEvent(QKeyEvent* event) {
 void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
     last_mouse_pos = event->pos();
     if (event->button() == Qt::LeftButton) {
-        panning = true;
-        pan = event->pos();
-        setCursor(Qt::ClosedHandCursor);
-        click = event->pos();
-        event->accept();
+        
+        widget->mousePressEvent(event);
+        
+        if (!event->isAccepted()) {
+            panning = true;
+            pan = event->pos();
+            setCursor(Qt::ClosedHandCursor);
+            click = event->pos();
+            event->accept();
+        }
         return;
     }
     if (event->button() == Qt::RightButton) {
@@ -140,10 +145,6 @@ void GL_image_viewer::mousePressEvent(QMouseEvent* event) {
     event->ignore();
 }
 
-static double sqr(double x) {
-    return x*x;
-}
-
 void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::RightButton) {
         zooming = false;
@@ -152,13 +153,8 @@ void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
         return;
     }
     if (event->button() == Qt::LeftButton) {
-        double d = sqrt( sqr(event->pos().x() - click.x()) + sqr(event->pos().y() - click.y()) );
-        if (is_clickable && d < 10) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
-            
-            QPoint img_coords = widget->locate(click);
-            
-            callback->release(img_coords.x(), img_coords.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier));
-            
+        if (is_clickable) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
+            widget->mouseReleaseEvent(event);
         } 
         panning = false;
         setCursor(Qt::ArrowCursor);
@@ -169,7 +165,8 @@ void GL_image_viewer::mouseReleaseEvent(QMouseEvent* event) {
 }
 
 void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
-    
+    widget->mouseMoveEvent(event);
+    if (event->isAccepted()) return;
     
     if (panning) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() - (event->x() - pan.x()));
@@ -186,10 +183,7 @@ void GL_image_viewer::mouseMoveEvent(QMouseEvent* event) {
             zoom_action(dist, zoom_pos.x(), zoom_pos.y());
         }
         
-    } else {
-       QPoint img_coords = widget->locate(event->pos());
-       callback->move(img_coords.x(), img_coords.y(), event->modifiers().testFlag(Qt::ControlModifier), event->modifiers().testFlag(Qt::ShiftModifier)); 
-    }
+    } 
     event->ignore();
 }
 

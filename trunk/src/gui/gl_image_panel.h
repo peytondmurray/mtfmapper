@@ -81,6 +81,10 @@ public:
     void set_default_image(QImage* qimg) { default_image = qimg; }
     Image_viewport get_viewport(void) { return vp; }
     
+    void mouseMoveEvent(QMouseEvent* event);
+    void mousePressEvent(QMouseEvent* event);
+    void mouseReleaseEvent(QMouseEvent* event);
+    
     static int program_counter;
 
 protected:
@@ -99,7 +103,7 @@ protected:
     double scale_factor = 1.0;
     
     QPoint located_pos;
-    
+    QPoint click;
     
     static constexpr int prog_vert_att = 0;
     static constexpr int prog_texcoord_att = 1;

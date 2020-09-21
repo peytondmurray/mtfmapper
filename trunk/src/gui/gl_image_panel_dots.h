@@ -30,18 +30,26 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "gl_image_panel.h"
 
+class mtfmapper_app;
+
 class GL_image_panel_dots : public GL_image_panel {
   public:
-    explicit GL_image_panel_dots(QWidget *parent = 0);
+    explicit GL_image_panel_dots(QWidget* parent = 0, mtfmapper_app* app = 0);
     
     virtual void click_marker(QPoint pos, bool add=false);
     virtual void clear_overlay(void) { dot_list.clear(); }
     virtual void initialize_overlay(void) override;
     virtual void paint_overlay(void);
     
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    
   private:
     void make_dots();
     void draw_dot(double x, double y, double r, double g, double b);
+    
+    mtfmapper_app* app = nullptr;
     
     QOpenGLShaderProgram* dots_program;
     QOpenGLBuffer dots_vbo;

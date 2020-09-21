@@ -436,3 +436,17 @@ void GL_image_panel::trim_cache(void) {
     }
 }
 
+void GL_image_panel::mouseMoveEvent(QMouseEvent* event) {
+    event->ignore();
+}
+
+void GL_image_panel::mousePressEvent(QMouseEvent* event) {
+    event->ignore();
+}
+
+void GL_image_panel::mouseReleaseEvent(QMouseEvent* event) {
+    event->ignore();
+}
+
+
+
