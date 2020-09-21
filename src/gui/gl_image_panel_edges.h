@@ -28,7 +28,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #ifndef GL_IMAGE_PANEL_EDGES_H
 #define GL_IMAGE_PANEL_EDGES_H
 
+#include <limits>
+
 #include "gl_image_panel.h"
+
+#include <QPointF>
+#include <array>
+#include <assert.h>
 
 class GL_image_panel_edges : public GL_image_panel {
   public:
@@ -39,14 +45,20 @@ class GL_image_panel_edges : public GL_image_panel {
     virtual void initialize_overlay(void) override;
     virtual void paint_overlay(void) override;
     
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    
     void line_endpoint(QPoint pos);
     
   private:
     void make_dot_vbo();
     void draw_dot(double x, double y, double r, double g, double b);
-    void draw_line(QPointF start, QPointF end, double r, double g, double b);
+    void draw_line(QPointF start, QPointF end, double r, double g, double b, double width = 1.0);
     void draw_roi(QPointF start, QPointF end, double r, double g, double b);
     void draw_box(QPointF start, QPointF end, float box_width, double r, double g, double b, double t = 1.0);
+    void draw_close_symbol(QPointF pos, QPointF dir, double r, double g, double b);
+    void check_roi_boxes_and_handles(QPointF img_coords);
     
     QOpenGLShaderProgram* line_program;
     QOpenGLShaderProgram* box_program;
@@ -56,11 +68,68 @@ class GL_image_panel_edges : public GL_image_panel {
     QOpenGLBuffer edges_vbo;
     
     QOpenGLBuffer dot_vbo;
-    vector<QPoint> dot_list;
     
-    QPoint line_endp;
     
-    //vector<Edge_marker> edge_list;
+    
+    QPointF img_centre;
+    
+    typedef enum {
+        NONE,
+        AFTER_FIRST_CLICK,
+        MOVING,
+        DRAGGING_HANDLE,
+        ROI_SELECTED
+    } state_t;
+    
+    QPoint release_pt;
+    
+    state_t state = NONE;
+    
+    class GL_roi {
+      public:
+        GL_roi(void);
+        GL_roi(QPointF p1, QPointF p2);
+        
+        void add_point(QPointF p);
+        QPointF& get(int i);
+        
+        int handle_selected(QPointF p, double dist_thresh = 10.0);
+        int box_selected(QPointF p, double dist_thresh = 10.0, double width_thresh = 28.0);
+        
+      private:
+        size_t n = 0;  
+        std::array<QPointF, 2> pts;
+    };
+    
+    GL_roi* current_roi = nullptr;
+    int current_roi_handle_idx = -1;
+    vector<GL_roi> rois;
+    
+    class GL_closebox {
+      public:
+        GL_closebox(
+            QPointF handle_a = QPointF(-1, -1), 
+            QPointF handle_b = QPointF(-1, -1), 
+            int img_width = std::numeric_limits<int>::max(), 
+            int img_height = std::numeric_limits<int>::max()
+        );
+        
+        bool selected(QPointF p, double dist_thresh = 10.0);
+        
+        QPointF get_pos(void) { return pos; }
+        QPointF get_dir(void) { return dir; }
+        
+        bool is_valid(void) const { return valid; }
+        void make_valid(void) { valid = true; }
+        void make_invalid(void) { valid = false; }
+        
+      private:
+        QPointF pos;
+        QPointF dir;
+        bool valid = false;
+    };
+    
+    GL_closebox closebox;
 };
 
 #endif

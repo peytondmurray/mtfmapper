@@ -30,14 +30,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QAbstractScrollArea>
-#include "gl_viewer_functor.h"
 #include "gl_image_panel.h"
 
 class GL_image_viewer : public QAbstractScrollArea {
     Q_OBJECT
     
   public:
-    explicit GL_image_viewer(QWidget* parent, GL_viewer_functor* callback);
+    explicit GL_image_viewer(QWidget* parent);
     
     bool viewportEvent(QEvent* e);
     void scrollContentsBy(int dx, int dy);
@@ -56,7 +55,6 @@ class GL_image_viewer : public QAbstractScrollArea {
   private:
     void zoom_action(double direction, int zx, int zy);
     
-    GL_viewer_functor* callback;
     GL_image_panel* widget;
     
     bool panning = false;

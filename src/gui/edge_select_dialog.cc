@@ -27,8 +27,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
 #include <QtWidgets> 
 #include "edge_select_dialog.h"
-#include "gl_viewer_functor_edgeselect.h"
-#include "gl_viewer_functor_annotated.h"
 
 Edge_select_dialog::Edge_select_dialog(QWidget* parent)
  : QDialog(parent), parent(parent) {
@@ -39,14 +37,11 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     proceed_button = new QPushButton("Proceed");
     proceed_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 
-    edge_functor = std::unique_ptr<GL_viewer_functor>(new GL_viewer_functor_edgeselect);
-    
-    img_viewer = new GL_image_viewer(parent, edge_functor.get());
+    img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
     
     img_panel = new GL_image_panel_edges(img_viewer);
     img_panel->setMouseTracking(true);
-    ((GL_viewer_functor_edgeselect*)edge_functor.get())->set_panel((GL_image_panel_edges*)img_panel); // TODO: there has to be a more elegant way ...
     
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);

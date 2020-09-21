@@ -28,7 +28,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/logger.h"
 #include <QtWidgets>
 #include "mtfmapper_app.h"
-#include "gl_viewer_functor_annotated.h"
 
 #include "worker_thread.h"
 #include "common.h"
@@ -87,10 +86,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_ca = new QCheckBox("Chromatic aberration");
     tb_img_ca->setChecked(true);
     
-    annotated_functor = std::unique_ptr<GL_viewer_functor>(new GL_viewer_functor_annotated(this));
-    
-    img_viewer = new GL_image_viewer(this, annotated_functor.get());
-    img_panel = new GL_image_panel_dots(img_viewer);
+    img_viewer = new GL_image_viewer(this);
+    img_panel = new GL_image_panel_dots(img_viewer, this);
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);
     

@@ -32,7 +32,6 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "gl_image_viewer.h"
 #include "gl_image_panel_edges.h"
-#include "gl_viewer_functor.h"
 
 
 class QPushButton;
@@ -52,7 +51,6 @@ class Edge_select_dialog : public QDialog {
     GL_image_panel*   img_panel;
     QPushButton*      dismiss_button;
     QPushButton*      proceed_button;
-    std::unique_ptr<GL_viewer_functor> edge_functor;
     QWidget* parent = nullptr;
     QImage* icon_image;
     
