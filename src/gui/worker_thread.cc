@@ -326,6 +326,10 @@ void Worker_thread::process_command(const Processing_command& command, vector<st
         if (QFile().exists(fids_file)) {
             emit send_delete_item(fids_file);
         }
+        QString roi_file = QString("%1/rois.txt").arg(tempdir);
+        if (QFile().exists(roi_file)) {
+            emit send_delete_item(roi_file);
+        }
         
         emit send_close_item();
     }

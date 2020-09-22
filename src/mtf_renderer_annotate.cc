@@ -41,20 +41,33 @@ static vector<double> calculate_edge_lengths(const Block& block) {
         n[k] = Point2d(-dir.y, dir.x);
     }
     
-    vector<double> lengths(4, 0);
+    vector<double> lengths;
+    int num_valid = 0;
+    
     for (size_t k=0; k < 4; k++) {
-        size_t min_j = 0;
-        double min_dist = 1e50;
-        for (size_t j=0; j < 4; j++) {
-            Point2d delta = block.get_edge_centroid(k) - base[j];
-            double dist = delta.dot(n[j])/(n[j].dot(n[j]));
-            if (fabs(dist) < min_dist) {
-                min_dist = fabs(dist);
-                min_j = j;
-            }
+        if (block.get_edge_valid(k)) {
+            num_valid++;
+            lengths.push_back(block.get_edge_length(k)*1.1);
         }
-        lengths[min_j] = cv::norm(n[k]);
     }
+    
+    if (num_valid == 4) {
+        lengths.resize(4, 0);
+        for (size_t k=0; k < 4; k++) {
+            size_t min_j = 0;
+            double min_dist = 1e50;
+            for (size_t j=0; j < 4; j++) {
+                Point2d delta = block.get_edge_centroid(k) - base[j];
+                double dist = delta.dot(n[j])/(n[j].dot(n[j]));
+                if (fabs(dist) < min_dist) {
+                    min_dist = fabs(dist);
+                    min_j = j;
+                }
+            }
+            lengths[min_j] = cv::norm(n[k]);
+        }
+    }
+    
     return lengths;
 }
 

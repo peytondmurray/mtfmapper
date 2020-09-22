@@ -172,7 +172,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     file_menu = new QMenu(tr("&File"), this);
     file_menu->addAction(open_act);
-    //file_menu->addAction(open_manual_roi_act); // TODO: enable this once this feature is complete
+    file_menu->addAction(open_manual_roi_act);
     file_menu->addAction(open_roi_act);
     file_menu->addAction(open_focus_act);
     file_menu->addAction(open_imatest_act);
@@ -431,12 +431,17 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
         QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
         QGridLayout* ft_gridbox = new QGridLayout();
         if (ft_gridbox) {
-            ft_gridbox->addWidget(tb_img_annotated, 0, 0);
-            ft_gridbox->addWidget(tb_img_profile, 0, 1);
-            ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
-            ft_gridbox->addWidget(tb_img_lensprofile, 1, 0);
-            ft_gridbox->addWidget(tb_img_orientation, 1, 1);
-            ft_gridbox->addWidget(tb_img_ca, 1, 2);
+            if (manual_roi) {
+                ft_gridbox->addWidget(tb_img_annotated, 0, 0);
+                ft_gridbox->addWidget(tb_img_ca, 0, 1);
+            } else {
+                ft_gridbox->addWidget(tb_img_annotated, 0, 0);
+                ft_gridbox->addWidget(tb_img_profile, 0, 1);
+                ft_gridbox->addWidget(tb_img_gridimg, 0, 2);
+                ft_gridbox->addWidget(tb_img_lensprofile, 1, 0);
+                ft_gridbox->addWidget(tb_img_orientation, 1, 1);
+                ft_gridbox->addWidget(tb_img_ca, 1, 2);
+            }
         }
         v4GroupBox->setLayout(ft_gridbox);
 
@@ -586,24 +591,26 @@ void mtfmapper_app::item_for_deletion(QString s) {
 
 void mtfmapper_app::processor_completed(void) {
     abort_button->hide();
-    printf("Manual ROI list has %d entries\n", (int)manual_roi_commands.size());
     
     for (auto& command: manual_roi_commands) {
+        QString roi_filename = command.tmp_dirname + "/rois.txt";
+        edge_select_dialog->set_size_hint(img_panel->size());
         edge_select_dialog->show(); // NB: we must show the dialog before we call load_image
         edge_select_dialog->load_image(command.img_filename);
+        edge_select_dialog->set_roi_file(roi_filename);
         vector<std::pair<Worker_thread::failure_t, QString>> failures;
         
         if (edge_select_dialog->exec()) {
-            printf("edge selected\n");
             // TODO: this does actually work, but because we are not using a separate thread, the GUI locks up for a moment
             // on large images. We really should put the "process" in a separate thread somehow
-            processor.process_command(command, failures);
+            Processing_command modified_command(command);
+            modified_command.arguments << "--roi-file" << roi_filename;
+            processor.process_command(modified_command, failures);
             for (auto& f: failures) {
                 mtfmapper_call_failed(f.first, f.second);
             }
         } else {
-            printf("es dismissed\n");
-            // TODO: at minimum we want to delete the exif output file, possibly the raw conversion
+            item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
         }
     }
     manual_roi_commands.clear();
