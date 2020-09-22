@@ -45,17 +45,26 @@ class Edge_select_dialog : public QDialog {
     void load_image(QString img_name);
     GL_image_viewer* get_viewer(void) { return img_viewer; }
     GL_image_panel* get_panel(void) { return img_panel; }
+    
+    void set_size_hint(QSize size) { hinted_size = size; }
+    QSize sizeHint(void) const override { return hinted_size; }
+    
+    void set_roi_file(const QString& fname) { roi_file = fname; }
 
   private:
     GL_image_viewer*  img_viewer;
-    GL_image_panel*   img_panel;
-    QPushButton*      dismiss_button;
-    QPushButton*      proceed_button;
+    GL_image_panel_edges*   img_panel;
+    QPushButton*      cancel_button;
+    QPushButton*      accept_button;
     QWidget* parent = nullptr;
     QImage* icon_image;
+    QSize hinted_size = QSize(0, 0);
+    
+    QString roi_file;
     
   public slots:
     void open();
+    void export_roi();
     
 };
 

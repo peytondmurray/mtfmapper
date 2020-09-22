@@ -39,6 +39,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 class GL_image_panel_edges : public GL_image_panel {
   public:
     explicit GL_image_panel_edges(QWidget *parent = 0);
+    bool save_rois(const QString& fname);
     
     virtual void click_marker(QPoint pos, bool add=false) override;
     virtual void clear_overlay(void) override;
@@ -68,8 +69,6 @@ class GL_image_panel_edges : public GL_image_panel {
     QOpenGLBuffer edges_vbo;
     
     QOpenGLBuffer dot_vbo;
-    
-    
     
     QPointF img_centre;
     

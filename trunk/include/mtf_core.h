@@ -194,7 +194,13 @@ class Mtf_core {
         return mtf_contrast;
     }
     
-    void process_image_as_roi(void);
+    void process_image_as_roi(
+        const cv::Rect2i& bounds, 
+        cv::Point2d handle_a = cv::Point2d(-1e11, -1e11),
+        cv::Point2d handle_b = cv::Point2d(-1e11, -1e11)
+    );
+    
+    void process_manual_rois(const string& roi_fname);
     
     void set_esf_model(std::unique_ptr<Esf_model>&& model) {
         esf_model = std::move(model);
@@ -268,6 +274,73 @@ class Mtf_core {
     void process_with_sliding_window(Mrectangle& rrect);
     bool homogenous(const Point2d& cent, int label, const Mrectangle& rrect) const;
     bool single_roi_mode = false;
+    
+    class Rect_roi {
+      public:
+        Rect_roi(const Point2d& a, const Point2d& b, double half_width) 
+        : half_width(half_width), base(a) {
+            dir = b - a;
+            len = norm(dir);
+            if (len > 0) {
+                dir *= 1.0/len;
+            }
+            n = Point2d(-dir.y, dir.x);
+        }
+        
+        void activate(void) {
+            active = true;
+        }
+        
+        inline bool inside(const Point2d& p) const {
+            if (!active) return true;
+            
+            Point2d d(p - base);
+            return d.dot(dir) >= 0 && d.dot(dir) <= len &&
+                fabs(d.dot(n)) <= half_width;
+        }
+        
+        inline bool inside(int x, int y) const {
+            return inside(Point2d(x, y));
+        }
+        
+        cv::Rect2i bounds(const cv::Mat& img) const {
+            vector<Point2d> corners = {
+                base + len*dir - half_width*n,
+                base + len*dir + half_width*n,
+                base - half_width*n,
+                base + half_width*n
+            };
+            
+            Point2d min_v(corners[0]);
+            Point2d max_v(corners[0]);
+            
+            for (auto& c: corners) {
+                min_v.x = std::min(min_v.x, c.x);
+                min_v.y = std::min(min_v.y, c.y);
+                max_v.x = std::max(max_v.x, c.x);
+                max_v.y = std::max(max_v.y, c.y);
+            }
+            
+            min_v.x = std::max(min_v.x, double(0));
+            min_v.y = std::max(min_v.y, double(0));
+            max_v.x = std::min(max_v.x, double(img.cols));
+            max_v.y = std::min(max_v.y, double(img.rows));
+            
+            return cv::Rect2i(
+                lrint(min_v.x), lrint(min_v.y), 
+                lrint(max_v.x), lrint(max_v.y)
+            );
+        }
+        
+      private:
+        double half_width;
+        Point2d base;
+        Point2d dir;
+        Point2d n;
+        double len;
+        
+        bool active = false;
+    };
 };
 
 #endif

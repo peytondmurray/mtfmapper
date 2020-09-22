@@ -166,7 +166,8 @@ void GL_image_panel_edges::paint_overlay(void) {
     
     
     for (auto& r : rois) {
-        draw_line(r.get(0) - img_centre, r.get(1) - img_centre, 0.2, 0.75, 0.75);
+        int col_idx = &r == current_roi ? (closebox.is_valid() ? 1 : 0) : 0;
+        draw_line(r.get(0) - img_centre, r.get(1) - img_centre, colours[col_idx][0], colours[col_idx][1], colours[col_idx][2]);
     }
     
     dots_program->bind();
@@ -409,7 +410,9 @@ void GL_image_panel_edges::mousePressEvent(QMouseEvent* event) {
     
     QPointF img_coords = locate(click);
     
-    if (state == NONE || state == ROI_SELECTED) {
+    if ( (state == NONE || state == ROI_SELECTED) &&
+        !(closebox.is_valid() && closebox.selected(img_coords)) ) {
+        
         for (auto& r: rois) {
             int handle_idx = r.handle_selected(img_coords);
             
@@ -419,6 +422,7 @@ void GL_image_panel_edges::mousePressEvent(QMouseEvent* event) {
                 closebox.make_invalid();
                 state = DRAGGING_HANDLE;
                 any_handle = true;
+                
             }
         }
     }
@@ -426,6 +430,7 @@ void GL_image_panel_edges::mousePressEvent(QMouseEvent* event) {
     if (!any_handle) {
         event->ignore();
     }
+    update();
 }
 
 static double sqr(double x) {
@@ -472,7 +477,7 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
         QPoint img_coords = locate(click);
         QPoint current_img_coords = locate(event->pos());
         
-        if (d <= 1) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
+        if (d <= 2.3) { // mouse "release" close enough to mouse "press" to consider it a click (rather than drag)
             
             switch (state) {
             case NONE:
@@ -530,6 +535,7 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
         }
     }
     event->ignore();
+    update();
 }
 
 void GL_image_panel_edges::mouseMoveEvent(QMouseEvent* event) {
@@ -560,7 +566,37 @@ void GL_image_panel_edges::mouseMoveEvent(QMouseEvent* event) {
         line_endpoint(move_pt);
     }
     
+    // once we start dragging a handle, fudge the original
+    // click coordinates to avoid "picking up" the handle
+    // if you happen to end the drag manouvre close to 
+    // the starting click
+    if (state == DRAGGING_HANDLE) {
+        click = QPoint(-(1 << 28), -(1 << 28));
+    }
+    
     update();
     event->ignore();
+}
+
+bool GL_image_panel_edges::save_rois(const QString& fname) {
+    if (rois.size() == 0) {
+        return false;
+    }
+    
+    FILE* fout = fopen(fname.toLocal8Bit().constData(), "wt");
+    if (!fout) {
+        return false;
+    }
+    
+    for (auto& r : rois) {
+        fprintf(fout, "%.3lf %.3lf %.3lf %.3lf\n",
+            r.get(0).x(), r.get(0).y(),
+            r.get(1).x(), r.get(1).y()
+        );
+    }
+    
+    fclose(fout);
+    
+    return true;
 }
 

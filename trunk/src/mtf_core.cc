@@ -1006,16 +1006,26 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     }
 }
 
+// NB: 'bounds' is interpreted as (xmin, ymin, xmax, ymax)
+void Mtf_core::process_image_as_roi(const cv::Rect2i& bounds, cv::Point2d handle_a, cv::Point2d handle_b) { 
 
-void Mtf_core::process_image_as_roi(void) { 
-    single_roi_mode = true;
+    single_roi_mode = true; // TODO: harmless potential race condition
+    
+    Rect_roi roi(handle_a, handle_b, max_dot);
+    if (handle_a.x > -1e10 && handle_b.x > -1e10 &&
+        handle_a.y > -1e10 && handle_b.y > -1e10) {
+        
+        roi.activate();
+    }
     
     map<int, scanline> scanset;
     Edge_record er;
-    for (int row=0; row < img.rows; row++) {
-        for (int col=0; col < img.cols; col++) {
-            er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
+    for (int row=bounds.y; row < bounds.height; row++) {
+        for (int col=bounds.x; col < bounds.width; col++) {
+        
+            if (!roi.inside(col, row)) continue;
             
+            er.add_point(col, row, fabs(g.grad_x(col, row)), fabs(g.grad_y(col, row)));
             
             if (scanset.find(row) == scanset.end()) {
                 scanset[row] = scanline(col,col);
@@ -1088,11 +1098,14 @@ void Mtf_core::process_image_as_roi(void) {
     std::shared_ptr<Edge_model> em(new Edge_model(cent, Point2d(-normal.y, normal.x)));
     Edge_model* em_p = em.get();
     
-    double diag_len = sqrt(img.rows*img.rows + img.cols*img.cols);
+    double diag_len = sqrt(bounds.height*bounds.height + bounds.width*bounds.width);
     em->hint_point_set_size((int)ceil(diag_len+2), (int)ceil(2*diag_len+4), (int)ceil(2*max_dot + 4));
 
-    for (int row=0; row < img.rows; row++) {
-        for (int col=0; col < img.cols; col++) {
+    for (int row=bounds.y; row < bounds.height; row++) {
+        for (int col=bounds.x; col < bounds.width; col++) {
+            
+            if (!roi.inside(col, row)) continue;
+        
             Point2d p(col, row);
             Point2d d = p - cent;
             double dot = d.x*normal.x + d.y*normal.y;
@@ -1180,7 +1193,38 @@ void Mtf_core::process_image_as_roi(void) {
             block.set_esf(k, vector<double>(FFT_SIZE/2, 0));
         }
         
-        shared_blocks_map[1] = block;
+        shared_blocks_map[1] = block;     // TODO: major concurrency issue here, must fix!
         detected_blocks.push_back(block);
     }
+}
+
+void Mtf_core::process_manual_rois(const string& roi_fname) {
+    FILE* fin = fopen(roi_fname.c_str(), "rt");
+    
+    if (!fin) {
+        logger.error("Could not open --roi-file [%s]\n", roi_fname.c_str());
+        return;
+    }
+    
+    // TODO: we could process all these ROIs in parallel, after loading them
+    while (!feof(fin)) {
+        Point2d handle_a;
+        Point2d handle_b;
+        size_t nread = fscanf(fin, "%lf %lf %lf %lf", 
+            &handle_a.x, &handle_a.y,
+            &handle_b.x, &handle_b.y
+        );
+        
+        if (nread == 4) {
+            printf("going to process %.1lf %.1lf -> %.1lf %.1lf\n", 
+                handle_a.x, handle_a.y,
+                handle_b.x, handle_b.y
+            );
+            
+            Rect_roi roi(handle_a, handle_b, max_dot);
+            process_image_as_roi(roi.bounds(img), handle_a, handle_b);
+        }
+    }
+    
+    fclose(fin);
 }

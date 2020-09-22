@@ -31,11 +31,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 Edge_select_dialog::Edge_select_dialog(QWidget* parent)
  : QDialog(parent), parent(parent) {
 
-    dismiss_button = new QPushButton("Dismiss");
-    dismiss_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    cancel_button = new QPushButton("Cancel");
+    cancel_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     
-    proceed_button = new QPushButton("Proceed");
-    proceed_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    accept_button = new QPushButton("Accept");
+    accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 
     img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
@@ -45,6 +45,7 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);
+    img_viewer->setMinimumSize(QSize(400, 400));
     
     icon_image = new QImage(QSize(256, 256), QImage::Format_RGB888);
     icon_image->fill(Qt::red);
@@ -52,14 +53,16 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     
     QGridLayout* vlayout = new QGridLayout(this);
     vlayout->addWidget(img_viewer, 0, 0, 1, 3);
-    vlayout->addWidget(proceed_button, 1, 0);
-    vlayout->addWidget(dismiss_button, 1, 1);
+    vlayout->addWidget(accept_button, 1, 1);
+    vlayout->addWidget(cancel_button, 1, 2);
     
-    connect(dismiss_button, SIGNAL(clicked()), this, SLOT( close() ));
-    connect(proceed_button, SIGNAL(clicked()), this, SLOT( accept() ));
+    connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
+    connect(accept_button, SIGNAL(clicked()), this, SLOT( export_roi() ));
     
+    setWindowFlags(Qt::Window);
+    setModal(true);
     setLayout(vlayout);
-    setWindowTitle("Select an edge ROI");
+    setWindowTitle("Select one or more edge ROIs");
 }
 
 void Edge_select_dialog::load_image(QString img_name) {
@@ -72,6 +75,15 @@ void Edge_select_dialog::load_image(QString img_name) {
 
 void Edge_select_dialog::open(void) {
     show();
+}
+
+void Edge_select_dialog::export_roi(void) {
+    bool roi_success = img_panel->save_rois(roi_file);
+    if (roi_success) {
+        accept();
+    } else {
+        close();
+    }
 }
 
 

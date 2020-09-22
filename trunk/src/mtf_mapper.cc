@@ -150,6 +150,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_mtf_contrast("", "mtf", "Specify target contrast, e.g., --mtf 30 yields MTF30 results. Range [10, 90], default is 50", false, 50.0, "percentage", cmd);
     TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 13, "unitless", cmd);
     TCLAP::ValueArg<double> tc_surface_max("", "surface-max", "Specify maximum value in MTF50 surface plots", false, -1, "units depend on other settings", cmd);
+    TCLAP::ValueArg<string> tc_roi_file("", "roi-file", "Only process ROIs defined in <roifile>, rather than using automatic target selection", false, "", "<roifile>", cmd);
     #ifdef MDEBUG
     TCLAP::ValueArg<double> tc_ridge("", "ridge", "Specify ridge regression parameter [0,+infy)", false, 5e-8, "unitless", cmd);
     TCLAP::ValueArg<double> tc_noise_seed("", "noise-seed", "Image noise seed", false, 10, "unitless", cmd);
@@ -451,7 +452,7 @@ int main(int argc, char** argv) {
         const int64_t max_boundary_length = std::max(int64_t(8000), boundary_long_side + boundary_short_side);
         Component_labeller cl(masked_img, 60, false, max_boundary_length);
 
-        if (cl.get_boundaries().size() == 0 && !tc_single_roi.getValue()) {
+        if (cl.get_boundaries().size() == 0 && !(tc_single_roi.getValue() || tc_roi_file.isSet())) {
             logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
             return 4;
         }
@@ -537,18 +538,22 @@ int main(int argc, char** argv) {
         Mtf_core_tbb_adaptor ca(&mtf_core);
         
         if (tc_single_roi.getValue()) {
-            mtf_core.process_image_as_roi();
+            mtf_core.process_image_as_roi(cv::Rect2i(0, 0, cvimg.cols, cvimg.rows));
         } else {
-            #ifdef MDEBUG
-            if (tc_single.getValue()) {
-                ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
+            if (tc_roi_file.isSet()) {
+                mtf_core.process_manual_rois(tc_roi_file.getValue());
             } else {
-                logger.debug("Parallel MTF%2d calculation\n", int(mtf_core.get_mtf_contrast()*100));
+                #ifdef MDEBUG
+                if (tc_single.getValue()) {
+                    ca(Stride_range(size_t(0), mtf_core.num_objects()-1, 1));
+                } else {
+                    logger.debug("Parallel MTF%2d calculation\n", int(mtf_core.get_mtf_contrast()*100));
+                    Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
+                }
+                #else
                 Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
+                #endif
             }
-            #else
-            Stride_range::parallel_for(ca, ThreadPool::instance(), mtf_core.num_objects());
-            #endif
         }
         
         if (mtf_core.get_blocks().size() == 0 && !(tc_focus.getValue() || tc_mf_profile.getValue())) {
