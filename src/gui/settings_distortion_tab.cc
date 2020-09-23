@@ -31,6 +31,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common.h"
 #include "nonempty_validator.h"
 
+#include <QtGlobal>
+#if QT_VERSION < QT_VERSION_CHECK(5,11,0)
+#define horizontalAdvance width
+#endif
+
 const QString Settings_distortion_tab::setting_ea_f = "setting_equiangular_f";
 const QString Settings_distortion_tab::setting_ea_f_default = "16.0";
 const QString Settings_distortion_tab::setting_sg_f = "setting_stereographic_f";
