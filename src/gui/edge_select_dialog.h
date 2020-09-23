@@ -32,7 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "gl_image_viewer.h"
 #include "gl_image_panel_edges.h"
-
+#include "manual_roi_help_dialog.h"
 
 class QPushButton;
 class QTextEdit;
@@ -46,25 +46,34 @@ class Edge_select_dialog : public QDialog {
     GL_image_viewer* get_viewer(void) { return img_viewer; }
     GL_image_panel* get_panel(void) { return img_panel; }
     
-    void set_size_hint(QSize size) { hinted_size = size; }
-    QSize sizeHint(void) const override { return hinted_size; }
+    void set_size_hint(QSize size);
+    QSize sizeHint(void) const override;
+    bool maximized_state(void) const { return is_maximized;  }
     
     void set_roi_file(const QString& fname) { roi_file = fname; }
+
+    void changeEvent(QEvent* e) override;
 
   private:
     GL_image_viewer*  img_viewer;
     GL_image_panel_edges*   img_panel;
-    QPushButton*      cancel_button;
-    QPushButton*      accept_button;
+    QPushButton* cancel_button;
+    QPushButton* accept_button;
+    QPushButton* help_button;
     QWidget* parent = nullptr;
     QImage* icon_image;
     QSize hinted_size = QSize(0, 0);
     
     QString roi_file;
+
+    Manual_roi_help_dialog* help_dialog;
+    QSize maximized_size = QSize(0, 0);
+    bool is_maximized = false;
     
   public slots:
     void open();
     void export_roi();
+    void show_help();
     
 };
 

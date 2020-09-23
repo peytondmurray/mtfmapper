@@ -34,7 +34,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <locale.h>
 
 Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) 
-: cursor_domain_value(0), repainting(0) {
+: QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
+  cursor_domain_value(0), repainting(0) {
     
     chart = new QChart();
     chart->legend()->hide();

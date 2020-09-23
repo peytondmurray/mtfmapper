@@ -184,6 +184,14 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
             args = args + QString(" --lp3 %1").arg(io->lp3_line->text());
         }
     }
+
+    if (io->cb_fullsfr->checkState()) {
+        args = args + QString(" --full-sfr");
+    }
+
+    if (io->cb_nosmoothing->checkState()) {
+        args = args + QString(" --nosmoothing");
+    }
     
     if (!focus_mode) {
         args = args + QString(" -q");
@@ -229,6 +237,8 @@ void Settings_dialog::save_and_close() {
     settings.setValue(Settings_io_tab::setting_esf_model, io->box_esf_model->currentIndex());
     settings.setValue(Settings_io_tab::setting_ca_type, io->box_ca_type->currentIndex());
     settings.setValue(Settings_io_tab::setting_surface_max_value, io->surface_max_value->text());
+    settings.setValue(Settings_io_tab::setting_fullsfr, io->cb_fullsfr->checkState());
+    settings.setValue(Settings_io_tab::setting_nosmoothing, io->cb_nosmoothing->checkState());
     
     if (distortion->rb_lens_pw_quad->isChecked()) {
         settings.setValue(Settings_distortion_tab::setting_lens, 0);

@@ -64,6 +64,8 @@ class Settings_io_tab : public QWidget {
     QCheckBox* cb_gnuplot_scaled;
     QCheckBox* cb_lensprofile_fixed;
     QCheckBox* cb_ca_active;
+    QCheckBox* cb_fullsfr;
+    QCheckBox* cb_nosmoothing;
 
     QComboBox* box_colour; // Bayer channel, actually
     QComboBox* box_esf_model;
@@ -129,6 +131,10 @@ class Settings_io_tab : public QWidget {
     static const Qt::CheckState setting_ca_active_default;
     static const QString setting_ca_type;
     static const int setting_ca_type_default;
+    static const QString setting_fullsfr;
+    static const Qt::CheckState setting_fullsfr_default;
+    static const QString setting_nosmoothing;
+    static const Qt::CheckState setting_nosmoothing_default;
 
   private:
   public slots:

@@ -78,6 +78,11 @@ const QString Settings_io_tab::setting_ca_active = "setting_ca";
 const Qt::CheckState Settings_io_tab::setting_ca_active_default = Qt::Unchecked;
 const QString Settings_io_tab::setting_ca_type = "setting_ca_type";
 const int Settings_io_tab::setting_ca_type_default = 0;
+const QString Settings_io_tab::setting_fullsfr = "setting_fullsfr";
+const Qt::CheckState Settings_io_tab::setting_fullsfr_default = Qt::Unchecked;
+const QString Settings_io_tab::setting_nosmoothing = "setting_nosmoothing";
+const Qt::CheckState Settings_io_tab::setting_nosmoothing_default = Qt::Unchecked;
+
 
 Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     QSettings settings("mtfmapper", "mtfmapper");
@@ -242,6 +247,18 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
         "demosaic the image first, which means you are including the demosaicing approximations in your CA measurement."
     );
 
+    cb_fullsfr = new QCheckBox("Extended SFR domain", this);
+    cb_fullsfr->setToolTip(
+        "Computes SFR up to 2.0 cycles/pixel, rather than default of 1 cycle/pixel.\n"
+        "Effect is only really visible in SFR curve plotting (and only after re-\n"
+        "processing an image via File->Open).\n"
+    );
+
+    cb_nosmoothing = new QCheckBox("Reduced SFR smoothing", this);
+    cb_nosmoothing->setToolTip(
+        "Disables Savitzky-Golay SFR smoothing.\n"
+    );
+
     box_colour = new QComboBox;
     box_colour->addItem("none");
     box_colour->addItem("red");
@@ -306,6 +323,12 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     );
     cb_ca_active->setCheckState(
         (Qt::CheckState)settings.value(setting_ca_active, setting_ca_active_default).toInt()
+    );
+    cb_fullsfr->setCheckState(
+        (Qt::CheckState)settings.value(setting_fullsfr, setting_fullsfr_default).toInt()
+    );
+    cb_nosmoothing->setCheckState(
+        (Qt::CheckState)settings.value(setting_nosmoothing, setting_nosmoothing_default).toInt()
     );
 
     box_colour->setCurrentIndex(settings.value(setting_bayer, 0).toInt());
@@ -425,6 +448,9 @@ Settings_io_tab::Settings_io_tab(QWidget *parent ATTRIBUTE_UNUSED) {
     r9_layout->addWidget(new QLabel("MB", this));
     r9_layout->addStretch(2);
     adv_layout->addLayout(r9_layout);
+
+    adv_layout->addWidget(cb_fullsfr);
+    adv_layout->addWidget(cb_nosmoothing);
 
     QHBoxLayout* r10_layout = new QHBoxLayout;
     r10_layout->addWidget(arguments_label);

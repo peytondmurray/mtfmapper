@@ -4,4 +4,7 @@
 <file alias="AppIcon128">mtf_mapper_gui_128.ico</file>
 <file alias="AppIcon256">mtf_mapper_gui_256.ico</file>
 </qresource>
+<qresource prefix="/Images">
+<file alias="ManualROIHelp">manual_roi_help.png</file>
+</qresource>
 </RCC>
