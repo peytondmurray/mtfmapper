@@ -37,6 +37,9 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     accept_button = new QPushButton("Accept");
     accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 
+    help_button = new QPushButton("Help");
+    help_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
     
@@ -45,19 +48,26 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);
-    img_viewer->setMinimumSize(QSize(400, 400));
+    maximized_size = QSize(400, 400);
+    img_viewer->setMinimumSize(maximized_size);
+    hinted_size = maximized_size;
     
     icon_image = new QImage(QSize(256, 256), QImage::Format_RGB888);
     icon_image->fill(Qt::red);
     img_panel->set_default_image(icon_image);
-    
+
+    help_dialog = new Manual_roi_help_dialog(this);
+    help_dialog->setModal(true);
+
     QGridLayout* vlayout = new QGridLayout(this);
-    vlayout->addWidget(img_viewer, 0, 0, 1, 3);
-    vlayout->addWidget(accept_button, 1, 1);
-    vlayout->addWidget(cancel_button, 1, 2);
+    vlayout->addWidget(img_viewer, 0, 0, 1, 5);
+    vlayout->addWidget(help_button, 1, 0);
+    vlayout->addWidget(accept_button, 1, 3);
+    vlayout->addWidget(cancel_button, 1, 4);
     
     connect(cancel_button, SIGNAL(clicked()), this, SLOT( close() ));
     connect(accept_button, SIGNAL(clicked()), this, SLOT( export_roi() ));
+    connect(help_button, SIGNAL(clicked()), this, SLOT( show_help() ));
     
     setWindowFlags(Qt::Window);
     setModal(true);
@@ -65,10 +75,24 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     setWindowTitle("Select one or more edge ROIs");
 }
 
+void Edge_select_dialog::set_size_hint(QSize size) { 
+    hinted_size = size;
+}
+
+QSize Edge_select_dialog::sizeHint(void) const {
+    return hinted_size; 
+}
+
 void Edge_select_dialog::load_image(QString img_name) {
 
     img_panel->load_image(img_name);
     img_panel->clear_overlay();
+    if (maximized_state()) {
+        img_viewer->setMinimumSize(maximized_size);
+    } else {
+        img_viewer->setMinimumSize(hinted_size);
+    }
+
     update();
     
 }
@@ -84,6 +108,27 @@ void Edge_select_dialog::export_roi(void) {
     } else {
         close();
     }
+    if (maximized_state()) {
+        maximized_size = img_viewer->size();
+    }
 }
 
+void Edge_select_dialog::show_help(void) {
+    help_dialog->setModal(false);
+    help_dialog->show();
+}
+
+void Edge_select_dialog::changeEvent(QEvent* e) {
+    if (e->type() == QEvent::WindowStateChange) {
+        QWindowStateChangeEvent* event = static_cast<QWindowStateChangeEvent*>(e);
+
+        if (event->oldState() & Qt::WindowMinimized) {
+            is_maximized = false;
+        } else {
+            if (event->oldState() == Qt::WindowNoState && this->windowState() == Qt::WindowMaximized) {
+                is_maximized = true;
+            }
+        }
+    }
+}
 

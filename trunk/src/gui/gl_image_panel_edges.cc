@@ -32,7 +32,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QMouseEvent>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 
+#define _USE_MATH_DEFINES
 #include <cmath>
+#include <math.h>
 
 GL_image_panel_edges::GL_image_panel_edges(QWidget *parent)
     : GL_image_panel(parent) {
