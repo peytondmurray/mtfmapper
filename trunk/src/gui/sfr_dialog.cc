@@ -33,6 +33,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "config.h"
 #include <locale.h>
 
+#include <QtGlobal>
+#if QT_VERSION < QT_VERSION_CHECK(5,11,0)
+#define horizontalAdvance width
+#endif
+
 Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) 
 : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
   cursor_domain_value(0), repainting(0) {

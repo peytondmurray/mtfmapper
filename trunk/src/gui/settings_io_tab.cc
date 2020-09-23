@@ -31,6 +31,11 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common.h"
 #include "nonempty_validator.h"
 
+#include <QtGlobal>
+#if QT_VERSION < QT_VERSION_CHECK(5,11,0)
+#define horizontalAdvance width
+#endif
+
 const QString Settings_io_tab::setting_threshold = "setting_threshold_sauvola";
 const QString Settings_io_tab::setting_threshold_default = "0.55";
 const QString Settings_io_tab::setting_pixsize = "setting_pixelsize";
