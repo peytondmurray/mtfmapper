@@ -67,10 +67,7 @@ int main(int argc, char *argv[]) {
     logger.redirect(logname);
     logger.enable_level(Logger::LOGGER_DEBUG);
     qInstallMessageHandler(message_output);
-    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
-    
-    QApplication app(argc, argv);
-    
+
     QSurfaceFormat fmt;
     fmt.setRenderableType(QSurfaceFormat::OpenGL);
     fmt.setProfile(QSurfaceFormat::CompatibilityProfile);
@@ -78,6 +75,11 @@ int main(int argc, char *argv[]) {
     fmt.setMinorVersion(1);
     fmt.setSamples(1);
     QSurfaceFormat::setDefaultFormat(fmt);
+
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    
+    QApplication app(argc, argv);
     
     mtfmapper_app dialog;
 

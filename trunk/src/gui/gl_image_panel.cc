@@ -63,9 +63,12 @@ QSize GL_image_panel::sizeHint() const {
 
 void GL_image_panel::initializeGL() {
     initializeOpenGLFunctions();
-    logger.debug("initializeGL: OpenGL version: %d.%d, samples=%d\n", format().majorVersion(), format().minorVersion(), format().samples());
+    static int panel_counter = 0;
+    logger.debug("initializeGL (panel = %d): OpenGL version: %d.%d, samples=%d\n", ++panel_counter, format().majorVersion(), format().minorVersion(), format().samples());
     
-    load_image(*default_image);
+    if (textures.size() == 0 && default_image != nullptr) {
+        load_image(*default_image);
+    }
 
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -212,7 +215,6 @@ void GL_image_panel::load_image(const QString& fname) {
 }
 
 void GL_image_panel::load_image(QImage& qimg) {
-
     cv::Mat cvimg(qimg.height(), qimg.width(), CV_8UC3, qimg.bits());
     current_fname = "mtf_mapper_logo";
     load_image(cvimg);
@@ -228,8 +230,6 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     vbo.release();
     vbo.destroy();
     for (int i=0; i < (int)textures.size(); i++) {
-        textures[i]->release();
-        textures[i]->destroy();
         delete textures[i];
     }
     textures.clear();
@@ -327,7 +327,7 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     }
     
     reset_scroll_range();
-    
+
     vbo.create();
     vbo.setUsagePattern(QOpenGLBuffer::DynamicDraw);
     vbo.bind();
