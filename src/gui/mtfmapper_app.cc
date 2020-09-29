@@ -337,7 +337,6 @@ void mtfmapper_app::check_and_purge_stale_temp_files(void) {
         subset_mb->exec();
         if (!cancelled) {
             QDir starting_dir(tempdir);
-            logger.info("The following stale temp direcoties will be removed:\n");
             for (int i = 0; i < dirlist.size(); i++) {
                 QDir del_dir(starting_dir.absolutePath() + QDir::separator() + dirlist[i]);
                 logger.info("\t%s\n", del_dir.absolutePath().toLocal8Bit().constData());
@@ -594,8 +593,17 @@ void mtfmapper_app::processor_completed(void) {
     
     for (auto& command: manual_roi_commands) {
         QString roi_filename = command.tmp_dirname + "/rois.txt";
-        edge_select_dialog->set_size_hint(img_panel->size());
-        edge_select_dialog->show(); // NB: we must show the dialog before we call load_image
+
+        static bool esd_initialized = false;
+        if (!esd_initialized) {
+            // Note: we only really have to do this once, apparently
+            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen);
+            edge_select_dialog->show();
+            edge_select_dialog->hide();
+            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
+            esd_initialized = true;
+        }
+
         edge_select_dialog->load_image(command.img_filename);
         edge_select_dialog->set_roi_file(roi_filename);
         vector<std::pair<Worker_thread::failure_t, QString>> failures;

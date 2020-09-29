@@ -51,6 +51,9 @@ class GL_image_viewer : public QAbstractScrollArea {
     void load_image(const QString& fname);
     void load_image(QImage* qimg);
     void set_clickable(bool b);
+    void set_resize_on_load(bool b);
+
+    QSize minimumSizeHint(void) const override;
     
   private:
     void zoom_action(double direction, int zx, int zy);
@@ -69,6 +72,8 @@ class GL_image_viewer : public QAbstractScrollArea {
     
     bool must_update_bars = true;
     bool is_clickable = false;
+    QSize minimum_hinted_size = QSize(0, 0);
+    bool resize_on_load = false;
     
   public slots:
     void clear_overlay();
