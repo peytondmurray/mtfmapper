@@ -41,7 +41,7 @@ GL_image_viewer::GL_image_viewer(QWidget* parent)
 
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect geom = screen->geometry();
-    minimum_hinted_size = QSize(geom.width() < 500 ? geom.width() - 40 : 500, geom.height() < 500 ? geom.height() - 150 : 500);
+    hinted_size = QSize(geom.width() < 500 ? geom.width() - 40 : 500, geom.height() < 500 ? geom.height() - 150 : 500);
 }
 
 
@@ -212,7 +212,7 @@ void GL_image_viewer::load_image(const QString& fname) {
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect geom = screen->geometry();
 
-    minimum_hinted_size = QSize(
+    hinted_size = QSize(
         geom.width() < widget->img_size().width() ? geom.width() - 40 : widget->img_size().width(),
         geom.height() < widget->img_size().height() ? geom.height() - 150 : widget->img_size().height()
     );
@@ -229,7 +229,7 @@ void GL_image_viewer::load_image(QImage* qimg) {
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect geom = screen->geometry();
 
-    minimum_hinted_size = QSize(
+    hinted_size = QSize(
         geom.width() < widget->img_size().width() ? geom.width() - 40 : widget->img_size().width(),
         geom.height() < widget->img_size().height() ? geom.height() - 150 : widget->img_size().height()
     );
@@ -254,10 +254,11 @@ void GL_image_viewer::clear_overlay(void) {
     widget->update();
 }
 
-QSize GL_image_viewer::minimumSizeHint(void) const {
+QSize GL_image_viewer::sizeHint(void) const {
     if (resize_on_load) {
-        return minimum_hinted_size;
+        return hinted_size;
     } else {
         return QSize(0, 0);
     }
 }
+
