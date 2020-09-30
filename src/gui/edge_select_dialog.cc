@@ -29,7 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "edge_select_dialog.h"
 
 Edge_select_dialog::Edge_select_dialog(QWidget* parent)
- : QDialog(parent, Qt::WindowCloseButtonHint), parent(parent) {
+ : QDialog(parent, Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint), parent(parent) {
 
     cancel_button = new QPushButton("Cancel");
     cancel_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
