@@ -117,6 +117,8 @@ public:
             masked_img.at<uchar>(masked_img.rows-2,x) = fill;
         }
     }
+    
+    void inflate_boundaries(double radius);
 
 private:
     typedef enum {
