@@ -285,4 +285,32 @@ void Component_labeller::_draw_snapshot(void) {
 }
 
 
+void Component_labeller::inflate_boundaries(double radius) {
 
+    constexpr size_t min_boundary_length = 4 * 10; // a 10x10 square, maybe?
+
+    for (auto& ble: _boundaries) {
+        auto& b = ble.second;
+        
+        if (b.size() > min_boundary_length) {
+            Point2d centroid(0, 0);
+            
+            for (auto& p: b) {
+                centroid += p;
+            }
+            centroid *= 1.0/b.size();
+            
+            // move each point outward by radius along the vector
+            // connecting the point to the centroid
+            Point2d dir;
+            for (auto& p: b) {
+                dir = p - centroid;
+                double l = norm(dir);
+                dir *= (l+radius)/l;
+                p = dir + centroid;
+            }
+            
+        }
+        
+    }
+}

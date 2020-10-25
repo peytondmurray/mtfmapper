@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_ca("", "ca", "Estimate chromatic aberration", cmd, false);
     TCLAP::SwitchArg tc_ca_fraction("", "ca-fraction", "Chromatic aberration image generated in units of radial distance fraction", cmd, false);
     TCLAP::SwitchArg tc_jpeg("", "jpeg", "Annotated image saved in JPEG format to gain speed", cmd, false);
+    TCLAP::SwitchArg tc_checkerboard("", "checkerboard", "Process the input image as a checkerboard pattern", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -151,6 +152,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_alpha("", "alpha", "Standard deviation of smoothing kernel [1,20]", false, 13, "unitless", cmd);
     TCLAP::ValueArg<double> tc_surface_max("", "surface-max", "Specify maximum value in MTF50 surface plots", false, -1, "units depend on other settings", cmd);
     TCLAP::ValueArg<string> tc_roi_file("", "roi-file", "Only process ROIs defined in <roifile>, rather than using automatic target selection", false, "", "<roifile>", cmd);
+    TCLAP::ValueArg<int> tc_checkerboard_radius("", "checkerboard-radius", "Radius of dilation structuring element when processing checkerboard images", false, 2, "pixels", cmd);
     #ifdef MDEBUG
     TCLAP::ValueArg<double> tc_ridge("", "ridge", "Specify ridge regression parameter [0,+infy)", false, 5e-8, "unitless", cmd);
     TCLAP::ValueArg<double> tc_noise_seed("", "noise-seed", "Image noise seed", false, 10, "unitless", cmd);
@@ -441,6 +443,18 @@ int main(int argc, char** argv) {
             sauvola_adaptive_threshold(cvimg, masked_img, brad_threshold/0.55*0.85, brad_S); // fudge the threshold to maintain backwards compatibility
         #endif
         
+        const int erosion_size = std::min(5, std::max(1, tc_checkerboard_radius.getValue()));
+        if (tc_checkerboard.getValue()) {
+            // first do a small-scale closing operation to prevent
+            // small interior / boundary holes from growing in the subsequent dilation
+            cv::Mat open_element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
+            cv::morphologyEx(masked_img, masked_img, cv::MORPH_OPEN, open_element);
+            
+            // dilate masked image to break checkerboard corners
+            cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*erosion_size + 1, 2*erosion_size + 1));
+            cv::morphologyEx(masked_img, masked_img, cv::MORPH_DILATE, element);
+        }
+        
         logger.info("Computing gradients ...\n");
         Gradient gradient(cvimg);
         
@@ -455,6 +469,11 @@ int main(int argc, char** argv) {
         if (cl.get_boundaries().size() == 0 && !(tc_single_roi.getValue() || tc_roi_file.isSet())) {
             logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
             return 4;
+        }
+        
+        // try to restore the object boundaries to compensate for dilation of thresholded image
+        if (tc_checkerboard.getValue()) {
+            cl.inflate_boundaries(erosion_size);
         }
         
         // now we can destroy the thresholded image
