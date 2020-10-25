@@ -273,7 +273,7 @@ class Block {
         
         for (size_t k=0; k < 4; k++) {
             edge_centroids[k] = rect.get_centroid(k);
-            edge_angle[k] = rect.thetas[k];
+            edge_angle[k] = atan2(-get_normal(k).x, get_normal(k).y);
             edge_snr[k] = cv::Point2d(snr[k].mean_cnr(), snr[k].oversampling());
         }
         
