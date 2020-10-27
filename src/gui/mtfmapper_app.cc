@@ -259,6 +259,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     setWindowTitle(tr("MTF Mapper"));
     resize(920,600);
+    setAcceptDrops(true);
     
     edge_select_dialog = new Edge_select_dialog(this);
     
@@ -998,4 +999,52 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, cons
 
 void mtfmapper_app::add_manual_roi_file(const Processing_command& command) {
     manual_roi_commands.push_back(command);
+}
+
+void mtfmapper_app::dragEnterEvent(QDragEnterEvent* evt) {
+    bool has_local_files = false;
+    if (evt->mimeData()->hasUrls()) {
+        auto urls = evt->mimeData()->urls();
+        for (auto url : urls) {
+            has_local_files |= url.isLocalFile();
+        }
+        if (has_local_files && open_act->isEnabled()) {
+            evt->accept();
+        }
+    }
+}
+
+void mtfmapper_app::dropEvent(QDropEvent* evt) {
+    QStringList dropped_files;
+    auto urls = evt->mimeData()->urls();
+    for (auto url : urls) {
+        if (url.isLocalFile()) {
+            dropped_files.append(url.toLocalFile());
+        }
+    }
+
+    if (open_act->isEnabled() && dropped_files.size() > 0) { // only process the drop event if we are not currently processing
+        // TODO: not ideal to have a copy of the same code from File->Open here, really has to be refactored
+        open_act->setEnabled(false);
+        open_roi_act->setEnabled(false);
+        open_focus_act->setEnabled(false);
+        open_imatest_act->setEnabled(false);
+        exit_act->setEnabled(false);
+
+        progress->setRange(0, dropped_files.size() + 1);
+
+        QStringList labels;
+        labels.push_back(QString("Data set"));
+        dataset_contents.setHorizontalHeaderLabels(labels);
+        abort_button->show();
+        processor.set_single_roi_mode(false);
+        processor.set_focus_mode(false);
+        processor.set_imatest_mode(false);
+        processor.set_manual_roi_mode(false);
+        processor.set_files(dropped_files);
+        processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
+        processor.set_dcraw_binary(settings->helpers->get_dcraw_binary());
+        processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
+        processor.start();
+    }
 }
