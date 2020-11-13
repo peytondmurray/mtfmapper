@@ -176,7 +176,7 @@ int Ellipse_detector::fit(const Component_labeller& cl, const Gradient& gradient
     }
     
     if (rhs.rows() != 5 || rhs.cols() != 1) {
-        logger.debug("rhs undefined\n");
+        logger.debug("%s\n", "rhs undefined");
         exit(1);
     }
     

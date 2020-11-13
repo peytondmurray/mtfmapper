@@ -141,7 +141,7 @@ Ca_renderer_grid::Ca_renderer_grid(
 void Ca_renderer_grid::render(const vector<Block>& blocks) {
 
     if (blocks.size() < 6) {
-        logger.error("Too few valid blocks found. No CA surface can be generated\n");
+        logger.error("%s\n", "Too few valid blocks found. No CA surface can be generated");
         return;
     }
     
@@ -297,7 +297,7 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
         logger.error("Failed to execute gnuplot (error code %d)\n", rval);
         logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
     } else {
-        logger.debug("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
+        logger.debug("%s\n", "Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png");
     }
     
     delete [] buffer;

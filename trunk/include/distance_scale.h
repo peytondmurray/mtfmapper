@@ -147,13 +147,13 @@ class Distance_scale {
                 sort(by_distance_from_zero.begin(), by_distance_from_zero.end());
                 // TODO: we should add a check here to discard fiducials that are much further than expected
                 // something like a ratio of the distance between the zeros ?
-                logger.debug("distance to first four fiducials: ");
+                logger.debug("%s", "distance to first four fiducials: ");
                 vector<int> first_four;
                 for (int i=0; i < 4; i++) {
                     logger.debug("%lf ", by_distance_from_zero[i].first);
                     first_four.push_back(by_distance_from_zero[i].second);
                 }
-                logger.debug("\n");
+                logger.debug("%s\n", "");
                 sort(first_four.begin(), first_four.end());
                 logger.debug("first four fiducials are: %d %d %d %d\n", first_four[0], first_four[1], first_four[2], first_four[3]);
                 int min_edit_dist = 100;
@@ -369,7 +369,7 @@ class Distance_scale {
                 combinations.clear(); // discard the combinations
                 
                 if (solutions.size() == 0) {
-                    logger.error("Error: No solutions to camera calibration found. Aborting\n");
+                    logger.error("%s\n", "Error: No solutions to camera calibration found. Aborting");
                     fiducials_found = false;
                     return;
                 }
@@ -562,12 +562,12 @@ class Distance_scale {
                 centre_depth = backproject(zero.x, zero.y)[2];
                 
                 logger.debug("ultimate f=%lf centre_depth=%lf distortion=%le\n", focal_length*img_scale, centre_depth, distortion);
-                logger.debug("rotation=\n");
+                logger.debug("%s\n", "rotation=");
                 for (int r=0; r < 3; r++) {
                     for (int c=0; c < 3; c++) {
                         logger.debug("%12.8lf ", rotation(r, c));
                     }
-                    logger.debug("\n");
+                    logger.debug("%s\n", "");
                 }
                 logger.debug("translation=[%lf %lf %lf]\n", translation[0], translation[1], translation[2]);
                 
@@ -584,7 +584,7 @@ class Distance_scale {
             // construct a distance scale
             
         } else {
-            logger.debug("Warning: Manual focus profile chart mode requested, but central dots not found\n");
+            logger.debug("%s\n", "Warning: Manual focus profile chart mode requested, but central dots not found.");
             const vector<Block>& blocks = mtf_core.get_blocks();
             
             double delta_1 = 1;
@@ -655,7 +655,7 @@ class Distance_scale {
                 chart_scale = 62.0 / block_width; // assume central block is 62 mm wide
                 logger.debug("Warning: choosing (potentially) poor chart scale of %lf mm/pixel\n", chart_scale);
             } else { 
-                logger.debug("Warning: Could not identify largest block, choosing poor defaults\n");
+                logger.debug("%s\n", "Warning: Could not identify largest block, choosing poor defaults");
                 chart_scale = 0.15;
                 zero = Point2d(932, 710);
                 transverse = Point2d(1,0);

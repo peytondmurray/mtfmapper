@@ -156,7 +156,7 @@ class Focus_surface  {
         fclose(ffout);
         
         if (peak_pts.size() < 10) {
-            logger.error("Not enough peak points to construct peak focus curve.\n");
+            logger.error("%s\n", "Not enough peak points to construct peak focus curve.");
             return;
         }
         
@@ -171,7 +171,7 @@ class Focus_surface  {
         }
         if (cf.has_poles(sol)) { 
             // no solution without poles, give up, skip this sample?
-            logger.debug("Warning: no viable RP fit to fpeaks data\n");
+            logger.debug("%s\n", "Warning: no viable RP fit to fpeaks data");
         }
         
         #if 1
@@ -206,7 +206,7 @@ class Focus_surface  {
             if (iter > 10 && (prev_err - errsum)/prev_err < 0.0001) {
                 logger.debug("bailing out at iter %d\n", iter);
                 if (errsum > prev_err) {
-                    logger.debug("reverting to older solution\n");
+                    logger.debug("%s\n", "reverting to older solution");
                     sol = oldsol;
                 }
                 break;

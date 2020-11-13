@@ -347,10 +347,10 @@ class Camera_draw {
         const int font = cv::FONT_HERSHEY_DUPLEX; 
         char tbuffer[4096];
         
-        sprintf(tbuffer, t...);
+        sprintf(tbuffer, t..., 0);
         Point2d textpos = distance_scale.world_to_image(x, y, z);
         cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, cv::LINE_AA);
-        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2, cv::LINE_AA);
         cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, cv::LINE_AA);
     }
     
@@ -377,7 +377,7 @@ class Camera_draw {
         ts = cv::getTextSize(tbuffer, font, 1, 3, &baseline);
         alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
         cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, cv::LINE_AA);
-        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2, cv::LINE_AA);
         cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, cv::LINE_AA);
     }
     
@@ -395,7 +395,7 @@ class Camera_draw {
         textpos.x -= ts.width;
         alpha_block(textpos, ts, CV_RGB(255, 255, 255), 0.5);
         cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(50, 50, 50), 3, cv::LINE_AA);
-        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+        cv::putText(rimg, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2, cv::LINE_AA);
         cv::putText(rimg, tbuffer, textpos, font, 1, colour, 1, cv::LINE_AA);
     }
     

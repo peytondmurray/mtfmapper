@@ -68,7 +68,7 @@ class Mtf_renderer_focus : public Mtf_renderer {
     }
     
     void render(const vector<Block>&) {
-        logger.error("Fatal error. This function should not be used. Aborting\n");
+        logger.error("%s\n", "Fatal error. This function should not be used. Aborting");
         exit(1);
         return;
     }

@@ -115,7 +115,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
                 
                 cv::putText(od_img, buffer, to, 
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-                    CV_RGB(20, 20, 20), 2.5, cv::LINE_AA
+                    CV_RGB(20, 20, 20), 2, cv::LINE_AA
                 );
                 cv::putText(od_img, buffer, to, 
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, 
@@ -133,7 +133,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     }
     
     if (!rrect.corners_ok() || !rrect.valid) {
-        logger.debug("discarding broken square (early)\n");
+        logger.debug("%s\n", "discarding broken square (early)");
         return;
     }
     
@@ -145,7 +145,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     
     if (!ridges_only) {
         if (!homogenous(cent, label, rrect)) {
-            logger.debug("discarding inhomogenous object\n");
+            logger.debug("%s\n", "discarding inhomogenous object");
             return;
         }
     }
@@ -236,7 +236,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
-            logger.debug("discarding broken square (after updates)\n");
+            logger.debug("%s\n", "discarding broken square (after updates)");
             return;
         }
         
@@ -292,7 +292,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
         // re-calculate the ROI after we have refined the edge centroid above
         Mrectangle newrect(rrect, edge_record);
         if (!newrect.corners_ok()) {
-            logger.debug("discarding broken square (after updates)\n");
+            logger.debug("%s\n", "discarding broken square (after updates)");
             return;
         }
         
@@ -342,7 +342,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     }
     
     if (!reduce_success) {
-        logger.debug("reduce failed, probably not a rectangle/quadrangle\n");
+        logger.debug("%s\n", "reduce failed, probably not a rectangle/quadrangle");
         return;
     }
     
@@ -762,7 +762,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
     d[1] = corners[corner_map[v2][1]] - corners[corner_map[v2][0]];
     
     if (dims[2].first < winlen) {
-        logger.debug("Rectangle not really long enough for sliding mode. Skipping.\n");
+        logger.debug("%s\n", "Rectangle not really long enough for sliding mode. Skipping.");
         return;
     }
     

@@ -81,9 +81,9 @@ public:
     void set_default_image(QImage* qimg) { default_image = qimg; }
     Image_viewport get_viewport(void) { return vp; }
     
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
     
     static int program_counter;
 

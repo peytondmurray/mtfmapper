@@ -31,6 +31,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "include/afft.h"
 #include "include/pava.h"
 
+#include <cmath>
+
 // Note: we avoid a virtual call by explicitly calling an inline version of the 
 // kernel function
 static inline double local_kernel(double x, double alpha, double scale) {
@@ -88,8 +90,8 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
         int cbin = int(ordered[i].first*8 + fft_size2);
         
         int nbins = 5;
-        if (fabs(cbin - fft_size2) > lwidth*twidth) {
-            if (fabs(cbin - fft_size2) > 2*lwidth*twidth) {
+        if (std::abs(cbin - fft_size2) > lwidth*twidth) {
+            if (std::abs(cbin - fft_size2) > 2*lwidth*twidth) {
                 nbins = 12;
             } else {
                 nbins = 7;
@@ -107,9 +109,9 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
         } else {
             for (int b=left; b <= right; b++) {
                 double w = 1; // in extreme tails, just plain box filter
-                if (fabs(b - fft_size2) < bwidth*twidth) {
+                if (std::abs(b - fft_size2) < bwidth*twidth) {
                     double mid = (b - fft_size2)*0.125;
-                    if (fabs(b - fft_size2) < twidth*lwidth) {
+                    if (std::abs(b - fft_size2) < twidth*lwidth) {
                         // edge transition itself, use preferred low-pass function
                         w = local_kernel(ordered[i].first - mid, kernel_alpha, 1.0);
                     } else {

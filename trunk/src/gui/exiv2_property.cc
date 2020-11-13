@@ -216,9 +216,9 @@ QString Exiv2_property::extract_focal_ratio(void) {
     QString f35 = extract_property(QString("Exif.Photo.FocalLengthIn35mmFilm"));
     
     if (f35.compare("N/A") != 0) {
-        QStringList fparts = f35.split(' ', QString::SkipEmptyParts);
+        QStringList fparts = f35.split(' ', Qt::SkipEmptyParts);
         if (fparts.size() < 1) {
-            logger.debug("failed to parse 35 mm equivalent focal length field in EXIF data");
+            logger.debug("%s\n", "failed to parse 35 mm equivalent focal length field in EXIF data");
             return QString("-1");
         }
         double f = fparts[0].toDouble();
@@ -243,21 +243,21 @@ QString Exiv2_property::extract_focal_ratio(void) {
         QString diag = extract_property(QString("Exif.OlympusEq.FocalPlaneDiagonal"));
         
         if (aspect.compare("N/A") != 0 && focal.compare("N/A") != 0 && diag.compare("N/A") != 0) {
-            QStringList arparts = aspect.split(':', QString::SkipEmptyParts);
+            QStringList arparts = aspect.split(':', Qt::SkipEmptyParts);
             if (arparts.size() != 2) {
                return QString("-1");
             }
             double a = arparts[0].toDouble() / arparts[1].toDouble();
             
-            QStringList dparts = diag.split('/', QString::SkipEmptyParts);
+            QStringList dparts = diag.split('/', Qt::SkipEmptyParts);
             if (dparts.size() != 2) {
                return QString("-1");
             }
             double d = dparts[0].toDouble() / dparts[1].toDouble();
             
-            QStringList fparts = focal.split(' ', QString::SkipEmptyParts);
+            QStringList fparts = focal.split(' ', Qt::SkipEmptyParts);
             if (fparts.size() < 1) {
-                logger.debug("failed to parse  focal length field in EXIF data");
+                logger.debug("%s\n", "failed to parse  focal length field in EXIF data");
                 return QString("-1");
             }
             
@@ -288,9 +288,9 @@ QString Exiv2_property::extract_focal_ratio(void) {
         
         QString focal = extract_property(QString("Exif.Photo.FocalLength"));
         
-        QStringList fparts = focal.split(' ', QString::SkipEmptyParts);
+        QStringList fparts = focal.split(' ', Qt::SkipEmptyParts);
         if (fparts.size() < 1) {
-            logger.debug("failed to parse  focal length field in EXIF data");
+            logger.debug("%s\n", "failed to parse  focal length field in EXIF data");
             return QString("-1");
         }
         

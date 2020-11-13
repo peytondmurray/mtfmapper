@@ -38,14 +38,14 @@ class GL_image_viewer : public QAbstractScrollArea {
   public:
     explicit GL_image_viewer(QWidget* parent);
     
-    bool viewportEvent(QEvent* e);
-    void scrollContentsBy(int dx, int dy);
-    void wheelEvent(QWheelEvent* e);
+    bool viewportEvent(QEvent* e) override;
+    void scrollContentsBy(int dx, int dy) override;
+    void wheelEvent(QWheelEvent* e) override;
     
-    void mouseMoveEvent(QMouseEvent* event);
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void keyPressEvent(QKeyEvent* event);
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     
     void set_GL_widget(GL_image_panel* w);
     void load_image(const QString& fname);

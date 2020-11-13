@@ -40,7 +40,7 @@ cv::Point2d Undistort::transform_point(double c, double r) {
     
     if (rad_f > (int)radmap.size() - 3) {
         if (radmap.size() == 0) { // this should only happen if we call transform_point before unmap, which should not happen
-            logger.error("Warning: radmap not initialized in transform_point. Calling build_radmap, but fix the code!\n");
+            logger.error("%s\n", "Warning: radmap not initialized in transform_point. Calling build_radmap, but fix the code!");
             build_radmap();
         } else {
             logger.error("Warning: radmap range exceeded in transform_point. Clamping (rad-%lf, rad_f=%d)\n", rad, rad_f);
@@ -85,7 +85,7 @@ cv::Mat Undistort::unmap_base(const cv::Mat& in_src, cv::Mat& rawimg, int pad_le
     logger.debug("Padding with %d left/right pixels, %d top/bottom pixels\n", pad_left, pad_top);
     
     if (pad_left > 0 || pad_top > 0) {
-        logger.debug("Padding distorted/Bayer image\n");
+        logger.debug("%s\n", "Padding distorted/Bayer image.");
         cv::Mat rcopy = rawimg.clone();
         copyMakeBorder(rcopy, rawimg, pad_top, pad_top, pad_left, pad_left, cv::BORDER_CONSTANT, cv::Scalar::all(0));
         last_padding = cv::Point2i(pad_left, pad_top);

@@ -94,7 +94,7 @@ Tiffsniff::Tiffsniff(const string& fname, bool is_8bit) {
             }
             
         } catch (int) {
-            logger.error("Error while parsing input image, unable to extract colourspace information.\n");
+            logger.error("%s\n", "Error while parsing input image, unable to extract colourspace information.");
         }
     }
     
@@ -174,17 +174,17 @@ void Tiffsniff::parse_tiff(off_t offset) {
             bool is_valid_tiff = false;
             if (memcmp(le_id, magic, 4) == 0) {
                 if (offset == 0) {
-                    logger.debug("Little endian TIFF detected\n");
+                    logger.debug("%s\n", "Little endian TIFF detected.");
                 } else {
-                    logger.debug("EXIF / Little endian TIFF detected\n");
+                    logger.debug("%s\n", "EXIF / Little endian TIFF detected.");
                 }
                 is_valid_tiff = true;
             }
             if (memcmp(be_id, magic, 4) == 0) {
                 if (offset == 0) {
-                    logger.debug("Big endian TIFF detected\n");
+                    logger.debug("%s\n", "Big endian TIFF detected.");
                 } else {
-                    logger.debug("EXIF / Big endian TIFF detected\n");
+                    logger.debug("%s\n", "EXIF / Big endian TIFF detected.");
                 }
                 is_valid_tiff = true;
                 big_endian = true;
@@ -335,7 +335,7 @@ void Tiffsniff::read_icc_profile(off_t offset) {
             fin->seekg(fpos); // return to ICC IFD
         }
         if (!found_trc) {
-            logger.error("Warning: image contains ICC profile, but no TRC curve was found.\n");
+            logger.error("%s\n", "Warning: image contains ICC profile, but no TRC curve was found.");
             inferred_profile = profile_t::sRGB;
         } else {
             inferred_profile = profile_t::CUSTOM;
@@ -573,7 +573,7 @@ void Tiffsniff::parse_png(off_t offset) {
                 strm.next_in = Z_NULL;
                 int ret = inflateInit(&strm);
                 if (ret != Z_OK) {
-                    logger.error("PNG/ICC profile error: zlib init failed\n");
+                    logger.error("%s\n", "PNG/ICC profile error: zlib init failed.");
                     throw -1;
                 }
                 
@@ -590,7 +590,7 @@ void Tiffsniff::parse_png(off_t offset) {
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR:
                     (void)inflateEnd(&strm);
-                    logger.error("PNG/ICC profile error: zlib inflate error\n");
+                    logger.error("%s\n", "PNG/ICC profile error: zlib inflate error.");
                     throw -1;
                 }
                 int u_size = u_chunk.size() - strm.avail_out;
@@ -606,7 +606,7 @@ void Tiffsniff::parse_png(off_t offset) {
                 }
             }
             #else
-            logger.debug("No PNG/ICC support because zlib not found\n");
+            logger.debug("%s\n", "No PNG/ICC support because zlib not found.");
             #endif
             fin->seekg(chunk_size + 4, fin->cur);
         } while (fin->good() && memcmp(magic, "IDAT", 4) == 0);

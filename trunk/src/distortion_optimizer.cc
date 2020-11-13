@@ -166,7 +166,7 @@ void Distortion_optimizer::solve(void) {
                 }
             }
         
-            logger.debug("restarting after outlier suppression:\n");
+            logger.debug("%s\n", "restarting after outlier suppression:");
             seed_simplex(best_sol, scale);
             best_sol = iterate(1e-6);
         }

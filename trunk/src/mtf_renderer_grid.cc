@@ -108,7 +108,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
     }
 
     if (allvals.size() < 20) {
-        logger.error("Too few valid edges found. No surface can be generated\n");
+        logger.error("%s\n", "Too few valid edges found. No surface can be generated.");
         return;
     }
 
@@ -315,7 +315,7 @@ void Mtf_renderer_grid::render(const vector<Block>& blocks) {
         logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
         gnuplot_failure = true;
     } else {
-        logger.debug("Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png\n");
+        logger.debug("%s\n", "Gnuplot plot completed successfully. Look for grid_image.png and grid_surface.png");
     }
     
     delete [] buffer;

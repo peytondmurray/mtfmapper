@@ -141,7 +141,7 @@ class Edge_record {
             ev[1] = covxy;
             slope = ev[0] / ev[1]; // TODO: check this?
         } else {
-            logger.info("Warning: edge is perfectly horizontal / vertical\n");
+            logger.info("%s\n", "Warning: edge is perfectly horizontal / vertical");
             ev[0] = 0;
             ev[1] = 1;
             slope = 0;

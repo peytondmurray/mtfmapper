@@ -212,14 +212,14 @@ int main(int argc, char** argv) {
     bool lpmm_mode = false;
     double pixel_size = 1;
     if (tc_pixelsize.isSet()) {
-        logger.info("Info: Pixel size has been specified, measurement will be reported in lp/mm, rather than c/p\n");
+        logger.info("%s\n", "Info: Pixel size has been specified, measurement will be reported in lp/mm, rather than c/p");
         lpmm_mode = true;
         pixel_size = 1000 / tc_pixelsize.getValue();
         logger.info("working with=%lf pixels per mm\n", pixel_size);
     }
 
     if (!tc_profile.isSet() && !tc_annotate.isSet() && !tc_surface.isSet() && !tc_print.isSet() && !tc_sfr.isSet() && !tc_edges.isSet()) {
-        logger.info("Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]\n");
+        logger.info("%s\n", "Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]");
     }
 
     cv::Mat cvimg;
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
     }
 
     if (!(cvimg.depth() == CV_8U || cvimg.depth() == CV_16U)) {
-        logger.error("Fatal error: Invalid image type. Only 8-bit unsigned and 16-bit unsigned integer images supported.\n");
+        logger.error("%s\n", "Fatal error: Invalid image type. Only 8-bit unsigned and 16-bit unsigned integer images supported.");
         return 5;
     }
     
@@ -265,7 +265,7 @@ int main(int argc, char** argv) {
     }
     
     if (cvimg.channels() == 4) {
-        logger.info("Input image had 4 channels. Only the first 3 will be used.\n");
+        logger.info("%s\n", "Input image had 4 channels. Only the first 3 will be used.");
         cv::Mat reduced(cvimg.rows, cvimg.cols, (cvimg.elemSize1() == 1) ? CV_8UC3 : CV_16UC3);
         int from_to[] = {0,0, 1,1, 2,2};
         cv::mixChannels(&cvimg, 1, &reduced, 1, from_to, 3);
@@ -295,17 +295,17 @@ int main(int argc, char** argv) {
     }
     
     if (tc_equiangular.isSet() && !tc_pixelsize.isSet()) {
-        logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --equiangular option. Aborting.");
+        logger.error("%s\n", "Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --equiangular option. Aborting.");
         return 1;
     }
     
     if (tc_stereographic.isSet() && !tc_pixelsize.isSet()) {
-        logger.error("Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --stereographic option. Aborting.");
+        logger.error("%s\n", "Fatal error: You must specify the pixel size (pitch) with the --pixelsize option when using --stereographic option. Aborting.");
         return 1;
     }
     
     if (tc_stereographic.isSet() && tc_equiangular.isSet()) {
-        logger.error("Fatal error: You may only specify one of --stereographic and --equiangular. Aborting\n");
+        logger.error("%s\n", "Fatal error: You may only specify one of --stereographic and --equiangular. Aborting.");
         return 1;
     }
     
@@ -407,15 +407,15 @@ int main(int argc, char** argv) {
     
     if (esf_sampler_name.compare("deferred") == 0 && !undistort) {
         if (!tc_distort_opt.getValue()) {
-            logger.error("Error: Deferred ESF sampler cannot be used if no undistortion model is specified."
-                "See '--optimize-distortion, --equiangular, or --stereographic' options\n");
+            logger.error("%s\n", "Error: Deferred ESF sampler cannot be used if no undistortion model is specified."
+                "See '--optimize-distortion, --equiangular, or --stereographic' options");
             return 1;
         }
     }
     
     if (tc_focus.isSet() || tc_mf_profile.getValue()) {
         esf_sampler_name = "line";
-        logger.info("Note: because --focus output option was selected, the --esf_sampler option has been changed to \"line\".\n");
+        logger.info("%s\n", "Note: because --focus output option was selected, the --esf_sampler option has been changed to \"line\".");
     }
     
     bool finished;
@@ -427,7 +427,7 @@ int main(int argc, char** argv) {
             cvimg = undistort->unmap(cvimg, rawimg);
         }
         
-        logger.info("Thresholding image ...\n");
+        logger.info("%s\n", "Thresholding image ...");
         int brad_S = tc_border.getValue() ? 
             max(cvimg.cols, cvimg.rows) : 
             max(tc_thresh_win.isSet() ? 20 : 500, int(min(cvimg.cols, cvimg.rows)*tc_thresh_win.getValue()));
@@ -455,10 +455,10 @@ int main(int argc, char** argv) {
             cv::morphologyEx(masked_img, masked_img, cv::MORPH_DILATE, element);
         }
         
-        logger.info("Computing gradients ...\n");
+        logger.info("%s\n", "Computing gradients ...");
         Gradient gradient(cvimg);
         
-        logger.info("Component labelling ...\n");
+        logger.info("%s\n", "Component labelling ...");
         Component_labeller::zap_borders(masked_img);
         // largest component boundary length determined empirically
         const int64_t boundary_long_side = 2*std::max(cvimg.rows, cvimg.cols)*0.4;
@@ -467,7 +467,7 @@ int main(int argc, char** argv) {
         Component_labeller cl(masked_img, 60, false, max_boundary_length);
 
         if (cl.get_boundaries().size() == 0 && !(tc_single_roi.getValue() || tc_roi_file.isSet())) {
-            logger.error("Error: No black objects found. Try a lower threshold value with the -t option.\n");
+            logger.error("%s\n", "Error: No black objects found. Try a lower threshold value with the -t option.");
             return 4;
         }
         
@@ -576,7 +576,7 @@ int main(int argc, char** argv) {
         }
         
         if (mtf_core.get_blocks().size() == 0 && !(tc_focus.getValue() || tc_mf_profile.getValue())) {
-            logger.error("Error: No suitable target objects found.\n");
+            logger.error("%s\n", "Error: No suitable target objects found.");
             return 4;
         }
         
@@ -594,7 +594,7 @@ int main(int argc, char** argv) {
             
             finished = false;
             distortion_applied = true;
-            logger.info("Performing second pass on undistorted image.\n");
+            logger.info("%s\n", "Performing second pass on undistorted image.");
             continue; // effectively jump back to the start
         }
         
@@ -602,7 +602,7 @@ int main(int argc, char** argv) {
             Ca_core chromatic(mtf_core);
         
             if (in_num_channels == 3) {
-                logger.info("Using original RGB input image to estimate CA\n");
+                logger.info("%s\n", "Using original RGB input image to estimate CA.");
                 vector<cv::Mat> channels = display_profile.to_linear_rgb(rgb_img);
 
                 if (undistort) {

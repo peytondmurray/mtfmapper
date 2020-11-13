@@ -36,10 +36,10 @@ class GL_image_panel_dots : public GL_image_panel {
   public:
     explicit GL_image_panel_dots(QWidget* parent = 0, mtfmapper_app* app = 0);
     
-    virtual void click_marker(QPoint pos, bool add=false);
-    virtual void clear_overlay(void) { dot_list.clear(); }
+    virtual void click_marker(QPoint pos, bool add=false) override;
+    virtual void clear_overlay(void) override { dot_list.clear(); }
     virtual void initialize_overlay(void) override;
-    virtual void paint_overlay(void);
+    virtual void paint_overlay(void) override;
     
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;

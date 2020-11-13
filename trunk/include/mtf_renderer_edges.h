@@ -262,7 +262,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
         }
         
         if (serialization_errors) {
-            logger.error("One or more errors during edge serialization\n");
+            logger.error("%s\n", "One or more errors during edge serialization");
         }
     }
     

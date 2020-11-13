@@ -114,7 +114,7 @@ void Worker_thread::run(void) {
         }
 
         mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
-            << arguments.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+            << arguments.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
         
         Processing_command pc(
             QCoreApplication::applicationDirPath() + "/mtf_mapper",
@@ -210,7 +210,7 @@ void Worker_thread::process_command(const Processing_command& command, vector<st
     bool q_output_requested = process.arguments().contains("-q");
     bool e_output_requested = process.arguments().contains("-e") || process.arguments().contains("--esf");
 
-    logger.debug("arguments to mtf mapper:\n");
+    logger.debug("%s\n", "arguments to mtf mapper:");
     for (int kk = 0; kk < command.arguments.size(); kk++) {
         logger.debug("[%d]=%s\n", kk, command.arguments.at(kk).toLocal8Bit().constData());
     }

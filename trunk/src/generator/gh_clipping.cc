@@ -321,7 +321,7 @@ static void set_traversal_flag(vector<gh_vertex>& verts, const Polygon_geom& b, 
                 0.5*(verts[prev].y + verts[current].y) - yoffset
             ) 
         ) {
-        case EDGE_ON:
+        case ON:
             printf("Warning! (prev) This should not be possible\n");
             break;
         case INSIDE:

@@ -88,7 +88,7 @@ void GL_image_viewer::wheelEvent(QWheelEvent* e) {
     switch (e->modifiers()) {
     case Qt::ControlModifier:
       // directly ask viewport to zoom ...
-      zoom_action(e->angleDelta().y(), e->x(), e->y());
+      zoom_action(e->angleDelta().y(), e->position().x(), e->position().y());
       break;  
     case Qt::ShiftModifier:
       //scroll x
