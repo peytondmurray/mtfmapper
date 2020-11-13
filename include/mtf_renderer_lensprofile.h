@@ -49,7 +49,7 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
          wdir(wdir), prname(prof_fname), 
          gnuplot_binary(gnuplot_binary), img(img), 
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         gnuplot_failure(false), gnuplot_warning(true),
+         gnuplot_failure(false),
          in_resolution(in_resolution), gnuplot_width(gnuplot_width) {
     }
     
@@ -94,7 +94,6 @@ class Mtf_renderer_lensprofile : public Mtf_renderer {
     bool    lpmm_mode;
     double  pixel_size;
     bool gnuplot_failure;
-    bool gnuplot_warning;
     
     vector<double> in_resolution;
     int gnuplot_width;

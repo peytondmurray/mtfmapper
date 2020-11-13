@@ -40,13 +40,12 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
         const std::string& img_filename,
         const std::string& wdir, 
         const std::string& co_fname, 
-        const cv::Mat& img,
-        int gnuplot_width,
+        [[maybe_unused]] const cv::Mat& img,
+        [[maybe_unused]] int gnuplot_width,
         Distance_scale& distance_scale,
         cv::Rect* dimension_correction = NULL)
       :  Mtf_renderer(img_filename),
          wdir(wdir), co_fname(co_fname), 
-         img(img), gnuplot_width(gnuplot_width),
          dimension_correction(dimension_correction),
          draw(img, distance_scale, (gnuplot_width / double(img.cols)), 50) {
     
@@ -198,9 +197,6 @@ class Mtf_renderer_chart_orientation : public Mtf_renderer {
   private:
     string wdir;
     string co_fname; 
-    const cv::Mat& img;            
-    
-    int gnuplot_width;
     
     cv::Rect* dimension_correction;
     

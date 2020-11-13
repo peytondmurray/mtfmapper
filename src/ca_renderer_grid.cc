@@ -36,6 +36,8 @@ class Grid_functor_ca : public Grid_functor {
     Grid_functor_ca(bool red_ca, double scale_factor = 1.0, bool sparse_mode = false) 
     : red_ca(red_ca), scale_factor(scale_factor), sparse_mode(sparse_mode) {}
     
+    virtual ~Grid_functor_ca(void) {}
+    
     void set_red_ca(bool val) {
         red_ca = val;
     }

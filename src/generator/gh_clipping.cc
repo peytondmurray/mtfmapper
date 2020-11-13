@@ -725,5 +725,5 @@ double gh_phase_three(vector<gh_vertex>& verts, int vs, [[maybe_unused]] int fir
     return combined_area;
 }
 
-}; // namespace GH_clipping
+} // namespace GH_clipping
 

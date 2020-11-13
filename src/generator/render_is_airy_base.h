@@ -110,7 +110,7 @@ class Render_polygon_is_airy_base : public Render_polygon_is {
     }
     
     virtual inline double sample_core(const double&, const double&, const double&, const double&,
-        const double&, const double&) {
+        const double&, const double&) const {
         fprintf(stderr, "Render_polygon_is_airy_base::sample_core should never be called\n");
         exit(-1);
         return 0;

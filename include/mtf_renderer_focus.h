@@ -53,13 +53,12 @@ class Mtf_renderer_focus : public Mtf_renderer {
         const vector<std::pair<Point2d, Point2d>>& sliding_edges,
         const std::string& wdir, const std::string& prof_fname, 
         const cv::Mat& img, 
-        bool lpmm_mode=false, double pixel_size=1.0) 
+        [[maybe_unused]] bool lpmm_mode=false, [[maybe_unused]] double pixel_size=1.0) 
       :  zero(distance_scale.zero), 
          transverse(distance_scale.transverse), 
          longitudinal(distance_scale.longitudinal),
          wdir(wdir), prname(prof_fname),
          img(img), 
-         lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          distance_scale(distance_scale),
          sliding_edges(sliding_edges),
          psf(distance_scale.page_scale_factor),
@@ -86,8 +85,6 @@ class Mtf_renderer_focus : public Mtf_renderer {
     std::string wdir;
     std::string prname;
     const cv::Mat& img;
-    bool    lpmm_mode;
-    double  pixel_size;
     Distance_scale& distance_scale;
     const vector<std::pair<Point2d, Point2d>>& sliding_edges;
     int initial_rows;

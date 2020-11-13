@@ -280,8 +280,6 @@ class Mtf_renderer_edges : public Mtf_renderer {
     string sfrname;
     string devname;
     string serialname;
-    bool filter;
-    double angle;
     bool    lpmm_mode;
     double  pixel_size;
     Output_version::type output_version;

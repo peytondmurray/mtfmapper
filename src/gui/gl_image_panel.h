@@ -50,7 +50,7 @@ using std::string;
 #include "cache_entry.h"
 #include "image_viewport.h"
 
-QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram);
+QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 QT_FORWARD_DECLARE_CLASS(QOpenGLTexture)
 
 class GL_image_panel : public QOpenGLWidget, protected QOpenGLFunctions

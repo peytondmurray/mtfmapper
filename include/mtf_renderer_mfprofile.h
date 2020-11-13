@@ -49,13 +49,9 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     Mtf_renderer_mfprofile(Distance_scale& distance_scale,
         const std::string& wdir, const std::string& prof_fname, 
         const cv::Mat& img, 
-        bool lpmm_mode=false, double pixel_size=1.0) 
-      :  zero(distance_scale.zero), 
-         transverse(distance_scale.transverse), 
-         longitudinal(distance_scale.longitudinal),
-         wdir(wdir), prname(prof_fname),
+        [[maybe_unused]] bool lpmm_mode=false, [[maybe_unused]] double pixel_size=1.0) 
+      :  wdir(wdir), prname(prof_fname),
          img(img), 
-         lpmm_mode(lpmm_mode), pixel_size(pixel_size),
          distance_scale(distance_scale) {
          
     }
@@ -185,14 +181,9 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     }
   
 
-    Point2d& zero;
-    Point2d& transverse;
-    Point2d& longitudinal;
     std::string wdir;
     std::string prname;
     const cv::Mat& img;
-    bool    lpmm_mode;
-    double  pixel_size;
     Distance_scale& distance_scale;
 };
 

@@ -91,7 +91,6 @@ class Tiffsniff {
     
     bool big_endian = false;
     bool has_profile = false;
-    bool assumed_sRGB = false;
     
     int exif_cs = -1;
     bool exif_gamma_found = false;
