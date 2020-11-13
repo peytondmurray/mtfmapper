@@ -80,7 +80,7 @@ void Mtf_renderer_lensprofile::render(const vector<Block>& blocks) {
     FILE* fout = fopen((wdir + prname).c_str(), "wt");
     
     if (sagittal[0].size() == 0 || meridional.size() == 0) {
-        logger.error("Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping\n");
+        logger.error("%s\n", "Fatal error: lens profile requested, but insufficient edges detected to generate profile.\nSkipping.");
         return;
     }
     
@@ -242,7 +242,7 @@ void Mtf_renderer_lensprofile::render(const vector<Block>& blocks) {
         logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
         gnuplot_failure = true;
     } else {
-        logger.debug("Gnuplot plot completed successfully. Look for lensprofile.png\n");
+        logger.debug("%s\n", "Gnuplot plot completed successfully. Look for lensprofile.png");
         // Hack: trim the png file to remove the black border that gnuplot 4.4 leaves
         cv::Mat src_img;
         src_img = cv::imread(wdir.c_str() + string("/lensprofile.png"));

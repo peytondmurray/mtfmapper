@@ -103,7 +103,7 @@ cv::Point_<int> Auto_cropper::otsu_bounds(const vector<double>& data, const int 
             }
         }
         otsu = otsu_threshold(dcopy);
-        logger.debug("autocrop had to use a deadzone because the image borders were bright\n");
+        logger.debug("%s\n", "autocrop had to use a deadzone because the image borders were bright");
     }
     
     int upper = dead_left;

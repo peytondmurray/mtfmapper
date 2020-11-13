@@ -74,8 +74,8 @@ class mtfmapper_app : public QMainWindow
   public:
     mtfmapper_app(QWidget *parent = 0);
     virtual ~mtfmapper_app(void);
-    void dragEnterEvent(QDragEnterEvent* evt);
-    void dropEvent(QDropEvent* evt);
+    void dragEnterEvent(QDragEnterEvent* evt) override;
+    void dropEvent(QDropEvent* evt) override;
     
   protected:
     void closeEvent(QCloseEvent* event) override;

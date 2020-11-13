@@ -78,7 +78,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
         // check distribution: a bimodal distribution probably means the image is rotated
         bool transpose = test_for_bimodal_distribution(row_max);
         if (transpose) {
-            logger.debug("bimodal distribution found, taking transpose\n");
+            logger.debug("%s\n", "bimodal distribution found, taking transpose");
             extract_row_maxima(row_max, blocks, true);
         }
 
@@ -280,7 +280,7 @@ class Mtf_renderer_profile : public Mtf_renderer {
             logger.info("You can try to execute [%s] to render the plots manually\n", buffer);
             gnuplot_failure = true;
         } else {
-            logger.debug("Gnuplot plot completed successfully. Look for profile_image.png\n");
+            logger.debug("%s\n", "Gnuplot plot completed successfully. Look for profile_image.png");
         }
         
         delete [] buffer;

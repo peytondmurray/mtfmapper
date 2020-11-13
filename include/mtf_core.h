@@ -56,6 +56,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::map;
 
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 
 typedef vector<Block> block_vector;
 
@@ -94,7 +95,7 @@ class Mtf_core {
             break;
         case Esf_sampler::DEFERRED:
             if (!undistort) { // hopefully we stop it before this point ...
-                logger.error("Fatal error: No undistortion model provided to Esf_sampler_deferred. Aborting\n");
+                logger.error("%s\n", "Fatal error: No undistortion model provided to Esf_sampler_deferred. Aborting");
                 exit(-1);
             }
             esf_sampler = new Esf_sampler_deferred(undistort, max_dot, Bayer::to_cfa_mask(bayer, cfa_pattern), border_width);

@@ -46,7 +46,7 @@ void simple_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, Bayer::cfa_pattern_t cfa_p
         if (bayer == Bayer::RED || bayer == Bayer::BLUE) {
             simple_demosaic_redblue(cvimg, rawimg, bayer, cfa_pattern);
         } else {
-            logger.error("Fatal error: Unknown bayer subset requested. Aborting\n");
+            logger.error("%s\n", "Fatal error: Unknown bayer subset requested. Aborting");
             exit(-1);
         }
     }
@@ -80,7 +80,7 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
     }
     
     if (!unbalanced_scene) {
-        logger.debug("Green Bayer subset specified, performing quick-and-dirty balancing of green channels\n");
+        logger.debug("%s\n", "Green Bayer subset specified, performing quick-and-dirty balancing of green channels");
         vector < vector<int> > hist(4, vector<int>(65536, 0));
         for (size_t row=0; row < (size_t)cvimg.rows; row++) {
             for (int col=0; col < cvimg.cols; col++) {
@@ -116,7 +116,7 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
             }
         }
     } else {
-        logger.debug("ROI mode, not performing G1/G2 Bayer subset matching\n");
+        logger.debug("%s\n", "ROI mode, not performing G1/G2 Bayer subset matching");
     }
 
     ThreadPool& tp = ThreadPool::instance();
@@ -474,7 +474,7 @@ inline void hv_cross(cv::Mat& cvimg, int row0, int col0, int centre_val, double&
 }
 
 void geometric_demosaic(cv::Mat& cvimg, cv::Mat& rawimg, [[maybe_unused]] int target_subset) {
-    logger.debug("Bayer subset specified, performing geometric demosaic\n");
+    logger.debug("%s\n", "Bayer subset specified, performing geometric demosaic");
     rawimg = cvimg.clone();
     
     // TODO: WB does not seem to work very well on IQ180 images ...

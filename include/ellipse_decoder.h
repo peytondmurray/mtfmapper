@@ -155,7 +155,7 @@ class Ellipse_decoder {
         
         
         if (e.fg_fraction > 0.9999) {
-            logger.debug("ellipse too solid, cannot be a valid code\n");
+            logger.debug("%s\n", "ellipse too solid, cannot be a valid code");
             valid = false;
         }
     }

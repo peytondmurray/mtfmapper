@@ -61,7 +61,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
     }
     
     void render(const vector<Block>&) {
-        logger.error("Fatal error. This function should not be used. Aborting\n");
+        logger.error("%s\n", "Fatal error. This function should not be used. Aborting");
         exit(1);
         return;
     }
@@ -74,7 +74,7 @@ class Mtf_renderer_mfprofile : public Mtf_renderer {
         }
         
         if (!distance_scale.fiducials_found) {
-            logger.error("Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?\n");
+            logger.error("%s\n", "Error: No valid fiducials found, refusing to generate Focus chart output.\nAre you using the right chart type?");
             return;
         }
         

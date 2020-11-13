@@ -94,7 +94,7 @@ class Edge_model {
     
     void estimate_ridge(void) {
         if (!points_hinted) {
-            logger.error("did you forget to call hint_point_set_size() before adding points?\n");
+            logger.error("%s\n", "did you forget to call hint_point_set_size() before adding points?");
             return;
         }
         
@@ -120,7 +120,7 @@ class Edge_model {
         }
         
         if (samples.size() < 9) {
-            logger.debug("too few points in estimate_ridge\n");
+            logger.debug("%s\n", "too few points in estimate_ridge");
             release_points();
             return;
         }
@@ -302,7 +302,7 @@ class Edge_model {
              D[0][2] * (D[1][0]*D[2][1] - D[1][1]*D[2][0]);
              
         if (fabs(det_D) < 1e-12) {
-            logger.debug("Weird. Quadratic fit failed on ridge fitting\n");
+            logger.debug("%s\n", "Weird. Quadratic fit failed on ridge fitting");
             coeffs_invalidated = true;
             return;
         }

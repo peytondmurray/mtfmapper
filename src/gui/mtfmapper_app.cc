@@ -538,7 +538,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                 bool success = Edge_info::deserialize_header(fin, edge_count, pixel_size, mtf_contrast);
                 
                 if (!success) {
-                    logger.error("Could not read serialized edge info header.\n");
+                    logger.error("%s\n", "Could not read serialized edge info header.");
                     logger.flush();
                 } else {
                     size_t edges_processed = 0;

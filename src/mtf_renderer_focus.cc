@@ -379,18 +379,18 @@ void Mtf_renderer_focus::render(const vector<Mtf_profile_sample>& samples, Bayer
     cv::Scalar resultcolour(255, 255, 30);
     sprintf(tbuffer, "%.3lf (c/p)", mtf_peak_value);
     int tbaseline=0;
-    cv::Size tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
+    cv::Size tsize = cv::getTextSize(tbuffer, font, 1.0, 2, &tbaseline);
     Point2d textpos = distance_scale.world_to_image(peak_wx, -20*psf);
     textpos -= Point2d(tsize.width/2.0, 0);
-    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2, cv::LINE_AA);
     cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, cv::LINE_AA);
     double prev_line_height = tsize.height;
     
     sprintf(tbuffer, "%.1lf mm", focus_peak);
-    tsize = cv::getTextSize(tbuffer, font, 1.0, 2.5, &tbaseline);
+    tsize = cv::getTextSize(tbuffer, font, 1.0, 2, &tbaseline);
     textpos = distance_scale.world_to_image(peak_wx, -20*psf);
     textpos -= Point2d(tsize.width/2.0, -prev_line_height*1.5);
-    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2.5, cv::LINE_AA);
+    cv::putText(merged, tbuffer, textpos, font, 1, CV_RGB(20, 20, 20), 2, cv::LINE_AA);
     cv::putText(merged, tbuffer, textpos, font, 1, resultcolour, 1, cv::LINE_AA);
     
     // blank out the text region (again)

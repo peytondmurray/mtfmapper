@@ -156,7 +156,7 @@ class Edge_info {
 
         nread = fread(ibuf, 1, sizeof(uint32_t), fin);
         if (nread != sizeof(uint32_t)) {
-            logger.error("Could not read from edge info serialization file, SFR size read failed");
+            logger.error("%s\n", "Could not read from edge info serialization file, SFR size read failed");
             return b;
         }
         
@@ -168,7 +168,7 @@ class Edge_info {
         
         nread = fread(ibuf, 1, sizeof(float)*nsfr, fin);
         if (nread != sizeof(float)*nsfr) {
-            logger.error("Could not read from edge info serialization file, SFR read failed");
+            logger.error("%s\n", "Could not read from edge info serialization file, SFR read failed");
             return b;
         }
         
@@ -179,19 +179,19 @@ class Edge_info {
         
         nread = fread(ibuf, 1, sizeof(uint32_t), fin);
         if (nread != sizeof(uint32_t)) {
-            logger.error("Could not read from edge info serialization file, ESF size read failed");
+            logger.error("%s\n", "Could not read from edge info serialization file, ESF size read failed");
             return b;
         }
         
         size_t nesf = read_uint32(&ibuf);
         if (nsfr > 256) {
-            logger.error("Unexpected ESF length in edge deserialization, aborting\n");
+            logger.error("%s\n", "Unexpected ESF length in edge deserialization, aborting");
             return b;
         }
         
         nread = fread(ibuf, 1, sizeof(float)*nesf, fin);
         if (nread != sizeof(float)*nesf) {
-            logger.error("Could not read from edge info serialization file, ESF read failed");
+            logger.error("%s\n", "Could not read from edge info serialization file, ESF read failed");
             return b;
         }
         

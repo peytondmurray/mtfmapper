@@ -99,7 +99,7 @@ cv::Mat Display_profile::to_luminance(const cv::Mat& img) {
                 }
                 return newmat;
             } else {
-                logger.info("8-bit nonlinear grayscale\n");
+                logger.info("%s\n", "8-bit nonlinear grayscale");
                 uint8_t* sentinel = sptr + img.rows*img.cols;
                 while (sptr < sentinel) {
                     *dptr++ = uint16_t(lut[(*sptr++ << 8)]);
@@ -124,7 +124,7 @@ cv::Mat Display_profile::to_luminance(const cv::Mat& img) {
                 }
                 return newmat;
             } else {
-                logger.info("16-bit nonlinear grayscale\n");
+                logger.info("%s\n", "16-bit nonlinear grayscale");
                 uint16_t* dptr = (uint16_t*)img.data;
                 uint16_t* sptr = (uint16_t*)img.data;
                 
@@ -154,7 +154,7 @@ cv::Mat Display_profile::to_luminance(const cv::Mat& img) {
                 }
                 return newmat;
             } else {
-                logger.info("8-bit linear grayscale\n");
+                logger.info("%s\n", "8-bit linear grayscale");
                 uint8_t* sentinel = sptr + img.rows*img.cols;
                 while (sptr < sentinel) {
                     *dptr++ = uint16_t(*sptr++ << 8);
@@ -179,7 +179,7 @@ cv::Mat Display_profile::to_luminance(const cv::Mat& img) {
                 }
                 return newmat;
             } else {
-                logger.info("16-bit linear grayscale\n");
+                logger.info("%s\n", "16-bit linear grayscale");
                 return img;
             }
         }
@@ -208,7 +208,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
         if (img.elemSize1() == 1) {
             uint8_t* sptr = (uint8_t*)img.data;
             if (img.channels() == 3) {
-                logger.info("8-bit nonlinear RGB -> 16-bit linear RGB\n");
+                logger.info("%s\n", "8-bit nonlinear RGB -> 16-bit linear RGB");
                 uint8_t* sentinel = sptr + 3*img.rows*img.cols;
                 while (sptr < sentinel) {
                     
@@ -217,7 +217,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
                     *dptr_r++ = uint16_t(lut[(*sptr++ << 8)]);
                 }
             } else {
-                logger.info("8-bit nonlinear grayscale -> 16-bit linear gray RGB\n");
+                logger.info("%s\n", "8-bit nonlinear grayscale -> 16-bit linear gray RGB");
                 uint8_t* sentinel = sptr + img.rows*img.cols;
                 while (sptr < sentinel) {
                 
@@ -228,7 +228,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
             }
         } else {
             if (img.channels() == 3) {
-                logger.info("16-bit nonlinear RGB -> 16-bit linear RGB\n");
+                logger.info("%s\n", "16-bit nonlinear RGB -> 16-bit linear RGB");
                 uint16_t* sptr = (uint16_t*)img.data;
                 uint16_t* sentinel = sptr + 3*img.rows*img.cols;
                 while (sptr < sentinel) {
@@ -238,7 +238,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
                     *dptr_r++ = uint16_t(lut[*sptr++]);
                 }
             } else {
-                logger.info("16-bit nonlinear grayscale -> 16-bit linear gray RGB\n");
+                logger.info("%s\n", "16-bit nonlinear grayscale -> 16-bit linear gray RGB");
                 uint16_t* sptr = (uint16_t*)img.data;
                 
                 uint16_t* sentinel = sptr + img.rows*img.cols;
@@ -254,7 +254,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
         if (img.elemSize1() == 1) {
             uint8_t* sptr = (uint8_t*)img.data;
             if (img.channels() == 3) {
-                logger.info("8-bit linear RGB -> 16-bit linear RGB\n");
+                logger.info("%s\n", "8-bit linear RGB -> 16-bit linear RGB");
                 uint8_t* sentinel = sptr + 3*img.rows*img.cols;
                 while (sptr < sentinel) {
                     
@@ -263,7 +263,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
                     *dptr_r++ = uint16_t(*sptr++ << 8);
                 }
             } else {
-                logger.info("8-bit linear grayscale -> 16-bit linear gray RGB\n");
+                logger.info("%s\n", "8-bit linear grayscale -> 16-bit linear gray RGB");
                 uint8_t* sentinel = sptr + img.rows*img.cols;
                 while (sptr < sentinel) {
                     *dptr_b++ = uint16_t(*sptr << 8);
@@ -273,7 +273,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
             }
         } else {
             if (img.channels() == 3) {
-                logger.info("16-bit linear RGB -> 16-bit linear RGB (separate channels)\n");
+                logger.info("%s\n", "16-bit linear RGB -> 16-bit linear RGB (separate channels)");
                 uint16_t* sptr = (uint16_t*)img.data;
                 uint16_t* sentinel = sptr + 3*img.rows*img.cols;
                 while (sptr < sentinel) {
@@ -283,7 +283,7 @@ vector<cv::Mat> Display_profile::to_linear_rgb(const cv::Mat& img) {
                     *dptr_r++ = uint16_t(*sptr++);
                 }
             } else {
-                logger.info("16-bit linear grayscale -> 16-bit linear gray RGB\n");
+                logger.info("%s\n", "16-bit linear grayscale -> 16-bit linear gray RGB");
                 uint16_t* sptr = (uint16_t*)img.data;
                 uint16_t* sentinel = sptr + img.rows*img.cols;
                 while (sptr < sentinel) {

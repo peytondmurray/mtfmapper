@@ -225,7 +225,7 @@ int Esf_model::estimate_esf_clipping(vector< Ordered_point  >& ordered, double* 
         if (fft_size2 - fft_left < shift_tolerance*8 ||
             fft_right  - fft_size2 < shift_tolerance*8) {
             
-            logger.debug("probably contamination. tagging edge as dodgy\n");
+            logger.debug("%s\n", "probably contamination. tagging edge as dodgy");
             rval = 1;
         }
     }
