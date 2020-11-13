@@ -41,6 +41,8 @@ class Esf_model {
     Esf_model(double alpha=13.7) 
     : alpha(alpha), w(NYQUIST_FREQ*4, 0.0)  {}
     
+    virtual ~Esf_model(void) {}
+    
     virtual int build_esf(vector< Ordered_point  >& ordered, double* sampled, 
         const int fft_size, double max_distance_from_edge, vector<double>& esf, 
         Snr& snr, bool allow_peak_shift=false) = 0;
