@@ -40,7 +40,7 @@ using std::vector;
 class Mtf_renderer_stats : public Mtf_renderer {
   public:
     Mtf_renderer_stats(bool lpmm_mode=false, double pixel_size=1.0)
-    : lpmm_mode(lpmm_mode), pixel_size(lpmm_mode ? pixel_size : 1)  {
+    : pixel_size(lpmm_mode ? pixel_size : 1)  {
       
     }
     
@@ -137,7 +137,6 @@ class Mtf_renderer_stats : public Mtf_renderer {
         return d[idx];
     }
 
-    bool    lpmm_mode;
     double  pixel_size;
 };
 

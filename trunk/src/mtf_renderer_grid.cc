@@ -71,7 +71,7 @@ Mtf_renderer_grid::Mtf_renderer_grid(
     int mtf_contrast)
     :  Mtf_renderer(img_filename),
         wdir(wdir), fname(fname), 
-        gnuplot_binary(gnuplot_binary), img_y(img.rows), img_x(img.cols),
+        gnuplot_binary(gnuplot_binary),
         img(img), lpmm_mode(lpmm_mode), pixel_size(pixel_size),
         gnuplot_failure(false), gnuplot_warning(true),
         m_lower(0), m_upper(0), gnuplot_width(gnuplot_width),

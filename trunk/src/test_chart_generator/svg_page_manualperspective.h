@@ -116,7 +116,7 @@ class Svg_page_manualperspective : public Svg_page {
         return p;
     }
   
-    virtual iPoint project(double x, double y) {
+    virtual iPoint project(double x, double y, [[maybe_unused]] bool silent=false) {
     
         dPoint p = project_core(x,y);
         

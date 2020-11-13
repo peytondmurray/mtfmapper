@@ -336,7 +336,6 @@ class Edge_model {
     bool coeffs_invalidated = false;
     
     int par_bias = 0;
-    size_t est_par_length = 1;
     bool points_hinted = false;
     vector<vector<cv::Point3d>> points;
 };

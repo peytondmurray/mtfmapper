@@ -76,7 +76,7 @@ class Mtf_core {
              
       : cl(in_cl), g(in_g), img(in_img), bayer_img(in_bayer_img), absolute_sfr(false),
         snap_to(false), snap_to_angle(0), sfr_smoothing(true),
-        sliding(false), samples_per_edge(0), border_width(border_width), find_fiducials(false),
+        sliding(false), samples_per_edge(0), find_fiducials(false),
         undistort(undistort), ridges_only(false) {
 
         bayer = Bayer::from_string(bayer_subset);
@@ -262,7 +262,6 @@ class Mtf_core {
     bool sfr_smoothing;
     bool sliding;
     int samples_per_edge;
-    int border_width;
     bool find_fiducials;
     Undistort* undistort = nullptr;
     bool ridges_only;

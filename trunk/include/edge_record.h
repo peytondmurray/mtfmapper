@@ -299,11 +299,7 @@ class Edge_record {
     
     double wsum;
 
-    double mse;
     double sB; // standard error in slope estimate
-
-    double dx;
-    double dy;
 
     bool pooled;
 };

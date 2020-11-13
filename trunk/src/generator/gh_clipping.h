@@ -84,6 +84,6 @@ namespace GH_clipping {
     void gh_phase_two_b(vector<gh_vertex>& verts, const Polygon_geom& b, int poly1_start);
     double gh_phase_three(vector<gh_vertex>& verts, int vs, int first_isect_index, vector<Polygon_geom>& polys, bool area_only=false);
     
-};
+}
 
 #endif // GH_CLIPPING_H

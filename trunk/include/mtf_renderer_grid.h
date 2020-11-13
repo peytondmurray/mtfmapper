@@ -135,8 +135,6 @@ class Mtf_renderer_grid : public Mtf_renderer {
     size_t grid_x_fine;
     size_t grid_y_fine;
     
-    double img_y;
-    double img_x;
     const cv::Mat& img;
 
     bool    lpmm_mode;

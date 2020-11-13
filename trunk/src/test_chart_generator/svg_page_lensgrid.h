@@ -57,7 +57,7 @@ class Svg_page_lensgrid : public Svg_page {
     }
     
   protected:
-    virtual iPoint project(double x, double y) {
+    virtual iPoint project(double x, double y, [[maybe_unused]] bool silent=false) {
         
         x = floor(x*width);
         y = floor(y*width);
