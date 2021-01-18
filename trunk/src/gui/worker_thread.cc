@@ -44,6 +44,12 @@ using std::cout;
 using std::endl;
 using std::string;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+    #define EMPTY_STRING_PARTS Qt::SkipEmptyParts
+#else
+    #define EMPTY_STRING_PARTS QString::SkipEmptyParts
+#endif
+
 Worker_thread::Worker_thread(QWidget* parent) 
 : parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), abort(false) {
 
@@ -114,7 +120,7 @@ void Worker_thread::run(void) {
         }
 
         mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
-            << arguments.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+            << arguments.split(QRegExp("\\s+"), EMPTY_STRING_PARTS);
         
         Processing_command pc(
             QCoreApplication::applicationDirPath() + "/mtf_mapper",
