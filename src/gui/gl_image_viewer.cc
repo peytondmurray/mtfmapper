@@ -30,6 +30,12 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+    #define POSITION position
+#else
+    #define POSITION pos
+#endif
+
 GL_image_viewer::GL_image_viewer(QWidget* parent)
 : QAbstractScrollArea(parent) {
 
@@ -88,7 +94,7 @@ void GL_image_viewer::wheelEvent(QWheelEvent* e) {
     switch (e->modifiers()) {
     case Qt::ControlModifier:
       // directly ask viewport to zoom ...
-      zoom_action(e->angleDelta().y(), e->position().x(), e->position().y());
+      zoom_action(e->angleDelta().y(), e->POSITION().x(), e->POSITION().y());
       break;  
     case Qt::ShiftModifier:
       //scroll x
