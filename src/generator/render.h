@@ -59,7 +59,9 @@ class Render_polygon : public Render_target {
         AIRY_PLUS_BOX,
         AIRY_PLUS_4DOT_OLPF,
         WAVEFRONT,
-        WAVEFRONT_PLUS_BOX
+        WAVEFRONT_PLUS_BOX,
+        RECT,
+        RECT_PLUS_BOX
     } Render_type;
   
     Render_polygon(Geometry& target, 
@@ -128,7 +130,7 @@ class Render_polygon : public Render_target {
         return sqrt( log(0.5)/(-2*M_PI*M_PI*sigma*sigma) );
     }
     
-    void set_img_dimensions(int rows, int cols) {
+    void set_img_dimensions(int rows, int cols, bool random_angle=true, double angle=0) {
         img_width = cols;
         img_height = rows;
         
@@ -139,7 +141,7 @@ class Render_polygon : public Render_target {
         uint64_t isize = uint64_t(img_height)*uint64_t(img_width);
         rseed = vector<float>(isize);
         for (uint64_t i=0; i < isize; i++) {
-            rseed[i] = dis(gen);
+            rseed[i] = random_angle ? dis(gen) : angle;
         }
     }
     

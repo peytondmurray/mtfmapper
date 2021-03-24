@@ -335,6 +335,7 @@ int main(int argc, char** argv) {
     TCLAP::ValueArg<double> tc_psf_ratio("", "psf-ratio", "PSF minor axis fraction of major axis", false, 1.0, "real", cmd);
     TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
     TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, "f", cmd);
+    TCLAP::ValueArg<double> tc_aperture2("", "aperture2", "Aperture f-number of second axis of rectangular aperture stop (if -p rect-box) [0,1000]", false, 8.0, "f", cmd);
     TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
     TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
     TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
@@ -358,6 +359,8 @@ int main(int argc, char** argv) {
     psf_names.push_back("airy-4dot-olpf");
     psf_names.push_back("wavefront");
     psf_names.push_back("wavefront-box");
+    psf_names.push_back("rect");
+    psf_names.push_back("rect-box");
     TCLAP::ValuesConstraint<string> psf_constraints(psf_names);
     TCLAP::ValueArg<std::string> tc_psf("p", "psf-type", "Point Spread Function (PSF) type", false, "gaussian", &psf_constraints );
     cmd.add(tc_psf);
@@ -403,6 +406,12 @@ int main(int argc, char** argv) {
     }
     if ( tc_psf.getValue().compare("wavefront-box") == 0) {
         psf_type = Render_polygon::WAVEFRONT_PLUS_BOX;
+    }
+    if ( tc_psf.getValue().compare("rect") == 0) {
+        psf_type = Render_polygon::RECT;
+    }
+    if ( tc_psf.getValue().compare("rect-box") == 0) {
+        psf_type = Render_polygon::RECT_PLUS_BOX;
     }
     
     // perform some sanity checking
@@ -476,7 +485,9 @@ int main(int argc, char** argv) {
         psf_type != Render_polygon::AIRY_PLUS_BOX &&
         psf_type != Render_polygon::AIRY_PLUS_4DOT_OLPF &&
         psf_type != Render_polygon::WAVEFRONT &&
-        psf_type != Render_polygon::WAVEFRONT_PLUS_BOX) {
+        psf_type != Render_polygon::WAVEFRONT_PLUS_BOX &&
+        psf_type != Render_polygon::RECT &&
+        psf_type != Render_polygon::RECT_PLUS_BOX) {
         
         printf("Warning: You have specified the number of Airy samples (--airy-samples), but you\n");
         printf("         are not rendering with an Airy-based PSF.\n");
@@ -691,6 +702,8 @@ int main(int argc, char** argv) {
         case Render_polygon::AIRY_PLUS_4DOT_OLPF:
         case Render_polygon::WAVEFRONT:
         case Render_polygon::WAVEFRONT_PLUS_BOX:
+        case Render_polygon::RECT:
+        case Render_polygon::RECT_PLUS_BOX:
             rect = build_psf(psf_type, 
                 *target_geom,
                 *photosite_geom,
@@ -700,7 +713,8 @@ int main(int argc, char** argv) {
                 tc_olpf_split.getValue(),
                 tc_samples.isSet() ? tc_samples.getValue() : 0,
                 tc_w020.getValue(),
-                tc_w040.getValue()
+                tc_w040.getValue(),
+                tc_aperture2.getValue()
             );
             break;
         case Render_polygon::GAUSSIAN:
@@ -726,7 +740,10 @@ int main(int argc, char** argv) {
             }
             break;
     }
-    rect->set_img_dimensions(height, width);
+    rect->set_img_dimensions(height, width, 
+        psf_type != Render_polygon::RECT_PLUS_BOX && !tc_psf_theta.isSet(), 
+        tc_psf_theta.isSet() ? tc_psf_theta.getValue()*M_PI/180.0 + M_PI/2.0 : M_PI/2.0
+    );
     if (tc_psf_ratio.isSet()) {
         rect->set_psf_ratio(tc_psf_ratio.getValue());
     }

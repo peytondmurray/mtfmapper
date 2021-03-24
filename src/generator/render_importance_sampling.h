@@ -197,10 +197,12 @@ class Render_polygon_is : public Render_polygon {
 #include "render_is_airyolpf.h"
 #include "render_is_wavefront.h"
 #include "render_is_wavefront_box.h"
+#include "render_is_rect.h"
+#include "render_is_rectbox.h"
 
 Render_polygon_is* build_psf(Render_polygon::Render_type render_t, Geometry& target, Geometry& photosite,
     double in_aperture=8, double in_pitch=4.73, double in_lambda=0.55, double olpf_split=0.375,
-    int hs=0, double w020=0.0, double w040=0.0) {
+    int hs=0, double w020=0.0, double w040=0.0, double in_aperture2=8) {
 
     switch (render_t) {
         case Render_polygon::AIRY: 
@@ -233,6 +235,18 @@ Render_polygon_is* build_psf(Render_polygon::Render_type render_t, Geometry& tar
                     in_aperture, in_pitch, in_lambda,
                     hs == 0 ? 40 : hs,
                     w020, w040
+                );
+            break;
+        case Render_polygon::RECT:
+            return new Render_polygon_is_rect(target, photosite, 
+                    in_aperture, in_pitch, in_lambda, in_aperture2,
+                    hs == 0 ? 40 : hs
+                );
+            break;
+        case Render_polygon::RECT_PLUS_BOX:
+            return new Render_polygon_is_rectbox(target, photosite, 
+                    in_aperture, in_pitch, in_lambda, in_aperture2,
+                    hs == 0 ? 40 : hs
                 );
             break;
             
