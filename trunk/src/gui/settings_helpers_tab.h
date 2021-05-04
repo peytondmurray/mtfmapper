@@ -29,6 +29,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define SETTINGS_HELPERS_TAB_H
 
 #include <QtWidgets>
+#include <vector>
+using std::vector;
 
 class Settings_helpers_tab : public QWidget {
     Q_OBJECT
@@ -39,9 +41,15 @@ class Settings_helpers_tab : public QWidget {
     QString get_gnuplot_binary(void) const;
     QString get_exiv2_binary(void) const;
     QString get_dcraw_binary(void) const;
+    QString get_dcraw_emu_binary(void) const;
+    QString get_unprocessed_raw_binary(void) const;
+    int get_raw_developer(void) const;
+    
     void check_gnuplot_binary(void);
     void check_exiv2_binary(void);
     void check_dcraw_binary(void);
+    void check_dcraw_emu_binary(void);
+    void check_unproc_raw_binary(void);
 
 
     QLabel* gnuplot_label;
@@ -55,20 +63,46 @@ class Settings_helpers_tab : public QWidget {
     QLabel* dcraw_label;
     QLineEdit* dcraw_line;
     QPushButton* dcraw_button;
-
+    
+    QLabel* dcraw_emu_label;
+    QLineEdit* dcraw_emu_line;
+    QPushButton* dcraw_emu_button;
+    
+    QLabel* unproc_raw_label;
+    QLineEdit* unproc_raw_line;
+    QPushButton* unproc_raw_button;
+    
+    QLabel* raw_developer_label;
+    QComboBox* box_raw_developer;
+    
+    vector<QLineEdit*> all_raw_lineedits;
+    vector<vector<QLineEdit*>> raw_lineedits;
+    
     static const QString setting_gnuplot;
     static const QString setting_exiv;
     static const QString setting_dcraw;
+    static const QString setting_dcraw_emu;
+    static const QString setting_unprocessed_raw;
+    static const QString setting_raw_developer;
     static QString setting_gnuplot_default;
     static QString setting_exiv_default;
     static QString setting_dcraw_default;
+    static QString setting_dcraw_emu_default;
+    static QString setting_unprocessed_raw_default;
+    static const int setting_raw_developer_default;
+    
+    static constexpr int raw_developer_libraw = 0;
+    static constexpr int raw_developer_dcraw = 1;
 
   private:
-
+  
   public slots:
     void browse_for_gnuplot();
     void browse_for_exiv();
     void browse_for_dcraw();
+    void browse_for_dcraw_emu();
+    void browse_for_unproc_raw();
+    void toggle_enabled_raw_develop_options(int);
 
 };
 
