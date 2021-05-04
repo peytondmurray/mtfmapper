@@ -227,6 +227,9 @@ void Settings_dialog::save_and_close() {
     settings.setValue(Settings_helpers_tab::setting_gnuplot, helpers->gnuplot_line->text());
     settings.setValue(Settings_helpers_tab::setting_exiv, helpers->exiv_line->text());
     settings.setValue(Settings_helpers_tab::setting_dcraw, helpers->dcraw_line->text());
+    settings.setValue(Settings_helpers_tab::setting_dcraw_emu, helpers->dcraw_emu_line->text());
+    settings.setValue(Settings_helpers_tab::setting_unprocessed_raw, helpers->unproc_raw_line->text());
+    settings.setValue(Settings_helpers_tab::setting_raw_developer, helpers->box_raw_developer->currentIndex());
     settings.setValue(Settings_io_tab::setting_zscale, io->zscale_slider->value());
     settings.setValue(Settings_io_tab::setting_cache, io->cache_line->text());
     settings.setValue(Settings_io_tab::setting_lp1, io->lp1_line->text());

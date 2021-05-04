@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define WORKER_THREAD_H
 
 #include "processing_command.h"
+#include "raw_developer.h"
 
 #include <vector>
 using std::vector;
@@ -71,8 +72,8 @@ class Worker_thread : public QThread
         exiv2_binary = s;
     }
 
-    void set_dcraw_binary(const QString& s) {
-        dcraw_binary = s;
+    void set_raw_developer(std::shared_ptr<Raw_developer> rd) {
+        raw_developer = rd;
     }
     
     void set_single_roi_mode(bool v) {
@@ -117,11 +118,12 @@ class Worker_thread : public QThread
     QString      settings_arguments;
     QString      gnuplot_binary;
     QString      exiv2_binary;
-    QString      dcraw_binary;
+    std::shared_ptr<Raw_developer> raw_developer;
     bool force_roi_mode = false;
     bool force_focus_mode = false;
     bool force_imatest_mode = false;
     bool force_manual_roi_mode = false;
+    
     
     int tempdir_number;
 

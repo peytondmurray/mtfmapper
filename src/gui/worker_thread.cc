@@ -72,42 +72,21 @@ void Worker_thread::run(void) {
         QString input_file(input_files.at(i));
 
         QFileInfo fi(input_files.at(i));
-        if ( fi.suffix().compare(QString("NEF"), Qt::CaseInsensitive) == 0 ||  // Nikon
-             fi.suffix().compare(QString("ARW"), Qt::CaseInsensitive) == 0 ||  // Sony
-             fi.suffix().compare(QString("PEF"), Qt::CaseInsensitive) == 0 ||  // Pentax
-             fi.suffix().compare(QString("IIQ"), Qt::CaseInsensitive) == 0 ||  // Phase One
-             fi.suffix().compare(QString("MOS"), Qt::CaseInsensitive) == 0 ||  // Leaf
-             fi.suffix().compare(QString("ORF"), Qt::CaseInsensitive) == 0 ||  // Olympus
-             fi.suffix().compare(QString("RW2"), Qt::CaseInsensitive) == 0 ||  // Panasonic
-             fi.suffix().compare(QString("RAF"), Qt::CaseInsensitive) == 0 ||  // Fujifilm -> bayer mode will probably break horribly
-             fi.suffix().compare(QString("DNG"), Qt::CaseInsensitive) == 0 ||  // Pentax/Ricoh, maybe others
-             fi.suffix().compare(QString("CR2"), Qt::CaseInsensitive) == 0) { // Canon
-
-            input_file = QString(tempdir + "/" + fi.completeBaseName() + QString(".tiff"));
-            QProcess dcp(this);
-            dcp.setProgram(dcraw_binary);
-            dcp.setStandardOutputFile(input_file);
-            if (arguments.contains(QString("--bayer"))) {
-                dcp.setArguments(
-                    QStringList() << "-4" << "-T" << "-D" << "-c" << input_files.at(i)
+        if (raw_developer) {
+            if (raw_developer->accepts(fi.suffix())) {
+                input_file = QString(tempdir + "/" + fi.completeBaseName() + QString(".tiff"));
+            
+                raw_developer->process(
+                    input_files.at(i), // input file to raw developer
+                    input_file, // output file of raw developer
+                    arguments.contains(QString("--bayer")) // bayer_mode
                 );
-            } else {
-                dcp.setArguments(
-                    QStringList() << "-w" <<  "-4" << "-T" << "-q" << "3" << "-c" << input_files.at(i)
-                );
+                
+                emit send_delete_item(input_file);
             }
-
-            logger.debug("arguments to dcraw [%s]:\n", dcraw_binary.toLocal8Bit().constData());
-            for (int kk = 0; kk < dcp.arguments().size(); kk++) {
-                logger.debug("[%d]=%s\n", kk, dcp.arguments().at(kk).toLocal8Bit().constData());
-            }
-            dcp.start();
-            dcp.waitForFinished(-1);
-            int dc_rval = dcp.exitStatus() == QProcess::NormalExit && dcp.exitCode() == 0;
-            if (!dc_rval) {
-                logger.error("Error. dcraw call failed on input image %s [exit status=%d, exitcode=%d]\n", input_files.at(i).toLocal8Bit().constData(), dcp.exitStatus(), dcp.exitCode());
-            }
-            emit send_delete_item(input_file);
+        } else {
+            logger.error("Raw developer not set in Worker_thread::run()\n");
+            break; // TODO: better error handling?
         }
         
         QStringList mma;
@@ -208,7 +187,7 @@ QString Worker_thread::update_arguments(QString& s) {
 
 void Worker_thread::process_command(const Processing_command& command, vector<std::pair<failure_t, QString>>& failures) {
     
-    QProcess process(this);
+    QProcess process;
     process.setProgram(command.program);
     process.setArguments(command.arguments);
     const QString& tempdir = command.tmp_dirname;

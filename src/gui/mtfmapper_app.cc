@@ -491,7 +491,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
             processor.set_manual_roi_mode(manual_roi);
             processor.set_files(input_files);
             processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
-            processor.set_dcraw_binary(settings->helpers->get_dcraw_binary());
+            processor.set_raw_developer(Raw_developer_factory::build(*settings->helpers));
             processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
             processor.start();
         }
@@ -1043,7 +1043,7 @@ void mtfmapper_app::dropEvent(QDropEvent* evt) {
         processor.set_manual_roi_mode(false);
         processor.set_files(dropped_files);
         processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
-        processor.set_dcraw_binary(settings->helpers->get_dcraw_binary());
+        processor.set_raw_developer(Raw_developer_factory::build(*settings->helpers));
         processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
         processor.start();
     }
