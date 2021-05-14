@@ -495,7 +495,6 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
             ps.set_focus_mode(focus);
             ps.set_imatest_mode(imatest);
             ps.set_manual_roi_mode(manual_roi);
-            std::cout << "submitting batch from thread " << std::this_thread::get_id() << std::endl;
             emit submit_batch(ps);
         }
     }
