@@ -73,7 +73,7 @@ Worker_thread::~Worker_thread(void) {
     pc_thread.join();
 }
 
-void Worker_thread::receive_batch(const Processor_state& state) {
+void Worker_thread::receive_batch(Processor_state state) {
     abort = false;
     QString arguments = state.updated_arguments();
     

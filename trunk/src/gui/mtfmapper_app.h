@@ -173,7 +173,7 @@ class mtfmapper_app : public QMainWindow
     queue<Processing_command> manual_roi_commands;
     
   signals:
-    void submit_batch(const Processor_state& state);
+    void submit_batch(Processor_state state);
 
   public slots:
     void open_auto();
