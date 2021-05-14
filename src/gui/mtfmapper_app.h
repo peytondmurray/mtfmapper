@@ -42,6 +42,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "about_dialog.h"
 #include "help_dialog.h"
 #include "processing_command.h"
+#include "processor_state.h"
 
 #include "sfr_entry.h"
 #include "sfr_dialog.h"
@@ -170,6 +171,9 @@ class mtfmapper_app : public QMainWindow
     bool mq_busy = false;
     Edge_select_dialog* edge_select_dialog;
     queue<Processing_command> manual_roi_commands;
+    
+  signals:
+    void submit_batch(const Processor_state& state);
 
   public slots:
     void open_auto();

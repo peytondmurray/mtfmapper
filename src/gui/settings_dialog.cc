@@ -76,7 +76,7 @@ void Settings_dialog::open() {
     show();
 }
 
-void Settings_dialog::send_argument_string(bool focus_mode) {
+QString Settings_dialog::get_argument_string(bool focus_mode) {
     QString args = QString("-t %1").arg(io->threshold_line->text());
     if (io->cb_linear_gamma->checkState()) {
         args = args + QString(" -l");
@@ -201,7 +201,7 @@ void Settings_dialog::send_argument_string(bool focus_mode) {
     
     args = args + QString(" %1").arg(io->arguments_line->text());
     
-    emit argument_string(args);
+    return args;
 }
 
 void Settings_dialog::save_and_close() {
@@ -266,7 +266,6 @@ void Settings_dialog::save_and_close() {
         settings.setValue(Settings_io_tab::setting_lpmm, io->cb_lpmm->checkState());
     }
     
-    send_argument_string(false);
     set_cache_size(settings.value(Settings_io_tab::setting_cache, io->setting_cache_default).toInt());
     settings_saved();
     
@@ -318,5 +317,4 @@ QString Settings_dialog::peek_argument_line(void) const {
 void Settings_dialog::reset_argument_line(void) {
     io->arguments_line->setText(QString(""));
     settings.setValue(io->setting_arguments, io->arguments_line->text());
-    send_argument_string(false);
 }
