@@ -42,10 +42,11 @@ class Settings_dialog : public QDialog
   
   public:
     Settings_dialog(QWidget *parent);
-    void send_argument_string(bool focus_mode);
+    QString get_argument_string(bool focus_mode);
     void check_mtf_lower(void);
     QString peek_argument_line(void) const;
     void reset_argument_line(void);
+    
     
     QSettings   settings;
     

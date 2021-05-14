@@ -31,6 +31,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "processing_command.h"
 #include "raw_developer.h"
 #include "input_file_record.h"
+#include "processor_state.h"
 
 #include <vector>
 using std::vector;
@@ -38,6 +39,7 @@ using std::vector;
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <atomic>
 #include <queue>
 using std::queue;
 
@@ -49,7 +51,7 @@ using std::queue;
 
 class mtfmapper_app;
 
-class Worker_thread : public QThread 
+class Worker_thread  : public QObject
 {
   Q_OBJECT
   
@@ -64,47 +66,13 @@ class Worker_thread : public QThread
 
     Worker_thread(QWidget *parent);
     ~Worker_thread(void);
-    void set_files(const QStringList& input_files);
-    void run();
     
     void process_command(const Processing_command& command);
-
-    void set_gnuplot_binary(const QString& s) {
-        gnuplot_binary = s;
-    }
-
-    void set_exiv2_binary(const QString& s) {
-        exiv2_binary = s;
-    }
-
-    void set_raw_developer(std::shared_ptr<Raw_developer> rd) {
-        raw_developer = rd;
-    }
-    
-    void set_single_roi_mode(bool v) {
-        force_roi_mode = v;
-    }
-    
-    void set_focus_mode(bool v) {
-        force_focus_mode = v;
-    }
-    
-    void set_imatest_mode(bool v) {
-        force_imatest_mode = v;
-    }
-    
-    void set_manual_roi_mode(bool v) {
-        force_manual_roi_mode = v;
-    }
-    
-    
     void submit_processing_command(const Processing_command& command);
     
     void remove_file_in_flight(void) {
         fif_add(-1);
     }
-    
-    QString update_arguments(QString& s);
     
   signals:
     void send_parent_item(QString s, QString f);
@@ -119,30 +87,22 @@ class Worker_thread : public QThread
     void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
     
     void send_processing_command(const Processing_command& command);
+    void work_finished(void);
     
   public slots:
-    void receive_arg_string(QString s);
     void receive_abort(void);
+    void receive_batch(const Processor_state& state);
     
   private:
     void developer_run(void);
     void processor_run(void);
+    void batch_run(void);
     void add_failure(failure_t fail, const QString& fname);
     void fif_add(int delta);
   
     mtfmapper_app* parent;
-    QStringList input_files;
-    QString      settings_arguments;
-    QString      gnuplot_binary;
-    QString      exiv2_binary;
-    std::shared_ptr<Raw_developer> raw_developer;
-    bool force_roi_mode = false;
-    bool force_focus_mode = false;
-    bool force_imatest_mode = false;
-    bool force_manual_roi_mode = false;
     
-    
-    int tempdir_number;
+    std::atomic_int tempdir_number;
     
     bool dev_done = false;
     std::thread dev_thread;
@@ -160,13 +120,19 @@ class Worker_thread : public QThread
     std::condition_variable pc_cv;
     queue<Processing_command> pc_queue;
     
+    bool batch_done = false;
+    std::thread batch_thread;
+    std::mutex batch_mutex;
+    std::condition_variable batch_cv;
+    queue<Processor_state> batch_queue;
+    
     std::mutex failure_mutex;
     vector<std::pair<failure_t, QString>> failure_list;
     
     // files-in-flight
     std::mutex fif_mutex;
     int fif_count = 0;
-
+    
     bool abort;
 };
 

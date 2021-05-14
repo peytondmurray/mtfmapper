@@ -199,7 +199,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     connect(&processor, SIGNAL(send_progress_indicator(int)), this, SLOT(update_progress(int)));
     connect(&processor, SIGNAL(send_progress_indicator_max(int, int)), progress, SLOT(setRange(int, int)));
-    connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
+    connect(this, SIGNAL(submit_batch(const Processor_state&)), &processor, SLOT(receive_batch(const Processor_state&)));
     connect(settings, SIGNAL(set_cache_size(int)), this, SLOT(set_cache_size(int)));
     connect(settings, SIGNAL(settings_saved()), this, SLOT(settings_saved()));
 
@@ -263,9 +263,15 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     edge_select_dialog = new Edge_select_dialog(this);
     
-    settings->send_argument_string(false);
     check_if_helpers_exist();
     check_and_purge_stale_temp_files();
+    
+    // start up processor in a different thread
+    QThread* thread = new QThread();
+    processor.moveToThread(thread);
+    connect(&processor, SIGNAL(work_finished()), thread, SLOT(quit()));
+    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    thread->start();
 }
 
 mtfmapper_app::~mtfmapper_app(void) {
@@ -468,26 +474,29 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
         settings->io->cb_orientation->setCheckState(tb_img_orientation->checkState());
         settings->io->cb_ca_active->setCheckState(tb_img_ca->checkState());
         settings->set_gnuplot_img_width(int(img_viewer->size().height()*1.3));
-        settings->send_argument_string(focus);
 
         input_files = open_dialog->selectedFiles();
         if (input_files.size() > 0) {
-
-            disable_file_open();
 
             QStringList labels;
             labels.push_back(QString("Data set"));
             dataset_contents.setHorizontalHeaderLabels(labels);
             abort_button->show();
-            processor.set_single_roi_mode(roi);
-            processor.set_focus_mode(focus);
-            processor.set_imatest_mode(imatest);
-            processor.set_manual_roi_mode(manual_roi);
-            processor.set_files(input_files);
-            processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
-            processor.set_raw_developer(Raw_developer_factory::build(*settings->helpers));
-            processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
-            processor.start();
+            
+            Processor_state ps(
+                input_files, 
+                settings->helpers->get_gnuplot_binary(),
+                settings->helpers->get_exiv2_binary(),
+                settings->get_argument_string(focus),
+                Raw_developer_factory::build(*settings->helpers)
+            );
+            
+            ps.set_single_roi_mode(roi);
+            ps.set_focus_mode(focus);
+            ps.set_imatest_mode(imatest);
+            ps.set_manual_roi_mode(manual_roi);
+            std::cout << "submitting batch from thread " << std::this_thread::get_id() << std::endl;
+            emit submit_batch(ps);
         }
     }
     
@@ -1058,21 +1067,21 @@ void mtfmapper_app::dropEvent(QDropEvent* evt) {
 
     if (open_act->isEnabled() && dropped_files.size() > 0) { // only process the drop event if we are not currently processing
         // TODO: not ideal to have a copy of the same code from File->Open here, really has to be refactored
-        disable_file_open();
 
         QStringList labels;
         labels.push_back(QString("Data set"));
         dataset_contents.setHorizontalHeaderLabels(labels);
         abort_button->show();
-        processor.set_single_roi_mode(false);
-        processor.set_focus_mode(false);
-        processor.set_imatest_mode(false);
-        processor.set_manual_roi_mode(false);
-        processor.set_files(dropped_files);
-        processor.set_gnuplot_binary(settings->helpers->get_gnuplot_binary());
-        processor.set_raw_developer(Raw_developer_factory::build(*settings->helpers));
-        processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
-        processor.start();
+        
+        Processor_state ps(
+            dropped_files, 
+            settings->helpers->get_gnuplot_binary(),
+            settings->helpers->get_exiv2_binary(),
+            settings->get_argument_string(false),
+            Raw_developer_factory::build(*settings->helpers)
+        );
+        
+        emit submit_batch(ps);
     }
 }
 

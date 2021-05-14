@@ -52,13 +52,19 @@ using std::string;
 
 Worker_thread::Worker_thread(QWidget* parent) 
 : parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), 
-  dev_done(false), dev_thread(&Worker_thread::developer_run, this),
-  pc_done(false), pc_thread(&Worker_thread::processor_run, this),
-  abort(false) {
+  dev_done(false), pc_done(false), batch_done(false), abort(false) {
+  
+  // initialize the threads a bit later when we are sure the mutexes have been initialized
+  dev_thread = std::thread(&Worker_thread::developer_run, this);
+  pc_thread = std::thread(&Worker_thread::processor_run, this);
+  batch_thread = std::thread(&Worker_thread::batch_run, this);
 }
 
 Worker_thread::~Worker_thread(void) {
     abort = true;
+    batch_done = true;
+    batch_cv.notify_one();
+    batch_thread.join();
     dev_done = true;
     dev_cv.notify_one();
     dev_thread.join();
@@ -67,152 +73,125 @@ Worker_thread::~Worker_thread(void) {
     pc_thread.join();
 }
 
-void Worker_thread::set_files(const QStringList& files) {
-    input_files = files;
-}
-
-void Worker_thread::run(void) {
+void Worker_thread::receive_batch(const Processor_state& state) {
     abort = false;
-    QString arguments = update_arguments(settings_arguments);
-    
-    // NB / TODO: because we are doing everything from within the thread's run() method
-    // we cannot add additional files while others are processing. I suppose this constraint
-    // can be avoided by using signals/slots instead?
+    QString arguments = state.updated_arguments();
     
     // start by assuming all files will pass raw development
-    fif_add(input_files.size());
-    
-    for (int i=0; i < input_files.size(); i++) {
-        std::lock_guard<std::mutex> lock(dev_mutex);
-        // NB: tempdir_number somewhat unprotected at this stage
-        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
-        dev_queue.push(Input_file_record(input_files.at(i), arguments, tempdir));
-    }
-    dev_cv.notify_one();
-    
-    int remaining_files = input_files.size();
-    
-    while (!abort && remaining_files > 0) { // TODO: what if the raw developer never returns? maybe we need a timeout?
-        Input_file_record input;
-        {
-            std::unique_lock<std::mutex> file_lock(file_mutex);
-            // while blocking in wait, file_mutex is not locked, so developer_run can obtain a lock
-            // to add new entries without blocking indefinitely
-            file_cv.wait(file_lock, [this]{ return !file_queue.empty(); });
-            
-            input = file_queue.front();
-            file_queue.pop();
-            remaining_files--;
-        }
-        
-        if (input.is_valid()) {
-            if (QFileInfo(input.get_output_name()).size() == 0 || input.get_state() == Input_file_record::state_t::FAILED) {
-                add_failure(failure_t::RAW_DEVELOPER_FAILURE, input.get_input_name());
-                fif_add(-1); // one less file to worry about
-                continue;
-            }
-        
-            QStringList mapper_args;
-            
-            // if a "--focal-ratio" setting is already present, then assume this
-            // was a user-provided override, otherwise try to calculate it from the EXIF data
-            if (!input.get_arguments().contains("--focal-ratio")) {
-                Exiv2_property props(exiv2_binary, input.get_input_name(), input.get_temp_dir() + "/exifinfo.txt");
-                mapper_args << "--focal-ratio" << props.get_focal_ratio();
-            }
-
-            mapper_args << "--gnuplot-executable " + gnuplot_binary << input.get_output_name() << input.get_temp_dir() 
-                << "--logfile " + input.get_temp_dir() + "/log.txt" 
-                << input.get_arguments().split(QRegExp("\\s+"), EMPTY_STRING_PARTS);
-            
-            Processing_command pc(
-                QCoreApplication::applicationDirPath() + "/mtf_mapper",
-                mapper_args,
-                input.get_output_name(), // output name of raw developer is input to mapper
-                input.get_temp_dir(),
-                input.get_input_name(), // original input file
-                force_manual_roi_mode ? Processing_command::state_t::AWAIT_ROI : Processing_command::state_t::READY
-            );
-            
-            {
-                std::lock_guard<std::mutex> pc_lock(pc_mutex);
-                pc_queue.push(pc);
-            }
-            pc_cv.notify_one();
-        }
-    }
-    
-    // turn off the transient modifiers
-    set_single_roi_mode(false); 
-    set_focus_mode(false);
-    set_imatest_mode(false);
-    set_manual_roi_mode(false);
-    
+    fif_add(state.input_files.size());
     {
-        // pass on all failures so far (usually raw developer failures before processing completes)
-        std::lock_guard<std::mutex> lock(failure_mutex);
-        for (const auto& failure : failure_list) {
-            emit mtfmapper_call_failed(failure.first, failure.second);
-        }
-        failure_list.clear();
+        std::lock_guard<std::mutex> lock(batch_mutex);
+        batch_queue.push(state);
     }
+    
+    for (int i=0; i < state.input_files.size(); i++) {
+        std::lock_guard<std::mutex> lock(dev_mutex);
+        QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
+        dev_queue.push(Input_file_record(state.input_files.at(i), arguments, tempdir, state.raw_developer));
+    }
+    // this should be enough to trigger processing of 'state'
+    dev_cv.notify_one();
+    batch_cv.notify_one();
 }
 
-void Worker_thread::receive_arg_string(QString s) {
-    settings_arguments = s;
+void Worker_thread::batch_run(void) {
+    while (!batch_done) {
+        {
+            std::unique_lock<std::mutex> lock(batch_mutex);
+            batch_cv.wait(lock, [this]{ return batch_done || !batch_queue.empty(); });
+        
+            if (batch_done) { // for shutting down
+                break;
+            }
+        }
+        
+        bool batch_queue_done = false;
+        while (!batch_queue_done) {
+        
+            Processor_state state;
+            {
+                std::lock_guard<std::mutex> lock(batch_mutex);
+                state = batch_queue.front();
+                batch_queue.pop();
+            }
+            
+            if (!abort) {    
+                if (state.is_valid()) {
+                    int remaining_files = state.input_files.size();
+                    
+                    while (!abort && remaining_files > 0) { 
+                        Input_file_record input;
+                        {
+                            std::unique_lock<std::mutex> file_lock(file_mutex);
+                            // while blocking in wait, file_mutex is not locked, so developer_run can obtain a lock
+                            // to add new entries without blocking indefinitely
+                            file_cv.wait(file_lock, [this]{ return !file_queue.empty(); });
+                            
+                            input = file_queue.front();
+                            file_queue.pop();
+                            remaining_files--;
+                        }
+                        
+                        if (input.is_valid()) {
+                            if (QFileInfo(input.get_output_name()).size() == 0 || input.get_state() == Input_file_record::state_t::FAILED) {
+                                add_failure(failure_t::RAW_DEVELOPER_FAILURE, input.get_input_name());
+                                fif_add(-1); // one less file to worry about
+                                continue;
+                            }
+                        
+                            QStringList mapper_args;
+                            
+                            // if a "--focal-ratio" setting is already present, then assume this
+                            // was a user-provided override, otherwise try to calculate it from the EXIF data
+                            if (!input.get_arguments().contains("--focal-ratio")) {
+                                Exiv2_property props(state.exiv2_binary, input.get_input_name(), input.get_temp_dir() + "/exifinfo.txt");
+                                mapper_args << "--focal-ratio" << props.get_focal_ratio();
+                            }
+
+                            mapper_args << "--gnuplot-executable " + state.gnuplot_binary << input.get_output_name() << input.get_temp_dir() 
+                                << "--logfile " + input.get_temp_dir() + "/log.txt" 
+                                << input.get_arguments().split(QRegExp("\\s+"), EMPTY_STRING_PARTS);
+                            
+                            Processing_command pc(
+                                QCoreApplication::applicationDirPath() + "/mtf_mapper",
+                                mapper_args,
+                                input.get_output_name(), // output name of raw developer is input to mapper
+                                input.get_temp_dir(),
+                                input.get_input_name(), // original input file
+                                state.initial_state()
+                            );
+                            
+                            {
+                                std::lock_guard<std::mutex> pc_lock(pc_mutex);
+                                pc_queue.push(pc);
+                            }
+                            pc_cv.notify_one();
+                        }
+                    }
+                    
+                    {
+                        // pass on all failures so far (usually raw developer failures before processing completes)
+                        std::lock_guard<std::mutex> lock(failure_mutex);
+                        for (const auto& failure : failure_list) {
+                            emit mtfmapper_call_failed(failure.first, failure.second);
+                        }
+                        failure_list.clear();
+                    }
+                
+                }
+            } 
+            
+            {
+                std::lock_guard<std::mutex> lock(batch_mutex);
+                batch_queue_done = batch_queue.empty();
+            }
+        }
+    }
+    emit work_finished();
 }
 
 void Worker_thread::receive_abort() {
     abort = true;
-}
-
-QString Worker_thread::update_arguments(QString& s) {
-    QString arguments(s);
-    
-    if (force_roi_mode) {
-        if (!arguments.contains("--annotate") && !arguments.contains("-a ")) {
-            arguments = arguments + QString(" -a");
-        }
-        if (!arguments.contains("--edges") && !arguments.contains("-q ")) {
-            arguments = arguments + QString(" -q");
-        }
-        if (!arguments.contains("--single-roi")) {
-            arguments = arguments + QString(" --single-roi");
-        }
-        
-        // disable all the other mutually exclusive outputs
-        arguments.replace("--lensprofile ", " ");
-        arguments.replace("-s ", " ");
-        arguments.replace("--surface ", " ");
-        arguments.replace("-p ", " ");
-        arguments.replace("--profile ", " ");
-        arguments.replace("--focus ", " ");
-        arguments.replace("--chart-orientation ", " ");
-    }
-    
-    if (force_focus_mode) {
-        if (!arguments.contains("--focus")) {
-            arguments = arguments + QString(" --focus");
-        }
-        // disable all the other mutually exclusive outputs
-        arguments.replace("--lensprofile ", " ");
-        arguments.replace("-q ", " ");
-        arguments.replace("--edges ", " ");
-        arguments.replace("-a ", " ");
-        arguments.replace("--annotate ", " ");
-        arguments.replace("-s ", " ");
-        arguments.replace("--surface ", " ");
-        arguments.replace("-p ", " ");
-        arguments.replace("--profile ", " ");
-    }
-    
-    
-    if (force_imatest_mode) {
-        if (!arguments.contains("--imatest-chart")) {
-            arguments = arguments + QString(" --imatest-chart");
-        }
-    }
-    return arguments;
 }
 
 void Worker_thread::process_command(const Processing_command& command) {
@@ -352,27 +331,32 @@ void Worker_thread::process_command(const Processing_command& command) {
 
 void Worker_thread::developer_run(void) {
     while (!dev_done) {
-    
-        std::unique_lock<std::mutex> lock(dev_mutex);
-        dev_cv.wait(lock, [this]{ return dev_done || !dev_queue.empty(); });
-        
-        if (dev_done) { // for shutting down
-            break;
+        {
+            std::unique_lock<std::mutex> lock(dev_mutex);
+            dev_cv.wait(lock, [this]{ return dev_done || !dev_queue.empty(); });
+            
+            if (dev_done) { // for shutting down
+                break;
+            }
         }
         
-        // NB: because we have the lock, no-one can add new files until we are done, which is fine for now
-        
-        while (!dev_queue.empty()) {
+        bool dev_queue_done = false;
+        while (!dev_queue_done) {
             
-            Input_file_record& state = dev_queue.front();
+            Input_file_record state;
+            {
+                std::lock_guard<std::mutex> lock(dev_mutex);
+                state = dev_queue.front();
+                dev_queue.pop();
+            }
             
             if (!abort) {
             
                 QDir().mkdir(state.get_temp_dir());
 
                 QFileInfo fi(state.get_input_name());
-                if (raw_developer) {
-                    if (raw_developer->accepts(fi.suffix())) {
+                if (state.get_raw_developer()) {
+                    if (state.get_raw_developer()->accepts(fi.suffix())) {
                         state.set_output_name(
                             QString(state.get_temp_dir() + "/" + fi.completeBaseName() + QString(".tiff"))
                         );
@@ -380,7 +364,7 @@ void Worker_thread::developer_run(void) {
                         // TODO: we can add a cache here that we can pass to process; if the input file + args match
                         // just copy the previous raw developer output if it still exists. store cache in worker_thread
                         // for persistance
-                        int dev_success = raw_developer->process(
+                        int dev_success = state.get_raw_developer()->process(
                             state.get_input_name(), // input file to raw developer
                             state.get_output_name(), // output file of raw developer
                             state.get_arguments().contains(QString("--bayer")) // bayer_mode
@@ -398,8 +382,6 @@ void Worker_thread::developer_run(void) {
                         state.set_state(Input_file_record::state_t::COMPLETED);
                     }
                     
-                    // NB: because we are still holding a dev_mutex lock, we have to be careful that
-                    // the producer does not hold onto its lock indefinitely
                     {
                         std::lock_guard<std::mutex> file_lock(file_mutex);
                         file_queue.push(state);
@@ -415,7 +397,10 @@ void Worker_thread::developer_run(void) {
                 fif_add(-1);
             }
             
-            dev_queue.pop();
+            {
+                std::lock_guard<std::mutex> lock(dev_mutex);
+                dev_queue_done = dev_queue.empty();
+            }
         }
     }
 }
