@@ -35,7 +35,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <vector>
 
+using std::vector;
 using std::string;
 using std::ifstream;
 using std::cout;
@@ -85,7 +87,7 @@ char*   Exiv2_property::eat_whitespace(char* cp) {
 }
 
 QString Exiv2_property::extract_property(QString propname) {
-    char* buffer = new char[4096];
+    vector<char> buffer(4096);
 
     QProcess evp;
     evp.setProgram(exiv2_binary);
@@ -102,28 +104,26 @@ QString Exiv2_property::extract_property(QString propname) {
             ifname.toLocal8Bit().constData(), propname.toLocal8Bit().constData(),
             evp.exitStatus(), evp.exitCode()
         );
-        delete [] buffer;
         return QString("");
     }
 
     ifstream ifs(tfname.toLocal8Bit().constData());
     if (!ifs.fail()) {
-        ifs.getline(buffer, 4096);
+        ifs.getline(buffer.data(), 4096);
         buffer[4095] = 0; // ensure strlen will stop
 
-        if (strlen(buffer) == 0) {
+        if (strlen(buffer.data()) == 0) {
             return QString("N/A");
         }
 
         // seek over three whitespace regions
-        char* cp = buffer;
+        char* cp = buffer.data();
         for (int i=0; i < 3; i++) {
             cp = eat_non_whitespace(cp);
             cp = eat_whitespace(cp);
         }
 
         QString rval = QString(cp);
-        delete [] buffer;
         // now cp points to the last record, which is the one we want
         return rval;
 
@@ -131,7 +131,6 @@ QString Exiv2_property::extract_property(QString propname) {
         logger.error("failed to open %s [input=%s]\n", tfname.toLocal8Bit().constData(), ifname.toLocal8Bit().constData());
     }
 
-    delete [] buffer;
     return QString("not found");
 }
 

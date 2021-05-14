@@ -50,9 +50,9 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     img_viewer->setViewport(img_panel);   // TODO: could combine these
     img_viewer->set_GL_widget(img_panel);
     
-    icon_image = new QImage(QSize(256, 256), QImage::Format_RGB888);
+    icon_image = std::shared_ptr<QImage>(new QImage(QSize(256, 256), QImage::Format_RGB888));
     icon_image->fill(Qt::red);
-    img_panel->set_default_image(icon_image);
+    img_panel->set_default_image(icon_image.get());
 
     help_dialog = new Manual_roi_help_dialog(this);
     help_dialog->setModal(true);

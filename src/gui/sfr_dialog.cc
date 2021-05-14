@@ -62,7 +62,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
     
-    mtfmapper_logo = new QIcon;
+    mtfmapper_logo = std::shared_ptr<QIcon>(new QIcon);
     mtfmapper_logo->addFile(":/Icons/AppIcon256");
     
     QFontMetrics fm(QWidget::fontMetrics());
