@@ -33,6 +33,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "gl_image_viewer.h"
 #include "gl_image_panel_edges.h"
 #include "manual_roi_help_dialog.h"
+#include <memory>
 
 class QPushButton;
 class QTextEdit;
@@ -55,7 +56,7 @@ class Edge_select_dialog : public QDialog {
     QPushButton* accept_button;
     QPushButton* help_button;
     QWidget* parent = nullptr;
-    QImage* icon_image;
+    std::shared_ptr<QImage> icon_image;
 
     QString roi_file;
 

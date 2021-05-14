@@ -38,6 +38,7 @@ using namespace QtCharts;
 
 #include <vector>
 using std::vector;
+#include <memory>
 
 class Sfr_dialog : public QDialog {
   Q_OBJECT
@@ -76,7 +77,7 @@ class Sfr_dialog : public QDialog {
     QGridLayout* label_layout;
     QPushButton* save_img_button;
     QPushButton* save_data_button;
-    QIcon* mtfmapper_logo;
+    std::shared_ptr<QIcon> mtfmapper_logo;
     QAtomicInt repainting;
     bool lock_cursor = false;
     Entry_view view;
