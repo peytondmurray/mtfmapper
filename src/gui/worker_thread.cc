@@ -51,8 +51,20 @@ using std::string;
 #endif
 
 Worker_thread::Worker_thread(QWidget* parent) 
-: parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), abort(false) {
+: parent(dynamic_cast<mtfmapper_app*>(parent)), tempdir_number(0), 
+  dev_done(false), dev_thread(&Worker_thread::developer_run, this),
+  pc_done(false), pc_thread(&Worker_thread::processor_run, this),
+  abort(false) {
+}
 
+Worker_thread::~Worker_thread(void) {
+    abort = true;
+    dev_done = true;
+    dev_cv.notify_one();
+    dev_thread.join();
+    pc_done = true;
+    pc_cv.notify_one();
+    pc_thread.join();
 }
 
 void Worker_thread::set_files(const QStringList& files) {
@@ -60,71 +72,89 @@ void Worker_thread::set_files(const QStringList& files) {
 }
 
 void Worker_thread::run(void) {
-    vector<std::pair<failure_t, QString>> failures;
     abort = false;
-    output_files.clear();
     QString arguments = update_arguments(settings_arguments);
-    for (int i=0; i < input_files.size() && !abort; i++) {
-        emit send_progress_indicator(i+1);
+    
+    // NB / TODO: because we are doing everything from within the thread's run() method
+    // we cannot add additional files while others are processing. I suppose this constraint
+    // can be avoided by using signals/slots instead?
+    
+    // start by assuming all files will pass raw development
+    fif_add(input_files.size());
+    
+    for (int i=0; i < input_files.size(); i++) {
+        std::lock_guard<std::mutex> lock(dev_mutex);
+        // NB: tempdir_number somewhat unprotected at this stage
         QString tempdir = tr("%1/mtfmappertemp_%2").arg(QDir::tempPath()).arg(tempdir_number++);
-        QDir().mkdir(tempdir);
-
-        QString input_file(input_files.at(i));
-
-        QFileInfo fi(input_files.at(i));
-        if (raw_developer) {
-            if (raw_developer->accepts(fi.suffix())) {
-                input_file = QString(tempdir + "/" + fi.completeBaseName() + QString(".tiff"));
+        dev_queue.push(Input_file_record(input_files.at(i), arguments, tempdir));
+    }
+    dev_cv.notify_one();
+    
+    int remaining_files = input_files.size();
+    
+    while (!abort && remaining_files > 0) { // TODO: what if the raw developer never returns? maybe we need a timeout?
+        Input_file_record input;
+        {
+            std::unique_lock<std::mutex> file_lock(file_mutex);
+            // while blocking in wait, file_mutex is not locked, so developer_run can obtain a lock
+            // to add new entries without blocking indefinitely
+            file_cv.wait(file_lock, [this]{ return !file_queue.empty(); });
             
-                raw_developer->process(
-                    input_files.at(i), // input file to raw developer
-                    input_file, // output file of raw developer
-                    arguments.contains(QString("--bayer")) // bayer_mode
-                );
-                
-                emit send_delete_item(input_file);
+            input = file_queue.front();
+            file_queue.pop();
+            remaining_files--;
+        }
+        
+        if (input.is_valid()) {
+            if (QFileInfo(input.get_output_name()).size() == 0 || input.get_state() == Input_file_record::state_t::FAILED) {
+                add_failure(failure_t::RAW_DEVELOPER_FAILURE, input.get_input_name());
+                fif_add(-1); // one less file to worry about
+                continue;
             }
-        } else {
-            logger.error("Raw developer not set in Worker_thread::run()\n");
-            break; // TODO: better error handling?
-        }
         
-        QStringList mma;
-        
-        // if a "--focal-ratio" setting is already present, then assume this
-        // was a user-provided override, otherwise try to calculate it from the EXIF data
-        if (!arguments.contains("--focal-ratio")) {
-            Exiv2_property props(exiv2_binary, input_files.at(i), tempdir + "/exifinfo.txt");
-            mma << "--focal-ratio" << props.get_focal_ratio();
-        }
+            QStringList mapper_args;
+            
+            // if a "--focal-ratio" setting is already present, then assume this
+            // was a user-provided override, otherwise try to calculate it from the EXIF data
+            if (!input.get_arguments().contains("--focal-ratio")) {
+                Exiv2_property props(exiv2_binary, input.get_input_name(), input.get_temp_dir() + "/exifinfo.txt");
+                mapper_args << "--focal-ratio" << props.get_focal_ratio();
+            }
 
-        mma << "--gnuplot-executable " + gnuplot_binary << input_file << tempdir << "--logfile " + tempdir + "/log.txt" 
-            << arguments.split(QRegExp("\\s+"), EMPTY_STRING_PARTS);
-        
-        Processing_command pc(
-            QCoreApplication::applicationDirPath() + "/mtf_mapper",
-            mma,
-            input_file,
-            tempdir,
-            input_files.at(i)
-        );
-        
-        if (force_manual_roi_mode) {
-            send_processing_command(pc);
-        } else {
-            process_command(pc, failures);
+            mapper_args << "--gnuplot-executable " + gnuplot_binary << input.get_output_name() << input.get_temp_dir() 
+                << "--logfile " + input.get_temp_dir() + "/log.txt" 
+                << input.get_arguments().split(QRegExp("\\s+"), EMPTY_STRING_PARTS);
+            
+            Processing_command pc(
+                QCoreApplication::applicationDirPath() + "/mtf_mapper",
+                mapper_args,
+                input.get_output_name(), // output name of raw developer is input to mapper
+                input.get_temp_dir(),
+                input.get_input_name(), // original input file
+                force_manual_roi_mode ? Processing_command::state_t::AWAIT_ROI : Processing_command::state_t::READY
+            );
+            
+            {
+                std::lock_guard<std::mutex> pc_lock(pc_mutex);
+                pc_queue.push(pc);
+            }
+            pc_cv.notify_one();
         }
     }
+    
     // turn off the transient modifiers
     set_single_roi_mode(false); 
     set_focus_mode(false);
     set_imatest_mode(false);
     set_manual_roi_mode(false);
-    emit send_progress_indicator(input_files.size()+1);
-    emit send_all_done();
     
-    for (const auto& failure : failures) {
-        emit mtfmapper_call_failed(failure.first, failure.second);
+    {
+        // pass on all failures so far (usually raw developer failures before processing completes)
+        std::lock_guard<std::mutex> lock(failure_mutex);
+        for (const auto& failure : failure_list) {
+            emit mtfmapper_call_failed(failure.first, failure.second);
+        }
+        failure_list.clear();
     }
 }
 
@@ -185,7 +215,7 @@ QString Worker_thread::update_arguments(QString& s) {
     return arguments;
 }
 
-void Worker_thread::process_command(const Processing_command& command, vector<std::pair<failure_t, QString>>& failures) {
+void Worker_thread::process_command(const Processing_command& command) {
     
     QProcess process;
     process.setProgram(command.program);
@@ -210,7 +240,7 @@ void Worker_thread::process_command(const Processing_command& command, vector<st
         case 5: failure = UNSUPPORTED_IMAGE_ENCODING; break;
         default: failure = UNSPECIFIED; break;
         }
-        failures.push_back(std::pair<failure_t, QString>(failure, command.img_filename));
+        add_failure(failure, command.img_filename);
     } else {
         emit send_delete_item(tempdir + "/log.txt");
 
@@ -319,3 +349,152 @@ void Worker_thread::process_command(const Processing_command& command, vector<st
         emit send_close_item();
     }
 }
+
+void Worker_thread::developer_run(void) {
+    while (!dev_done) {
+    
+        std::unique_lock<std::mutex> lock(dev_mutex);
+        dev_cv.wait(lock, [this]{ return dev_done || !dev_queue.empty(); });
+        
+        if (dev_done) { // for shutting down
+            break;
+        }
+        
+        // NB: because we have the lock, no-one can add new files until we are done, which is fine for now
+        
+        while (!dev_queue.empty()) {
+            
+            Input_file_record& state = dev_queue.front();
+            
+            if (!abort) {
+            
+                QDir().mkdir(state.get_temp_dir());
+
+                QFileInfo fi(state.get_input_name());
+                if (raw_developer) {
+                    if (raw_developer->accepts(fi.suffix())) {
+                        state.set_output_name(
+                            QString(state.get_temp_dir() + "/" + fi.completeBaseName() + QString(".tiff"))
+                        );
+                        
+                        // TODO: we can add a cache here that we can pass to process; if the input file + args match
+                        // just copy the previous raw developer output if it still exists. store cache in worker_thread
+                        // for persistance
+                        int dev_success = raw_developer->process(
+                            state.get_input_name(), // input file to raw developer
+                            state.get_output_name(), // output file of raw developer
+                            state.get_arguments().contains(QString("--bayer")) // bayer_mode
+                        );
+                        
+                        if (dev_success) {
+                            state.set_state(Input_file_record::state_t::COMPLETED);
+                        } else {
+                            state.set_state(Input_file_record::state_t::FAILED);
+                        }
+                        
+                        emit send_delete_item(state.get_output_name()); // queued, will only be deleted on program exit, or clear() command
+                    } else {
+                        state.set_output_name(state.get_input_name());
+                        state.set_state(Input_file_record::state_t::COMPLETED);
+                    }
+                    
+                    // NB: because we are still holding a dev_mutex lock, we have to be careful that
+                    // the producer does not hold onto its lock indefinitely
+                    {
+                        std::lock_guard<std::mutex> file_lock(file_mutex);
+                        file_queue.push(state);
+                    }
+                    file_cv.notify_one();
+                    
+                } else {
+                    // this should not happen at runtime
+                    logger.error("Raw developer not set in Worker_thread::run()\n");
+                    break;
+                }
+            } else {
+                fif_add(-1);
+            }
+            
+            dev_queue.pop();
+        }
+    }
+}
+
+void Worker_thread::processor_run(void) {
+    while (!pc_done) {
+        {
+            std::unique_lock<std::mutex> lock(pc_mutex);
+            pc_cv.wait(lock, [this]{ return pc_done || !pc_queue.empty(); });
+        
+            if (pc_done) { // for shutting down
+                break;
+            }
+        }
+        
+        bool pc_queue_done = false;
+        while (!pc_queue_done) {
+        
+            Processing_command cmd;
+            {
+                std::lock_guard<std::mutex> lock(pc_mutex);
+                cmd = pc_queue.front();
+                pc_queue.pop();
+            }
+            
+            if (!abort) {    
+                if (cmd.is_valid()) {
+                    if (cmd.get_state() == Processing_command::state_t::AWAIT_ROI) {
+                        send_processing_command(cmd);
+                    } else {
+                        process_command(cmd);
+                        fif_add(-1);
+                    }
+                }
+            } else {
+                fif_add(-1);
+            }
+            
+            {
+                std::lock_guard<std::mutex> lock(pc_mutex);
+                pc_queue_done = pc_queue.empty();
+            }
+        }
+        
+        {
+            std::lock_guard<std::mutex> lock(failure_mutex);
+            for (const auto& failure : failure_list) {
+                emit mtfmapper_call_failed(failure.first, failure.second);
+            }
+            failure_list.clear();
+        }
+    }
+}
+
+void Worker_thread::submit_processing_command(const Processing_command& command) {
+    {
+        std::lock_guard<std::mutex> pc_lock(pc_mutex);
+        pc_queue.push(command);
+    }
+    pc_cv.notify_one();    
+}
+
+void Worker_thread::add_failure(failure_t fail, const QString& fname) {
+    std::lock_guard<std::mutex> lock(failure_mutex);
+    failure_list.push_back(std::make_pair(fail, fname));
+}
+
+void Worker_thread::fif_add(int delta) {
+    std::lock_guard<std::mutex> lock(fif_mutex);
+    fif_count += delta;
+    
+    if (delta > 0) {
+        send_progress_indicator_max(0, fif_count + 1);
+    }
+    
+    emit send_progress_indicator(fif_count);
+    
+    if (fif_count <= 0) {
+        emit send_all_done();
+    }
+}
+

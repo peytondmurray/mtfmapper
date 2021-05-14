@@ -52,6 +52,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <vector>
 using std::vector;
+#include <queue>
+using std::queue;
 
 class QPushButton;
 class QLabel;
@@ -164,8 +166,10 @@ class mtfmapper_app : public QMainWindow
     QString zoom_scroll_tt;
     QString annotated_tt;
     
+    std::mutex mq_mutex;
+    bool mq_busy = false;
     Edge_select_dialog* edge_select_dialog;
-    vector<Processing_command> manual_roi_commands;
+    queue<Processing_command> manual_roi_commands;
 
   public slots:
     void open_auto();
@@ -181,6 +185,7 @@ class mtfmapper_app : public QMainWindow
     void item_for_deletion(QString s);
     void populate_exif_info_from_file(QString s, QString tempdir);
     void add_manual_roi_file(const Processing_command& command);
+    void update_progress(int val);
   
     bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     
@@ -196,6 +201,7 @@ class mtfmapper_app : public QMainWindow
     void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
 
     void enable_file_open(void);
+    void disable_file_open(void);
     
     void set_cache_size(int);
     void settings_saved(void);

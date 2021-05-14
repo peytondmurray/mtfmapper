@@ -30,9 +30,16 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "processing_command.h"
 #include "raw_developer.h"
+#include "input_file_record.h"
 
 #include <vector>
 using std::vector;
+#include <chrono>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+using std::queue;
 
 #include <QThread>
 #include <QStringList>
@@ -51,18 +58,16 @@ class Worker_thread : public QThread
         UNSPECIFIED=0,
         IMAGE_OPEN_FAILURE=1,
         NO_TARGETS_FOUND=2,
-        UNSUPPORTED_IMAGE_ENCODING=3
+        UNSUPPORTED_IMAGE_ENCODING=3,
+        RAW_DEVELOPER_FAILURE=4
     } failure_t;
 
     Worker_thread(QWidget *parent);
+    ~Worker_thread(void);
     void set_files(const QStringList& input_files);
     void run();
-    const QStandardItemModel& get_output_files(void) {
-        return output_files;
-    }
     
-    void process_command(const Processing_command& command, 
-        vector<std::pair<failure_t, QString>>& failures);
+    void process_command(const Processing_command& command);
 
     void set_gnuplot_binary(const QString& s) {
         gnuplot_binary = s;
@@ -92,6 +97,13 @@ class Worker_thread : public QThread
         force_manual_roi_mode = v;
     }
     
+    
+    void submit_processing_command(const Processing_command& command);
+    
+    void remove_file_in_flight(void) {
+        fif_add(-1);
+    }
+    
     QString update_arguments(QString& s);
     
   signals:
@@ -102,6 +114,7 @@ class Worker_thread : public QThread
     void send_exif_filename(QString s, QString tempdir);
     
     void send_progress_indicator(int p);
+    void send_progress_indicator_max(int lb, int ub);
     void send_all_done(void);
     void mtfmapper_call_failed(Worker_thread::failure_t failure, const QString& input_file);
     
@@ -112,9 +125,13 @@ class Worker_thread : public QThread
     void receive_abort(void);
     
   private:
+    void developer_run(void);
+    void processor_run(void);
+    void add_failure(failure_t fail, const QString& fname);
+    void fif_add(int delta);
+  
     mtfmapper_app* parent;
     QStringList input_files;
-    QStandardItemModel output_files;
     QString      settings_arguments;
     QString      gnuplot_binary;
     QString      exiv2_binary;
@@ -126,6 +143,29 @@ class Worker_thread : public QThread
     
     
     int tempdir_number;
+    
+    bool dev_done = false;
+    std::thread dev_thread;
+    std::mutex dev_mutex;
+    std::condition_variable dev_cv;
+    queue<Input_file_record> dev_queue;
+    
+    std::mutex file_mutex;
+    std::condition_variable file_cv;
+    queue<Input_file_record> file_queue;
+    
+    bool pc_done = false;
+    std::thread pc_thread;
+    std::mutex pc_mutex;
+    std::condition_variable pc_cv;
+    queue<Processing_command> pc_queue;
+    
+    std::mutex failure_mutex;
+    vector<std::pair<failure_t, QString>> failure_list;
+    
+    // files-in-flight
+    std::mutex fif_mutex;
+    int fif_count = 0;
 
     bool abort;
 };

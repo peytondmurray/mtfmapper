@@ -43,7 +43,6 @@ using std::string;
 mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
   : processor(this), sfr_dialog(nullptr) 
 {
-
     img_comment_label = new QLabel("Comment: ");
     img_comment_label->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     img_comment_value = new QLabel("N/A");
@@ -198,7 +197,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(&processor, SIGNAL(send_delete_item(QString)), this, SLOT(item_for_deletion(QString)));
     connect(&processor, SIGNAL(send_exif_filename(QString, QString)), this, SLOT(populate_exif_info_from_file(QString, QString)));
     
-    connect(&processor, SIGNAL(send_progress_indicator(int)), progress, SLOT(setValue(int)));
+    connect(&processor, SIGNAL(send_progress_indicator(int)), this, SLOT(update_progress(int)));
+    connect(&processor, SIGNAL(send_progress_indicator_max(int, int)), progress, SLOT(setRange(int, int)));
     connect(settings, SIGNAL(argument_string(QString)), &processor, SLOT(receive_arg_string(QString)));
     connect(settings, SIGNAL(set_cache_size(int)), this, SLOT(set_cache_size(int)));
     connect(settings, SIGNAL(settings_saved()), this, SLOT(settings_saved()));
@@ -473,13 +473,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
         input_files = open_dialog->selectedFiles();
         if (input_files.size() > 0) {
 
-            open_act->setEnabled(false);
-            open_roi_act->setEnabled(false);
-            open_focus_act->setEnabled(false);
-            open_imatest_act->setEnabled(false);
-            exit_act->setEnabled(false);
-
-            progress->setRange(0, input_files.size() + 1);
+            disable_file_open();
 
             QStringList labels;
             labels.push_back(QString("Data set"));
@@ -591,38 +585,6 @@ void mtfmapper_app::item_for_deletion(QString s) {
 
 void mtfmapper_app::processor_completed(void) {
     abort_button->hide();
-    
-    for (auto& command: manual_roi_commands) {
-        QString roi_filename = command.tmp_dirname + "/rois.txt";
-
-        static bool esd_initialized = false;
-        if (!esd_initialized) {
-            // Note: we only really have to do this once, apparently
-            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen);
-            edge_select_dialog->show();
-            edge_select_dialog->hide();
-            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
-            esd_initialized = true;
-        }
-
-        edge_select_dialog->load_image(command.img_filename);
-        edge_select_dialog->set_roi_file(roi_filename);
-        vector<std::pair<Worker_thread::failure_t, QString>> failures;
-        
-        if (edge_select_dialog->exec()) {
-            // TODO: this does actually work, but because we are not using a separate thread, the GUI locks up for a moment
-            // on large images. We really should put the "process" in a separate thread somehow
-            Processing_command modified_command(command);
-            modified_command.arguments << "--roi-file" << roi_filename;
-            processor.process_command(modified_command, failures);
-            for (auto& f: failures) {
-                mtfmapper_call_failed(f.first, f.second);
-            }
-        } else {
-            item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
-        }
-    }
-    manual_roi_commands.clear();
 }
 
 void mtfmapper_app::enable_clear_button(void) {
@@ -658,10 +620,20 @@ void mtfmapper_app::disable_save_button(void) {
 
 void mtfmapper_app::enable_file_open(void) {
     open_act->setEnabled(true);
+    open_manual_roi_act->setEnabled(true);
     open_roi_act->setEnabled(true);
     open_focus_act->setEnabled(true);
     open_imatest_act->setEnabled(true);
     exit_act->setEnabled(true);
+}
+
+void mtfmapper_app::disable_file_open(void) {
+    open_act->setEnabled(false);
+    open_manual_roi_act->setEnabled(false);
+    open_roi_act->setEnabled(false);
+    open_focus_act->setEnabled(false);
+    open_imatest_act->setEnabled(false);
+    exit_act->setEnabled(false);
 }
 
 void mtfmapper_app::save_button_pressed(void) {
@@ -675,11 +647,7 @@ void mtfmapper_app::save_subset_button_pressed(void) {
 void mtfmapper_app::save_action(bool subset) {
     // lock file->open to prevent messing with the dataset list
     bool open_was_enabled = open_act->isEnabled();
-    open_act->setEnabled(false);
-    open_roi_act->setEnabled(false);
-    open_focus_act->setEnabled(false);
-    open_imatest_act->setEnabled(false);
-    exit_act->setEnabled(false);
+    disable_file_open();
 
     std::map<std::string, int> keepers;
     bool cancelled = false;
@@ -803,11 +771,7 @@ void mtfmapper_app::save_action(bool subset) {
     }
 
     if (open_was_enabled) {
-        open_act->setEnabled(true);
-        open_roi_act->setEnabled(true);
-        open_focus_act->setEnabled(true);
-        open_imatest_act->setEnabled(true);
-        exit_act->setEnabled(true);
+        enable_file_open();
     } // otherwise the worker thread will have to re-enable the open action
 }
 
@@ -833,6 +797,7 @@ void mtfmapper_app::check_if_helpers_exist(void) {
     bool gnuplot_exists = QFile::exists(settings->helpers->get_gnuplot_binary());
     bool exiv_exists = QFile::exists(settings->helpers->get_exiv2_binary());
     bool dcraw_exists = QFile::exists(settings->helpers->get_dcraw_binary());
+    // TODO: check for libraw
 
     if (!gnuplot_exists) {
         QMessageBox::warning(
@@ -985,6 +950,14 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, cons
                 ).arg(input_file)
             );
             break;
+        case Worker_thread::failure_t::RAW_DEVELOPER_FAILURE:
+            call_failed.setText(
+                QString(
+                    "Raw developer call failed.\n\n"
+                    "Maybe the input image [%1] was corrupted?\n"
+                ).arg(input_file)
+            );
+            break;
         default:
             call_failed.setText(
                 "MTF Mapper call failed.\n\n"
@@ -997,8 +970,68 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, cons
     }
 }
 
-void mtfmapper_app::add_manual_roi_file(const Processing_command& command) {
-    manual_roi_commands.push_back(command);
+void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
+    static bool esd_initialized = false;
+    
+    {
+        std::lock_guard<std::mutex> lock(mq_mutex);
+        manual_roi_commands.push(new_command);
+        if (mq_busy) {
+            return;
+        }
+        mq_busy = true;
+    }
+    
+    while (true) {
+        bool queue_emptied = true;
+        Processing_command command;
+        {
+            std::lock_guard<std::mutex> lock(mq_mutex);
+            if (!manual_roi_commands.empty()) {
+                command = manual_roi_commands.front();
+                manual_roi_commands.pop();
+                queue_emptied = false;
+            }
+        }
+        if (queue_emptied) {
+            break;
+        }
+        
+        QString roi_filename = command.tmp_dirname + "/rois.txt";
+
+        if (!esd_initialized) {
+            // Note: we only really have to do this once, apparently
+            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen);
+            edge_select_dialog->show();
+            edge_select_dialog->hide();
+            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
+            esd_initialized = true;
+        }
+        
+        // TODO: later when we add "apply to remaining" button, we should only perform loading
+        // if necessary ... ?
+
+        // ensure the exposed main window repaints
+        update();
+        QCoreApplication::processEvents();
+        
+        edge_select_dialog->load_image(command.img_filename);
+        edge_select_dialog->set_roi_file(roi_filename);
+        
+        if (edge_select_dialog->exec()) {
+            Processing_command modified_command(command);
+            modified_command.arguments << "--roi-file" << roi_filename;
+            modified_command.set_state(Processing_command::state_t::READY);
+            processor.submit_processing_command(modified_command);
+        } else {
+            processor.remove_file_in_flight();
+            item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(mq_mutex);
+        mq_busy = false;
+    }
 }
 
 void mtfmapper_app::dragEnterEvent(QDragEnterEvent* evt) {
@@ -1025,13 +1058,7 @@ void mtfmapper_app::dropEvent(QDropEvent* evt) {
 
     if (open_act->isEnabled() && dropped_files.size() > 0) { // only process the drop event if we are not currently processing
         // TODO: not ideal to have a copy of the same code from File->Open here, really has to be refactored
-        open_act->setEnabled(false);
-        open_roi_act->setEnabled(false);
-        open_focus_act->setEnabled(false);
-        open_imatest_act->setEnabled(false);
-        exit_act->setEnabled(false);
-
-        progress->setRange(0, dropped_files.size() + 1);
+        disable_file_open();
 
         QStringList labels;
         labels.push_back(QString("Data set"));
@@ -1047,4 +1074,9 @@ void mtfmapper_app::dropEvent(QDropEvent* evt) {
         processor.set_exiv2_binary(settings->helpers->get_exiv2_binary());
         processor.start();
     }
+}
+
+void mtfmapper_app::update_progress(int val) {
+    int prog = progress->maximum() - val;
+    progress->setValue(prog);
 }

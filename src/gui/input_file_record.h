@@ -1,5 +1,5 @@
 /*
-Copyright 2020 Frans van den Bergh. All rights reserved.
+Copyright 2011 Frans van den Bergh. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
@@ -25,48 +25,61 @@ The views and conclusions contained in the software and documentation are those 
 authors and should not be interpreted as representing official policies, either expressed
 or implied, of the Council for Scientific and Industrial Research (CSIR).
 */
-#ifndef PROCESSING_COMMAND_H
-#define PROCESSING_COMMAND_H
+
+#ifndef INPUT_FILE_RECORD_H
+#define INPUT_FILE_RECORD_H
 
 #include <QString>
-#include <QStringList>
 
-class Processing_command {
+class Input_file_record {
   public:
     enum class state_t {
-        AWAIT_ROI,
-        READY,
-        COMPLETE,
+        SUBMITTED,
+        COMPLETED,
         FAILED
-    };
-  
-    Processing_command(void) {}
+    };  
     
-    Processing_command(const QString& program, const QStringList& arguments,
-        const QString& img_filename, const QString& tmp_dirname,
-        const QString& exif_filename, state_t state = state_t::READY) 
-        : program(program), arguments(arguments), img_filename(img_filename),
-          tmp_dirname(tmp_dirname), exif_filename(exif_filename), 
-          state(state) {
+    Input_file_record(const QString& input_fname = "", 
+        const QString& args = "", const QString& temp_dir = "") 
+      : input_fname(input_fname), arguments(args),
+        temp_dir(temp_dir), state(state_t::SUBMITTED) {}
+    
+    QString get_input_name(void) const {
+        return input_fname;
+    }
+    
+    QString get_output_name(void) const {
+        return output_fname;
+    }
+    
+    void set_output_name(const QString& fname) {
+        output_fname = fname;
+    }
+    
+    QString get_arguments(void) const {
+        return arguments;
+    }
+    
+    QString get_temp_dir(void) const {
+        return temp_dir;
     }
     
     state_t get_state(void) const {
         return state;
     }
     
-    void set_state(state_t s) {
-        state = s;
+    void set_state(state_t new_state) {
+        state = new_state;
     }
     
     bool is_valid(void) const {
-        return img_filename.length() > 0;
+        return input_fname.length() > 0;
     }
     
-    QString program;
-    QStringList arguments;
-    QString img_filename;
-    QString tmp_dirname;
-    QString exif_filename;
+    QString input_fname;
+    QString arguments;
+    QString temp_dir;
+    QString output_fname;
     state_t state;
 };
 

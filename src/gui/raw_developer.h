@@ -43,7 +43,7 @@ class Raw_developer {
     Raw_developer(void) {}
     virtual ~Raw_developer(void) {}
     
-    void process(const QString& input, const QString& output, bool bayer_mode) {
+    int process(const QString& input, const QString& output, bool bayer_mode) {
           QProcess dcp;
           
           dcp.setProgram(program_name(bayer_mode));
@@ -64,8 +64,10 @@ class Raw_developer {
               logger.error("Error. raw developer call failed on input image %s [exit status=%d, exitcode=%d]\n", 
                   effective_input.toLocal8Bit().constData(), dcp.exitStatus(), dcp.exitCode()
               );
+          } else {
+              post_proc(bayer_mode, input, output);
           }
-          post_proc(bayer_mode, input, output);
+          return dc_rval;
     }
     
     bool accepts(const QString& suffix) {
