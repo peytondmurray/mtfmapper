@@ -96,6 +96,7 @@ class Raw_developer_libraw : public Raw_developer {
                 QFile::remove(output); // ensure we can overwrite this file if it exists
                 QFile(raw_ofname).rename(output);
             } else {
+                QFile::remove(output); // signal that there was no output here either
                 logger.debug("Raw developer [%s] did not produce the expected output file [%s]\n",
                     unprocessed_raw_exec.toLocal8Bit().constData(),
                     raw_ofname.toLocal8Bit().constData()

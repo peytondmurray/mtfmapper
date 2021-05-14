@@ -76,6 +76,11 @@ void Edge_select_dialog::load_image(QString img_name) {
     img_viewer->load_image(img_name);
     img_panel->clear_overlay();
     update();
+    // force a repaint on the GL panel once the event loop runs
+    QTimer::singleShot(0, [this]() { 
+        img_panel->update();
+        QCoreApplication::processEvents(); 
+    });
 }
 
 void Edge_select_dialog::open(void) {

@@ -71,6 +71,7 @@ if (NOT OpenCV_VERSION)
 endif (NOT OpenCV_VERSION)
 find_package(TCLAP REQUIRED)
 find_package(Eigen3 REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads QUIET)
 find_package(ZLIB QUIET)
 
