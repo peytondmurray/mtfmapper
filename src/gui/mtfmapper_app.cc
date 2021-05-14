@@ -199,7 +199,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     connect(&processor, SIGNAL(send_progress_indicator(int)), this, SLOT(update_progress(int)));
     connect(&processor, SIGNAL(send_progress_indicator_max(int, int)), progress, SLOT(setRange(int, int)));
-    connect(this, SIGNAL(submit_batch(const Processor_state&)), &processor, SLOT(receive_batch(const Processor_state&)));
+    connect(this, SIGNAL(submit_batch(Processor_state)), &processor, SLOT(receive_batch(Processor_state)));
     connect(settings, SIGNAL(set_cache_size(int)), this, SLOT(set_cache_size(int)));
     connect(settings, SIGNAL(settings_saved()), this, SLOT(settings_saved()));
 

@@ -91,7 +91,7 @@ class Worker_thread  : public QObject
     
   public slots:
     void receive_abort(void);
-    void receive_batch(const Processor_state& state);
+    void receive_batch(Processor_state state);
     
   private:
     void developer_run(void);
