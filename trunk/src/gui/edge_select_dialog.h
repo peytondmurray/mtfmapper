@@ -43,7 +43,7 @@ class Edge_select_dialog : public QDialog {
   
   public:
     Edge_select_dialog(QWidget* parent);
-    void load_image(QString img_name);
+    bool load_image(QString img_name);
     GL_image_viewer* get_viewer(void) { return img_viewer; }
     GL_image_panel* get_panel(void) { return img_panel; }
     

@@ -72,8 +72,13 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     setWindowTitle("Select one or more edge ROIs");
 }
 
-void Edge_select_dialog::load_image(QString img_name) {
-    img_viewer->load_image(img_name);
+bool Edge_select_dialog::load_image(QString img_name) {
+    bool load_success = img_viewer->load_image(img_name);
+    
+    if (!load_success) {
+        return false;
+    }
+    
     img_panel->clear_overlay();
     update();
     // force a repaint on the GL panel once the event loop runs
@@ -81,6 +86,7 @@ void Edge_select_dialog::load_image(QString img_name) {
         img_panel->update();
         QCoreApplication::processEvents(); 
     });
+    return true;
 }
 
 void Edge_select_dialog::open(void) {

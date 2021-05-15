@@ -174,9 +174,9 @@ static int next_pow2(uint32_t x) {
     return uint32_t(1) << k;
 }
 
-void GL_image_panel::load_image(const QString& fname) {
+bool GL_image_panel::load_image(const QString& fname) {
     if (cache_enabled && fname.toStdString().compare(current_fname) == 0) {
-        return;
+        return true;
     }
     
     cv::Mat cvimg;
@@ -184,6 +184,9 @@ void GL_image_panel::load_image(const QString& fname) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
         cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
+        if (cvimg.empty()) {
+            return false;
+        }
         
         if (cvimg.depth() != CV_8U) {
             logger.debug("Input image %s was not 8-bit, so we will convert it with scaling\n", fname.toStdString().c_str());
@@ -211,16 +214,16 @@ void GL_image_panel::load_image(const QString& fname) {
     
     current_fname = fname.toStdString();
     
-    load_image(cvimg);
+    return load_image(cvimg);
 }
 
-void GL_image_panel::load_image(QImage& qimg) {
+bool GL_image_panel::load_image(QImage& qimg) {
     cv::Mat cvimg(qimg.height(), qimg.width(), CV_8UC3, qimg.bits());
     current_fname = "mtf_mapper_logo";
-    load_image(cvimg);
+    return load_image(cvimg);
 }
 
-void GL_image_panel::load_image(cv::Mat cvimg) {
+bool GL_image_panel::load_image(cv::Mat cvimg) {
     // Some other GLWidget could have the current context, so it is vital that
     // we switch the context before we attempt to change resources like textures
     makeCurrent();
@@ -333,6 +336,7 @@ void GL_image_panel::load_image(cv::Mat cvimg) {
     vbo.bind();
     vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
     update();
+    return true;
 }
 
 void GL_image_panel::move(int nx, int ny) {

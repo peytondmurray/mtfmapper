@@ -1023,10 +1023,10 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
         update();
         QCoreApplication::processEvents();
         
-        edge_select_dialog->load_image(command.img_filename);
+        bool load_success = edge_select_dialog->load_image(command.img_filename);
         edge_select_dialog->set_roi_file(roi_filename);
         
-        if (edge_select_dialog->exec()) {
+        if (load_success && edge_select_dialog->exec()) {
             Processing_command modified_command(command);
             modified_command.arguments << "--roi-file" << roi_filename;
             modified_command.set_state(Processing_command::state_t::READY);
@@ -1034,6 +1034,10 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
         } else {
             processor.remove_file_in_flight();
             item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
+        }
+        
+        if (!load_success) {
+            emit mtfmapper_call_failed(Worker_thread::failure_t::IMAGE_OPEN_FAILURE, command.img_filename);
         }
     }
     {
