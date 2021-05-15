@@ -68,8 +68,8 @@ public:
     void move(int nx, int ny);
     QPoint zoom(int step, int x, int y);
     QPoint locate(QPoint pos);
-    void load_image(const QString& fname);
-    void load_image(QImage& qimg);
+    bool load_image(const QString& fname);
+    bool load_image(QImage& qimg);
     void set_cache_size(uint64_t size);
     void set_cache_state(bool s) { cache_enabled = s; }
     
@@ -91,7 +91,7 @@ protected:
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int width, int height) override;
-    void load_image(cv::Mat cvimg);
+    bool load_image(cv::Mat cvimg);
     void reset_scroll_range(void);
     void trim_cache(void);
     

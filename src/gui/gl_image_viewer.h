@@ -48,8 +48,8 @@ class GL_image_viewer : public QAbstractScrollArea {
     void keyPressEvent(QKeyEvent* event) override;
     
     void set_GL_widget(GL_image_panel* w);
-    void load_image(const QString& fname);
-    void load_image(QImage* qimg);
+    bool load_image(const QString& fname);
+    bool load_image(QImage* qimg);
     void set_clickable(bool b);
     void set_resize_on_load(bool b);
 

@@ -212,8 +212,10 @@ void GL_image_viewer::zoom_action(double direction, int zx, int zy) {
     verticalScrollBar()->setValue(np.y());
 }
 
-void GL_image_viewer::load_image(const QString& fname) {
-    widget->load_image(fname);
+bool GL_image_viewer::load_image(const QString& fname) {
+    if (!widget->load_image(fname)) {
+        return false;
+    }
 
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect geom = screen->geometry();
@@ -227,10 +229,13 @@ void GL_image_viewer::load_image(const QString& fname) {
 
     must_update_bars = true;
     widget->update();
+    return true;
 }
 
-void GL_image_viewer::load_image(QImage* qimg) {
-    widget->load_image(*qimg);
+bool GL_image_viewer::load_image(QImage* qimg) {
+    if (!widget->load_image(*qimg)) {
+        return false;
+    }
 
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect geom = screen->geometry();
@@ -244,6 +249,7 @@ void GL_image_viewer::load_image(QImage* qimg) {
 
     must_update_bars = true;
     widget->update();
+    return true;
 }
 
 void GL_image_viewer::set_clickable(bool b) {
