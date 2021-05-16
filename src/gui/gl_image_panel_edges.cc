@@ -30,11 +30,14 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QMouseEvent>
+#include <QTimer>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <math.h>
+#include <map>
 
 GL_image_panel_edges::GL_image_panel_edges(QWidget *parent)
     : GL_image_panel(parent) {
@@ -393,16 +396,23 @@ void GL_image_panel_edges::line_endpoint(QPoint pos) {
     
     if (current_roi && current_roi_handle_idx >= 0 && current_roi_handle_idx <= 1) {
         current_roi->get(current_roi_handle_idx) = icoords;
+        emit update_edge_length(current_roi->length());
+    } else {
+        emit update_edge_length(-1);
     }
+    broadcast_histogram();
     
     update();
 }
 
 void GL_image_panel_edges::clear_overlay(void) {
     rois.clear();
+    emit disable_save_button();
     current_roi = nullptr;
     closebox.make_invalid();
     state = NONE;
+    emit update_edge_length(-1);
+    broadcast_histogram();
 }
 
 void GL_image_panel_edges::mousePressEvent(QMouseEvent* event) { 
@@ -451,6 +461,8 @@ void GL_image_panel_edges::check_roi_boxes_and_handles(QPointF img_coords) {
                 state = ROI_SELECTED;
                 closebox = GL_closebox(r.get(0), r.get(1), imgsize.width(), imgsize.height());
                 closebox.make_valid();
+                emit update_edge_length(current_roi->length());
+                broadcast_histogram();
                 any_roi_hit = true;
             } else {
                 // unselect if we hit the same ROI again
@@ -465,6 +477,8 @@ void GL_image_panel_edges::check_roi_boxes_and_handles(QPointF img_coords) {
                 current_roi = &r;
                 current_roi_handle_idx = handle_idx;
                 state = MOVING;
+                emit update_edge_length(current_roi->length());
+                broadcast_histogram();
             }
         }
     }
@@ -499,6 +513,8 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
             case MOVING:
                 state = NONE;
                 current_roi = nullptr;
+                emit update_edge_length(-1);
+                broadcast_histogram();
                 break;
             case ROI_SELECTED:
                 state = NONE;
@@ -510,6 +526,8 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
                             it = rois.erase(it);
                             current_roi = nullptr;
                             closebox.make_invalid();
+                            emit update_edge_length(-1);
+                            broadcast_histogram();
                         } else {
                             ++it;
                         }
@@ -520,6 +538,8 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
                 
                 if (state == NONE) {
                     current_roi = nullptr;
+                    emit update_edge_length(-1);
+                    broadcast_histogram();
                 }
                 break;
             }
@@ -533,9 +553,20 @@ void GL_image_panel_edges::mouseReleaseEvent(QMouseEvent* event) {
                 line_endpoint(current_img_coords);
                 current_roi = nullptr;
                 state = NONE;
+                emit update_edge_length(-1);
+                broadcast_histogram();
             }
         }
     }
+    
+    if (rois.size() == 0) {
+        emit disable_save_button();
+    } else {
+        if (state == NONE && current_roi == nullptr) {
+            emit enable_save_button();
+        }
+    }
+    
     event->ignore();
     update();
 }
@@ -601,4 +632,143 @@ bool GL_image_panel_edges::save_rois(const QString& fname) {
     
     return true;
 }
+
+bool GL_image_panel_edges::load_rois(const QString& fname) {
+    FILE* fin = fopen(fname.toLocal8Bit().constData(), "rt");
+    if (!fin) {
+        return false;
+    }
+    clear_overlay();
+    
+    while (!feof(fin)) {
+        double x1 = 0;
+        double y1 = 0;
+        double x2 = 0;
+        double y2 = 0;
+        int nread = fscanf(fin, "%lf %lf %lf %lf", &x1, &y1, &x2, &y2);
+        if (nread == 4) {
+            rois.push_back(GL_roi(QPointF(x1, y1), QPointF(x2, y2)));
+        }
+    }
+    fclose(fin);
+    
+    update();
+    
+    return true;
+}
+
+void GL_image_panel_edges::broadcast_histogram(void) {
+    if (current_roi == nullptr) {
+        QTimer::singleShot(600, [this]() { 
+            emit update_histogram(histo_t(), histo_t());
+        });
+    } else {
+        constexpr float hw = 28; // ROI perpendicular distance from edge
+        constexpr float deadzone = 4; // ROI deadzone around edge, perpendicular distance
+        histo_t light(256, 0);
+        histo_t dark(256, 0);
+        
+        
+        cv::Mat img = get_cv_img();
+        
+        std::array<QPointF, 2> pts{current_roi->get(0), current_roi->get(1)};
+        QPointF dir = pts[1] - pts[0];
+        double l = sqrt(dir.x()*dir.x() + dir.y()*dir.y());
+        dir /= l;
+        QPointF norm(-dir.y(), dir.x());
+        
+        if (pts[0].x() < 0 || pts[0].x() > img.cols - 1 ||
+            pts[0].y() < 0 || pts[0].y() > img.rows - 1 ||
+            pts[1].x() < 0 || pts[1].x() > img.cols - 1 ||
+            pts[1].y() < 0 || pts[1].y() > img.rows - 1) {
+            
+            QTimer::singleShot(100, [this]() { 
+                emit update_histogram(histo_t(), histo_t());
+            });
+            return;
+        }
+        
+        // find corners of ROI
+        vector<QPointF> corn{pts[0] - (hw+1)*norm, pts[0] + (hw+1)*norm, pts[1] + (hw+1)*norm, pts[1] - (hw+1)*norm};
+        std::map<int, cv::Point2i> scanset;
+        
+        // we have to creat a larger bounding box, or the LineIterator will improperly
+        // clip the ROI if it crosses the image boundaries
+        constexpr int pad = 100;
+        cv::Rect padbox(-pad, -pad, img.cols + 2*pad, img.rows + 2*pad);
+        
+        // use OpenCV to rasterize a bounding rectangle
+        for (size_t i=0; i < corn.size(); i++) {
+            size_t j = (i + 1) % corn.size();
+            cv::LineIterator li(padbox, 
+                cv::Point(corn[i].x(), corn[i].y()),
+                cv::Point(corn[j].x(), corn[j].y())
+            );
+            for (int k=0; k < li.count; k++, ++li) {
+                auto it = scanset.find(li.pos().y);
+                if (it == scanset.end()) {
+                    scanset[li.pos().y] = cv::Point2i(li.pos().x, li.pos().x);
+                } else {
+                    scanset[li.pos().y].x = std::min(it->second.x, li.pos().x);
+                    scanset[li.pos().y].y = std::max(it->second.y, li.pos().x);
+                }
+            }
+        }
+        
+        // visit pixels in ROI
+        QPointF p;
+        for (auto sp: scanset) {
+            if (sp.first < 0 || sp.first >= img.rows) continue;
+            int row = sp.first;
+            int rowcode = (row & 1) << 1;
+            p.ry() = row;
+            for (int col=std::max(0, sp.second.x); col < std::min(img.cols, sp.second.y); col++) {
+                p.rx() = col;
+                int code = 1 << ( (rowcode | (col & 1)) ^ 3 );
+                if ((code & cfa_mask) == 0) continue;
+                
+                double par = QPointF::dotProduct(p - pts[0], dir);
+                double perp = QPointF::dotProduct(p - pts[0], norm);
+                
+                if (par >= 0 && par < l && fabs(perp) <= hw) {
+                    cv::Vec3b& pix = img.at<cv::Vec3b>(row, col);
+                    if (perp < -deadzone) {
+                        int lum = cv::saturate_cast<unsigned char>(0.299*pix[2] + 0.587*pix[1] + 0.114*pix[0]);
+                        dark[lum]++;
+                    } else {
+                        if (perp > deadzone) {
+                            int lum = cv::saturate_cast<unsigned char>(0.299*pix[2] + 0.587*pix[1] + 0.114*pix[0]);
+                            light[lum]++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // decide which histo is dark and which is light
+        double dmean = 0;
+        double lmean = 0;
+        size_t dcount = 0;
+        size_t lcount = 0;
+        for (size_t i=0; i < dark.size(); i++) {
+            dmean += i*dark[i];
+            lmean += i*light[i];
+            dcount += dark[i];
+            lcount += light[i];
+        }
+        dmean /= dcount;
+        lmean /= lcount;
+        
+        if (dmean < lmean) {
+            emit update_histogram(dark, light);
+        } else {
+            emit update_histogram(light, dark); // swap light and dark
+        }
+    }
+}
+
+void GL_image_panel_edges::set_cfa_mask(Bayer::cfa_mask_t mask) {
+    cfa_mask = mask;
+}
+
 

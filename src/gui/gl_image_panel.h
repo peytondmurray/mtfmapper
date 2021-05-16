@@ -72,6 +72,8 @@ public:
     bool load_image(QImage& qimg);
     void set_cache_size(uint64_t size);
     void set_cache_state(bool s) { cache_enabled = s; }
+    int image_channels(void) const { return img_channels; }
+    int image_depth(void) const { return img_depth; }
     
     virtual void click_marker(QPoint pos, bool add=false) = 0;
     virtual void clear_overlay(void) = 0;
@@ -84,6 +86,9 @@ public:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    
+    cv::Mat get_cv_img(void) const { return current_cv_image; }
+    void set_max_scale_factor(double factor) { max_scale_factor = factor; }
     
     static int program_counter;
 
@@ -101,6 +106,7 @@ protected:
     
     QSize imgsize = QSize(0,0);
     double scale_factor = 1.0;
+    double max_scale_factor = 2.0;
     
     QPoint located_pos;
     QPoint click;
@@ -118,10 +124,13 @@ private:
     uint64_t max_image_cache_size = uint64_t(1) << 30;
     bool cache_enabled = true;
     
+    int img_channels = 1;
+    int img_depth = 8;
     
     Image_viewport vp;
     
     QImage* default_image = nullptr;
+    cv::Mat current_cv_image;
 };
 
 #endif

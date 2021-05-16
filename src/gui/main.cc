@@ -36,6 +36,7 @@ Logger logger;
 #include "worker_thread.h"
 #include "processing_command.h"
 #include "processor_state.h"
+#include "histogram_type.h"
 #include "mtfmapper_app.h"
 
 void message_output(QtMsgType type, const QMessageLogContext& /*context*/, const QString &msg) {
@@ -95,6 +96,7 @@ int main(int argc, char *argv[]) {
     qRegisterMetaType<Worker_thread::failure_t>("Worker_thread::failure_t");
     qRegisterMetaType<Processing_command>("Processing_command");
     qRegisterMetaType<Processor_state>("Processor_state");
+    qRegisterMetaType<histo_t>("histo_t");
 
     dialog.show();
     return app.exec();

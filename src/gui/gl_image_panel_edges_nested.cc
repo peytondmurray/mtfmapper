@@ -43,6 +43,7 @@ GL_image_panel_edges::GL_roi::GL_roi(void) {
 GL_image_panel_edges::GL_roi::GL_roi(QPointF p1, QPointF p2) {
     pts[0] = p1;
     pts[1] = p2;
+    n = 2;
 }
 
 void GL_image_panel_edges::GL_roi::add_point(QPointF p) {
@@ -57,6 +58,13 @@ void GL_image_panel_edges::GL_roi::add_point(QPointF p) {
 QPointF& GL_image_panel_edges::GL_roi::get(int i) {
     assert(i <= 1);
     return pts[i];
+}
+
+double GL_image_panel_edges::GL_roi::length(void) const {
+    if (n >= 1) {
+        return edist(pts[0], pts[1]);
+    }
+    return -1.0;
 }
 
 int GL_image_panel_edges::GL_roi::handle_selected(QPointF p, double dist_thresh) {
