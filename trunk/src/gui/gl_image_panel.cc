@@ -183,8 +183,13 @@ bool GL_image_panel::load_image(const QString& fname) {
     if (cache_enabled && image_cache.find(fname.toStdString()) != image_cache.end()) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
-        cvimg = cv::imread(fname.toStdString(), cv::IMREAD_COLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
-        if (cvimg.empty()) {
+        cvimg = cv::imread(fname.toStdString(), cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
+        if (!cvimg.empty()) {
+            img_channels = cvimg.channels();
+            if (cvimg.channels() == 1) {
+                cv::cvtColor(cvimg, cvimg, cv::COLOR_GRAY2BGR);
+            }
+        } else {
             return false;
         }
         
@@ -194,6 +199,9 @@ bool GL_image_panel::load_image(const QString& fname) {
             // This may not be the most pretty conversion, but at least it will make raw files visible ...
             cv::normalize(cvimg, dst, 0, 255, cv::NORM_MINMAX, CV_8U);
             cvimg = dst;
+            img_depth = 16;
+        } else {
+            img_depth = 8;
         }
         
         // manual conversion, cvtColor seems a bit slow
@@ -227,6 +235,8 @@ bool GL_image_panel::load_image(cv::Mat cvimg) {
     // Some other GLWidget could have the current context, so it is vital that
     // we switch the context before we attempt to change resources like textures
     makeCurrent();
+    
+    current_cv_image = cvimg;
     
     bool keep_zoom = false;
 
@@ -355,16 +365,16 @@ QPoint GL_image_panel::zoom(int step, int mx, int my) {
     double next_scale_factor = scale_factor;
     if (step < 0) {
         double p = floor(log(scale_factor*0.5)/log(2.0));
-        next_scale_factor = std::min(2.0, std::max(min_scale_factor, pow(2.0, p)));
+        next_scale_factor = std::min(max_scale_factor, std::max(min_scale_factor, pow(2.0, p)));
         if (fabs(next_scale_factor - min_scale_factor)/min_scale_factor < 0.25) {
             next_scale_factor = min_scale_factor;
         }
     } else {
         if (step >= 0) {
             double p = floor(log(scale_factor*2)/log(2.0));
-            next_scale_factor = std::max(min_scale_factor, std::min(2.0, pow(2.0, p)));
+            next_scale_factor = std::max(min_scale_factor, std::min(max_scale_factor, pow(2.0, p)));
             if (fabs(next_scale_factor - min_scale_factor)/min_scale_factor < 0.25) {
-                next_scale_factor = std::max(min_scale_factor, std::min(2.0, pow(2.0, p+1)));
+                next_scale_factor = std::max(min_scale_factor, std::min(max_scale_factor, pow(2.0, p+1)));
             }
         }
     }

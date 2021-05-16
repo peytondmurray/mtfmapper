@@ -33,40 +33,75 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "gl_image_viewer.h"
 #include "gl_image_panel_edges.h"
 #include "manual_roi_help_dialog.h"
+#include "histo_widget.h"
+#include "histogram_type.h"
+#include "include/bayer.h"
 #include <memory>
 
 class QPushButton;
 class QTextEdit;
+class QGroupBox;
+
 
 class Edge_select_dialog : public QDialog {
   Q_OBJECT
   
   public:
     Edge_select_dialog(QWidget* parent);
-    bool load_image(QString img_name);
+    
+    bool load_image(QString img_name, 
+        QStringList arguments = QStringList(), 
+        QString raw_filename = "");
+        
     GL_image_viewer* get_viewer(void) { return img_viewer; }
     GL_image_panel* get_panel(void) { return img_panel; }
     
     void set_roi_file(const QString& fname) { roi_file = fname; }
 
   private:
+    void extract_bayer_info(const QStringList& arguments);
     GL_image_viewer*  img_viewer;
     GL_image_panel_edges*   img_panel;
     QPushButton* cancel_button;
     QPushButton* accept_button;
     QPushButton* help_button;
+    QPushButton* load_button;
+    QPushButton* save_button;
+    QPushButton* apply_all_button;
     QWidget* parent = nullptr;
+    QLabel* img_filename;
+    QLabel* text_img_filename;
+    QLabel* img_type;
+    QLabel* text_img_type;
+    QLabel* img_progress;
+    QLabel* text_img_progress;
+    QLabel* edge_length;
+    QLabel* text_edge_length;
+    Histo_widget* histogram;
     std::shared_ptr<QImage> icon_image;
 
     QString roi_file;
+    Bayer::bayer_t bayer_channel;
+    Bayer::cfa_pattern_t cfa_pattern;
+    Bayer::cfa_mask_t cfa_mask;
 
     Manual_roi_help_dialog* help_dialog;
+  
+  signals:
+    void start_manual_queue_processing(QString filename);
 
   public slots:
     void open();
     void export_roi();
     void show_help();
-    
+    void load_roi();
+    void save_roi();
+    void update_queue_size(int queue_size);
+    void update_edge_length(double edge_length);
+    void update_histogram(histo_t dark, histo_t light);
+    void disable_save_button();
+    void enable_save_button();
+    void apply_all_button_clicked();    
 };
 
 #endif

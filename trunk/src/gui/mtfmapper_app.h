@@ -172,8 +172,12 @@ class mtfmapper_app : public QMainWindow
     Edge_select_dialog* edge_select_dialog;
     queue<Processing_command> manual_roi_commands;
     
+    bool manual_queue_active = false;
+    QString manual_queue_roi_filename;
+    
   signals:
     void submit_batch(Processor_state state);
+    void manual_roi_queue_size(int queue_size);
 
   public slots:
     void open_auto();
@@ -190,6 +194,7 @@ class mtfmapper_app : public QMainWindow
     void populate_exif_info_from_file(QString s, QString tempdir);
     void add_manual_roi_file(const Processing_command& command);
     void update_progress(int val);
+    void enable_manual_queue_processing(QString filename);
   
     bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     

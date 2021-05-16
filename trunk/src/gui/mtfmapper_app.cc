@@ -262,6 +262,8 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     setAcceptDrops(true);
     
     edge_select_dialog = new Edge_select_dialog(this);
+    connect(this, SIGNAL(manual_roi_queue_size(int)), edge_select_dialog, SLOT(update_queue_size(int)));
+    connect(edge_select_dialog, SIGNAL( start_manual_queue_processing() ), this, SLOT( enable_manual_queue_processing() ));
     
     check_if_helpers_exist();
     check_and_purge_stale_temp_files();
@@ -477,6 +479,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
 
         input_files = open_dialog->selectedFiles();
         if (input_files.size() > 0) {
+            manual_queue_active = false;
 
             QStringList labels;
             labels.push_back(QString("Data set"));
@@ -984,6 +987,7 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
     {
         std::lock_guard<std::mutex> lock(mq_mutex);
         manual_roi_commands.push(new_command);
+        emit manual_roi_queue_size((int)manual_roi_commands.size());
         if (mq_busy) {
             return;
         }
@@ -1001,6 +1005,7 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
                 queue_emptied = false;
             }
         }
+        emit manual_roi_queue_size((int)manual_roi_commands.size());
         if (queue_emptied) {
             break;
         }
@@ -1016,28 +1021,36 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             esd_initialized = true;
         }
         
-        // TODO: later when we add "apply to remaining" button, we should only perform loading
-        // if necessary ... ?
-
         // ensure the exposed main window repaints
         update();
         QCoreApplication::processEvents();
         
-        bool load_success = edge_select_dialog->load_image(command.img_filename);
-        edge_select_dialog->set_roi_file(roi_filename);
-        
-        if (load_success && edge_select_dialog->exec()) {
+        if (manual_queue_active) {
             Processing_command modified_command(command);
-            modified_command.arguments << "--roi-file" << roi_filename;
+            modified_command.arguments << "--roi-file" << manual_queue_roi_filename;
             modified_command.set_state(Processing_command::state_t::READY);
             processor.submit_processing_command(modified_command);
         } else {
-            processor.remove_file_in_flight();
-            item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
-        }
-        
-        if (!load_success) {
-            emit mtfmapper_call_failed(Worker_thread::failure_t::IMAGE_OPEN_FAILURE, command.img_filename);
+            bool load_success = edge_select_dialog->load_image(
+                command.img_filename, 
+                command.arguments,
+                command.exif_filename // original raw filename, if applicable
+            );
+            edge_select_dialog->set_roi_file(roi_filename);
+            
+            if (load_success && edge_select_dialog->exec()) {
+                Processing_command modified_command(command);
+                modified_command.arguments << "--roi-file" << roi_filename;
+                modified_command.set_state(Processing_command::state_t::READY);
+                processor.submit_processing_command(modified_command);
+            } else {
+                processor.remove_file_in_flight();
+                item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
+            }
+            
+            if (!load_success) {
+                emit mtfmapper_call_failed(Worker_thread::failure_t::IMAGE_OPEN_FAILURE, command.img_filename);
+            }
         }
     }
     {
@@ -1092,3 +1105,12 @@ void mtfmapper_app::update_progress(int val) {
     int prog = progress->maximum() - val;
     progress->setValue(prog);
 }
+
+void mtfmapper_app::enable_manual_queue_processing(QString filename) {
+    manual_queue_roi_filename = filename;
+    manual_queue_active = true;
+    printf("manual queue active\n");
+    emit item_for_deletion(filename);
+}
+
+

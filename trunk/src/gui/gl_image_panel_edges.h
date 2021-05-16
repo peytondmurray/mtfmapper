@@ -31,15 +31,20 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <limits>
 
 #include "gl_image_panel.h"
+#include "histogram_type.h"
+#include "include/bayer.h"
 
 #include <QPointF>
 #include <array>
 #include <assert.h>
 
 class GL_image_panel_edges : public GL_image_panel {
+  Q_OBJECT
+  
   public:
     explicit GL_image_panel_edges(QWidget *parent = 0);
     bool save_rois(const QString& fname);
+    bool load_rois(const QString& fname);
     
     virtual void click_marker(QPoint pos, bool add=false) override;
     virtual void clear_overlay(void) override;
@@ -51,6 +56,13 @@ class GL_image_panel_edges : public GL_image_panel {
     void mouseReleaseEvent(QMouseEvent* event) override;
     
     void line_endpoint(QPoint pos);
+    void set_cfa_mask(Bayer::cfa_mask_t mask);
+    
+  signals:
+    void update_edge_length(double edge_length);
+    void update_histogram(histo_t dark, histo_t light);
+    void enable_save_button(void);
+    void disable_save_button(void);
     
   private:
     void make_dot_vbo();
@@ -60,6 +72,7 @@ class GL_image_panel_edges : public GL_image_panel {
     void draw_box(QPointF start, QPointF end, float box_width, double r, double g, double b, double t = 1.0);
     void draw_close_symbol(QPointF pos, QPointF dir, double r, double g, double b);
     void check_roi_boxes_and_handles(QPointF img_coords);
+    void broadcast_histogram(void);
     
     QOpenGLShaderProgram* line_program;
     QOpenGLShaderProgram* box_program;
@@ -71,6 +84,7 @@ class GL_image_panel_edges : public GL_image_panel {
     QOpenGLBuffer dot_vbo;
     
     QPointF img_centre;
+    Bayer::cfa_mask_t cfa_mask = Bayer::cfa_mask_t::ALL;
     
     typedef enum {
         NONE,
@@ -91,6 +105,7 @@ class GL_image_panel_edges : public GL_image_panel {
         
         void add_point(QPointF p);
         QPointF& get(int i);
+        double length(void) const;
         
         int handle_selected(QPointF p, double dist_thresh = 10.0);
         int box_selected(QPointF p, double dist_thresh = 10.0, double width_thresh = 28.0);
