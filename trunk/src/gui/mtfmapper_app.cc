@@ -262,8 +262,10 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     setAcceptDrops(true);
     
     edge_select_dialog = new Edge_select_dialog(this);
-    connect(this, SIGNAL(manual_roi_queue_size(int)), edge_select_dialog, SLOT(update_queue_size(int)));
-    connect(edge_select_dialog, SIGNAL( start_manual_queue_processing() ), this, SLOT( enable_manual_queue_processing() ));
+    connect(this, SIGNAL( manual_roi_queue_size(int) ), edge_select_dialog, SLOT( update_queue_size(int) ));
+    connect(edge_select_dialog, SIGNAL( start_manual_queue_processing(QString) ), this, SLOT( enable_manual_queue_processing(QString) ));
+    connect(edge_select_dialog, SIGNAL( manual_queue_skip_all() ), this, SLOT( enable_manual_queue_skip() ));
+    connect(abort_button, SIGNAL( clicked() ), edge_select_dialog, SLOT( abort_all_button_clicked() ));
     
     check_if_helpers_exist();
     check_and_purge_stale_temp_files();
@@ -419,6 +421,8 @@ void mtfmapper_app::open_roi() {
 }
 
 void mtfmapper_app::open_manual_roi() {
+    manual_queue_active = false;
+    manual_queue_skip_all = false;
     open_action(false, false, false, true);
 }
 
@@ -479,7 +483,6 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
 
         input_files = open_dialog->selectedFiles();
         if (input_files.size() > 0) {
-            manual_queue_active = false;
 
             QStringList labels;
             labels.push_back(QString("Data set"));
@@ -600,6 +603,10 @@ void mtfmapper_app::processor_completed(void) {
 
 void mtfmapper_app::enable_clear_button(void) {
     clear_button->setEnabled(true);
+}
+
+void mtfmapper_app::disable_clear_button(void) {
+    clear_button->setEnabled(false);
 }
 
 void mtfmapper_app::clear_button_pressed(void) {
@@ -1010,7 +1017,13 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             break;
         }
         
-        QString roi_filename = command.tmp_dirname + "/rois.txt";
+        if (manual_queue_skip_all) {
+            processor.remove_file_in_flight();
+            item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
+            continue;
+        }
+        
+        QString roi_filename = command.tmp_dirname + "/manual.roi";
 
         if (!esd_initialized) {
             // Note: we only really have to do this once, apparently
@@ -1031,6 +1044,8 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             modified_command.set_state(Processing_command::state_t::READY);
             processor.submit_processing_command(modified_command);
         } else {
+            disable_clear_button();
+            
             bool load_success = edge_select_dialog->load_image(
                 command.img_filename, 
                 command.arguments,
@@ -1038,12 +1053,29 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             );
             edge_select_dialog->set_roi_file(roi_filename);
             
-            if (load_success && edge_select_dialog->exec()) {
-                Processing_command modified_command(command);
-                modified_command.arguments << "--roi-file" << roi_filename;
-                modified_command.set_state(Processing_command::state_t::READY);
-                processor.submit_processing_command(modified_command);
-            } else {
+            bool dialog_success = false;
+            if (load_success) {
+            
+                edge_select_dialog->show();
+                edge_select_dialog->raise();
+                edge_select_dialog->activateWindow();
+                
+                // run a local event loop to simulate the behaviour of exec(), but without
+                // blocking the main window
+                QEventLoop q;
+                connect(edge_select_dialog, SIGNAL(finished(int)), &q, SLOT(quit()));
+                connect(edge_select_dialog, SIGNAL(finished(int)), &q, SLOT(enable_clear_button()));
+                q.exec();
+                
+                if (edge_select_dialog->result() == QDialog::Accepted) {
+                    dialog_success = true;
+                    Processing_command modified_command(command);
+                    modified_command.arguments << "--roi-file" << roi_filename;
+                    modified_command.set_state(Processing_command::state_t::READY);
+                    processor.submit_processing_command(modified_command);
+                }
+            } 
+            if (!load_success || !dialog_success) {
                 processor.remove_file_in_flight();
                 item_for_deletion(command.tmp_dirname + QString("/exifinfo.txt"));
             }
@@ -1109,8 +1141,9 @@ void mtfmapper_app::update_progress(int val) {
 void mtfmapper_app::enable_manual_queue_processing(QString filename) {
     manual_queue_roi_filename = filename;
     manual_queue_active = true;
-    printf("manual queue active\n");
     emit item_for_deletion(filename);
 }
 
-
+void mtfmapper_app::enable_manual_queue_skip(void) {
+    manual_queue_skip_all = true;
+}

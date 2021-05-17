@@ -638,8 +638,8 @@ bool GL_image_panel_edges::load_rois(const QString& fname) {
     if (!fin) {
         return false;
     }
-    clear_overlay();
     
+    vector<GL_roi> loaded_rois;
     while (!feof(fin)) {
         double x1 = 0;
         double y1 = 0;
@@ -647,10 +647,16 @@ bool GL_image_panel_edges::load_rois(const QString& fname) {
         double y2 = 0;
         int nread = fscanf(fin, "%lf %lf %lf %lf", &x1, &y1, &x2, &y2);
         if (nread == 4) {
-            rois.push_back(GL_roi(QPointF(x1, y1), QPointF(x2, y2)));
+            loaded_rois.push_back(GL_roi(QPointF(x1, y1), QPointF(x2, y2)));
         }
     }
     fclose(fin);
+    
+    if (loaded_rois.size() > 0) {
+        clear_overlay();
+        rois = loaded_rois;
+        emit enable_save_button();
+    }
     
     update();
     

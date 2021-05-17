@@ -31,25 +31,54 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 Edge_select_dialog::Edge_select_dialog(QWidget* parent)
  : QDialog(parent, Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint), parent(parent) {
-
+    
+    QString cancel_tt(
+        "Cancel the processing of the file currently shown.\n"
+        "Skips on to loading next queued file, if any."
+    );
     cancel_button = new QPushButton("Cancel");
     cancel_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    cancel_button->setToolTip(cancel_tt);
     
+    QString accept_tt(
+        "Accepts currently shown ROIs, and submits image and\n"
+        "ROIs for further processing.\n"
+        "Proceeds to loading of the next queued file, if any."
+    );
     accept_button = new QPushButton("Accept");
     accept_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    accept_button->setToolTip(accept_tt);
     
-    apply_all_button = new QPushButton("Accept && batch queue");
+    QString apply_all_tt(
+        "Apply the current ROIs to all file(s) that are\n" 
+        "currently queued for manual ROI processing."
+    );
+    apply_all_button = new QPushButton("Accept\n queued");
     apply_all_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    apply_all_button->setToolTip(apply_all_tt);
+    
+    QString abort_all_tt(
+        "Cancel the processing of all files that are currently\n"
+        "queued for manual ROI processing. This is equivalent to\n"
+        "manually clicking 'Cancel' for each queued file."
+    );
+    abort_all_button = new QPushButton("Abort\n queued");
+    abort_all_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+    abort_all_button->setToolTip(abort_all_tt);
 
     help_button = new QPushButton("Help");
     help_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
+    QString load_tt("Load a previously saved ROI.");
     load_button = new QPushButton("Load");
     load_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    load_button->setToolTip(load_tt);
     
+    QString save_tt("Save the current ROIs to a file.");
     save_button = new QPushButton("Save");
     save_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     save_button->setEnabled(false);
+    save_button->setToolTip(save_tt);
 
     img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
@@ -70,23 +99,50 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     help_dialog->setModal(true);
     
     img_filename = new QLabel("filename");
-    img_type = new QLabel("type");
     img_progress = new QLabel("n remaining");
     edge_length = new QLabel("");
     text_edge_length = new QLabel("Edge length:");
     text_img_filename = new QLabel("Name:");
-    text_img_type = new QLabel("Type:");
     text_img_progress = new QLabel("Queued:");
     
+    QString type_tt(
+        "File type, i.e., Gray, RGB, or Bayer channel, as\n"
+        "well as bit depth.\n"
+        "Note that the type reflects the choice in the\n"
+        "Preferences at the time the File/Open action\n"
+        "was performed, especially with regards to the\n"
+        "Bayer channel setting. It is also indicative\n"
+        "of the type of MTF that will be extracted."
+    );
+    img_type = new QLabel("type");
+    img_type->setToolTip(type_tt);
+    text_img_type = new QLabel("Type:");
+    text_img_type->setToolTip(type_tt);
+    
+    QString histogram_tt(
+        "The split-edge histogram displays two histograms, one for each\n"
+        "half of the ROI, each half assumed to correspond to either a\n"
+        "uniformly dark or uniformly light part of the image.\n" 
+        "If these histograms overlap, the ROI selection is likely invalid,\n"
+        "which is indicated by an amber background with the overlap-\n"
+        "ping section displayed in red. Ideally, you want two well-\n"
+        "separated histograms.\n\n"
+        "Only displays when an ROI is selected or actively modified."
+    );
     histogram = new Histo_widget(this);
+    histogram->setToolTip(histogram_tt);
     
     QGridLayout* prop_layout = new QGridLayout;
-    prop_layout->addWidget(text_img_filename, 0, 0);
-    prop_layout->addWidget(img_filename, 0, 1);
-    prop_layout->addWidget(text_img_type, 1, 0);
-    prop_layout->addWidget(img_type, 1, 1);
-    prop_layout->addWidget(text_img_progress, 2, 0);
-    prop_layout->addWidget(img_progress, 2, 1);
+    for (auto w: {text_img_filename, img_filename, text_img_type, text_img_progress, img_progress}) {
+        w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    }
+    prop_layout->addWidget(text_img_filename, 0, 0, Qt::AlignTop);
+    prop_layout->addWidget(img_filename, 0, 1, Qt::AlignTop);
+    prop_layout->addWidget(text_img_type, 1, 0, Qt::AlignTop);
+    prop_layout->addWidget(img_type, 1, 1, Qt::AlignTop);
+    prop_layout->addWidget(text_img_progress, 2, 0, Qt::AlignTop);
+    prop_layout->addWidget(img_progress, 2, 1, Qt::AlignTop);
+    prop_layout->addWidget(new QLabel(""), 3, 0,Qt::AlignBottom); // dummy row
     
     QGroupBox* prop_box = new QGroupBox("File properties");
     prop_box->setLayout(prop_layout);
@@ -96,12 +152,13 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     histo_layout->addWidget(text_edge_length, 1, 0);
     histo_layout->addWidget(edge_length, 1, 1, Qt::AlignLeft);
     
-    QGroupBox* histo_box = new QGroupBox("Split edge histogram");
+    QGroupBox* histo_box = new QGroupBox("Split-edge histogram");
     histo_box->setLayout(histo_layout);
     
     QGridLayout* button_layout = new QGridLayout;
     button_layout->addWidget(help_button, 0, 1);
-    button_layout->addWidget(apply_all_button, 1, 0, 1, 2, Qt::AlignRight);
+    button_layout->addWidget(apply_all_button, 1, 0);
+    button_layout->addWidget(abort_all_button, 1, 1);
     button_layout->addWidget(load_button, 2, 0);
     button_layout->addWidget(save_button, 2, 1);
     button_layout->addWidget(accept_button, 3, 0);
@@ -127,10 +184,10 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     connect(img_panel, SIGNAL( enable_save_button() ), this, SLOT( enable_save_button() ));
     connect(img_panel, SIGNAL( disable_save_button() ), this, SLOT( disable_save_button() ));
     connect(apply_all_button, SIGNAL( clicked() ), this, SLOT( apply_all_button_clicked() ));
+    connect(abort_all_button, SIGNAL( clicked() ), this, SLOT( abort_all_button_clicked() ));
     
-    // TODO: save button is disabled until at least one ROI is selected
-    
-    setModal(true);
+    setModal(false);
+    setWindowModality(Qt::NonModal);
     setLayout(vlayout);
     setWindowTitle("Select one or more edge ROIs");
 }
@@ -152,18 +209,21 @@ bool Edge_select_dialog::load_image(QString img_name,
     QString type_string;
     if (get_panel()->image_channels() == 1) {
         if (arguments.contains("--bayer")) {
-            type_string = "Bayer ";
+            type_string = "Bayer";
             extract_bayer_info(arguments);
+            if (bayer_channel != Bayer::bayer_t::NONE) {
+                type_string += " " + QString(Bayer::to_string(bayer_channel).c_str());
+            }
         } else {
-            type_string = "Gray ";
+            type_string = "Gray";
         }
     } else {
-        type_string = "RGB ";
+        type_string = "RGB L";
     }
     if (get_panel()->image_channels() == 8) {
-        type_string += "8-bit";
+        type_string += ", 8-bit";
     } else {
-        type_string += "16-bit";
+        type_string += ", 16-bit";
     }
     img_type->setText(type_string);
     img_filename->setText(QFileInfo(raw_filename).fileName());
@@ -202,6 +262,11 @@ void Edge_select_dialog::load_roi(void) {
         filenames = dialog.selectedFiles();
         if (filenames.size() > 0 && filenames[0].length() > 0) {
             bool load_success = img_panel->load_rois(filenames[0]);
+            if (!load_success) {
+                logger.error("Could not load ROI filename %s\n", 
+                    filenames[0].toLocal8Bit().constData()
+                );
+            }
         }
     }
 }
@@ -279,9 +344,8 @@ void Edge_select_dialog::apply_all_button_clicked(void) {
     QString manual_roi_file = QString("%1/mtfmapper_batch_%2.roi").arg(QDir::tempPath()).arg(manual_seq_number++);
     bool save_success = img_panel->save_rois(manual_roi_file);
     if (save_success) {
-        printf("emitting manual queue start\n");
         emit start_manual_queue_processing(manual_roi_file);
-        accept();
+        export_roi();
     } else {
         logger.error("Could not save batch ROI filename %s\n", 
             manual_roi_file.toLocal8Bit().constData()
@@ -289,4 +353,7 @@ void Edge_select_dialog::apply_all_button_clicked(void) {
     }
 }
 
-
+void Edge_select_dialog::abort_all_button_clicked(void) {
+    emit manual_queue_skip_all();
+    close();
+}
