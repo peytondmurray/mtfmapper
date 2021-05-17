@@ -677,16 +677,18 @@ void GL_image_panel_edges::broadcast_histogram(void) {
         
         cv::Mat img = get_cv_img();
         
+        // TODO: ugly mix of Qt and cv types, can be simplified
         std::array<QPointF, 2> pts{current_roi->get(0), current_roi->get(1)};
         QPointF dir = pts[1] - pts[0];
         double l = sqrt(dir.x()*dir.x() + dir.y()*dir.y());
         dir /= l;
         QPointF norm(-dir.y(), dir.x());
         
-        if (pts[0].x() < 0 || pts[0].x() > img.cols - 1 ||
-            pts[0].y() < 0 || pts[0].y() > img.rows - 1 ||
-            pts[1].x() < 0 || pts[1].x() > img.cols - 1 ||
-            pts[1].y() < 0 || pts[1].y() > img.rows - 1) {
+        if (pts[0].x() < 0 || pts[0].x() > img.cols ||
+            pts[0].y() < 0 || pts[0].y() > img.rows ||
+            pts[1].x() < 0 || pts[1].x() > img.cols ||
+            pts[1].y() < 0 || pts[1].y() > img.rows ||
+            l < 2) {
             
             QTimer::singleShot(100, [this]() { 
                 emit update_histogram(histo_t(), histo_t());
@@ -694,21 +696,37 @@ void GL_image_panel_edges::broadcast_histogram(void) {
             return;
         }
         
-        // find corners of ROI
-        vector<QPointF> corn{pts[0] - (hw+1)*norm, pts[0] + (hw+1)*norm, pts[1] + (hw+1)*norm, pts[1] - (hw+1)*norm};
+        // find 3 corners of ROI
+        vector<QPointF> corn{pts[0] - (hw+1)*norm, pts[0] + (hw+1)*norm, pts[1] + (hw+1)*norm};
+        
+        cv:: RotatedRect roi_rect(
+            cv::Point2f(corn[0].x(), corn[0].y()), 
+            cv::Point2f(corn[1].x(), corn[1].y()), 
+            cv::Point2f(corn[2].x(), corn[2].y())
+        );
+        cv:: RotatedRect img_rect(
+            cv::Point2f(0, 0), 
+            cv::Point2f(img.cols - 1, 0), 
+            cv::Point2f(img.cols - 1, img.rows - 1)
+        );
+        vector<cv::Point2f> roi_intersect;
+        cv::rotatedRectangleIntersection(roi_rect, img_rect, roi_intersect);
+        
+        // degenerate
+        if (roi_intersect.size() < 3) {
+            QTimer::singleShot(100, [this]() { 
+                emit update_histogram(histo_t(), histo_t());
+            });
+            return;
+        }
+        
         std::map<int, cv::Point2i> scanset;
-        
-        // we have to creat a larger bounding box, or the LineIterator will improperly
-        // clip the ROI if it crosses the image boundaries
-        constexpr int pad = 100;
-        cv::Rect padbox(-pad, -pad, img.cols + 2*pad, img.rows + 2*pad);
-        
         // use OpenCV to rasterize a bounding rectangle
-        for (size_t i=0; i < corn.size(); i++) {
-            size_t j = (i + 1) % corn.size();
-            cv::LineIterator li(padbox, 
-                cv::Point(corn[i].x(), corn[i].y()),
-                cv::Point(corn[j].x(), corn[j].y())
+        for (size_t i=0; i < roi_intersect.size(); i++) {
+            size_t j = (i + 1) % roi_intersect.size();
+            cv::LineIterator li(img, 
+                cv::Point(roi_intersect[i].x, roi_intersect[i].y),
+                cv::Point(roi_intersect[j].x, roi_intersect[j].y)
             );
             for (int k=0; k < li.count; k++, ++li) {
                 auto it = scanset.find(li.pos().y);
