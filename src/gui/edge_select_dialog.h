@@ -68,6 +68,7 @@ class Edge_select_dialog : public QDialog {
     QPushButton* load_button;
     QPushButton* save_button;
     QPushButton* apply_all_button;
+    QPushButton* abort_all_button;
     QWidget* parent = nullptr;
     QLabel* img_filename;
     QLabel* text_img_filename;
@@ -89,6 +90,7 @@ class Edge_select_dialog : public QDialog {
   
   signals:
     void start_manual_queue_processing(QString filename);
+    void manual_queue_skip_all();
 
   public slots:
     void open();
@@ -101,7 +103,8 @@ class Edge_select_dialog : public QDialog {
     void update_histogram(histo_t dark, histo_t light);
     void disable_save_button();
     void enable_save_button();
-    void apply_all_button_clicked();    
+    void apply_all_button_clicked();
+    void abort_all_button_clicked();
 };
 
 #endif

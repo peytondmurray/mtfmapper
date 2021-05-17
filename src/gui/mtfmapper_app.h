@@ -174,6 +174,7 @@ class mtfmapper_app : public QMainWindow
     
     bool manual_queue_active = false;
     QString manual_queue_roi_filename;
+    bool manual_queue_skip_all = false;
     
   signals:
     void submit_batch(Processor_state state);
@@ -195,12 +196,14 @@ class mtfmapper_app : public QMainWindow
     void add_manual_roi_file(const Processing_command& command);
     void update_progress(int val);
     void enable_manual_queue_processing(QString filename);
+    void enable_manual_queue_skip();
   
     bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     
 
     void processor_completed(void);
     void enable_clear_button(void);
+    void disable_clear_button(void);
     void clear_button_pressed(void);
     void enable_save_button(void);
     void disable_save_button(void);
