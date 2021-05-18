@@ -30,6 +30,9 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <QDialog>
 #include <QtWidgets>
+#include <vector>
+using std::vector;
+#include <memory>
 
 class Manual_roi_help_dialog : public QDialog
 {
@@ -39,12 +42,21 @@ public:
     Manual_roi_help_dialog(QWidget* parent);
 
 private:
+    void update_page(void);
+    vector<std::shared_ptr<QPixmap>> pages;
     QLabel* label;
+    QLabel* page_counter;
+    QPushButton* next_button;
+    QPushButton* prev_button;
     QPushButton* dismiss_button;
     QScrollArea* scroller;
+    
+    int page_number = 0;
 
 public slots:
     void open();
+    void page_up();
+    void page_down();
 
 };
 
