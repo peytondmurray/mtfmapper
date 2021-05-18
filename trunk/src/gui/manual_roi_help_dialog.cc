@@ -34,31 +34,54 @@ Manual_roi_help_dialog::Manual_roi_help_dialog(QWidget* parent)
 
     dismiss_button = new QPushButton("Dismiss");
     dismiss_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    
+    prev_button = new QPushButton("prev");
+    prev_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    prev_button->setEnabled(false);
+    
+    next_button = new QPushButton("next");
+    next_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    
+    page_counter = new QLabel("1");
+    page_counter->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    
+    pages.push_back(std::shared_ptr<QPixmap>(new QPixmap(":Images/ManualROIHelp")));
+    pages.push_back(std::shared_ptr<QPixmap>(new QPixmap(":Images/ManualROIHelp_p2")));
+    pages.push_back(std::shared_ptr<QPixmap>(new QPixmap(":Images/ManualROIHelp_p3")));
+    
+    page_counter->setText(QString("%1/%2").arg(page_number + 1).arg(pages.size()));
 
     label = new QLabel(this);
     label->setAlignment(Qt::AlignCenter);
-    QPixmap image(":Images/ManualROIHelp");
-    label->setPixmap(image);
-
-    QScreen* screen = QGuiApplication::primaryScreen();
-    QRect geom = screen->geometry();
+    label->setPixmap(*pages[page_number]);
 
     scroller = new QScrollArea;
     scroller->setWidget(label);
-
-    int swidth = image.width() > geom.width() ? geom.width() - 40 : image.width() + 16;
-    int sheight = image.height() > geom.height() ? geom.height() - 80 : image.height() + 16;
-
-    scroller->setMinimumSize(swidth, sheight);
+    
+    update_page();    
     scroller->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scroller->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    
+    QGridLayout* button_layout = new QGridLayout;
+    button_layout->setColumnStretch(0, 10);
+    button_layout->addWidget(prev_button, 0, 1);
+    button_layout->setColumnStretch(1, 0);
+    button_layout->addWidget(page_counter, 0, 2);
+    button_layout->setColumnStretch(2, 0);
+    button_layout->addWidget(next_button, 0, 3);
+    button_layout->setColumnStretch(3, 0);
+    button_layout->setColumnStretch(4, 10);
+    button_layout->addWidget(dismiss_button, 0, 5);
+    button_layout->setColumnStretch(5, 0);
 
     QGridLayout* vlayout = new QGridLayout(this);
-    vlayout->addWidget(scroller, 0, 0, 1, 3);
-    vlayout->addWidget(dismiss_button, 1, 1);
+    vlayout->addWidget(scroller, 0, 0);
+    vlayout->addLayout(button_layout, 1, 0);
 
     connect(dismiss_button, SIGNAL(clicked()), this, SLOT(close()));
+    connect(prev_button, SIGNAL(clicked()), this, SLOT(page_down()));
+    connect(next_button, SIGNAL(clicked()), this, SLOT(page_up()));
 
     setLayout(vlayout);
     setWindowTitle("Manual ROI selection help");
@@ -66,4 +89,37 @@ Manual_roi_help_dialog::Manual_roi_help_dialog(QWidget* parent)
 
 void Manual_roi_help_dialog::open(void) {
     show();
+}
+
+void Manual_roi_help_dialog::update_page(void) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    QRect geom = screen->geometry();
+
+    QPixmap& image = *pages[page_number];
+    label->setPixmap(image);
+    int swidth = image.width() > geom.width() ? geom.width() - 40 : image.width() + 16;
+    int sheight = image.height() > geom.height() ? geom.height() - 80 : image.height() + 16;
+
+    scroller->setMinimumSize(swidth, sheight);
+    update();
+}
+
+void Manual_roi_help_dialog::page_up(void) {
+    page_number = std::min((int)pages.size() - 1, page_number + 1);
+    page_counter->setText(QString("%1/%2").arg(page_number + 1).arg(pages.size()));
+    if (page_number == (int)pages.size() - 1) {
+        next_button->setEnabled(false);
+    }
+    prev_button->setEnabled(true);
+    update_page();
+}
+
+void Manual_roi_help_dialog::page_down(void) {
+    page_number = std::max(0, page_number - 1);
+    page_counter->setText(QString("%1/%2").arg(page_number + 1).arg(pages.size()));
+    if (page_number == 0) {
+        prev_button->setEnabled(false);
+    }
+    next_button->setEnabled(true);
+    update_page();
 }

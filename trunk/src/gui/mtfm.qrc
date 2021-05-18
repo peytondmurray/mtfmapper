@@ -6,5 +6,7 @@
 </qresource>
 <qresource prefix="/Images">
 <file alias="ManualROIHelp">manual_roi_help.png</file>
+<file alias="ManualROIHelp_p2">manual_roi_help_p2.png</file>
+<file alias="ManualROIHelp_p3">manual_roi_help_p3.png</file>
 </qresource>
 </RCC>
