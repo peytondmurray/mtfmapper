@@ -79,6 +79,7 @@ Logger logger;
 #include "include/display_profile.h"
 #include "include/esf_model_kernel.h"
 #include "include/esf_model_loess.h"
+#include "include/job_metadata.h"
 #include "config.h"
 
 //-----------------------------------------------------------------------------
@@ -208,7 +209,7 @@ int main(int argc, char** argv) {
     if (tc_debug.getValue()) {
         logger.enable_level(Logger::LOGGER_DEBUG);
     }
-
+    
     bool lpmm_mode = false;
     double pixel_size = 1;
     if (tc_pixelsize.isSet()) {
@@ -217,6 +218,12 @@ int main(int argc, char** argv) {
         pixel_size = 1000 / tc_pixelsize.getValue();
         logger.info("working with=%lf pixels per mm\n", pixel_size);
     }
+    
+    Job_metadata job_metadata(
+        pixel_size,
+        0.5, // will be updated later after clamping
+        Bayer::from_string(tc_bayer.getValue())
+    );
 
     if (!tc_profile.isSet() && !tc_annotate.isSet() && !tc_surface.isSet() && !tc_print.isSet() && !tc_sfr.isSet() && !tc_edges.isSet()) {
         logger.info("%s\n", "Warning: No output specified. You probably want to specify at least one of the following flags: [-r -p -a -s -f -q]");
@@ -548,6 +555,7 @@ int main(int argc, char** argv) {
                 contrast = 90;
             }
             mtf_core.set_mtf_contrast(contrast / 100.0);
+            job_metadata.mtf_contrast = contrast / 100.0;
         }
         #ifdef MDEBUG
         mtf_core.noise_seed = tc_noise_seed.getValue();
@@ -725,7 +733,7 @@ int main(int argc, char** argv) {
                 wdir + string("edge_line_deviation.txt"),
                 wdir + string("serialized_edges.bin"),
                 Output_version::type(tc_output_version.getValue()),
-                mtf_core.get_mtf_contrast(),
+                job_metadata,
                 lpmm_mode, pixel_size
             );
             printer.render(mtf_core.get_blocks());

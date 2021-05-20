@@ -97,9 +97,9 @@ class Entry_view {
     const string mtf_xx(const Edge_info& info) const {
         char buffer[200];
         if (lp_mm_mode) {
-            sprintf(buffer, "MTF%2d=%.2lf lp/mm", (int)rint(100*info.mtf_contrast), info.mtf50*frequency_scale(info));
+            sprintf(buffer, "MTF%2d=%.2lf lp/mm", (int)rint(100*info.metadata.mtf_contrast), info.mtf50*frequency_scale(info));
         } else {
-            sprintf(buffer, "MTF%2d=%.3lf c/p", (int)rint(100*info.mtf_contrast), info.mtf50);
+            sprintf(buffer, "MTF%2d=%.3lf c/p", (int)rint(100*info.metadata.mtf_contrast), info.mtf50);
         }
         return string(buffer);
     }
@@ -188,6 +188,13 @@ class Entry_view {
         }
         sprintf(buffer, "%.0lf", info.edge_length);
         fmt["length"] = string(buffer);
+        
+        switch (info.metadata.bayer) {
+        case Bayer::bayer_t::NONE: fmt["channel"] = "L"; break;
+        case Bayer::bayer_t::RED: fmt["channel"] = "R"; break;
+        case Bayer::bayer_t::GREEN: fmt["channel"] = "G"; break;
+        case Bayer::bayer_t::BLUE: fmt["channel"] = "B"; break;
+        }
 
         return fmt;
     }
@@ -365,10 +372,10 @@ class Entry_view {
     double frequency_scale(const Edge_info& info) const {
         double freq_scale = 1.0;
         if (lp_mm_mode) {
-            if (fabs(info.pixel_pitch - 1000.0) < 1e-6) {
+            if (fabs(info.metadata.pixel_pitch - 1000.0) < 1e-6) {
                 freq_scale = 1000.0/default_pixel_pitch;
             } else {
-                freq_scale = 1000.0/info.pixel_pitch;
+                freq_scale = 1000.0/info.metadata.pixel_pitch;
             }
         }
         return freq_scale;
@@ -377,10 +384,10 @@ class Entry_view {
     double pixel_to_micron(const Edge_info& info) const {
         double p2m = 1.0;
         if (lp_mm_mode) {
-            if (fabs(info.pixel_pitch - 1000.0) < 1e-6) {
+            if (fabs(info.metadata.pixel_pitch - 1000.0) < 1e-6) {
                 p2m = default_pixel_pitch;
             } else {
-                p2m = info.pixel_pitch;
+                p2m = info.metadata.pixel_pitch;
             }
         }
         return p2m;

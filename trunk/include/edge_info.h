@@ -34,6 +34,7 @@ using std::string;
 
 #include <opencv2/core/core.hpp>
 
+#include "include/job_metadata.h"
 #include "include/logger.h"
 #include <memory>
 
@@ -42,13 +43,14 @@ class Edge_info {
     Edge_info(void) {
     }
     
-    static bool serialize_header(FILE* fout, size_t valid_count, double pixel_size, double mtf_contrast) {
-        vector<char> buffer(sizeof(uint32_t) + 2*sizeof(double));
+    static bool serialize_header(FILE* fout, size_t valid_count, const Job_metadata& metadata) {
+        vector<char> buffer(2*sizeof(uint32_t) + 2*sizeof(double));
         
         char* obuf = buffer.data();
         write_uint32(&obuf, valid_count);
-        write_double(&obuf, pixel_size);
-        write_double(&obuf, mtf_contrast);
+        write_double(&obuf, metadata.pixel_pitch);
+        write_double(&obuf, metadata.mtf_contrast);
+        write_uint32(&obuf, uint32_t(metadata.bayer));
         
         size_t nwritten = fwrite(buffer.data(), 1, buffer.size(), fout);
         
@@ -60,8 +62,8 @@ class Edge_info {
         return true;
     }
     
-    static bool deserialize_header(FILE* fin, size_t& valid_count, double& pixel_size, double& mtf_contrast) {
-        vector<char> buffer(sizeof(uint32_t) + 2*sizeof(double));
+    static bool deserialize_header(FILE* fin, size_t& valid_count, Job_metadata& metadata) {
+        vector<char> buffer(2*sizeof(uint32_t) + 2*sizeof(double));
         
         size_t nread = fread(buffer.data(), 1, buffer.size(), fin);
         
@@ -72,8 +74,9 @@ class Edge_info {
         
         char* ibuf = buffer.data();
         valid_count = read_uint32(&ibuf);
-        pixel_size = read_double(&ibuf);
-        mtf_contrast = read_double(&ibuf);
+        metadata.pixel_pitch = read_double(&ibuf);
+        metadata.mtf_contrast = read_double(&ibuf);
+        metadata.bayer = Bayer::bayer_t(read_uint32(&ibuf));
 
         return true;
     }
@@ -204,12 +207,8 @@ class Edge_info {
         return b;
     }
     
-    void set_mtf_contrast(double c) {
-        mtf_contrast = c;
-    }
-    
-    void set_pixel_pitch(double p) {
-        pixel_pitch = p;
+    void set_metadata(const Job_metadata& md) {
+        metadata = md;
     }
     
     cv::Point2d centroid;
@@ -220,8 +219,7 @@ class Edge_info {
     std::shared_ptr<vector<double>> esf;
     cv::Point2d snr;
     cv::Point2d chromatic_aberration;
-    double pixel_pitch = 1.0;
-    double mtf_contrast = 0.5;
+    Job_metadata metadata;
     double edge_length = 0;
     
     static constexpr double nodata = -1073741824;

@@ -87,7 +87,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
     QFont default_font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
     default_font.setBold(true);
     QFontMetrics default_fm(default_font);
-    vector<string> column_names = {" contrast ", " CNR ", " red-CA ", " blue-CA ", " angle ", " OSF ", " length "};
+    vector<string> column_names = {" contrast ", " CNR ", " red-CA ", " blue-CA ", " angle ", " OSF ", " length ", " chan. "};
     vector<string> column_tooltips = {
         "",
         "CNR = Contrast-to-Noise Ratio\nUnits: unitless ratio\nHigher is better, > 30 is Ok, > 100 is excellent",
@@ -95,7 +95,8 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry)
         "blue-CA = Lateral Chromatic Aberration, shift between blue channel and green channel\nUnits: pixels in c/p mode, micron in lp/mm mode\nSmaller magnitude is better",
         "angle = Relative edge orientation angle (modulo 45 degrees)\nUnits: degrees\nValues < 1, close to 26.565, and > 44 are undesirable",
         "OSF = Over-Sampling Factor, measures how reliable a measurement is\nUnits: unitless factor\nValues <= 4 are undesirable",
-        "length = Edge length, excluding trimmed zones near corners\nUnits: pixels\nValues <= 25 are undesirable, about 100 to 400 is considered exellent, > 400 is of questionable value"
+        "length = Edge length, excluding trimmed zones near corners\nUnits: pixels\nValues <= 25 are undesirable, about 100 to 400 is considered exellent, > 400 is of questionable value",
+        "chan. = Channel type\nL = luminance of RGB or Gray image\nR, G, B = Red, Green, Blue channel"
     };
     int min_col_width = default_fm.boundingRect(column_names[3].c_str()).width(); // use "blue-CA" as the minimum
     
@@ -376,6 +377,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
         table_labels[mi+1][4]->setText(fmt["angle"].c_str());
         table_labels[mi+1][5]->setText(fmt["ox"].c_str());
         table_labels[mi+1][6]->setText(fmt["length"].c_str());
+        table_labels[mi+1][7]->setText(fmt["channel"].c_str());
         
         if (mi == 0) {
             table_labels[0][0]->setText(fmt["y_label"].c_str());
