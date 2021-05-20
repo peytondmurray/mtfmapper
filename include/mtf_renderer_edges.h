@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "common_types.h"
 #include "include/ordered_point.h"
 #include "include/output_version.h"
+#include "include/job_metadata.h"
 
 class Mtf_renderer_edges : public Mtf_renderer {
   public:
@@ -40,11 +41,14 @@ class Mtf_renderer_edges : public Mtf_renderer {
       const std::string& devname,
       const std::string& serialname,
       Output_version::type output_version,
-      double mtf_contrast,
+      const Job_metadata& metadata,
       bool lpmm_mode=false, double pixel_size=1.0) 
       :  ofname(fname), sfrname(sfrname), devname(devname), serialname(serialname),
          lpmm_mode(lpmm_mode), pixel_size(pixel_size),
-         output_version(output_version), mtf_contrast(mtf_contrast) {
+         output_version(output_version), metadata(metadata) {
+         
+         // TODO: this is a bit hacky; we should have a separate flag for units ?
+         this->metadata.pixel_pitch = fabs(pixel_size - 1) < 1e-6 ? 1000.0 : 1000.0/pixel_size;
       
     }
     
@@ -76,8 +80,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 Edge_info::serialize_header(
                     serout, 
                     valid_count,
-                    fabs(pixel_size - 1) < 1e-6 ? 1000.0 : 1000.0/pixel_size, 
-                    mtf_contrast
+                    metadata
                 );
             }
         }
@@ -102,7 +105,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
             fprintf(fout, "# column  1: block_id\n");
             fprintf(fout, "# column  2: edge centroid x (pixels)\n");
             fprintf(fout, "# column  3: edge centroid y (pixels)\n");
-            fprintf(fout, "# column  4: MTF-%d value (%s)\n", (int)lrint(mtf_contrast*100), lpmm_mode ? "lp/mm" : "c/p");
+            fprintf(fout, "# column  4: MTF-%d value (%s)\n", (int)lrint(metadata.mtf_contrast*100), lpmm_mode ? "lp/mm" : "c/p");
             fprintf(fout, "# column  5: nearby corner x (pixels)\n");
             fprintf(fout, "# column  6: nearby corner y (pixels)\n");
             fprintf(fout, "# column  7: mean CNR (50%% weight to each of dark and bright sides)\n");
@@ -283,7 +286,7 @@ class Mtf_renderer_edges : public Mtf_renderer {
     bool    lpmm_mode;
     double  pixel_size;
     Output_version::type output_version;
-    double mtf_contrast = 0.5;
+    Job_metadata metadata;
 };
 
 #endif

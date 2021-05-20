@@ -541,9 +541,8 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
             } else {
                 // read header
                 size_t edge_count = 0;
-                double pixel_size = 0;
-                double mtf_contrast = 0;
-                bool success = Edge_info::deserialize_header(fin, edge_count, pixel_size, mtf_contrast);
+                Job_metadata job_metadata;
+                bool success = Edge_info::deserialize_header(fin, edge_count, job_metadata);
                 
                 if (!success) {
                     logger.error("%s\n", "Could not read serialized edge info header.");
@@ -553,8 +552,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                     while (success && edges_processed < edge_count) {
                         Edge_info b = Edge_info::deserialize(fin, success);
                         if (success) {
-                            b.set_mtf_contrast(mtf_contrast);
-                            b.set_pixel_pitch(pixel_size);
+                            b.set_metadata(job_metadata);
                             sfr_list.push_back(Sfr_entry(b.centroid.x, b.centroid.y, b));
                             edges_processed++;
                         }
