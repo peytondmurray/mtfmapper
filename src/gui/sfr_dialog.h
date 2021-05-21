@@ -65,6 +65,9 @@ class Sfr_dialog : public QDialog {
 
   private:
     void set_label_background(QLabel* label, const string& condition);
+    int xscale(void) { return x_scale_slider == nullptr ? 16 : x_scale_slider->value(); }
+    void hide_xscale(void);
+    void show_xscale(void);
   
     vector<Sfr_entry> entries;
     QChart* chart;
@@ -89,12 +92,16 @@ class Sfr_dialog : public QDialog {
     Qt::KeyboardModifiers last_modifier;
     QCheckBox* lp_mm_cb;
     
+    QLabel* x_scale_label;
+    QSlider* x_scale_slider = nullptr;
+    
   public slots:
     bool update_lp_mm_mode(void);
     void save_image(void);
     void save_data(void);
     void plot_type_changed(int index);
     void lp_mm_toggled(void);
+    void x_scale_changed(int);
 };
 
 

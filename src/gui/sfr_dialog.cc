@@ -57,11 +57,18 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     y_axis = new QValueAxis();
     chart->addAxis(y_axis, Qt::AlignLeft);
     
+    x_scale_slider = new QSlider(Qt::Horizontal);
+    x_scale_slider->setTickPosition(QSlider::TicksBelow);
+    x_scale_slider->setMinimum(2);
+    x_scale_slider->setMaximum(16);
+    x_scale_slider->setValue(16);
+    x_scale_slider->setTickInterval(4);
+    
     entries.push_back(entry);
     lp_mm_cb = new QCheckBox(this);
     update_lp_mm_mode();
     lp_mm_cb->setCheckState(view.get_lp_mm_mode() ? Qt::Checked : Qt::Unchecked);
-    view.update(entries, series, *chart, *x_axis, *y_axis);
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
@@ -212,6 +219,8 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     
     QLabel* lp_mm_label = new QLabel("lp/mm units", this);
     
+    x_scale_label = new QLabel("distance scale:");
+    x_scale_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     QSettings settings("mtfmapper", "mtfmapper");
     view.set_lp_mm_mode((Qt::CheckState)settings.value("setting_lpmm").toInt() == Qt::Checked);
@@ -222,6 +231,9 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     view_layout->addSpacing(50);
     view_layout->addWidget(lp_mm_cb);
     view_layout->addWidget(lp_mm_label);
+    view_layout->addStretch();
+    view_layout->addWidget(x_scale_label);
+    view_layout->addWidget(x_scale_slider);
     view_layout->addStretch();
     
     auto vl_margins = view_layout->contentsMargins();
@@ -260,6 +272,8 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     palette.setColor(backgroundRole(), Qt::white);
     setPalette(palette);
     
+    hide_xscale(); // because we start in SFR mode
+    
     chart->resize(650, 350);
     setMinimumHeight(400);
     setMinimumWidth(750);
@@ -269,6 +283,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     connect(save_data_button, SIGNAL(clicked()), this, SLOT(save_data()));
     connect(box_view, SIGNAL(currentIndexChanged(int)), this, SLOT(plot_type_changed(int)));
     connect(lp_mm_cb, SIGNAL(clicked()), this, SLOT(lp_mm_toggled()));
+    connect(x_scale_slider, SIGNAL(valueChanged(int)), this, SLOT(x_scale_changed(int)));
 
     show();
 }
@@ -325,7 +340,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     }
     
     if (changed) {
-        view.update(entries, series, *chart, *x_axis, *y_axis);
+        view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     }
     
     last_modifier = current_modifier;
@@ -415,7 +430,7 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
     } else {
         entries.back() = entry;
     }
-    view.update(entries, series, *chart, *x_axis, *y_axis);
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     
     update();
     show();
@@ -510,7 +525,7 @@ bool Sfr_dialog::update_lp_mm_mode(void) {
     view.set_default_pixel_pitch(settings.value("setting_pixelsize").toFloat());
     lp_mm_cb->setCheckState(view.get_lp_mm_mode() ? Qt::Checked : Qt::Unchecked);
     
-    view.update(entries, series, *chart, *x_axis, *y_axis);
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     update();
     
     return true;
@@ -518,19 +533,25 @@ bool Sfr_dialog::update_lp_mm_mode(void) {
 
 void Sfr_dialog::lp_mm_toggled(void) {
     view.set_lp_mm_mode(lp_mm_cb->checkState() == Qt::Checked);
-    view.update(entries, series, *chart, *x_axis, *y_axis);
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     update();
 }
 
 void Sfr_dialog::plot_type_changed(int index) {
     
     switch(index) {
-    case 0: view.set_view(Entry_view::VIEW_SFR); break;
-    case 1: view.set_view(Entry_view::VIEW_ESF); break;
-    case 2: view.set_view(Entry_view::VIEW_LSF); break;
+    case 0: view.set_view(Entry_view::VIEW_SFR); 
+        hide_xscale();
+        break;
+    case 1: view.set_view(Entry_view::VIEW_ESF); 
+        show_xscale();
+        break;
+    case 2: view.set_view(Entry_view::VIEW_LSF); 
+        show_xscale();
+        break;
     }
     
-    view.update(entries, series, *chart, *x_axis, *y_axis);
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     setWindowTitle(view.title().c_str());
 }
 
@@ -558,3 +579,19 @@ void Sfr_dialog::set_label_background(QLabel* label, const string& condition) {
         label->setPalette(pal);
     }
 }
+
+void Sfr_dialog::x_scale_changed(int val) {
+    view.update(entries, series, *chart, *x_axis, *y_axis, val);
+    update();
+}
+
+void Sfr_dialog::show_xscale(void) {
+    x_scale_label->show();
+    x_scale_slider->show();
+}
+
+void Sfr_dialog::hide_xscale(void) {
+    x_scale_label->hide();
+    x_scale_slider->hide();
+}
+
