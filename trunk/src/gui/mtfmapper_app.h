@@ -179,6 +179,8 @@ class mtfmapper_app : public QMainWindow
     QString manual_queue_roi_filename;
     bool manual_queue_skip_all = false;
     
+    QRect sfr_dialog_geom = QRect(-1, -1, 0, 0);
+    
   signals:
     void submit_batch(Processor_state state);
     void manual_roi_queue_size(int queue_size);
@@ -200,6 +202,7 @@ class mtfmapper_app : public QMainWindow
     void update_progress(int val);
     void enable_manual_queue_processing(QString filename);
     void enable_manual_queue_skip();
+    void sfr_dialog_closed(QRect r);
   
     bool edge_selected(int px, int py, bool crtl_down, bool shift_down);
     

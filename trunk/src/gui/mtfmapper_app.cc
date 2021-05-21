@@ -891,8 +891,9 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
             found = true;
             if (!sfr_dialog) {
                 sfr_pip_map.clear();
-                sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
+                sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx], sfr_dialog_geom);
                 connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
+                connect(sfr_dialog, SIGNAL(send_geometry(QRect)), this, SLOT(sfr_dialog_closed(QRect)));
                 connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
             } else {
                 if (shift_down) {
@@ -904,10 +905,13 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
                     }
                     sfr_dialog->add_entry(sfr_list[close_idx]);
                 } else {
+                    sfr_dialog_geom = sfr_dialog->geometry();
                     delete sfr_dialog;
                     sfr_pip_map.clear();
-                    sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
+                    sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx], sfr_dialog_geom);
                     connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
+                    connect(sfr_dialog, SIGNAL(send_geometry(QRect)), this, SLOT(sfr_dialog_closed(QRect)));
+                    connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
                 }
             }
             
@@ -1227,4 +1231,9 @@ void mtfmapper_app::update_pip_icons(void) {
     }
 }
 
+void mtfmapper_app::sfr_dialog_closed(QRect r) {
+    sfr_dialog_geom = r;
+    sfr_pip_map.clear();
+    update_pip_icons();
+}
 
