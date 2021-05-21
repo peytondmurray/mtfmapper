@@ -200,7 +200,7 @@ class Entry_view {
     }
     
     void update(const vector<Sfr_entry>& entries, vector<QLineSeries*>& series,
-        QChart& chart, QValueAxis& x_axis, QValueAxis& y_axis) {
+        QChart& chart, QValueAxis& x_axis, QValueAxis& y_axis, int x_axis_limit) {
         
         chart.removeAllSeries();
         series.clear();
@@ -209,7 +209,7 @@ class Entry_view {
             populate(e, *series.back());
         }
         
-        axis_setup(series, x_axis, y_axis);
+        axis_setup(series, x_axis, y_axis, x_axis_limit);
         
         // note the order: first gather min/max, then add series to chart, then attach axis
         for (auto& s : series) {
@@ -236,7 +236,9 @@ class Entry_view {
     }
     
   private:
-    void axis_setup(vector<QLineSeries*>& series, QValueAxis& x_axis, QValueAxis& y_axis) {
+    void axis_setup(vector<QLineSeries*>& series, QValueAxis& x_axis, QValueAxis& y_axis,
+        int x_axis_limit) {
+        
         double min_x = 1e50;
         double max_x = -1e50;
         double min_y = 1e50;
@@ -267,13 +269,25 @@ class Entry_view {
             y_axis.setTickCount(std::min(8, int(roundup_max*5 + 1)));
             y_axis.setLabelFormat("%3.1f");
         } else {
-            x_axis.setTickCount(17);
+            int x_limit = std::min(std::abs(x_axis_limit), std::min(std::abs(int(min_x)), int(max_x)));
+            
             x_axis.setLabelFormat("%2.0f");
+            int nticks = x_limit + (x_limit % 2); // ensure an uneven number to ticks
+            if (x_limit <= 8) {
+                nticks = 2*x_limit+1;
+            } 
+            if (x_limit <= 4) {
+                nticks = 4*x_limit+1;
+                x_axis.setLabelFormat("%2.1f");
+            }
+            x_axis.setTickCount(nticks); 
             
             if (view == VIEW_ESF) {
                 y_axis.setRange(0, max_y*1.05);
+                x_axis.setRange(-x_limit, x_limit);
             } else {
                 y_axis.setRange(min_y < 0 ? 1.05*min_y : min_y, max_y*1.05);
+                x_axis.setRange(-x_limit, x_limit);
             }
             
             y_axis.setTickCount(10);
