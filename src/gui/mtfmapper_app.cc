@@ -267,6 +267,11 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     connect(edge_select_dialog, SIGNAL( manual_queue_skip_all() ), this, SLOT( enable_manual_queue_skip() ));
     connect(abort_button, SIGNAL( clicked() ), edge_select_dialog, SLOT( abort_all_button_clicked() ));
     
+    sfr_dialog = new Sfr_dialog(this, sfr_dialog_geom);
+    connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
+    connect(sfr_dialog, SIGNAL(send_geometry(QRect)), this, SLOT(sfr_dialog_closed(QRect)));
+    connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
+    
     check_if_helpers_exist();
     check_and_purge_stale_temp_files();
     
@@ -889,32 +894,25 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
         
         if (close_dist < 50) {
             found = true;
-            if (!sfr_dialog) {
-                sfr_pip_map.clear();
-                sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx], sfr_dialog_geom);
-                connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
-                connect(sfr_dialog, SIGNAL(send_geometry(QRect)), this, SLOT(sfr_dialog_closed(QRect)));
-                connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
-            } else {
-                if (shift_down) {
-                    // if we are moving the pip to a new image, clear the old one
-                    if (sfr_dialog->pip_number() == 3) {
-                        for (auto& p: sfr_pip_map) {
-                            p.second.first &= ~(1 << 2);
-                        }
+            if (shift_down) {
+                // if we are moving the pip to a new image, clear the old one
+                if (sfr_dialog->pip_number() == 3) {
+                    for (auto& p: sfr_pip_map) {
+                        p.second.first &= ~(1 << 2);
                     }
-                    sfr_dialog->add_entry(sfr_list[close_idx]);
-                } else {
-                    sfr_dialog_geom = sfr_dialog->geometry();
-                    delete sfr_dialog;
-                    sfr_pip_map.clear();
-                    sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx], sfr_dialog_geom);
-                    connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
-                    connect(sfr_dialog, SIGNAL(send_geometry(QRect)), this, SLOT(sfr_dialog_closed(QRect)));
-                    connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
                 }
+            } else {
+                if (sfr_dialog->isVisible()) {
+                    sfr_dialog_geom = sfr_dialog->geometry();
+                }
+                sfr_dialog->clear();
+                sfr_pip_map.clear();
             }
-            
+            sfr_dialog->add_entry(sfr_list[close_idx]);
+            if (sfr_dialog_geom != QRect(-1, -1, 0, 0)) {
+                sfr_dialog->setGeometry(sfr_dialog_geom);
+            }
+            sfr_dialog->show();
         }
     }
     

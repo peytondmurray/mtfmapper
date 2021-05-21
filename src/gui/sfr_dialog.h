@@ -44,8 +44,7 @@ class Sfr_dialog : public QDialog {
   Q_OBJECT
   
   public:
-    Sfr_dialog(QWidget *parent, const Sfr_entry& entry, 
-        const QRect initial_geom = QRect(-1, -1, 0, 0));
+    Sfr_dialog(QWidget *parent, const QRect initial_geom = QRect(-1, -1, 0, 0));
         
     void replace_entry(const Sfr_entry& entry);
     void add_entry(const Sfr_entry& entry);

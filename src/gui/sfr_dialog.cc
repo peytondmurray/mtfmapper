@@ -38,7 +38,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define horizontalAdvance width
 #endif
 
-Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry, const QRect initial_geom) 
+Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const QRect initial_geom) 
 : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
   cursor_domain_value(0), repainting(0) {
   
@@ -64,11 +64,9 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     x_scale_slider->setValue(16);
     x_scale_slider->setTickInterval(4);
     
-    entries.push_back(entry);
     lp_mm_cb = new QCheckBox(this);
     update_lp_mm_mode();
     lp_mm_cb->setCheckState(view.get_lp_mm_mode() ? Qt::Checked : Qt::Unchecked);
-    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     
     chart_view = new Sfr_chartview(chart, this);
     chart_view->setRenderHint(QPainter::Antialiasing);
@@ -284,8 +282,6 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry,
     connect(box_view, SIGNAL(currentIndexChanged(int)), this, SLOT(plot_type_changed(int)));
     connect(lp_mm_cb, SIGNAL(clicked()), this, SLOT(lp_mm_toggled()));
     connect(x_scale_slider, SIGNAL(valueChanged(int)), this, SLOT(x_scale_changed(int)));
-
-    show();
 }
 
 void Sfr_dialog::clear(void) {
@@ -321,7 +317,7 @@ void Sfr_dialog::paintEvent(QPaintEvent* event) {
     
     bool changed = false;
     
-    Qt::KeyboardModifiers current_modifier = QGuiApplication::queryKeyboardModifiers();
+    Qt::KeyboardModifiers current_modifier = QGuiApplication::queryKeyboardModifiers() & ~Qt::ShiftModifier;
     if (current_modifier != last_modifier) {
         // update
         if (current_modifier & Qt::ControlModifier && !(current_modifier & Qt::AltModifier)) {
@@ -433,9 +429,6 @@ void Sfr_dialog::replace_entry(const Sfr_entry& entry) {
     view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     
     update();
-    show();
-    raise();
-    activateWindow();
 }
 
 void Sfr_dialog::add_entry(const Sfr_entry& entry) {
@@ -569,14 +562,14 @@ void Sfr_dialog::set_label_background(QLabel* label, const string& condition) {
 
     if (condition != "none") {
         label->setAutoFillBackground(true);
-        //label->setBackgroundRole(QPalette::Window);
         QPalette pal = label->palette();
         pal.setColor(
-            //QPalette::Window,
             label->backgroundRole(),
             condition == "red" ? bg_red : bg_yellow
         );
         label->setPalette(pal);
+    } else {
+        label->setAutoFillBackground(false);
     }
 }
 
@@ -594,4 +587,5 @@ void Sfr_dialog::hide_xscale(void) {
     x_scale_label->hide();
     x_scale_slider->hide();
 }
+
 
