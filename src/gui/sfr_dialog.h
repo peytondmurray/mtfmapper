@@ -51,6 +51,7 @@ class Sfr_dialog : public QDialog {
     void clear(void);
     void keyPressEvent(QKeyEvent* event);
     void keyReleaseEvent(QKeyEvent* event);
+    int pip_number(void) const { return entries.size(); }
     
   signals:
     void sfr_dialog_closed();

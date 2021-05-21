@@ -75,7 +75,7 @@ class Worker_thread  : public QObject
     }
     
   signals:
-    void send_parent_item(QString s, QString f);
+    void send_parent_item(QString s, QString f, QString tempdir);
     void send_child_item(QString s, QString f);
     void send_close_item(void); 
     void send_delete_item(QString s); 

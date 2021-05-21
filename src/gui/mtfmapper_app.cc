@@ -191,7 +191,7 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     
     connect(datasets->selectionModel(), SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)), this, SLOT(dataset_selected_changed(const QModelIndex&, const QModelIndex&)));
     
-    connect(&processor, SIGNAL(send_parent_item(QString, QString)), this, SLOT(parent_item(QString, QString)));
+    connect(&processor, SIGNAL(send_parent_item(QString, QString, QString)), this, SLOT(parent_item(QString, QString, QString)));
     connect(&processor, SIGNAL(send_child_item(QString, QString)), this, SLOT(child_item(QString, QString)));
     connect(&processor, SIGNAL(send_close_item()), this, SLOT(close_item()));
     connect(&processor, SIGNAL(send_delete_item(QString)), this, SLOT(item_for_deletion(QString)));
@@ -524,6 +524,7 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
         QStandardItem* current_dataset_item = dataset_contents.item(row);
         count_before += current_dataset_item->rowCount() + 1;
     }
+    active_annotated_filename = std::pair<QString, QStandardItem*>("", nullptr);
     if (dataset_contents.itemFromIndex(index)->isEnabled()) {
         view_image(dataset_files.at(count_before));
         display_exif_properties(count_before);
@@ -557,8 +558,9 @@ void mtfmapper_app::dataset_selected(const QModelIndex& index) {
                             edges_processed++;
                         }
                     }
+                    fclose(fin);
+                    active_annotated_filename = std::pair<QString, QStandardItem*>(dataset_files.at(count_before), dataset_contents.itemFromIndex(index));
                 }
-                fclose(fin);
             }
         } else {
             img_viewer->setToolTip(zoom_scroll_tt);
@@ -572,8 +574,39 @@ void mtfmapper_app::dataset_selected_changed(const QModelIndex& i1, const QModel
     dataset_selected(i1);
 }
  
-void mtfmapper_app::parent_item(QString s, QString f) {
-    current_dataset_item = new QStandardItem(s);
+void mtfmapper_app::parent_item(QString s, QString f, QString tempdir) {
+    
+    // take a peek at the edge info header to obtain the job metadata, which
+    // will reveal the channel type
+    QIcon channel_icon;
+    FILE* fin = fopen((tempdir + QString("/serialized_edges.bin")).toLocal8Bit().constData(), "rb");
+    if (fin) {
+        Job_metadata metadata;
+        size_t dummy_count = 0;
+        if (Edge_info::deserialize_header(fin, dummy_count, metadata)) {
+            switch (metadata.bayer) {
+            case Bayer::bayer_t::NONE: 
+                if (metadata.channels > 1) {
+                    channel_icon.addFile(":/Icons/Channel_RGB_to_L");
+                } else {
+                    channel_icon.addFile(":/Icons/Channel_Gray");
+                }
+                break;
+            case Bayer::bayer_t::RED: 
+                channel_icon.addFile(":/Icons/Channel_Red");
+                break;
+            case Bayer::bayer_t::GREEN: 
+                channel_icon.addFile(":/Icons/Channel_Green");
+                break;
+            case Bayer::bayer_t::BLUE: 
+                channel_icon.addFile(":/Icons/Channel_Blue");
+                break;
+            }
+        }
+        fclose(fin);
+    }
+
+    current_dataset_item = new QStandardItem(channel_icon, s);
     dataset_files.push_back(f);
 }
 
@@ -857,20 +890,39 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
         if (close_dist < 50) {
             found = true;
             if (!sfr_dialog) {
+                sfr_pip_map.clear();
                 sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
                 connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
                 connect(settings->accept_button, SIGNAL(clicked()), sfr_dialog, SLOT(update_lp_mm_mode()));
             } else {
                 if (shift_down) {
+                    // if we are moving the pip to a new image, clear the old one
+                    if (sfr_dialog->pip_number() == 3) {
+                        for (auto& p: sfr_pip_map) {
+                            p.second.first &= ~(1 << 2);
+                        }
+                    }
                     sfr_dialog->add_entry(sfr_list[close_idx]);
                 } else {
                     delete sfr_dialog;
+                    sfr_pip_map.clear();
                     sfr_dialog = new Sfr_dialog(this, sfr_list[close_idx]);
                     connect(sfr_dialog, SIGNAL(sfr_dialog_closed()), img_viewer, SLOT(clear_overlay()));
                 }
             }
             
         }
+    }
+    
+    if (found) {
+        // add pip to the correct file
+        if (active_annotated_filename.first.length() > 0 &&
+            sfr_dialog->pip_number() > 0) {
+            
+            sfr_pip_map[active_annotated_filename.first].first |= 1 << (sfr_dialog->pip_number() - 1);
+            sfr_pip_map[active_annotated_filename.first].second = active_annotated_filename.second;
+        }
+        update_pip_icons();
     }
     return found;
 }
@@ -1145,3 +1197,34 @@ void mtfmapper_app::enable_manual_queue_processing(QString filename) {
 void mtfmapper_app::enable_manual_queue_skip(void) {
     manual_queue_skip_all = true;
 }
+
+void mtfmapper_app::update_pip_icons(void) {
+    // first, clear all old icons
+    std::function<void(QStandardItemModel*, QModelIndex)> loop_each;
+    loop_each = [this, &loop_each](QStandardItemModel* model, QModelIndex parent) {
+        for (int r=0; r < model->rowCount(parent); r++) {
+            QModelIndex index = model->index(r, 0, parent);
+            QString name = model->data(index).toString();
+            
+            if (name.compare(QString("annotated")) == 0) {
+                model->itemFromIndex(index)->setIcon(QIcon());
+            }
+            
+            if (model->hasChildren(index)) {
+                loop_each(model, index);
+            }
+        }
+    };
+    loop_each(&dataset_contents, QModelIndex());
+    
+    // now draw the new ones
+    for (auto& w: sfr_pip_map) {
+        QIcon pip_icon;
+        if (w.second.first > 0 && w.second.first < 8) {
+            pip_icon.addFile(QString(":/Icons/SFR_pip_%0").arg(w.second.first));
+        }
+        w.second.second->setIcon(pip_icon);
+    }
+}
+
+

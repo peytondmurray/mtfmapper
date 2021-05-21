@@ -230,7 +230,7 @@ void Worker_thread::process_command(const Processing_command& command) {
         
         emit send_exif_filename(command.exif_filename, tempdir);
         QString fname(QFileInfo(command.img_filename).completeBaseName());
-        emit send_parent_item(fname, command.img_filename);
+        emit send_parent_item(fname, command.img_filename, tempdir);
         
         if (q_output_requested) {
             emit send_delete_item(tempdir + QString("/edge_sfr_values.txt"));
