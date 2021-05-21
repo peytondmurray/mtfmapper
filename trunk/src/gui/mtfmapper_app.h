@@ -92,6 +92,7 @@ class mtfmapper_app : public QMainWindow
     void check_if_helpers_exist(void);
     void save_action(bool subset = false);
     void open_action(bool roi = false, bool focus = false, bool imatest = false, bool manual_roi = false);
+    void update_pip_icons(void);
     
     QMenu*          file_menu;
     QMenu*          settings_menu;
@@ -163,6 +164,8 @@ class mtfmapper_app : public QMainWindow
     
     Sfr_dialog*     sfr_dialog;
     vector<Sfr_entry> sfr_list;
+    std::pair<QString, QStandardItem*> active_annotated_filename;
+    std::map<QString, std::pair<int, QStandardItem*>> sfr_pip_map;
 
     QString zoom_scroll_tt;
     QString annotated_tt;
@@ -188,7 +191,7 @@ class mtfmapper_app : public QMainWindow
     void open_imatest_chart();
     void dataset_selected(const QModelIndex&);
     void dataset_selected_changed(const QModelIndex&, const QModelIndex&);
-    void parent_item(QString s, QString f);
+    void parent_item(QString s, QString f, QString tempdir);
     void child_item(QString s, QString f);
     void close_item(void);
     void item_for_deletion(QString s);
