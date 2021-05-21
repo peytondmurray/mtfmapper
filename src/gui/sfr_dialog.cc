@@ -38,9 +38,13 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define horizontalAdvance width
 #endif
 
-Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry) 
+Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const Sfr_entry& entry, const QRect initial_geom) 
 : QDialog(parent, Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
   cursor_domain_value(0), repainting(0) {
+  
+    if (initial_geom != QRect(-1, -1, 0, 0)) {
+        setGeometry(initial_geom);
+    }
     
     chart = new QChart();
     chart->legend()->hide();
@@ -292,6 +296,7 @@ void Sfr_dialog::clear(void) {
 void Sfr_dialog::reject(void) {
     clear();
     emit sfr_dialog_closed();
+    emit send_geometry(geometry());
     QDialog::reject();
 }
 
