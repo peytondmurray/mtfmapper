@@ -269,10 +269,14 @@ class Entry_view {
             y_axis.setTickCount(std::min(8, int(roundup_max*5 + 1)));
             y_axis.setLabelFormat("%3.1f");
         } else {
-            int x_limit = std::min(std::abs(x_axis_limit), std::min(std::abs(int(min_x)), int(max_x)));
+            int x_limit = x_axis_limit;
             
             x_axis.setLabelFormat("%2.0f");
             int nticks = x_limit + (x_limit % 2); // ensure an uneven number to ticks
+            if (x_limit > 16) {
+                nticks = x_limit/2;
+                nticks += nticks % 2;
+            }
             if (x_limit <= 8) {
                 nticks = 2*x_limit+1;
             } 
@@ -349,11 +353,11 @@ class Entry_view {
                 vector<double>& esf = *entry.info.esf;
                 if (reverse) {
                     for (size_t i=0; i < esf.size(); i++) {
-                        points.push_back(QPointF(float(i)*0.125 - 16.0 - 0.25, esf[esf.size()-1 - i]));
+                        points.push_back(QPointF(float(i)*0.125 - 32.0 + 0.125, esf[esf.size()-1 - i]));
                     }
                 } else {
                     for (size_t i=0; i < esf.size(); i++) {
-                        points.push_back(QPointF(float(i)*0.125 - 16.0 + 3*0.125, esf[i]));
+                        points.push_back(QPointF(float(i)*0.125 - 32.0, esf[i]));
                     }
                 }
             }
@@ -362,11 +366,11 @@ class Entry_view {
                 vector<double>& esf = *entry.info.esf;
                 if (reverse) {
                     for (size_t i=1; i < esf.size() - 1; i++) {
-                        points.push_back(QPointF(float(i)*0.125 - 16.0 - 0.25, (esf[esf.size()-1 - (i+1)] - esf[esf.size()-1 - (i-1)])/0.25));
+                        points.push_back(QPointF(float(i)*0.125 - 32.0 + 0.125, (esf[esf.size()-1 - (i+1)] - esf[esf.size()-1 - (i-1)])/0.25));
                     }
                 } else {
                     for (size_t i=1; i < esf.size() - 1; i++) {
-                        points.push_back(QPointF(float(i)*0.125 - 16.0 + 3*0.125, (esf[i+1] - esf[i-1])/0.25));
+                        points.push_back(QPointF(float(i)*0.125 - 32.0, (esf[i+1] - esf[i-1])/0.25));
                     }
                 }
             }

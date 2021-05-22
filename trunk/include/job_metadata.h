@@ -40,6 +40,7 @@ class Job_metadata {
     double pixel_pitch = 1;
     double mtf_contrast = 0.5;
     Bayer::bayer_t bayer = Bayer::bayer_t::NONE;
+    int channels = 1;
 };
 
 #endif

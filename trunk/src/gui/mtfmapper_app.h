@@ -55,6 +55,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 using std::vector;
 #include <queue>
 using std::queue;
+#include <memory>
 
 class QPushButton;
 class QLabel;
@@ -130,7 +131,7 @@ class mtfmapper_app : public QMainWindow
     QStringList     input_files;
     QStringList     dataset_files;
     QStringList     tempfiles_to_delete;
-    QList<Exiv2_property*>  exif_properties;
+    QList<std::shared_ptr<Exiv2_property>>  exif_properties;
     
     QThread*        worker_thread;
     Worker_thread   processor;

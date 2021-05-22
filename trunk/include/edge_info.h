@@ -44,13 +44,14 @@ class Edge_info {
     }
     
     static bool serialize_header(FILE* fout, size_t valid_count, const Job_metadata& metadata) {
-        vector<char> buffer(2*sizeof(uint32_t) + 2*sizeof(double));
+        vector<char> buffer(3*sizeof(uint32_t) + 2*sizeof(double));
         
         char* obuf = buffer.data();
         write_uint32(&obuf, valid_count);
         write_double(&obuf, metadata.pixel_pitch);
         write_double(&obuf, metadata.mtf_contrast);
         write_uint32(&obuf, uint32_t(metadata.bayer));
+        write_uint32(&obuf, uint32_t(metadata.channels));
         
         size_t nwritten = fwrite(buffer.data(), 1, buffer.size(), fout);
         
@@ -63,7 +64,7 @@ class Edge_info {
     }
     
     static bool deserialize_header(FILE* fin, size_t& valid_count, Job_metadata& metadata) {
-        vector<char> buffer(2*sizeof(uint32_t) + 2*sizeof(double));
+        vector<char> buffer(3*sizeof(uint32_t) + 2*sizeof(double));
         
         size_t nread = fread(buffer.data(), 1, buffer.size(), fin);
         
@@ -77,6 +78,7 @@ class Edge_info {
         metadata.pixel_pitch = read_double(&ibuf);
         metadata.mtf_contrast = read_double(&ibuf);
         metadata.bayer = Bayer::bayer_t(read_uint32(&ibuf));
+        metadata.channels = read_uint32(&ibuf);
 
         return true;
     }

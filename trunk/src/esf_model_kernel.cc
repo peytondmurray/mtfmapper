@@ -200,8 +200,8 @@ int Esf_model_kernel::build_esf(vector< Ordered_point  >& ordered, double* sampl
     moving_average_smoother(smoothed, sampled, fft_size, fft_left, fft_right, left_trans, right_trans);
     
     int lidx = 0;
-    for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
-        esf[lidx++] = sampled[idx+3];
+    for (int idx=0; idx < fft_size; idx++) {
+        esf[lidx++] = sampled[idx];
     }
     
     double old = sampled[fft_left];

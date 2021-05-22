@@ -372,7 +372,7 @@ void Mtf_core::search_borders(const Point2d& cent, int label) {
     for (size_t k=0; k < 4; k++) {
         double quality = 0;
         vector <double> sfr(mtf_width, 0);
-        vector <double> esf(FFT_SIZE/2, 0);
+        vector <double> esf(FFT_SIZE, 0);
         Snr snr;
         
         double ea = edge_record[k].angle;
@@ -984,7 +984,7 @@ void Mtf_core::process_with_sliding_window(Mrectangle& rrect) {
             double quality = 0;
             double edge_length = 0;
             vector <double> sfr(mtf_width, 0);
-            vector <double> esf(FFT_SIZE/2, 0);
+            vector <double> esf(FFT_SIZE, 0);
             Snr snr;
             Edge_model edge_model(edge_record.centroid, Point2d(-sin(edge_record.angle), cos(edge_record.angle)));
             double mtf50 = compute_mtf(edge_model, scanset, quality, edge_length, sfr, esf, snr);
@@ -1164,7 +1164,7 @@ void Mtf_core::process_image_as_roi(const cv::Rect2i& bounds, cv::Point2d handle
     double quality;
     double edge_length = 0;
     vector <double> sfr(mtf_width, 0);
-    vector <double> esf(FFT_SIZE/2, 0);
+    vector <double> esf(FFT_SIZE, 0);
     Snr snr;
     double mtf50 = compute_mtf(*em, scanset, quality, edge_length, sfr, esf, snr, true);
     

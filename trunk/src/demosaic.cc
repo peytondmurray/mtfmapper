@@ -104,6 +104,15 @@ void simple_demosaic_green(cv::Mat& cvimg, cv::Mat& rawimg, bool unbalanced_scen
             from_ss = 0;
             to_ss = 3;
         }
+        
+        // NB: cumulative histogram totals must match
+        // this can be distorted on cropped images
+        if (hist[from_ss] > hist[to_ss]) {
+            for (auto& v: hist[from_ss]) {
+                v = v*hist[to_ss].back() / hist[from_ss].back();
+            }
+        }
+        
         vector<int> m(65536, 0);
         match(hist[to_ss], hist[from_ss], m);
         for (size_t row=0; row < (size_t)cvimg.rows; row++) {

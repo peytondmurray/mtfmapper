@@ -142,7 +142,11 @@ void Mtf_renderer_annotate::render(const vector<Block>& blocks) {
         vector<double>& edge_lengths = all_edge_lengths[i];
         vector<double> ordered_edge_lengths(edge_lengths);
         sort(ordered_edge_lengths.begin(), ordered_edge_lengths.end());
-        double mean_edge_length = (ordered_edge_lengths[0] + ordered_edge_lengths[1] + ordered_edge_lengths[2])/3.0;
+        double mean_edge_length = (
+            ordered_edge_lengths[0] + 
+            ordered_edge_lengths[1 % ordered_edge_lengths.size()] + 
+            ordered_edge_lengths[2 % ordered_edge_lengths.size()]
+        )/3.0;
         for (size_t k=0; k < 4; k++) {
             double val = blocks[i].get_mtf50_value(k);
             if (val > 0) {
