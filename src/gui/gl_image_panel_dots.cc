@@ -79,7 +79,7 @@ void GL_image_panel_dots::initialize_overlay(void) {
         "}\n";
     dots_fshader->compileSourceCode(dots_fsrc);
     
-    dots_program = new QOpenGLShaderProgram;
+    dots_program = std::shared_ptr<QOpenGLShaderProgram>(new QOpenGLShaderProgram);
     dots_program->addShader(dots_vshader);
     dots_program->addShader(dots_fshader);
     dots_program->bindAttributeLocation("vertex", prog_vert_att);

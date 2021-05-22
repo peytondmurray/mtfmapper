@@ -81,7 +81,7 @@ void GL_image_panel_edges::initialize_overlay(void) {
         printf("edgefade_shader log: %s\n", edgefade_shader->log().toLocal8Bit().constData());
     }
     
-    line_program = new QOpenGLShaderProgram;
+    line_program = std::shared_ptr<QOpenGLShaderProgram>(new QOpenGLShaderProgram);
     line_program->addShader(obj_vshader);
     line_program->addShader(edgefade_shader);
     line_program->bindAttributeLocation("vertex", prog_vert_att);
@@ -102,7 +102,7 @@ void GL_image_panel_edges::initialize_overlay(void) {
         printf("flat_shader log: %s\n", flat_shader->log().toLocal8Bit().constData());
     }
     
-    box_program = new QOpenGLShaderProgram;
+    box_program = std::shared_ptr<QOpenGLShaderProgram>(new QOpenGLShaderProgram);
     box_program->addShader(obj_vshader);
     box_program->addShader(flat_shader);
     box_program->bindAttributeLocation("vertex", prog_vert_att);
@@ -126,7 +126,7 @@ void GL_image_panel_edges::initialize_overlay(void) {
         "}\n";
     dots_fshader->compileSourceCode(dots_fsrc);
     
-    dots_program = new QOpenGLShaderProgram;
+    dots_program = std::shared_ptr<QOpenGLShaderProgram>(new QOpenGLShaderProgram);
     dots_program->addShader(obj_vshader);
     dots_program->addShader(dots_fshader);
     dots_program->bindAttributeLocation("vertex", prog_vert_att);
