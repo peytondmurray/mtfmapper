@@ -57,12 +57,13 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const QRect initial_geo
     y_axis = new QValueAxis();
     chart->addAxis(y_axis, Qt::AlignLeft);
     
+    x_scale_levels = {2,4,6,16,32};
     x_scale_slider = new QSlider(Qt::Horizontal);
     x_scale_slider->setTickPosition(QSlider::TicksBelow);
-    x_scale_slider->setMinimum(2);
-    x_scale_slider->setMaximum(16);
-    x_scale_slider->setValue(16);
-    x_scale_slider->setTickInterval(4);
+    x_scale_slider->setMinimum(0);
+    x_scale_slider->setMaximum(x_scale_levels.size() - 1);
+    x_scale_slider->setValue(x_scale_levels.size() - 2); // start at the equivalent of 16 pixels
+    x_scale_slider->setTickInterval(1);
     
     lp_mm_cb = new QCheckBox(this);
     update_lp_mm_mode();
@@ -271,6 +272,7 @@ Sfr_dialog::Sfr_dialog(QWidget* parent ATTRIBUTE_UNUSED, const QRect initial_geo
     setPalette(palette);
     
     hide_xscale(); // because we start in SFR mode
+    x_scale_changed(x_scale_slider->value());
     
     chart->resize(650, 350);
     setMinimumHeight(400);
@@ -573,8 +575,8 @@ void Sfr_dialog::set_label_background(QLabel* label, const string& condition) {
     }
 }
 
-void Sfr_dialog::x_scale_changed(int val) {
-    view.update(entries, series, *chart, *x_axis, *y_axis, val);
+void Sfr_dialog::x_scale_changed([[maybe_unused]] int val) {
+    view.update(entries, series, *chart, *x_axis, *y_axis, xscale());
     update();
 }
 
@@ -588,4 +590,11 @@ void Sfr_dialog::hide_xscale(void) {
     x_scale_slider->hide();
 }
 
+int Sfr_dialog::xscale(void) { 
+    if (x_scale_slider == nullptr) {
+        return std::max(0, (int)x_scale_levels.size() - 2);
+    }
+    int val = std::max(0, std::min(x_scale_slider->value(), (int)x_scale_levels.size() - 1));
+    return x_scale_levels[val];
+}
 

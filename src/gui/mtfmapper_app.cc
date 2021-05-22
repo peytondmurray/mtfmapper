@@ -650,6 +650,9 @@ void mtfmapper_app::clear_button_pressed(void) {
     dataset_contents.clear(); 
     dataset_files.clear();
     exif_properties.clear();
+    sfr_pip_map.clear();
+    sfr_dialog->clear();
+    sfr_dialog->close();
 
     img_comment_value->setText("N/A");
     af_ft_value->setText("N/A");
@@ -830,7 +833,7 @@ void mtfmapper_app::save_action(bool subset) {
 }
 
 void mtfmapper_app::display_exif_properties(int index) {
-    Exiv2_property* props = exif_properties.at(index);
+    std::shared_ptr<Exiv2_property> props = exif_properties.at(index);
     img_comment_value->setText(props->get_comment());
     af_ft_value->setText(props->get_af_tune());
     focus_distance_value->setText(props->get_focus_distance());
@@ -840,7 +843,9 @@ void mtfmapper_app::display_exif_properties(int index) {
 
 void mtfmapper_app::populate_exif_info_from_file(QString s, QString tempdir) {
 
-    Exiv2_property* props = new Exiv2_property(settings->helpers->get_exiv2_binary(), s, tempdir + "/exifinfo.txt");
+    std::shared_ptr<Exiv2_property> props = std::shared_ptr<Exiv2_property>(
+        new Exiv2_property(settings->helpers->get_exiv2_binary(), s, tempdir + "/exifinfo.txt")    
+    );
     exif_properties.push_back(props);
 
     // actually, we could delete it right away ...
@@ -894,6 +899,9 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
         
         if (close_dist < 50) {
             found = true;
+            if (sfr_dialog->isVisible()) {
+                sfr_dialog_geom = sfr_dialog->geometry();
+            }
             if (shift_down) {
                 // if we are moving the pip to a new image, clear the old one
                 if (sfr_dialog->pip_number() == 3) {
@@ -902,9 +910,6 @@ bool mtfmapper_app::edge_selected(int px, int py, bool /*ctrl_down*/, bool shift
                     }
                 }
             } else {
-                if (sfr_dialog->isVisible()) {
-                    sfr_dialog_geom = sfr_dialog->geometry();
-                }
                 sfr_dialog->clear();
                 sfr_pip_map.clear();
             }
@@ -1116,7 +1121,7 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
                 // blocking the main window
                 QEventLoop q;
                 connect(edge_select_dialog, SIGNAL(finished(int)), &q, SLOT(quit()));
-                connect(edge_select_dialog, SIGNAL(finished(int)), &q, SLOT(enable_clear_button()));
+                connect(edge_select_dialog, SIGNAL(finished(int)), this, SLOT(enable_clear_button()));
                 q.exec();
                 
                 if (edge_select_dialog->result() == QDialog::Accepted) {
@@ -1221,11 +1226,12 @@ void mtfmapper_app::update_pip_icons(void) {
     
     // now draw the new ones
     for (auto& w: sfr_pip_map) {
-        QIcon pip_icon;
         if (w.second.first > 0 && w.second.first < 8) {
-            pip_icon.addFile(QString(":/Icons/SFR_pip_%0").arg(w.second.first));
+            QIcon pip_icon;
+            QString icon_name = QString(":/Icons/SFR_pip_%0").arg(w.second.first);
+            pip_icon.addFile(icon_name);
+            w.second.second->setIcon(pip_icon);
         }
-        w.second.second->setIcon(pip_icon);
     }
 }
 

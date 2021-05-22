@@ -370,8 +370,8 @@ int Esf_model_loess::build_esf(vector< Ordered_point  >& ordered, double* sample
     }
     
     int lidx = 0;
-    for (int idx=fft_size/4; idx < 3*fft_size/4; idx++) {
-        esf[lidx++] = sampled[idx+3];
+    for (int idx=0; idx < fft_size; idx++) {
+        esf[lidx++] = sampled[idx];
     }
     
     double old = sampled[fft_left];

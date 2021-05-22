@@ -64,7 +64,7 @@ class Sfr_dialog : public QDialog {
 
   private:
     void set_label_background(QLabel* label, const string& condition);
-    int xscale(void) { return x_scale_slider == nullptr ? 16 : x_scale_slider->value(); }
+    int xscale(void);
     void hide_xscale(void);
     void show_xscale(void);
   
@@ -93,6 +93,7 @@ class Sfr_dialog : public QDialog {
     
     QLabel* x_scale_label;
     QSlider* x_scale_slider = nullptr;
+    vector<int> x_scale_levels;
     
   public slots:
     bool update_lp_mm_mode(void);
