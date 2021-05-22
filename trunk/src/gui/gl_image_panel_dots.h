@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define GL_IMAGE_PANEL_DOTS_H
 
 #include "gl_image_panel.h"
+#include <memory>
 
 class mtfmapper_app;
 
@@ -51,7 +52,7 @@ class GL_image_panel_dots : public GL_image_panel {
     
     mtfmapper_app* app = nullptr;
     
-    QOpenGLShaderProgram* dots_program;
+    std::shared_ptr<QOpenGLShaderProgram> dots_program;
     QOpenGLBuffer dots_vbo;
     std::map<std::string, vector<Sfr_marker> > dot_list;
 };

@@ -37,6 +37,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include <QPointF>
 #include <array>
 #include <assert.h>
+#include <memory>
 
 class GL_image_panel_edges : public GL_image_panel {
   Q_OBJECT
@@ -74,11 +75,10 @@ class GL_image_panel_edges : public GL_image_panel {
     void check_roi_boxes_and_handles(QPointF img_coords);
     void broadcast_histogram(void);
     
-    QOpenGLShaderProgram* line_program;
-    QOpenGLShaderProgram* box_program;
-    QOpenGLShaderProgram* dots_program;
+    std::shared_ptr<QOpenGLShaderProgram> line_program;
+    std::shared_ptr<QOpenGLShaderProgram> box_program;
+    std::shared_ptr<QOpenGLShaderProgram> dots_program;
     
-    QOpenGLShaderProgram* edges_program;
     QOpenGLBuffer edges_vbo;
     
     QOpenGLBuffer dot_vbo;
