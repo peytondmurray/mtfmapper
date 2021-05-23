@@ -79,6 +79,23 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     save_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     save_button->setEnabled(false);
     save_button->setToolTip(save_tt);
+    
+    QString gamma_tt(
+        "Toggle between linear (gamma = 1.0) and non-\n"
+        "linear (gamma = 2.2) display styles.\n"
+        "This does not affect the image data used\n"
+        "in subsequent analyses."
+    );
+    gamma_switch = new QToolButton;
+    QIcon gamma_icon;
+    gamma_icon.addFile(":/Icons/Gamma_linear", QSize(), QIcon::Normal, QIcon::Off);
+    gamma_icon.addFile(":/Icons/Gamma_two", QSize(), QIcon::Normal, QIcon::On);
+    gamma_switch->setIcon(gamma_icon);
+    gamma_switch->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    gamma_switch->setCheckable(true);
+    gamma_switch->setFixedSize(66, 36);
+    gamma_switch->setIconSize(QSize(64, 34));
+    gamma_switch->setToolTip(gamma_tt);
 
     img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
@@ -156,6 +173,7 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     histo_box->setLayout(histo_layout);
     
     QGridLayout* button_layout = new QGridLayout;
+    button_layout->addWidget(gamma_switch, 0, 0, Qt::AlignHCenter);
     button_layout->addWidget(help_button, 0, 1);
     button_layout->addWidget(apply_all_button, 1, 0);
     button_layout->addWidget(abort_all_button, 1, 1);
@@ -185,6 +203,7 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     connect(img_panel, SIGNAL( disable_save_button() ), this, SLOT( disable_save_button() ));
     connect(apply_all_button, SIGNAL( clicked() ), this, SLOT( apply_all_button_clicked() ));
     connect(abort_all_button, SIGNAL( clicked() ), this, SLOT( abort_all_button_clicked() ));
+    connect(gamma_switch, SIGNAL( toggled(bool) ), this, SLOT( gamma_state(bool) ));
     
     setModal(false);
     setWindowModality(Qt::NonModal);
@@ -220,11 +239,14 @@ bool Edge_select_dialog::load_image(QString img_name,
     } else {
         type_string = "RGB L";
     }
-    if (get_panel()->image_channels() == 8) {
+    if (get_panel()->image_depth() == 8) {
         type_string += ", 8-bit";
+        gamma_switch->setChecked(false);
     } else {
         type_string += ", 16-bit";
+        gamma_switch->setChecked(true);
     }
+    gamma_state(gamma_switch->isChecked());
     img_type->setText(type_string);
     img_filename->setText(QFileInfo(raw_filename).fileName());
     
@@ -357,3 +379,15 @@ void Edge_select_dialog::abort_all_button_clicked(void) {
     emit manual_queue_skip_all();
     close();
 }
+
+void Edge_select_dialog::gamma_state(bool enabled) {
+    if (enabled) {
+        get_panel()->set_gamma(2.2);
+    } else {
+        get_panel()->set_gamma(1.0);
+    }
+    get_panel()->update();
+}
+
+
+

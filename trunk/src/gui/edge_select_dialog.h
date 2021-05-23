@@ -78,6 +78,7 @@ class Edge_select_dialog : public QDialog {
     QLabel* text_img_progress;
     QLabel* edge_length;
     QLabel* text_edge_length;
+    QToolButton* gamma_switch;
     Histo_widget* histogram;
     std::shared_ptr<QImage> icon_image;
 
@@ -105,6 +106,7 @@ class Edge_select_dialog : public QDialog {
     void enable_save_button();
     void apply_all_button_clicked();
     void abort_all_button_clicked();
+    void gamma_state(bool);
 };
 
 #endif
