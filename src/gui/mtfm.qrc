@@ -15,6 +15,8 @@
 <file alias="SFR_pip_5">sfr_pip_5.svg</file>
 <file alias="SFR_pip_6">sfr_pip_6.svg</file>
 <file alias="SFR_pip_7">sfr_pip_7.svg</file>
+<file alias="Gamma_linear">gamma_linear.svg</file>
+<file alias="Gamma_two">gamma_two.svg</file>
 </qresource>
 <qresource prefix="/Images">
 <file alias="ManualROIHelp">manual_roi_help.png</file>

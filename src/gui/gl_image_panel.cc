@@ -96,9 +96,10 @@ void GL_image_panel::initializeGL() {
         "#version 120\n"
         "uniform sampler2D texture;\n"
         "varying highp vec4 texc;\n"
+        "uniform float gamma;\n"
         "void main(void)\n"
         "{\n"
-        "    gl_FragColor = texture2D(texture, texc.st);\n"
+        "    gl_FragColor =  pow(texture2D(texture, texc.st), vec4(1.0 / gamma, 1.0 / gamma, 1.0 / gamma, 0.0));\n"
         "}\n";
     fshader->compileSourceCode(fsrc);
 
@@ -142,7 +143,8 @@ void GL_image_panel::paintGL() {
     program->enableAttributeArray(prog_texcoord_att);
     program->setAttributeBuffer(prog_vert_att, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
     program->setAttributeBuffer(prog_texcoord_att, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
-
+    
+    program->setUniformValue("gamma", float(gamma_value));
     
     for (int i = 0; i < (int)textures.size(); i++) {
         textures[i]->bind();
@@ -184,24 +186,98 @@ bool GL_image_panel::load_image(const QString& fname) {
         cvimg = image_cache[fname.toStdString()].fetch();
     } else { 
         cvimg = cv::imread(fname.toStdString(), cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH | cv::IMREAD_IGNORE_ORIENTATION);
-        if (!cvimg.empty()) {
-            img_channels = cvimg.channels();
-            if (cvimg.channels() == 1) {
-                cv::cvtColor(cvimg, cvimg, cv::COLOR_GRAY2BGR);
-            }
-        } else {
+        if (cvimg.empty()) {
             return false;
         }
         
+        img_channels = cvimg.channels();
+        img_depth = 8;
+        img_assumed_linear = false;
+        
+        // perform normalization / scaling before color conversion?
         if (cvimg.depth() != CV_8U) {
-            logger.debug("Input image %s was not 8-bit, so we will convert it with scaling\n", fname.toStdString().c_str());
-            cv::Mat dst;
-            // This may not be the most pretty conversion, but at least it will make raw files visible ...
-            cv::normalize(cvimg, dst, 0, 255, cv::NORM_MINMAX, CV_8U);
-            cvimg = dst;
+            double alpha = 1.0;
+            double beta = 0;
             img_depth = 16;
+            img_assumed_linear = true;
+            
+            if (cvimg.depth() == CV_16U) {
+                logger.info("GL_image_panel::load_image: 16-bit histogram percentile scaling path\n");
+                
+                vector<uint64_t> histo(65536, 0);
+                size_t total_pixels = size_t(cvimg.channels())*size_t(cvimg.rows)*size_t(cvimg.cols);
+                uint16_t* ptr = (uint16_t*)cvimg.data;
+                uint16_t* sentinel = ptr + total_pixels;
+                while (ptr < sentinel) {
+                    histo[*ptr++]++;
+                }
+                // now we can extract the true (clipping) max and min values
+                int minval = histo.size();
+                int maxval = 0;
+                for (size_t i=0; i < histo.size(); i++) {
+                    int revi = histo.size() - 1 - i;
+                    minval = histo[revi] > 0 ? revi : minval;
+                    maxval = histo[i] > 0 ? i : maxval;
+                }
+                
+                // find upper percentile
+                size_t upper_c_target = total_pixels * 0.01;
+                uint64_t acc = 0;
+                size_t hist_upper = maxval;
+                while (hist_upper > 0 && acc < upper_c_target) {
+                    acc += histo[hist_upper];
+                    hist_upper--;
+                }
+                
+                // find lower percentile
+                size_t lower_c_target = total_pixels * 0.005;
+                acc = 0;
+                size_t hist_lower = minval;
+                while (hist_lower < size_t(maxval) && acc < lower_c_target) {
+                    acc += histo[hist_lower];
+                    hist_lower++;
+                }
+                
+                // prevent complete collapse on synthetic/degenerate images
+                if (fabs(double(hist_upper) - double(hist_lower)) < 0.05*(maxval - minval)) {
+                    hist_lower = minval;
+                    hist_upper = maxval;
+                }
+                
+                // scale intenisty so that minval -> 0 and maxval -> 255
+                if (hist_upper > hist_lower) {
+                    alpha = 255.0/double(hist_upper - hist_lower);
+                    beta = -alpha * hist_lower;
+                }
+                
+                img_minmax.first = minval;
+                img_minmax.second = maxval;
+            } else {
+                logger.info("GL_image_panel::load_image: unspecified (not 8- or 16-bit) min-max scaling path\n");
+                double minval, maxval;
+                cv::minMaxIdx(cvimg.reshape(1), &minval, &maxval);
+                
+                if (maxval > minval) {
+                    alpha = 255.0/(maxval - minval);
+                    beta = -alpha * minval;
+                }
+                
+                img_minmax.first = minval;
+                img_minmax.second = maxval;
+            }
+            
+            cv::Mat dst;
+            cvimg.convertTo(dst, CV_8U, alpha, beta);
+            cvimg = dst;
         } else {
-            img_depth = 8;
+            double minval, maxval;
+            cv::minMaxIdx(cvimg.reshape(1), &minval, &maxval);
+            img_minmax.first = minval;
+            img_minmax.second = maxval;
+        }
+        
+        if (cvimg.channels() == 1) {
+            cv::cvtColor(cvimg, cvimg, cv::COLOR_GRAY2BGR);
         }
         
         // manual conversion, cvtColor seems a bit slow

@@ -89,6 +89,7 @@ public:
     
     cv::Mat get_cv_img(void) const { return current_cv_image; }
     void set_max_scale_factor(double factor) { max_scale_factor = factor; }
+    void set_gamma(float gamma) { gamma_value = gamma; }
     
     static int program_counter;
 
@@ -126,11 +127,15 @@ private:
     
     int img_channels = 1;
     int img_depth = 8;
+    bool img_assumed_linear = false;
+    std::pair<int, int> img_minmax{-1,-1};
     
     Image_viewport vp;
     
     QImage* default_image = nullptr;
     cv::Mat current_cv_image;
+    
+    float gamma_value = 1.0;
 };
 
 #endif
