@@ -78,6 +78,8 @@ class Edge_select_dialog : public QDialog {
     QLabel* text_img_progress;
     QLabel* edge_length;
     QLabel* text_edge_length;
+    QLabel* img_max_val;
+    QLabel* text_img_max_val;
     QToolButton* gamma_switch;
     Histo_widget* histogram;
     std::shared_ptr<QImage> icon_image;

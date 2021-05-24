@@ -90,6 +90,8 @@ public:
     cv::Mat get_cv_img(void) const { return current_cv_image; }
     void set_max_scale_factor(double factor) { max_scale_factor = factor; }
     void set_gamma(float gamma) { gamma_value = gamma; }
+    int get_img_min(void) { return img_minmax.first; }
+    int get_img_max(void) { return img_minmax.second; }
     
     static int program_counter;
 

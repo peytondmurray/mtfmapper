@@ -117,10 +117,29 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     
     img_filename = new QLabel("filename");
     img_progress = new QLabel("n remaining");
-    edge_length = new QLabel("");
-    text_edge_length = new QLabel("Edge length:");
     text_img_filename = new QLabel("Name:");
     text_img_progress = new QLabel("Queued:");
+    
+    QString edge_length_tt(
+        "Edge length of active ROI, in units\n"
+        "of pixels at native resolution"
+    );
+    edge_length = new QLabel("");
+    edge_length->setToolTip(edge_length_tt);
+    text_edge_length = new QLabel("Edge length:");
+    text_edge_length->setToolTip(edge_length_tt);
+    
+    QString img_max_val_tt(
+        "Minimum and maximum pixel values (DNs)\n"
+        "found in source image, across all\n"
+        "channels (R,G,B) if applicable\n\n"
+        "Min/Max do not represent split-edge\n"
+        "histogram extremes on 16-bit images"
+    );
+    img_max_val = new QLabel;
+    img_max_val->setToolTip(img_max_val_tt);
+    text_img_max_val = new QLabel("DN range:");
+    text_img_max_val->setToolTip(img_max_val_tt);
     
     QString type_tt(
         "File type, i.e., Gray, RGB, or Bayer channel, as\n"
@@ -159,7 +178,8 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     prop_layout->addWidget(img_type, 1, 1, Qt::AlignTop);
     prop_layout->addWidget(text_img_progress, 2, 0, Qt::AlignTop);
     prop_layout->addWidget(img_progress, 2, 1, Qt::AlignTop);
-    prop_layout->addWidget(new QLabel(""), 3, 0,Qt::AlignBottom); // dummy row
+    prop_layout->addWidget(text_img_max_val, 3, 0);
+    prop_layout->addWidget(img_max_val, 3, 1);
     
     QGroupBox* prop_box = new QGroupBox("File properties");
     prop_box->setLayout(prop_layout);
@@ -249,6 +269,7 @@ bool Edge_select_dialog::load_image(QString img_name,
     gamma_state(gamma_switch->isChecked());
     img_type->setText(type_string);
     img_filename->setText(QFileInfo(raw_filename).fileName());
+    img_max_val->setText(QString("[%0, %1]").arg(img_panel->get_img_min()).arg(img_panel->get_img_max()));
     
     img_panel->set_cfa_mask(cfa_mask);
     img_panel->clear_overlay();
