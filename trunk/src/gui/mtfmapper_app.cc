@@ -1046,8 +1046,6 @@ void mtfmapper_app::mtfmapper_call_failed(Worker_thread::failure_t failure, cons
 }
 
 void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
-    static bool esd_initialized = false;
-    
     {
         std::lock_guard<std::mutex> lock(mq_mutex);
         manual_roi_commands.push(new_command);
@@ -1081,15 +1079,6 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
         }
         
         QString roi_filename = command.tmp_dirname + "/manual.roi";
-
-        if (!esd_initialized) {
-            // Note: we only really have to do this once, apparently
-            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen);
-            edge_select_dialog->show();
-            edge_select_dialog->hide();
-            edge_select_dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
-            esd_initialized = true;
-        }
         
         // ensure the exposed main window repaints
         update();
@@ -1112,7 +1101,10 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             
             bool dialog_success = false;
             if (load_success) {
-            
+                
+                if (esd_geom != QRect(-1, -1, 0, 0)) {
+                    edge_select_dialog->setGeometry(esd_geom);
+                }
                 edge_select_dialog->show();
                 edge_select_dialog->raise();
                 edge_select_dialog->activateWindow();
@@ -1124,6 +1116,7 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
                 connect(edge_select_dialog, SIGNAL(finished(int)), this, SLOT(enable_clear_button()));
                 q.exec();
                 
+                esd_geom = edge_select_dialog->geometry();
                 if (edge_select_dialog->result() == QDialog::Accepted) {
                     dialog_success = true;
                     Processing_command modified_command(command);

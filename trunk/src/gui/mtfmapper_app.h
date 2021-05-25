@@ -174,6 +174,7 @@ class mtfmapper_app : public QMainWindow
     std::mutex mq_mutex;
     bool mq_busy = false;
     Edge_select_dialog* edge_select_dialog;
+    QRect esd_geom = QRect(-1, -1, 0, 0);
     queue<Processing_command> manual_roi_commands;
     
     bool manual_queue_active = false;
