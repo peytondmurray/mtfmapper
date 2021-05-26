@@ -58,7 +58,7 @@ class Raw_developer_libraw : public Raw_developer {
         } else {
             // output goes to stdout
             args << "-w" << "-4" << "-T" << "-q" << "3" << "-o" << "0" 
-                << "-s" << "0" << "-Z" << "-" << input;
+                << "-s" << "0" << "-H" << "1" << "-Z" << "-" << input;
         }
         
         return args;

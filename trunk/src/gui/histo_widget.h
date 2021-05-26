@@ -32,6 +32,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include <QWidget>
 #include <QLabel>
+#include <QIcon>
 #include <vector>
 using std::vector;
 
@@ -49,6 +50,7 @@ class Histo_widget : public QWidget {
     bool histo_overlap = false;
     histo_t data_d;
     histo_t data_l;
+    QIcon warning_icon;
 
   public slots:
     void set_histogram(histo_t histo_dark, histo_t histo_light);

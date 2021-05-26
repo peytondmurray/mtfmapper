@@ -244,11 +244,46 @@ bool GL_image_panel::load_image(const QString& fname) {
                     hist_upper = maxval;
                 }
                 
-                // scale intenisty so that minval -> 0 and maxval -> 255
+                // scale intenisty so that minval -> 1 and maxval -> 254
                 if (hist_upper > hist_lower) {
-                    alpha = 255.0/double(hist_upper - hist_lower);
-                    beta = -alpha * hist_lower;
+                    alpha = 253.0/double(hist_upper - hist_lower);
+                    beta = 1.0 - alpha * hist_lower;
                 }
+                
+                vector<uint8_t> lut(65536, 0);
+                size_t crush_thresh = std::min(2048, std::min(minval + 1, (int)hist_lower));
+                size_t saturation_thresh = maxval;
+                size_t pot = 1;
+                while (pot < 16 && (1 << pot) < maxval) {
+                    pot++;
+                }
+                saturation_thresh = std::max((1 << pot) - 1, (int)hist_upper);
+                
+                size_t lut_idx = 0;
+                while (lut_idx < crush_thresh) {
+                    lut[lut_idx++] = 0;
+                }
+                while (lut_idx < hist_lower) {
+                    lut[lut_idx++] = 1;
+                }
+                while (lut_idx < hist_upper) {
+                    lut[lut_idx] = std::max(1, std::min(254, int(lut_idx*alpha + beta)));
+                    lut_idx++;
+                }
+                while (lut_idx < saturation_thresh) {
+                    lut[lut_idx++] = 254;
+                }
+                while (lut_idx < lut.size()) {
+                    lut[lut_idx++] = 255;
+                }
+                
+                cv::Mat dst(cvimg.rows, cvimg.cols, cvimg.channels() == 1 ? CV_8UC1 : CV_8UC3);
+                uint16_t* in_ptr = (uint16_t*)cvimg.data;
+                uint8_t* out_ptr = (uint8_t*)dst.data;
+                while (in_ptr < sentinel) {
+                    *out_ptr++ = lut[*in_ptr++];
+                }
+                cvimg = dst;
                 
                 img_minmax.first = minval;
                 img_minmax.second = maxval;
@@ -264,11 +299,11 @@ bool GL_image_panel::load_image(const QString& fname) {
                 
                 img_minmax.first = minval;
                 img_minmax.second = maxval;
+                
+                cv::Mat dst;
+                cvimg.convertTo(dst, CV_8U, alpha, beta);
+                cvimg = dst;
             }
-            
-            cv::Mat dst;
-            cvimg.convertTo(dst, CV_8U, alpha, beta);
-            cvimg = dst;
         } else {
             double minval, maxval;
             cv::minMaxIdx(cvimg.reshape(1), &minval, &maxval);

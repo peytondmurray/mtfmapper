@@ -37,6 +37,7 @@ Histo_widget::Histo_widget(QWidget* parent)
     setMaximumWidth(256);
     setMinimumWidth(256);
     setMinimumHeight(64);
+    warning_icon.addFile(":/Icons/Warning");
 }
 
 void Histo_widget::paintEvent([[maybe_unused]] QPaintEvent* event) {
@@ -83,6 +84,16 @@ void Histo_widget::paintEvent([[maybe_unused]] QPaintEvent* event) {
             }
         }
     }
+    
+    if (data_d.size() > 0 && data_l.size() > 0) {
+        if (data_d.front() > 0 || data_l.front() > 0) {
+            warning_icon.paint(&painter, 0, 0, 24, 24);
+        }
+        
+        if (data_d.back() > 0 || data_l.back() > 0) {
+            warning_icon.paint(&painter, width() - 24, 0, 24, 24);
+        }
+    }
 }
 
 void Histo_widget::set_histogram(histo_t dark, histo_t light) {
@@ -91,11 +102,22 @@ void Histo_widget::set_histogram(histo_t dark, histo_t light) {
     data_d = histo_t(dark.size(), 0);
     data_l = histo_t(light.size(), 0);
     
+    // save the original extrema so we can replace them later
+    // these extrema may have a non-linear encoding indicating
+    // black crush or saturation
+    vector<int> extrema(4, 0);
+    if (dark.size() >= 256 && light.size() >= 256) {
+        extrema[0] = dark[0];
+        extrema[1] = light[0];
+        extrema[2] = dark[255];
+        extrema[3] = light[255];
+    }
+    
     // one pass of morphological max
     constexpr int hw = 1;
-    for (int i=0; i < (int)dark.size(); i++) {
+    for (int i=hw; i < (int)dark.size() - hw; i++) {
         for (int d=-hw; d <= hw; d++) {
-            if ((i+d) >= 0 && (i+d) < (int)dark.size()) {
+            if ((i+d) >= hw && (i+d) < (int)dark.size() - hw) {
                 data_d[i] = std::max(data_d[i], dark[i+d]);
                 data_l[i] = std::max(data_l[i], light[i+d]);
             }
@@ -106,12 +128,20 @@ void Histo_widget::set_histogram(histo_t dark, histo_t light) {
     light = data_l;
     std::fill(data_d.begin(), data_d.end(), 0);
     std::fill(data_l.begin(), data_l.end(), 0);
-    for (int i=0; i < (int)dark.size(); i++) {
+    for (int i=hw; i < (int)dark.size() - hw; i++) {
         for (int d=-hw; d <= hw; d++) {
-            int j = std::max(0, std::min(i+d, (int)dark.size()-1));
+            int j = std::max(hw, std::min(i+d, (int)dark.size() - 1 - hw));
             data_d[i] += dark[j];
             data_l[i] += light[j];
         }
+    }
+    
+    // replace the extrema
+    if (dark.size() >= 256 && light.size() >= 256) {
+        data_d[0] = extrema[0];
+        data_l[0] = extrema[1];
+        data_d[255] = extrema[2];
+        data_l[255] = extrema[3];
     }
     
     histo_overlap = false;
