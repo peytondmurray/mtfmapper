@@ -17,6 +17,7 @@
 <file alias="SFR_pip_7">sfr_pip_7.svg</file>
 <file alias="Gamma_linear">gamma_linear.svg</file>
 <file alias="Gamma_two">gamma_two.svg</file>
+<file alias="Warning">warning_icon.svg</file>
 </qresource>
 <qresource prefix="/Images">
 <file alias="ManualROIHelp">manual_roi_help.png</file>

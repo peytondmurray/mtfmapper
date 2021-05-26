@@ -757,11 +757,11 @@ void GL_image_panel_edges::broadcast_histogram(void) {
                 if (par >= 0 && par < l && fabs(perp) <= hw) {
                     cv::Vec3b& pix = img.at<cv::Vec3b>(row, col);
                     if (perp < -deadzone) {
-                        int lum = cv::saturate_cast<unsigned char>(0.299*pix[2] + 0.587*pix[1] + 0.114*pix[0]);
+                        int lum = std::max(pix[0], std::max(pix[1], pix[2]));
                         dark[lum]++;
                     } else {
                         if (perp > deadzone) {
-                            int lum = cv::saturate_cast<unsigned char>(0.299*pix[2] + 0.587*pix[1] + 0.114*pix[0]);
+                            int lum = std::max(pix[0], std::max(pix[1], pix[2]));
                             light[lum]++;
                         }
                     }

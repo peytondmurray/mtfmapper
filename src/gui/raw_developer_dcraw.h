@@ -48,7 +48,7 @@ class Raw_developer_dcraw : public Raw_developer {
         if (bayer_mode) {
             args << "-4" << "-T" << "-D" << "-c" << input;
         } else {
-            args << "-w" <<  "-4" << "-T" << "-q" << "3" << "-c" << input;
+            args << "-w" <<  "-4" << "-T" << "-q" << "3" << "-H" << "1" << "-c" << input;
         }
         
         return args;
