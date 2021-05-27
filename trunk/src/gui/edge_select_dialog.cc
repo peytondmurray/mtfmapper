@@ -67,7 +67,7 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     abort_all_button->setToolTip(abort_all_tt);
 
     help_button = new QPushButton("Help");
-    help_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    help_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
     
     QString load_tt("Load a previously saved ROI.");
     load_button = new QPushButton("Load");
@@ -79,6 +79,12 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     save_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     save_button->setEnabled(false);
     save_button->setToolTip(save_tt);
+    
+    QString clear_roi_tt("Remove the current ROIs.");
+    clear_roi_button = new QPushButton("Clear ROIs");
+    clear_roi_button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    clear_roi_button->setEnabled(false);
+    clear_roi_button->setToolTip(clear_roi_tt);
     
     QString gamma_tt(
         "Toggle between linear (gamma = 1.0) and non-\n"
@@ -96,6 +102,10 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     gamma_switch->setFixedSize(66, 36);
     gamma_switch->setIconSize(QSize(64, 34));
     gamma_switch->setToolTip(gamma_tt);
+    
+    rb_autoload_roi = new QRadioButton("reuse ROIs");
+    rb_blank_roi = new QRadioButton("clear ROIs");
+    rb_blank_roi->setChecked(true);
 
     img_viewer = new GL_image_viewer(parent);
     img_viewer->set_clickable(true);
@@ -173,13 +183,16 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
         w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     }
     prop_layout->addWidget(text_img_filename, 0, 0, Qt::AlignTop);
-    prop_layout->addWidget(img_filename, 0, 1, Qt::AlignTop);
+    prop_layout->addWidget(img_filename, 0, 1, 1, 2, Qt::AlignTop);
     prop_layout->addWidget(text_img_type, 1, 0, Qt::AlignTop);
-    prop_layout->addWidget(img_type, 1, 1, Qt::AlignTop);
+    prop_layout->addWidget(img_type, 1, 1, 1, 2, Qt::AlignTop);
     prop_layout->addWidget(text_img_progress, 2, 0, Qt::AlignTop);
     prop_layout->addWidget(img_progress, 2, 1, Qt::AlignTop);
     prop_layout->addWidget(text_img_max_val, 3, 0);
     prop_layout->addWidget(img_max_val, 3, 1);
+    int marg = img_max_val->margin();
+    img_max_val->setContentsMargins(marg, marg, 15, marg); // a little bit hacky, but we cannot set the margin of gamma_switch
+    prop_layout->addWidget(gamma_switch, 2, 2, 2, 1, Qt::AlignRight);
     
     QGroupBox* prop_box = new QGroupBox("File properties");
     prop_box->setLayout(prop_layout);
@@ -193,19 +206,31 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     histo_box->setLayout(histo_layout);
     
     QGridLayout* button_layout = new QGridLayout;
-    button_layout->addWidget(gamma_switch, 0, 0, Qt::AlignHCenter);
-    button_layout->addWidget(help_button, 0, 1);
-    button_layout->addWidget(apply_all_button, 1, 0);
-    button_layout->addWidget(abort_all_button, 1, 1);
+    
+    button_layout->addWidget(help_button, 0, 0);
+    button_layout->addWidget(apply_all_button, 0, 1);
+    button_layout->addWidget(abort_all_button, 0, 2);
+    
     button_layout->addWidget(load_button, 2, 0);
     button_layout->addWidget(save_button, 2, 1);
-    button_layout->addWidget(accept_button, 3, 0);
-    button_layout->addWidget(cancel_button, 3, 1);
+    button_layout->addWidget(clear_roi_button, 2, 2);
+    
+    button_layout->addWidget(accept_button, 3, 1);
+    button_layout->addWidget(cancel_button, 3, 2);
+    
+    QVBoxLayout* roi_layout = new QVBoxLayout;
+    roi_layout->addWidget(rb_autoload_roi);
+    roi_layout->addWidget(rb_blank_roi);
+    roi_layout->addStretch();
+    QGroupBox* roi_box = new QGroupBox("On next image");
+    roi_box->setLayout(roi_layout);
+    roi_box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     QHBoxLayout* hlayout = new QHBoxLayout;
     hlayout->addWidget(histo_box);
     hlayout->addWidget(prop_box);
     hlayout->addStretch();
+    hlayout->addWidget(roi_box, 0, Qt::AlignTop);
     hlayout->addLayout(button_layout);
     
     QGridLayout* vlayout = new QGridLayout;
@@ -224,7 +249,9 @@ Edge_select_dialog::Edge_select_dialog(QWidget* parent)
     connect(apply_all_button, SIGNAL( clicked() ), this, SLOT( apply_all_button_clicked() ));
     connect(abort_all_button, SIGNAL( clicked() ), this, SLOT( abort_all_button_clicked() ));
     connect(gamma_switch, SIGNAL( toggled(bool) ), this, SLOT( gamma_state(bool) ));
+    connect(clear_roi_button, SIGNAL( clicked() ), this, SLOT( clear_roi_button_clicked() ));
     
+    accept_button->setDefault(true);
     setModal(false);
     setWindowModality(Qt::NonModal);
     setLayout(vlayout);
@@ -295,6 +322,14 @@ void Edge_select_dialog::export_roi(void) {
     }
 }
 
+bool Edge_select_dialog::load_rois(QString fname) {
+    return img_panel->load_rois(fname);
+}
+
+bool Edge_select_dialog::save_rois(QString fname) {
+    return img_panel->save_rois(fname);
+}
+
 void Edge_select_dialog::load_roi(void) {
     QFileDialog dialog(this, "Select ROI file", QString(), QString());
     dialog.setFileMode(QFileDialog::ExistingFile);
@@ -304,7 +339,7 @@ void Edge_select_dialog::load_roi(void) {
     if (dialog.exec()) {
         filenames = dialog.selectedFiles();
         if (filenames.size() > 0 && filenames[0].length() > 0) {
-            bool load_success = img_panel->load_rois(filenames[0]);
+            bool load_success = load_rois(filenames[0]);
             if (!load_success) {
                 logger.error("Could not load ROI filename %s\n", 
                     filenames[0].toLocal8Bit().constData()
@@ -317,6 +352,7 @@ void Edge_select_dialog::load_roi(void) {
 void Edge_select_dialog::save_roi(void) {
     QFileDialog dialog(this, "Save ROI file", QString(), QString("*.roi"));
     dialog.setFileMode(QFileDialog::AnyFile);
+    dialog.setAcceptMode(QFileDialog::AcceptSave);
     dialog.setNameFilter(tr("ROI files (*.roi)"));
     
     QStringList filenames;
@@ -326,7 +362,7 @@ void Edge_select_dialog::save_roi(void) {
             if (QFileInfo(filenames[0]).suffix().length() == 0) {
                 filenames[0] += ".roi";
             }
-            img_panel->save_rois(filenames[0]);
+            save_rois(filenames[0]);
         }
     }
 }
@@ -376,10 +412,12 @@ void Edge_select_dialog::extract_bayer_info(const QStringList& arguments) {
 
 void Edge_select_dialog::disable_save_button(void) {
     save_button->setEnabled(false);
+    clear_roi_button->setEnabled(false);
 }
 
 void Edge_select_dialog::enable_save_button(void) {
     save_button->setEnabled(true);
+    clear_roi_button->setEnabled(true);
 }
 
 void Edge_select_dialog::apply_all_button_clicked(void) {
@@ -410,5 +448,8 @@ void Edge_select_dialog::gamma_state(bool enabled) {
     get_panel()->update();
 }
 
-
+void Edge_select_dialog::clear_roi_button_clicked(void) {
+    img_panel->clear_overlay();
+    img_panel->update();
+}
 

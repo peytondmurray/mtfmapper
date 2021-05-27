@@ -85,6 +85,15 @@ mtfmapper_app::mtfmapper_app(QWidget *parent ATTRIBUTE_UNUSED)
     tb_img_ca = new QCheckBox("Chromatic aberration");
     tb_img_ca->setChecked(true);
     
+    /*
+    // TODO: set this up for now, later add it to File/Open dialog
+    pixel_pitch = new QComboBox;
+    pixel_pitch->setEditable(true);
+    pixel_pitch->setPlaceholderText("pitch");
+    pixel_pitch->setDuplicatesEnabled(false);
+    prop_layout->addWidget(pixel_pitch, 3, 0);
+    */
+    
     img_viewer = new GL_image_viewer(this);
     img_panel = new GL_image_panel_dots(img_viewer, this);
     img_viewer->setViewport(img_panel);   // TODO: could combine these
@@ -448,6 +457,7 @@ void mtfmapper_app::open_action(bool roi, bool focus, bool imatest, bool manual_
         QGroupBox* v4GroupBox = new QGroupBox(tr("Select desired MTF Mapper outputs to produce:"));
         QGridLayout* ft_gridbox = new QGridLayout();
         if (ft_gridbox) {
+            // add pixel_pitch QComboBox
             if (manual_roi) {
                 ft_gridbox->addWidget(tb_img_annotated, 0, 0);
                 ft_gridbox->addWidget(tb_img_ca, 0, 1);
@@ -1078,6 +1088,7 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             continue;
         }
         
+        QString autoload_roi_filename = QString("%1/mtfmapper_autoload.roi").arg(QDir::tempPath());
         QString roi_filename = command.tmp_dirname + "/manual.roi";
         
         // ensure the exposed main window repaints
@@ -1101,11 +1112,18 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
             
             bool dialog_success = false;
             if (load_success) {
+                if (edge_select_dialog->autoload_roi()) {
+                    edge_select_dialog->load_rois(autoload_roi_filename);
+                }
                 
                 if (esd_geom != QRect(-1, -1, 0, 0)) {
                     edge_select_dialog->setGeometry(esd_geom);
                 }
+                #ifdef _WIN32
                 edge_select_dialog->show();
+                #else
+                edge_select_dialog->showNormal(); // prevents dialog from remaining maximized on X11
+                #endif
                 edge_select_dialog->raise();
                 edge_select_dialog->activateWindow();
                 
@@ -1123,6 +1141,10 @@ void mtfmapper_app::add_manual_roi_file(const Processing_command& new_command) {
                     modified_command.arguments << "--roi-file" << roi_filename;
                     modified_command.set_state(Processing_command::state_t::READY);
                     processor.submit_processing_command(modified_command);
+                    if (edge_select_dialog->autoload_roi()) {
+                        edge_select_dialog->save_rois(autoload_roi_filename);
+                        item_for_deletion(autoload_roi_filename);
+                    } 
                 }
             } 
             if (!load_success || !dialog_success) {
