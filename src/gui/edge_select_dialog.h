@@ -57,6 +57,9 @@ class Edge_select_dialog : public QDialog {
     GL_image_panel* get_panel(void) { return img_panel; }
     
     void set_roi_file(const QString& fname) { roi_file = fname; }
+    bool autoload_roi(void) const { return rb_autoload_roi->isChecked(); }
+    bool load_rois(QString fname);
+    bool save_rois(QString fname);
 
   private:
     void extract_bayer_info(const QStringList& arguments);
@@ -69,6 +72,7 @@ class Edge_select_dialog : public QDialog {
     QPushButton* save_button;
     QPushButton* apply_all_button;
     QPushButton* abort_all_button;
+    QPushButton* clear_roi_button;
     QWidget* parent = nullptr;
     QLabel* img_filename;
     QLabel* text_img_filename;
@@ -81,6 +85,8 @@ class Edge_select_dialog : public QDialog {
     QLabel* img_max_val;
     QLabel* text_img_max_val;
     QToolButton* gamma_switch;
+    QRadioButton* rb_autoload_roi;
+    QRadioButton* rb_blank_roi;
     Histo_widget* histogram;
     std::shared_ptr<QImage> icon_image;
 
@@ -109,6 +115,7 @@ class Edge_select_dialog : public QDialog {
     void apply_all_button_clicked();
     void abort_all_button_clicked();
     void gamma_state(bool);
+    void clear_roi_button_clicked();
 };
 
 #endif
