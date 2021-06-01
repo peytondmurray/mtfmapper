@@ -155,18 +155,39 @@ class Mtf_renderer_edges : public Mtf_renderer {
                 logger.debug("Warning: not all corners are present in corder: [%d %d %d %d]\n", corder[0], corder[1], corder[2], corder[3]);
             }
             
-            for (size_t k=0; k < 4; k++) {
-                Point2d cdir = blocks[i].get_corner(corder[k]) - blocks[i].get_centroid();
-                cdir *= 1.0/norm(cdir);
-                corners[k].second = k;
-                corners[k].first = fmod(atan2(cdir.y, cdir.x) + M_PI*0.5, 2.0*M_PI);
-                if (corners[k].first < 0) {
-                    corners[k].first += 2.0*M_PI;
+            if (output_version >= Output_version::V2) {
+                // assign edges to corners so that centroid falls on edge between corner and next
+                for (size_t k=0; k < 4; k++) {
+                    Point2d corn_dir = blocks[i].get_corner(corder[k]) - blocks[i].get_corner(corder[(k+1)%4]);
+                    corn_dir *= 1.0/norm(corn_dir);
+                    Point2d corn_n(-corn_dir.y, corn_dir.x);
+                    double min_dist = std::numeric_limits<double>::max();
+                    size_t min_edge = 0;
+                    for (size_t j=0; j < 4; j++) {
+                        double perp_dist = fabs((blocks[i].get_edge_centroid(j) - blocks[i].get_corner(corder[k])).dot(corn_n));
+                        if (perp_dist < min_dist) {
+                            min_edge = j;
+                            min_dist = perp_dist;
+                        }
+                    }
+                    eorder[k] = min_edge;
                 }
-            }
-            sort(corners.begin(), corners.end());
-            for (size_t k=0; k < 4; k++) {
-                eorder[k] = int(corners[k].second);
+            } else {
+                // the old way of associating an edge with a corner; not really sure what I intended here
+                // but I am keeping it for backwards compatibility
+                for (size_t k=0; k < 4; k++) {
+                    Point2d cdir = blocks[i].get_corner(corder[k]) - blocks[i].get_centroid();
+                    cdir *= 1.0/norm(cdir);
+                    corners[k].second = k;
+                    corners[k].first = fmod(atan2(cdir.y, cdir.x) + M_PI*0.5, 2.0*M_PI);
+                    if (corners[k].first < 0) {
+                        corners[k].first += 2.0*M_PI;
+                    }
+                }
+                sort(corners.begin(), corners.end());
+                for (size_t k=0; k < 4; k++) {
+                    eorder[k] = int(corners[k].second);
+                }
             }
             
             // just a sanity check for debugging
