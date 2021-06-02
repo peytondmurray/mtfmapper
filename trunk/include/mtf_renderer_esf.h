@@ -29,22 +29,48 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #define MTF_RENDERER_ESF_H
 
 #include "mtf_renderer.h"
+#include "include/output_version.h"
 #include "common_types.h"
 
 class Mtf_renderer_esf : public Mtf_renderer {
   public:
-    Mtf_renderer_esf(const std::string& fname_esf, const std::string& fname_psf)
-      :  ofname_esf(fname_esf), ofname_psf(fname_psf) {
+    Mtf_renderer_esf(const std::string& fname_esf, const std::string& fname_lsf, Output_version::type output_version)
+      :  ofname_esf(fname_esf), ofname_lsf(fname_lsf), output_version(output_version) {
       
     }
     
     void render(const vector<Block>& blocks) {
         FILE* fout_esf = fopen(ofname_esf.c_str(), "wt");
-        FILE* fout_psf = fopen(ofname_psf.c_str(), "wt");
+        FILE* fout_lsf = fopen(ofname_lsf.c_str(), "wt");
+
+        printf("output version = %d", (int)output_version);
+
+        if (output_version >= Output_version::V2) {
+            fprintf(fout_esf, "# MTF Mapper ESF, output format version %d \n", int(output_version));
+            fprintf(fout_esf, "# column  1: block_id\n");
+            fprintf(fout_esf, "# column  2: edge centroid x (pixels)\n");
+            fprintf(fout_esf, "# column  3: edge centroid y (pixels)\n");
+            fprintf(fout_esf, "# column  4: ESF sample spacing (pixels)\n");
+            fprintf(fout_esf, "# column  5: number of ESF samples, N\n");
+            fprintf(fout_esf, "# next N columns: ESF samples\n");
+
+            fprintf(fout_lsf, "# MTF Mapper LSF, output format version %d \n", int(output_version));
+            fprintf(fout_lsf, "# column  1: block_id\n");
+            fprintf(fout_lsf, "# column  2: edge centroid x (pixels)\n");
+            fprintf(fout_lsf, "# column  3: edge centroid y (pixels)\n");
+            fprintf(fout_lsf, "# column  4: LSF sample spacing (pixels)\n");
+            fprintf(fout_lsf, "# column  5: number of LSF samples, N\n");
+            fprintf(fout_lsf, "# next N columns: LSF samples\n");
+        }
+
         for (size_t i=0; i < blocks.size(); i++) {
             for (size_t k=0; k < 4; k++) {
                 const vector<double>& esf = blocks[i].get_esf(k);
-                
+
+                if (output_version >= Output_version::V2) {
+                    fprintf(fout_esf, "%d %lf %lf 0.125 %d ", int(i), blocks[i].get_edge_centroid(k).x, blocks[i].get_edge_centroid(k).y, int(esf.size()));
+                }
+
                 for (size_t j=0; j < esf.size(); j++) {
                     fprintf(fout_esf, "%lf ", esf[j]);
                 }
@@ -54,21 +80,26 @@ class Mtf_renderer_esf : public Mtf_renderer {
                 for (size_t j=1; j < esf.size()-1; j++) {
                     sum += (esf[j+1] - esf[j-1])*0.5;
                 }
+
+                if (output_version >= Output_version::V2) {
+                    fprintf(fout_lsf, "%d %lf %lf 0.125 %d ", int(i), blocks[i].get_edge_centroid(k).x, blocks[i].get_edge_centroid(k).y, int(esf.size()));
+                }
                 
                 double sign = sum < 0 ? -1 : 1;
-                fprintf(fout_psf, "%lf ", 0.0);
+                fprintf(fout_lsf, "%lf ", 0.0);
                 for (size_t j=1; j < esf.size()-1; j++) {
-                    fprintf(fout_psf, "%lf ", sign*(esf[j+1] - esf[j-1])*0.5);
+                    fprintf(fout_lsf, "%lf ", sign*(esf[j+1] - esf[j-1])*0.5);
                 }
-                fprintf(fout_psf, " %lf\n", 0.0);
+                fprintf(fout_lsf, " %lf\n", 0.0);
             }
         }    
         fclose(fout_esf);
-        fclose(fout_psf);
+        fclose(fout_lsf);
     }
     
     string ofname_esf;
-    string ofname_psf;
+    string ofname_lsf;
+    Output_version::type output_version;
 
 };
 

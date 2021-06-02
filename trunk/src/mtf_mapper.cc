@@ -807,9 +807,11 @@ int main(int argc, char** argv) {
         }
         
         if (tc_esf.getValue()) {
+            Output_version::type ver = Output_version::type(tc_output_version.getValue());
             Mtf_renderer_esf esf_writer(
                 wdir + string("raw_esf_values.txt"), 
-                wdir + string("raw_psf_values.txt")
+                wdir + (ver >= Output_version::V2 ? string("raw_lsf_values.txt") : string("raw_psf_values.txt")),
+                ver
             );
             esf_writer.render(mtf_core.get_blocks());
         }
