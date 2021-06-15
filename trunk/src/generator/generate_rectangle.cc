@@ -41,6 +41,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 #include "config.h"
 
 #include "tclap/CmdLine.h"
+#include "tclap_constraints.h"
 
 #include <vector>
 using std::vector;
@@ -166,11 +167,11 @@ void inject_png_icc_profile(string fname, bool linear) {
 class Render_rows {
   public:
     Render_rows(cv::Mat& in_img, const Render_polygon& in_r, Noise_source& noise_source, 
-        double contrast_reduction=0.05, bool gamma_correct=true, bool use_16bit=false,
+        double blacklevel=0.025, double whitelevel=0.975, bool gamma_correct=true, bool use_16bit=false,
         int buffer_border=30, int& crc=dummy_crc, double analogue_scale=1.0,
         int offset_x=0, int offset_y=0)
      : img(in_img), rect(in_r), noise_source(noise_source),
-       gamma_correct(gamma_correct),contrast_reduction(contrast_reduction),
+       gamma_correct(gamma_correct), blacklevel(blacklevel), whitelevel(whitelevel),
        use_16bit(use_16bit), buffer_border(buffer_border),
        crc(crc), analogue_scale(analogue_scale),
        offset_x(offset_x), offset_y(offset_y) {
@@ -182,13 +183,6 @@ class Render_rows {
     inline void putpixel(int row, int col, double value) const {
 
         value = noise_source.sample(value, row*img.cols + col);
-
-        if (value < 0.0) {
-            value = 0.0;
-        }
-        if (value > 1.0) {
-            value = 1.0;
-        }
 
         if (use_16bit) {
             img.at<uint16_t>(row, col) = lrint(value*65535);
@@ -202,28 +196,24 @@ class Render_rows {
     }
      
     void operator()(const Stride_range& r) const {
-        // assume a dynamic range of 5% to 95% of full scale
-        double object_value = contrast_reduction / 2.0;
-        double background_value = 1 - object_value;
-        
         for (size_t row=r.begin(); row != r.end(); r.increment(row)) {
 
             if (int(row) < buffer_border || int(row) > img.rows - buffer_border) {
                 for (int col = 0; col < img.cols; col++) {
-                    putpixel(row, col, background_value);
+                    putpixel(row, col, whitelevel);
                 }
             } else {
                 for (int col = 0; col < buffer_border; col++) {
-                    putpixel(row, col, background_value);
+                    putpixel(row, col, whitelevel);
                 }
                 for (int col = img.cols - buffer_border; col < img.cols; col++) {
-                    putpixel(row, col, background_value);
+                    putpixel(row, col, whitelevel);
     
                 }
                 for (int col = buffer_border; col < img.cols-buffer_border; col++) {
                     
                     double rval = 0;
-                    rval = rect.evaluate(col*analogue_scale + offset_x, row*analogue_scale + offset_y, object_value, background_value);
+                    rval = rect.evaluate(col*analogue_scale + offset_x, row*analogue_scale + offset_y, blacklevel, whitelevel);
                     
                     putpixel(row, col, rval);
                 }
@@ -242,7 +232,8 @@ class Render_rows {
     const Render_polygon& rect;
     Noise_source& noise_source;
     bool gamma_correct;
-    double contrast_reduction;
+    double blacklevel;
+    double whitelevel;
     bool use_16bit;
     int buffer_border;
     int& crc;
@@ -316,40 +307,50 @@ int main(int argc, char** argv) {
     stringstream ss;
     ss << genrectangle_VERSION_MAJOR << "." << genrectangle_VERSION_MINOR;
     
+    tclap_zero_one<double> zero_one;
+    tclap_ranged<int> bit_depth_limits(2, 16);
+    tclap_ranged<double> offset_limits(-1, 1);
+    tclap_ranged<double> wavelength_limits(0.2, 0.9);
+    tclap_ranged<double> fillfactor_limits(0.01, 1.0);
+    tclap_nonneg<int> nonneg_int;
+    tclap_nonneg<double> nonneg_double;
+    
     TCLAP::CmdLine cmd("Generate rectangles with known MTF50 values", ' ', ss.str());
     TCLAP::ValueArg<std::string> tc_out_name("o", "output", "Output file name", false, "rect.png", "filename", cmd);
     TCLAP::ValueArg<double> tc_theta("a", "angle", "Orientation angle (degrees)", false, 4.0, "angle (degrees)", cmd);
     TCLAP::ValueArg<int> tc_seed("s", "seed", "Noise random seed", false, int(time((time_t*)nullptr)), "seed", cmd);
-    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, "std. dev", cmd);
+    TCLAP::ValueArg<double> tc_noise("n", "noise", "Noise magnitude (linear standard deviation, range [0,1])", false, 0.01, &zero_one, cmd);
     TCLAP::ValueArg<double> tc_blur("b", "blur", "Blur magnitude (linear standard deviation, range [0.185, +inf))", false, 0.374781, "std. dev", cmd);
-    TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0])", false, 0.3, "mtf50", cmd);
-    TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, "factor", cmd);
-    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, "pixels", cmd);
-    TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [0,1]", false, 0, "pixels", cmd);
-    TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [0,1]", false, 0, "pixels", cmd);
-    TCLAP::ValueArg<double> tc_ar("r", "aspect-ratio", "Aspect ratio of rectangle [0,1]", false, 1.0, "ratio", cmd);
-    TCLAP::ValueArg<double> tc_read_noise("", "read-noise", "Read noise magnitude (linear standard deviation, in electrons, range [0,+inf))", false, 3.0, "std. dev", cmd);
-    TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear fraction of signal, range [0,1])", false, 0.02, "fraction", cmd);
-    TCLAP::ValueArg<double> tc_adc_gain("", "adc-gain", "ADC gain (linear electrons-per-DN, range (0,+inf))", false, 1.5, "electrons", cmd);
+    TCLAP::ValueArg<double> tc_mtf("m", "mtf50", "Desired MTF50 value (range (0, 1.0] cycles/pixel)", false, 0.3, &zero_one, cmd);
+    TCLAP::ValueArg<double> tc_cr("c", "contrast", "Contrast reduction [0,1]", false, 0.1, &zero_one, cmd);
+    TCLAP::ValueArg<double> tc_dim("d", "dimension", "Dimension of the image, in pixels", false, 100, &nonneg_double, cmd);
+    TCLAP::ValueArg<double> tc_yoff("y", "yoffset", "Subpixel y offset [-1,1]", false, 0, &offset_limits, cmd);
+    TCLAP::ValueArg<double> tc_xoff("x", "xoffset", "Subpixel x offset [-1,1]", false, 0, &offset_limits, cmd);
+    TCLAP::ValueArg<double> tc_ar("r", "aspect-ratio", "Aspect ratio of rectangle [0,1]", false, 1.0, &zero_one, cmd);
+    TCLAP::ValueArg<double> tc_read_noise("", "read-noise", "Read noise magnitude (linear standard deviation, in electrons, range [0,+inf))", false, 3.0, &nonneg_double, cmd);
+    TCLAP::ValueArg<double> tc_pattern_noise("", "pattern-noise", "Fixed pattern noise magnitude (linear fraction of signal, range [0,1])", false, 0.02, &zero_one, cmd);
+    TCLAP::ValueArg<double> tc_adc_gain("", "adc-gain", "ADC gain (linear electrons-per-DN, range (0,+inf))", false, 1.5, &nonneg_double, cmd);
     TCLAP::ValueArg<double> tc_psf_theta("", "psf-theta", "Angle between PSF major axis and horizontal", false, 0, "degrees", cmd);
-    TCLAP::ValueArg<double> tc_psf_ratio("", "psf-ratio", "PSF minor axis fraction of major axis", false, 1.0, "real", cmd);
-    TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [1,32])", false, 14, "bits", cmd);
-    TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, "f", cmd);
-    TCLAP::ValueArg<double> tc_aperture2("", "aperture2", "Aperture f-number of second axis of rectangular aperture stop (if -p rect-box) [0,1000]", false, 8.0, "f", cmd);
-    TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20]", false, 4.73, "micron", cmd);
-    TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9]", false, 0.55, "micron", cmd);
-    TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset", false, 0.375, "pixels", cmd);
-    TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, "samples", cmd);
+    TCLAP::ValueArg<double> tc_psf_ratio("", "psf-ratio", "PSF minor axis fraction of major axis", false, 1.0, &nonneg_double, cmd);
+    TCLAP::ValueArg<int> tc_adc_depth("", "adc-depth", "ADC depth (number of bits, range [2,16])", false, 14, &bit_depth_limits, cmd);
+    TCLAP::ValueArg<double> tc_aperture("", "aperture", "Aperture f-number [0,1000]", false, 8.0, &nonneg_double, cmd);
+    TCLAP::ValueArg<double> tc_aperture2("", "aperture2", "Aperture f-number of second axis of rectangular aperture stop (if -p rect-box) [0,1000]", false, 8.0, &nonneg_double, cmd);
+    TCLAP::ValueArg<double> tc_pitch("", "pixel-pitch", "Pixel pitch (size) [0,20] micron", false, 4.73, &nonneg_double, cmd);
+    TCLAP::ValueArg<double> tc_lambda("", "lambda", "Light wavelentgth (affects diffraction) [0.2,0.9] micron", false, 0.55, &wavelength_limits, cmd);
+    TCLAP::ValueArg<double> tc_olpf_split("", "olpf-offset", "OLPF beam splitter offset (in units of pixels)", false, 0.375, &nonneg_double, cmd);
+    TCLAP::ValueArg<int> tc_samples("", "airy-samples", "Number of half-samples (n) per axis per pixel for Airy PSFs [actual #samples = (2n+1)^2]", false, 30, &nonneg_int, cmd);
     TCLAP::ValueArg<std::string> tc_target_name("", "target-poly", "Target polygon file name", false, "poly.txt", "filename", cmd);
-    TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, "factor", cmd);
-    TCLAP::ValueArg<double> tc_ascale("", "analogue-scale", "Analogue scaling factor", false, 1.0, "factor", cmd);
+    TCLAP::ValueArg<double> tc_fillfactor("", "fill-factor", "Fill-factor of photosite [0.01,1]", false, 1.0, &fillfactor_limits, cmd);
+    TCLAP::ValueArg<double> tc_ascale("", "analogue-scale", "Analogue scaling factor", false, 1.0, &nonneg_double, cmd);
     TCLAP::ValueArg<int> tc_roi_start_row("", "roi-row", "Region Of Interest (ROI) starting row", false, 0, "pixels", cmd);
     TCLAP::ValueArg<int> tc_roi_start_col("", "roi-col", "Region Of Interest (ROI) starting column", false, 0, "pixels", cmd);
-    TCLAP::ValueArg<int> tc_roi_width("", "roi-width", "Region Of Interest (ROI) width", false, 0, "pixels", cmd);
-    TCLAP::ValueArg<int> tc_roi_height("", "roi-height", "Region Of Interest (ROI) height", false, 0, "pixels", cmd);
+    TCLAP::ValueArg<int> tc_roi_width("", "roi-width", "Region Of Interest (ROI) width", false, 0, &nonneg_int, cmd);
+    TCLAP::ValueArg<int> tc_roi_height("", "roi-height", "Region Of Interest (ROI) height", false, 0, &nonneg_int, cmd);
     TCLAP::ValueArg<std::string> tc_photosite_poly("", "photosite-poly", "Photosite polygon file name", false, "photo.txt", "filename", cmd);
     TCLAP::ValueArg<double> tc_w020("", "w020", "Defocus w020 magnitude (wavelengths)", false, 0.0, "wavelengths", cmd);
     TCLAP::ValueArg<double> tc_w040("", "w040", "Spherical aberration w040 magnitude (wavelengths)", false, 0.0, "wavelengths", cmd);
+    TCLAP::ValueArg<double> tc_blacklevel("", "blacklevel", "Simulated black level [0.0, 1)", false, 0.025, &zero_one, cmd);
+    TCLAP::ValueArg<double> tc_whitelevel("", "whitelevel", "Simulated white level (0.0, 1.0]", false, 0.975, &zero_one, cmd);
     
     vector<string> psf_names;
     psf_names.push_back("gaussian");
@@ -468,6 +469,17 @@ int main(int argc, char** argv) {
         printf("It does not make sense to set blur below 0.185; you are on your own ...\n");
     }
     
+    double blacklevel = tc_blacklevel.getValue();
+    double whitelevel = tc_whitelevel.getValue();
+    if (tc_cr.isSet()) {
+        if (tc_blacklevel.isSet() || tc_whitelevel.isSet()) {
+            fprintf(stderr, "Error: -c / --contrast cannot be used together with --blacklevel or --whitelevel.\nAborting.\n");
+            return 1;
+        }
+        blacklevel = tc_cr.getValue() / 2.0;
+        whitelevel = 1.0 - blacklevel;
+    }
+    
     if (tc_samples.getValue() < 1) {
         printf("Error. The argument to --airy-samples must be positive");
         return -1;
@@ -500,7 +512,7 @@ int main(int argc, char** argv) {
         printf("Setting both gamma and 16-bit output not supported. Choosing to disable gamma, and enable 16-bit output\n");
         use_gamma = false;
     }
-
+    
     bool use_sensor_model = false;
     if (tc_read_noise.isSet() || tc_pattern_noise.isSet() ||
         tc_adc_depth.isSet()  || tc_adc_depth.isSet() ) {
@@ -512,35 +524,35 @@ int main(int argc, char** argv) {
                "Ignoring noise sigma, and going with full sensor model instead.\n");
     }
     
-    printf("output filename = %s, theta = %lf degrees, seed = %d,\n ", 
+    printf("output filename = %s, theta = %lg degrees, seed = %d,\n ", 
         tc_out_name.getValue().c_str(), theta/M_PI*180, rseed
     );
     if (psf_type >= Render_polygon::AIRY) {
-        printf("\t aperture = f/%.1lf, pixel pitch = %.3lf, lambda = %.3lf, ",
+        printf("\t aperture = f/%.1lg, pixel pitch = %.3lg, lambda = %.3lg, ",
              tc_aperture.getValue(), tc_pitch.getValue(), tc_lambda.getValue()
 		);
 		if (psf_type == Render_polygon::AIRY_PLUS_4DOT_OLPF) {
 			printf("OLPF split = %.3f pixels", tc_olpf_split.getValue());
 		}
     } else {
-        printf("\t sigma = %lf (or mtf50 = %lf), ", 
+        printf("\t sigma = %lg (or mtf50 = %lg), ", 
             sigma, mtf
         );
     }
 
     
     if (use_sensor_model) {
-        printf("\n\t full sensor noise model, with read noise = %.1lf electrons, fixed pattern noise fraction = %.3lf,\n"
-               "\t adc gain = %.2lf e/DN, adc depth = %d bits\n",
+        printf("\n\t full sensor noise model, with read noise = %.1lg electrons, fixed pattern noise fraction = %.3lg,\n"
+               "\t adc gain = %.2lg e/DN, adc depth = %d bits\n",
                tc_read_noise.getValue(), tc_pattern_noise.getValue(), 
                tc_adc_gain.getValue(), tc_adc_depth.getValue()
         );
     } else {
-        printf("\n\t additive Gaussian noise with sigma = %lf\n", tc_noise.getValue());
+        printf("\n\t additive Gaussian noise with sigma = %lg\n", tc_noise.getValue());
     }
     
-    printf("\t output in sRGB gamma = %d, intensity range [%lf, %lf], 16-bit output:%d, dimension: %dx%d\n",
-        use_gamma, tc_cr.getValue()/2.0, 1 - tc_cr.getValue()/2.0, use_16bit, width, height
+    printf("\t output in sRGB gamma = %d, intensity range [%lg, %lg], 16-bit output:%d, dimension: %dx%d\n",
+        use_gamma, blacklevel, whitelevel, use_16bit, width, height
     );
 
     Geometry* target_geom = new Polygon_geom(
@@ -651,7 +663,7 @@ int main(int argc, char** argv) {
         
         photosite_geom = new Polygon_geom(verts);
         
-        printf("rounded-square photosite area = %lf\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
+        printf("rounded-square photosite area = %lg\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
     }
     
     if (tc_photosite_poly.isSet()) {
@@ -691,7 +703,7 @@ int main(int argc, char** argv) {
         photosite_geom = new Polygon_geom(verts);
     }
     
-    printf("photosite area = %lf\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
+    printf("photosite area = %lg\n", (dynamic_cast<Polygon_geom*>(photosite_geom))->compute_area());
 
 
     // decide which PSF rendering algorithm to use
@@ -799,7 +811,7 @@ int main(int argc, char** argv) {
     
     if (!tc_profile.getValue()) {
         int crc = 0;
-        Render_rows rr(img, *rect, *ns, tc_cr.getValue(), use_gamma, use_16bit, 
+        Render_rows rr(img, *rect, *ns, blacklevel, whitelevel, use_gamma, use_16bit, 
             tc_roi_width.isSet() ? 0 : border,
             crc, tc_ascale.getValue(), x_origin, y_origin
         );
@@ -820,6 +832,12 @@ int main(int argc, char** argv) {
         Render_esf re(*rect, esf, rwidth, theta, oversample, tc_xoff.getValue(), tc_yoff.getValue());
         Stride_range::parallel_for(re, tp, esf.size());
         re.write(profile_fname);
+    }
+    
+    if (ns && ns->clip_count > 0) {
+        printf("\nWarning: %lg%% of pixel intensities were clipped!\n  Check your black/white levels relative to noise magnitude.\n\n",
+            100.0*double(ns->clip_count) / double(ns->size)
+        );
     }
     
     if (display_mtf_equation) { // for now we only output equations for square photosites

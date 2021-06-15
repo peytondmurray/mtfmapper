@@ -38,8 +38,13 @@ class Noise_source {
 
     }
 
-    virtual double sample(double s, int idx) const {
-        return s + 0.0*idx;
+    virtual double sample(double s, int idx) {
+        return clip(s + 0.0*idx);
+    }
+    
+    virtual double clip(double x) {
+        clip_count += x < 0 || x > 1.0;
+        return std::max(0.0, std::min(1.0, x));
     }
 
     double randdu(void) {
@@ -52,7 +57,7 @@ class Noise_source {
     }
 
     size_t size;
-    
+    size_t clip_count = 0;
 };
 
 class Additive_gaussian_noise : public Noise_source {
@@ -64,8 +69,8 @@ class Additive_gaussian_noise : public Noise_source {
         }
     }
 
-    virtual double sample(double s, int idx) const {
-        return s + noise[idx];
+    virtual double sample(double s, int idx) {
+        return clip(s + noise[idx]);
     }
 
     vector<double> noise;
@@ -83,7 +88,7 @@ class Sensor_model_noise : public Noise_source {
 
       : Noise_source(size), noise(3, vector<double>(size)),
         read_noise(read_noise), Pn(Pn), adc(adc),
-        adc_bits(adc_bits) {
+        adc_bits(adc_bits), DN_scale(1 << adc_bits) {
 
         for (size_t j=0; j < 3; j++) {
             for (size_t i=0; i < size; i++) {
@@ -92,17 +97,20 @@ class Sensor_model_noise : public Noise_source {
         }
     }
 
-    virtual double sample(double s, int idx) const {
-
-        const double DN_scale = (1 << adc_bits);
+    virtual double sample(double s, int idx) {
         double signal = s * DN_scale;
 
         double total_noise  = 
-            noise[0][idx]*read_noise +
+            noise[0][idx]*read_noise/adc +
             noise[1][idx]*sqrt(signal/adc) +
             noise[2][idx]*Pn*signal;
 
-        return (signal + total_noise) / DN_scale;
+        return clip((signal + total_noise) / 65535.0);
+    }
+    
+    virtual double clip(double x) {
+        clip_count += x < 0 || x > (DN_scale-1.0) / 65535.0;
+        return std::max(0.0, std::min((DN_scale-1.0) / 65535.0, x));
     }
 
     vector< vector<double> > noise;
@@ -110,6 +118,7 @@ class Sensor_model_noise : public Noise_source {
     double Pn;
     double adc;
     size_t adc_bits;
+    double DN_scale;
 };
 
         
