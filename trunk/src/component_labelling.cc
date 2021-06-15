@@ -306,8 +306,10 @@ void Component_labeller::inflate_boundaries(double radius) {
             for (auto& p: b) {
                 dir = p - centroid;
                 double l = norm(dir);
-                dir *= (l+radius)/l;
-                p = dir + centroid;
+                if (l > 0) { // do not try to inflate the centroid itself!
+                    dir *= (l+radius)/l;
+                    p = dir + centroid;
+                }
             }
             
         }
