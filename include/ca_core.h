@@ -41,6 +41,7 @@ class Ca_core {
     }
     
     void calculate_ca(Block& block);
+    void set_allow_all_edges(void);
     
     Mtf_core& mtf_core;
     vector<cv::Mat> channels;
@@ -51,6 +52,8 @@ class Ca_core {
         
     void extract_rgb_lsf(Block& block, const cv::Mat& img, const vector<cv::Mat>& channels,
         vector<vector<double>>& red_lsf, vector<vector<double>>& green_lsf, vector<vector<double>>& blue_lsf);
+        
+    bool allow_all_edges = false;
 };
 
 #endif

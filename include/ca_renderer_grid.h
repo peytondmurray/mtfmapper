@@ -35,7 +35,8 @@ class Ca_renderer_grid : public Mtf_renderer {
   public:
     Ca_renderer_grid(const std::string& img_filename, const std::string& wdir, 
         const std::string& fname, const std::string& gnuplot_binary, const cv::Mat& img, 
-        int gnuplot_width, bool lpmm_mode, double pixel_size, bool fraction_mode);
+        int gnuplot_width, bool lpmm_mode, double pixel_size, bool fraction_mode, 
+        bool allow_all_edges);
     
     void render(const vector<Block>& blocks);
     
@@ -58,6 +59,7 @@ class Ca_renderer_grid : public Mtf_renderer {
     cv::Size img_dims;
     
     bool sparse_mode;
+    bool allow_all_edges;
     
     vector<cv::Mat> grid_coarse;
     vector<cv::Mat> grid_fine;

@@ -33,8 +33,8 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 class Ca_renderer_print : public Mtf_renderer {
   public:
-    Ca_renderer_print(const std::string& fname, const cv::Mat& img) 
-      :  ofname(fname), img_centre(img.cols/2, img.rows/2) {
+    Ca_renderer_print(const std::string& fname, const cv::Mat& img, bool allow_all_edges) 
+      :  ofname(fname), img_centre(img.cols/2, img.rows/2), allow_all_edges(allow_all_edges) {
       
     }
     
@@ -42,6 +42,7 @@ class Ca_renderer_print : public Mtf_renderer {
     
     string ofname;
     Point2d img_centre;
+    bool allow_all_edges;
 };
 
 #endif

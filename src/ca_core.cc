@@ -179,6 +179,10 @@ double estimate_centroid(const vector<double>& a) {
     return centroid_x;
 }
 
+void Ca_core::set_allow_all_edges(void) {
+    allow_all_edges = true;
+}
+
 void Ca_core::calculate_ca(Block& block) {
     thread_local vector<vector<double>> red_lsf(4);
     thread_local vector<vector<double>> green_lsf(4);
@@ -206,7 +210,7 @@ void Ca_core::calculate_ca(Block& block) {
         dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
     
-        if (fabs(delta) > angle_threshold || mtf_core.is_single_roi()) { // only process CA on tangential edges
+        if (fabs(delta) > angle_threshold || mtf_core.is_single_roi() || allow_all_edges) { // only process CA on tangential edges, unless we override this behaviour explicitly
             double green_centroid = estimate_centroid(green_lsf[k]);
             double red_ca = estimate_centroid(red_lsf[k]) - green_centroid;
             double blue_ca = estimate_centroid(blue_lsf[k]) - green_centroid;
@@ -236,7 +240,7 @@ void Ca_core::extract_rgb_lsf_bayer(Block& block, const cv::Mat& img, const cv::
         dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
     
-        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !mtf_core.is_single_roi())) { // only process CA on tangential edges
+        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !(mtf_core.is_single_roi() || allow_all_edges))) { // only process CA on tangential edges, unless we override this behaviour explicitly
             continue;
         }
     
@@ -274,8 +278,8 @@ void Ca_core::extract_rgb_lsf(Block& block, const cv::Mat& img, const vector<cv:
         Point2d dir = block.get_edge_centroid(k) - img_centre;
         dir = dir * (1.0 / norm(dir));
         double delta = dir.dot(block.get_normal(k));
-    
-        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !mtf_core.is_single_roi())) { // only process CA on tangential edges
+        
+        if (!block.get_edge_valid(k) || (fabs(delta) <= angle_threshold && !(mtf_core.is_single_roi() || allow_all_edges))) { // only process CA on tangential edges, unless we override this behaviour explicitly
             continue;
         }
     

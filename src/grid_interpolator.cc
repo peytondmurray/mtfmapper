@@ -61,7 +61,7 @@ void interpolate_grid(const Grid_functor& ftor, Edge_type target_edge_type, cv::
                     } else {
                         edge_type = SAGITTAL;
                     }
-                } else {
+                } else if (target_edge_type == SAGITTAL) {
                     if (fabs(delta) > cos(45.0/180*M_PI)) {
                         edge_type = MERIDIONAL;
                     } else {
