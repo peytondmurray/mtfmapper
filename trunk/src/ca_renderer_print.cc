@@ -53,7 +53,7 @@ void Ca_renderer_print::render(const vector<Block>& blocks) {
             if (!blocks[i].get_edge_valid(k)) continue;
             if (fabs(blocks[i].get_ca(k).x - Edge_info::nodata) < 1e-6 || fabs(blocks[i].get_ca(k).y - Edge_info::nodata) < 1e-6) continue;
 
-            if (fabs(delta) >= cos(45.0/180*M_PI) || blocks.size() == 1) {
+            if (fabs(delta) >= cos(45.0/180*M_PI) || blocks.size() == 1 || allow_all_edges) {
                 fprintf(fout, "%d %lf %lf %lf %lf %lf %lf\n", 
                     int(i),
                     blocks[i].get_edge_centroid(k).x, blocks[i].get_edge_centroid(k).y,

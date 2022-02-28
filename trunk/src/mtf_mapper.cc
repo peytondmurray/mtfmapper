@@ -131,6 +131,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_ca_fraction("", "ca-fraction", "Chromatic aberration image generated in units of radial distance fraction", cmd, false);
     TCLAP::SwitchArg tc_jpeg("", "jpeg", "Annotated image saved in JPEG format to gain speed", cmd, false);
     TCLAP::SwitchArg tc_checkerboard("", "checkerboard", "Process the input image as a checkerboard pattern", cmd, false);
+    TCLAP::SwitchArg tc_ca_all("", "ca-all-edges", "Chromatic aberration is calculated on all edges, not just tangential edges", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -609,6 +610,9 @@ int main(int argc, char** argv) {
         
         if (tc_ca.getValue()) {
             Ca_core chromatic(mtf_core);
+            if (tc_ca_all.getValue()) {
+                chromatic.set_allow_all_edges();
+            }
         
             if (in_num_channels == 3) {
                 logger.info("%s\n", "Using original RGB input image to estimate CA.");
@@ -837,7 +841,7 @@ int main(int argc, char** argv) {
         }
         
         if (tc_ca.getValue()) {
-            Ca_renderer_print ca_print(wdir + string("chromatic_aberration.txt"), cvimg);
+            Ca_renderer_print ca_print(wdir + string("chromatic_aberration.txt"), cvimg, tc_ca_all.getValue());
             ca_print.render(mtf_core.get_blocks());
             
             Ca_renderer_grid grid(
@@ -849,7 +853,8 @@ int main(int argc, char** argv) {
                 gnuplot_width,
                 lpmm_mode,
                 pixel_size,
-                tc_ca_fraction.getValue()
+                tc_ca_fraction.getValue(),
+                tc_ca_all.getValue()
             );
             grid.set_sparse_chart(tc_ima_mode.getValue());
             grid.render(mtf_core.get_blocks());

@@ -104,7 +104,8 @@ Ca_renderer_grid::Ca_renderer_grid(
     const cv::Mat& img, 
     int gnuplot_width,
     bool lpmm_mode, double pixel_size,
-    bool fraction_mode)
+    bool fraction_mode, 
+    bool allow_all_edges)
     : img_filename(img_filename),
       wdir(wdir), fname(fname), 
       gnuplot_binary(gnuplot_binary), 
@@ -112,7 +113,8 @@ Ca_renderer_grid::Ca_renderer_grid(
       lpmm_mode(lpmm_mode), pixel_size(pixel_size),
       fraction_mode(fraction_mode),
       img_centre(img.cols/2, img.rows/2),
-      img_dims(img.cols, img.rows) {
+      img_dims(img.cols, img.rows),
+      allow_all_edges(allow_all_edges) {
 
     const int coarse_grid_size = 40;
     const int fine_grid_size = 200;
@@ -155,9 +157,9 @@ void Ca_renderer_grid::render(const vector<Block>& blocks) {
         ca_ftor = std::unique_ptr<Grid_functor_ca>(new Grid_functor_ca(true, lpmm_mode ? 1000.0/pixel_size : 1, sparse_mode));
     }
     
-    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[0], grid_fine[0], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
+    interpolate_grid(*ca_ftor, allow_all_edges ? NEITHER : MERIDIONAL, grid_coarse[0], grid_fine[0], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
     ca_ftor->set_red_ca(false);
-    interpolate_grid(*ca_ftor, MERIDIONAL, grid_coarse[1], grid_fine[1], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
+    interpolate_grid(*ca_ftor, allow_all_edges ? NEITHER : MERIDIONAL, grid_coarse[1], grid_fine[1], img_dims, blocks, ca_ftor->scale(-200), ca_ftor->smoothing_factor(), ca_ftor->pruning_threshold());
     
     vector<double> zmax(2, -1e50);
     vector<double> zmin(2,  1e50);
