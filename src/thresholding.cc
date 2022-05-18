@@ -29,6 +29,7 @@ or implied, of the Council for Scientific and Industrial Research (CSIR).
 
 #include "include/thresholding.h"
 #include "include/common_types.h"
+#include "include/logger.h"
 
 #include <stdint.h>
 
@@ -206,3 +207,34 @@ void sauvola_adaptive_threshold(const cv::Mat& cvimg, cv::Mat& out, double thres
     delete [] sq_integralImg;
 }
 
+int next_pow2(uint32_t x) {
+    uint32_t k=1;
+    while (k < 31 && (uint32_t(1) << k) < x) {
+        k++;
+    }
+    return uint32_t(1) << k;
+}
+
+void invert(cv::Mat& img) {
+    if (img.depth() != CV_16U) {
+        logger.error("%s\n", "Invert: expected a 16-bit image at this point");
+        return;
+    }
+    
+    double minval = 0;
+    double maxval = 0;
+    int minidx = 0;
+    int maxidx = 0;
+    cv::minMaxIdx(img, &minval, &maxval, &minidx, &maxidx);
+    uint32_t maxval_i = int(maxval);
+    
+    maxval_i = std::max(0, next_pow2(maxval_i) - 1);
+    
+    uint16_t* ptr = (uint16_t*)img.data;
+    uint16_t* sentinel = ptr + size_t(img.cols) * size_t(img.rows);
+    
+    while (ptr < sentinel) {
+        *ptr = maxval_i - *ptr;
+        ptr++;
+    }
+}
