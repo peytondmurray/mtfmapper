@@ -270,11 +270,18 @@ class Block {
         vector<Point2d> edge_centroids(4);
         vector<double> edge_angle(4);
         vector<Point2d> edge_snr(4);
+        vector<double> geometric_length(4);
         
         for (size_t k=0; k < 4; k++) {
             edge_centroids[k] = rect.get_centroid(k);
             edge_angle[k] = atan2(-get_normal(k).x, get_normal(k).y);
             edge_snr[k] = cv::Point2d(snr[k].mean_cnr(), snr[k].oversampling());
+            vector<std::pair<double, size_t>> corner_dist(4);
+            for (size_t j=0; j < 4; j++) {
+                corner_dist[j] = std::pair<double, size_t>(cv::norm(edge_centroids[k] - get_corner(j)), j);
+            }
+            sort(corner_dist.begin(), corner_dist.end());
+            geometric_length[k] = cv::norm(get_corner(corner_dist[0].second) - get_corner(corner_dist[1].second));
         }
         
         return Edge_info::serialize(
@@ -288,7 +295,8 @@ class Block {
             edge_snr,
             chromatic_aberration,
             valid_edge,
-            edge_length
+            edge_length,
+            geometric_length
         );
     }
     

@@ -95,7 +95,8 @@ class Edge_info {
         const vector<cv::Point2d> in_snr,
         const vector<cv::Point2d> in_chromatic_aberration,
         const vector<bool> valid_edge,
-        const vector<double>& in_edge_length
+        const vector<double>& in_edge_length,
+        const vector<double>& in_geometric_length
     ) {
         // there is no need to keep data grouped by block at this point, so each record is independent
         vector<char> buffer(20*1024);
@@ -112,7 +113,8 @@ class Edge_info {
             write_double(&buf, in_snr[k].y); // oversampling factor
             write_double(&buf, in_chromatic_aberration[k].x); // CA red-green
             write_double(&buf, in_chromatic_aberration[k].y); // CA blue-green
-            write_double(&buf, in_edge_length[k]); // edge length, in pixels
+            write_double(&buf, in_edge_length[k]); // edge length (effective ROI), in pixels
+            write_double(&buf, in_geometric_length[k]); // geometric edge length, in pixels
 
             write_uint32(&buf, in_sfr[k]->size());
             for (size_t j=0; j < in_sfr[k]->size(); j++) {
@@ -143,8 +145,8 @@ class Edge_info {
         
         char* ibuf = buffer.data();
         
-        size_t nread = fread(ibuf, 1, 9*sizeof(double), fin);
-        if (nread != 9*sizeof(double)) {
+        size_t nread = fread(ibuf, 1, 10*sizeof(double), fin);
+        if (nread != 10*sizeof(double)) {
             logger.error("Could not read from edge info serialization file, tried %ld bytes, only read %ld\n", 9*sizeof(double), nread);
             return b;
         }
@@ -158,6 +160,7 @@ class Edge_info {
         b.chromatic_aberration.x = read_double(&ibuf);
         b.chromatic_aberration.y = read_double(&ibuf);
         b.edge_length = read_double(&ibuf);
+        b.geometric_edge_length = read_double(&ibuf);
 
         nread = fread(ibuf, 1, sizeof(uint32_t), fin);
         if (nread != sizeof(uint32_t)) {
@@ -223,6 +226,7 @@ class Edge_info {
     cv::Point2d chromatic_aberration;
     Job_metadata metadata;
     double edge_length = 0;
+    double geometric_edge_length = 0;
     
     static constexpr double nodata = -1073741824;
     
