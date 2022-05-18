@@ -302,7 +302,7 @@ class Mrectangle {
     }
   
     Mrectangle(const vector<double>& in_thetas, const vector<double>& data_thetas, 
-        const vector<Point2d>& points, const Gradient& g, double thresh=5.0/180.0*M_PI) 
+        const vector<Point2d>& points, const Gradient& g, double thresh=5.0/180.0*M_PI, bool allow_partial=false) 
       : thetas(in_thetas), centroids(4, Point2d(0.0,0.0)), valid(false), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
         normals(4, Point2d(0.0,0.0)), corner_map(4), 
@@ -319,8 +319,10 @@ class Mrectangle {
             for (size_t i=0; i < points.size(); i++) { 
                 
                 if (points[i].x <= 4 || points[i].x >= g.width()-4 || points[i].y <= 4 || points[i].y >= g.height()-4) {
-                    valid = false;
-                    return;
+                    if (!allow_partial) {
+                        valid = false;
+                        return;
+                    }
                 }
                 
                 for (size_t k=0; k < 4; k++) {
