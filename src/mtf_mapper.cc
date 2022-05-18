@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_jpeg("", "jpeg", "Annotated image saved in JPEG format to gain speed", cmd, false);
     TCLAP::SwitchArg tc_checkerboard("", "checkerboard", "Process the input image as a checkerboard pattern", cmd, false);
     TCLAP::SwitchArg tc_ca_all("", "ca-all-edges", "Chromatic aberration is calculated on all edges, not just tangential edges", cmd, false);
+    TCLAP::SwitchArg tc_allow_partial("", "allow-partial", "Allow partial targets (cut by image boundary) to be processed", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -496,6 +497,7 @@ int main(int argc, char** argv) {
         );
         mtf_core.set_absolute_sfr(tc_absolute.getValue());
         mtf_core.set_sfr_smoothing(!tc_smooth.getValue());
+        mtf_core.set_allow_partial(tc_allow_partial.getValue());
         if (tc_border.getValue()) {
             logger.debug("setting border to %d\n", border_width);
         }
