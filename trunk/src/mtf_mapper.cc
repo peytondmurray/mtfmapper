@@ -133,6 +133,7 @@ int main(int argc, char** argv) {
     TCLAP::SwitchArg tc_checkerboard("", "checkerboard", "Process the input image as a checkerboard pattern", cmd, false);
     TCLAP::SwitchArg tc_ca_all("", "ca-all-edges", "Chromatic aberration is calculated on all edges, not just tangential edges", cmd, false);
     TCLAP::SwitchArg tc_allow_partial("", "allow-partial", "Allow partial targets (cut by image boundary) to be processed", cmd, false);
+    TCLAP::SwitchArg tc_invert("", "invert", "Invert the image brightness before processing (white targets on black backgrounds)", cmd, false);
     #ifdef MDEBUG
     TCLAP::SwitchArg tc_bradley("", "bradley", "Use Bradley thresholding i.s.o Sauvola thresholding", cmd, false);
     #endif
@@ -392,6 +393,13 @@ int main(int argc, char** argv) {
         );
         //imwrite(string("prewhite.png"), rawimg);
         //imwrite(string("white.png"), cvimg);
+    }
+    
+    if (tc_invert.getValue()) {
+        invert(cvimg);
+        if (rawimg.data != cvimg.data) {
+            invert(rawimg);
+        }
     }
     
     Undistort* undistort = nullptr;
