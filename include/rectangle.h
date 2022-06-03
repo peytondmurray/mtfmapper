@@ -302,7 +302,7 @@ class Mrectangle {
     }
   
     Mrectangle(const vector<double>& in_thetas, const vector<double>& data_thetas, 
-        const vector<Point2d>& points, const Gradient& g, double thresh=5.0/180.0*M_PI, bool allow_partial=false) 
+        const vector<Point2d>& points, const Gradient& g, int label, double thresh=5.0/180.0*M_PI, bool allow_partial=false) 
       : thetas(in_thetas), centroids(4, Point2d(0.0,0.0)), valid(false), 
         corners(4, Point2d(0.0,0.0)), edges(4, Point2d(0.0,0.0)), 
         normals(4, Point2d(0.0,0.0)), corner_map(4), 
@@ -376,7 +376,7 @@ class Mrectangle {
             }
             size_t corner_idx = 0;
             if (outlier_count > points.size()/8) {
-                logger.debug("outliers: %ld out of %ld\n", outlier_count, points.size());
+                logger.debug("label=%d, outliers: %ld out of %ld\n", label, outlier_count, points.size());
                 valid = false;
             } else {
                 
@@ -624,6 +624,7 @@ class Mrectangle {
                     }
                 }
                 if (isections.size() < 4) { // this cannot be a quad if we have fewer than 4 intersections
+                    logger.debug("label=%d, #isections=%ld\n", label, isections.size());
                     valid = false;
                     return;
                 }

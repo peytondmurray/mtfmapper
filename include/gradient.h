@@ -39,9 +39,17 @@ public:
     inline const cv::Mat& grad_x(void) const {
         return _gradient_x;
     }
+    
+    inline void write_grad_x(int x, int y, float val) {
+        _gradient_x.at<float>(y, x) = val;
+    }
 
     inline const cv::Mat& grad_y(void) const {
         return _gradient_y;
+    }
+    
+    inline void write_grad_y(int x, int y, float val) {
+        _gradient_y.at<float>(y, x) = val;
     }
     
     inline float grad_x(int x, int y) const {
