@@ -236,6 +236,7 @@ int main(int argc, char** argv) {
     try {
         cvimg = cv::imread(tc_in_name.getValue(),-1);
         job_metadata.channels = cvimg.channels();
+        job_metadata.set_image_dims(cvimg.cols, cvimg.rows);
     } catch (const cv::Exception& ex) {
         cout << ex.what() << endl;
     }
