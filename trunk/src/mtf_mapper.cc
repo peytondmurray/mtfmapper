@@ -489,6 +489,31 @@ int main(int argc, char** argv) {
             return 4;
         }
         
+        // fudge the image gradient on the edges
+        if (tc_allow_partial.getValue()) {
+            logger.info("%s\n", "Fudging image gradient where target objects intersect the image edges.\n");
+            for (int col=0; col < cvimg.cols; col++) {
+                if (cl(col, 2) > 0) {
+                    gradient.write_grad_y(col, 2, -3.0);
+                    gradient.write_grad_x(col, 2, 0.0);
+                }
+                if (cl(col, cvimg.rows - 3) > 0) {
+                    gradient.write_grad_y(col, cvimg.rows - 3, 3.0);
+                    gradient.write_grad_x(col, cvimg.rows - 3, 0.0);
+                }
+            }
+            for (int row=0; row < cvimg.rows; row++) {
+                if (cl(2, row) > 0) {
+                    gradient.write_grad_y(2, row, 0.0);
+                    gradient.write_grad_x(2, row, -3.0);
+                }
+                if (cl(cvimg.cols - 3, row) > 0) {
+                    gradient.write_grad_y(cvimg.cols - 3, row, 0.0);
+                    gradient.write_grad_x(cvimg.cols - 3, row, 3.0);
+                }
+            }
+        }
+        
         // try to restore the object boundaries to compensate for dilation of thresholded image
         if (tc_checkerboard.getValue()) {
             cl.inflate_boundaries(erosion_size);

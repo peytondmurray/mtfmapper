@@ -463,7 +463,7 @@ bool Mtf_core::extract_rectangle(const Point2d& cent, int label, Mrectangle& rec
     pd.select_best_n(main_thetas, 4);
     sort(main_thetas.begin(), main_thetas.end());
     
-    rect = Mrectangle(main_thetas, thetas, points, g, 5.0/180.0*M_PI, allow_partial);
+    rect = Mrectangle(main_thetas, thetas, points, g, label, 5.0/180.0*M_PI, allow_partial);
     
     return rect.valid;
 }
